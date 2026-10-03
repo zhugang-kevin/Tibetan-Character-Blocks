@@ -1,4 +1,4 @@
-// app.js — 藏文消除
+// app.js — 藏字方块
 App({
   globalData: {
     fontLoaded: false

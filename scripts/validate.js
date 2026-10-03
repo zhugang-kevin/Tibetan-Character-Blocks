@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * scripts/validate.js — 藏文消除 项目自检脚本
+ * scripts/validate.js — 藏字方块 项目自检脚本
  * 用法: node scripts/validate.js
  * 检查项：JSON语法 / 页面完整性 / 关卡数据 / 文化卡覆盖 / 音效文件 / 禁用API / 事件绑定
  */
