@@ -1,0 +1,192 @@
+/* pages/game/game.wxss */
+.page {
+  min-height: 100vh;
+  padding: 20rpx 32rpx 60rpx;
+  box-sizing: border-box;
+}
+
+.statusbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10rpx 8rpx 24rpx;
+  font-size: 30rpx;
+}
+
+.status-level {
+  font-weight: 700;
+  color: #C0392B;
+}
+
+.status-pairs {
+  color: #8A8375;
+}
+
+/* 盘面 */
+.board {
+  display: grid;
+  gap: 10rpx;
+}
+
+.tile {
+  position: relative;
+  aspect-ratio: 5 / 6;
+  background: #FFFFFF;
+  border: 2rpx solid #E4DCC8;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  transition: transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
+}
+
+.glyph {
+  font-weight: 500;
+  line-height: 1;
+  transform: translateY(-4%);
+}
+
+.glyph-img {
+  width: 72%;
+  height: 72%;
+}
+
+.glyph-fallback {
+  font-size: 34rpx !important;
+  font-weight: 600;
+}
+
+/* 选中态 */
+.tile.selected {
+  transform: scale(1.08);
+  border-width: 3rpx;
+  box-shadow: 0 6rpx 16rpx rgba(62, 58, 51, 0.18);
+  z-index: 2;
+}
+
+/* 消除动画：缩小到 0 + 淡出，200ms */
+.tile.removing {
+  transform: scale(0);
+  opacity: 0;
+}
+
+/* 不匹配抖动 */
+.tile.shake {
+  animation: shake 0.4s ease;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-8rpx); }
+  50% { transform: translateX(8rpx); }
+  75% { transform: translateX(-6rpx); }
+}
+
+/* 文化卡弹窗 */
+.mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(40, 34, 24, 0.5);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  z-index: 10;
+}
+
+.mask.show {
+  opacity: 1;
+}
+
+.card-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #FFFFFF;
+  border-radius: 32rpx 32rpx 0 0;
+  padding: 0 40rpx calc(40rpx + env(safe-area-inset-bottom));
+  transform: translateY(100%);
+  transition: transform 0.28s ease;
+  z-index: 11;
+}
+
+.card-sheet.show {
+  transform: translateY(0);
+}
+
+.card-accent {
+  height: 10rpx;
+  width: 120rpx;
+  border-radius: 0 0 10rpx 10rpx;
+  margin: 0 auto;
+}
+
+.card-head {
+  text-align: center;
+  padding: 28rpx 0 8rpx;
+}
+
+.card-big-wrap {
+  height: 150rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card-big {
+  font-size: 110rpx;
+  line-height: 1;
+  font-weight: 500;
+}
+
+.card-big-img {
+  width: 140rpx;
+  height: 140rpx;
+}
+
+.card-subtitle {
+  margin-top: 10rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+}
+
+.card-body {
+  padding: 8rpx 0 30rpx;
+}
+
+.card-desc {
+  font-size: 28rpx;
+  color: #3E3A33;
+  line-height: 1.7;
+}
+
+.card-fact {
+  margin-top: 20rpx;
+  background: #FDF6E3;
+  border-radius: 16rpx;
+  padding: 20rpx 24rpx;
+}
+
+.fact-label {
+  display: block;
+  font-size: 24rpx;
+  color: #B7950B;
+  font-weight: 700;
+  margin-bottom: 8rpx;
+}
+
+.fact-text {
+  font-size: 26rpx;
+  color: #6B6455;
+  line-height: 1.7;
+}
+
+.card-btn {
+  width: 100%;
+  height: 92rpx;
+  line-height: 92rpx;
+  color: #FFFFFF;
+  font-size: 32rpx;
+  font-weight: 600;
+  border-radius: 46rpx;
+}

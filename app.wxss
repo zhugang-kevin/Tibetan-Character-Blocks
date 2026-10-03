@@ -1,0 +1,15 @@
+/* app.wxss — 全局样式 */
+page {
+  background: #FDF6E3;
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'PingFang SC',
+    'Microsoft YaHei', sans-serif;
+  color: #3E3A33;
+}
+
+.tibetan {
+  font-family: 'Noto Serif Tibetan', serif;
+}
+
+button::after {
+  border: none;
+}

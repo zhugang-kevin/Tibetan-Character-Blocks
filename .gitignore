@@ -1,0 +1,7 @@
+# 微信开发者工具 / 系统文件
+node_modules/
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

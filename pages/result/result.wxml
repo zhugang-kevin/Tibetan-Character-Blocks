@@ -1,0 +1,63 @@
+<view class="page">
+
+  <view class="result-hero">
+    <view class="result-check">✓</view>
+    <view class="result-title">第 {{level}} 关完成！</view>
+    <view class="result-sub">共消除 {{pairs}} 对</view>
+  </view>
+
+  <view class="section" wx:if="{{collected.length}}">
+    <view class="section-title">本关收集的文化卡（{{collected.length}} 张）</view>
+    <view class="chips">
+      <view wx:for="{{collected}}" wx:key="id" class="chip" style="border-color: {{item.color}};">
+        <text wx:if="{{item.isLetter}}" class="chip-glyph tibetan" style="color: {{item.color}};">{{item.label}}</text>
+        <text wx:else class="chip-glyph" style="color: {{item.color}};">{{item.label}}</text>
+        <text class="chip-name">{{item.name}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 祝福卡（仅第10关） -->
+  <block wx:if="{{isFinal}}">
+    <view class="bless-section" wx:if="{{!imagePath}}">
+      <view class="bless-title">🎉 恭喜通关全部10关！</view>
+      <view class="bless-sub">生成你的专属扎西德勒祝福卡，分享给朋友吧</view>
+      <button class="primary-btn" bindtap="openNameModal" disabled="{{generating}}">
+        {{generating ? '生成中…' : '生成我的祝福卡'}}
+      </button>
+    </view>
+
+    <view class="bless-section" wx:if="{{imagePath}}">
+      <image class="bless-img" src="{{imagePath}}" mode="widthFix" />
+      <view class="btn-row">
+        <button class="half-btn ghost" bindtap="previewShare">预览 / 长按转发</button>
+        <button class="half-btn" bindtap="saveToAlbum">保存到相册</button>
+      </view>
+      <button class="share-btn" open-type="share">分享给朋友</button>
+    </view>
+  </block>
+
+  <button class="home-btn" bindtap="goHome">返回首页</button>
+
+  <!-- 昵称输入弹窗 -->
+  <view wx:if="{{showNameModal}}" class="mask" bindtap="closeNameModal">
+    <view class="modal" catchtap="noop">
+      <view class="modal-title">留下你的名字</view>
+      <view class="modal-sub">将出现在祝福卡上（最多10个字）</view>
+      <input
+        class="name-input"
+        value="{{nameInput}}"
+        maxlength="10"
+        placeholder="朋友"
+        placeholder-class="name-placeholder"
+        focus
+        bindinput="onNameInput"
+      />
+      <view class="modal-btns">
+        <button class="modal-btn ghost" bindtap="closeNameModal">取消</button>
+        <button class="modal-btn solid" bindtap="confirmGenerate">生成祝福卡</button>
+      </view>
+    </view>
+  </view>
+
+</view>

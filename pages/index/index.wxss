@@ -1,0 +1,100 @@
+/* pages/index/index.wxss */
+.page {
+  min-height: 100vh;
+  padding: 40rpx 32rpx 60rpx;
+  box-sizing: border-box;
+}
+
+.hero {
+  text-align: center;
+  padding: 30rpx 0 50rpx;
+}
+
+.hero-tibetan {
+  display: block;
+  font-size: 56rpx;
+  color: #C0392B;
+  letter-spacing: 4rpx;
+}
+
+.hero-title {
+  margin-top: 16rpx;
+  font-size: 48rpx;
+  font-weight: 700;
+  color: #3E3A33;
+}
+
+.hero-sub {
+  margin: 20rpx auto 0;
+  max-width: 560rpx;
+  font-size: 26rpx;
+  color: #8A8375;
+  line-height: 1.6;
+}
+
+.level-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+
+.level-item {
+  width: 48%;
+  margin-bottom: 24rpx;
+  padding: 36rpx 0;
+  border-radius: 20rpx;
+  text-align: center;
+  box-sizing: border-box;
+  border: 2rpx solid #E4DCC8;
+  background: #FFFFFF;
+}
+
+.level-item.open {
+  background: #FFFFFF;
+  border-color: #C0392B;
+  box-shadow: 0 6rpx 18rpx rgba(192, 57, 43, 0.15);
+}
+
+.level-item.done {
+  background: #F0F9F0;
+  border-color: #1E8449;
+}
+
+.level-item.locked {
+  background: #F3EFE3;
+  border-color: #DDD5C2;
+  opacity: 0.75;
+}
+
+.level-num {
+  font-size: 34rpx;
+  font-weight: 600;
+}
+
+.locked .level-num {
+  color: #A79F8D;
+}
+
+.done .level-num {
+  color: #1E8449;
+}
+
+.open .level-num {
+  color: #C0392B;
+}
+
+.level-state {
+  margin-top: 12rpx;
+  font-size: 24rpx;
+}
+
+.state-done { color: #1E8449; }
+.state-open { color: #C0392B; }
+.state-locked { color: #A79F8D; }
+
+.footer {
+  margin-top: 30rpx;
+  text-align: center;
+  font-size: 24rpx;
+  color: #A79F8D;
+}

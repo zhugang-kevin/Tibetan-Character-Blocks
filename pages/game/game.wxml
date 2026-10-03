@@ -1,0 +1,47 @@
+<view class="page">
+
+  <!-- 顶部状态条 -->
+  <view class="statusbar">
+    <text class="status-level">第 {{level}} 关</text>
+    <text class="status-pairs">已消除 {{matchedPairs}} / {{totalPairs}} 对</text>
+  </view>
+
+  <!-- 游戏网格 -->
+  <view class="board" style="grid-template-columns: repeat({{cols}}, 1fr);">
+    <view
+      wx:for="{{tiles}}"
+      wx:key="uid"
+      class="tile {{item.state}}"
+      style="color: {{item.color}}; border-color: {{item.state === 'selected' ? item.color : '#E4DCC8'}}; font-size: {{glyphSize}}rpx;"
+      data-index="{{index}}"
+      bindtap="onTapTile"
+    >
+      <text wx:if="{{item.type === 'letter'}}" class="glyph tibetan">{{item.tibetan}}</text>
+      <image wx:elif="{{iconPaths[item.id]}}" class="glyph-img" src="{{iconPaths[item.id]}}" mode="aspectFit" />
+      <text wx:else class="glyph-fallback" style="color: {{item.color}};">{{item.fallbackText}}</text>
+    </view>
+  </view>
+
+  <!-- 文化卡弹窗 -->
+  <view wx:if="{{card}}" class="mask {{showCard ? 'show' : ''}}" catchtap="noop"></view>
+  <view wx:if="{{card}}" class="card-sheet {{showCard ? 'show' : ''}}">
+    <view class="card-accent" style="background: {{cardColor}};"></view>
+    <view class="card-head">
+      <view class="card-big-wrap">
+        <text wx:if="{{card.tibetan}}" class="card-big tibetan" style="color: {{cardColor}};">{{card.tibetan}}</text>
+        <image wx:elif="{{iconPaths[card.id]}}" class="card-big-img" src="{{iconPaths[card.id]}}" mode="aspectFit" />
+        <text wx:else class="card-big" style="color: {{cardColor}};">{{card.title}}</text>
+      </view>
+      <view class="card-subtitle" style="color: {{cardColor}};">{{card.subtitle}}</view>
+    </view>
+    <view class="card-body">
+      <view class="card-desc">{{card.description}}</view>
+      <view class="card-fact">
+        <text class="fact-label">文化小知识</text>
+        <text class="fact-text">{{card.funFact}}</text>
+      </view>
+    </view>
+    <button class="card-btn" style="background: {{cardColor}};" bindtap="onCloseCard">知道了</button>
+  </view>
+
+</view>

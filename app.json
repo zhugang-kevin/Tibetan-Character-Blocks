@@ -1,0 +1,16 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/game/game",
+    "pages/result/result"
+  ],
+  "window": {
+    "navigationBarTitleText": "藏文消除",
+    "navigationBarBackgroundColor": "#C0392B",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#FDF6E3",
+    "backgroundTextStyle": "dark"
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}
