@@ -23,5 +23,8 @@
     </view>
   </view>
 
-  <view class="footer">共 10 关 · 进度自动保存在本机</view>
+  <view class="footer">
+    <view class="footer-tagline">每个字母，都是一座西藏</view>
+    <view>共 10 关 · 进度自动保存在本机</view>
+  </view>
 </view>

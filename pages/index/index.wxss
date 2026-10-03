@@ -107,6 +107,14 @@
   color: #A79F8D;
 }
 
+.footer-tagline {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #B7950B;
+  margin-bottom: 8rpx;
+  letter-spacing: 2rpx;
+}
+
 /* 品牌规范：文字主色用深灰 #2C3E50，不用纯黑 */
 page,
 .page {
