@@ -120,3 +120,41 @@ page,
 .page {
   color: #2C3E50;
 }
+
+/* 我的档案：印记 + 连击 */
+.profile-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24rpx;
+  padding: 0 4rpx;
+}
+
+.profile-stamps {
+  display: flex;
+  gap: 12rpx;
+}
+
+.mini-stamp {
+  width: 76rpx;
+  height: 76rpx;
+  line-height: 76rpx;
+  text-align: center;
+  border: 3rpx solid #C0392B;
+  border-radius: 14rpx;
+  color: #C0392B;
+  font-size: 26rpx;
+  font-weight: 700;
+  background: #FDF6E3;
+  transform: rotate(-4deg);
+}
+
+.profile-combo {
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #B7950B;
+  background: #FFFFFF;
+  border: 2rpx solid #E4DCC8;
+  border-radius: 32rpx;
+  padding: 10rpx 24rpx;
+}

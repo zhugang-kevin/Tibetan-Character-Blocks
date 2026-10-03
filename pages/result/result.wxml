@@ -3,7 +3,16 @@
   <view class="result-hero">
     <view class="result-check">✓</view>
     <view class="result-title">第 {{level}} 关完成！</view>
-    <view class="result-sub">共消除 {{pairs}} 对</view>
+    <view class="result-sub">共消除 {{pairs}} 对 · 积分 {{score}} · 连击 ×{{combo}}</view>
+  </view>
+
+  <!-- 文化护照印记 v0 -->
+  <view wx:if="{{newStamp}}" class="stamp-banner">
+    <view class="stamp-seal">拉萨</view>
+    <view class="stamp-text">
+      <text class="stamp-title">获得文化护照印记</text>
+      <text class="stamp-sub">西藏文化护照 · 已收集 1 枚印章</text>
+    </view>
   </view>
 
   <view class="section" wx:if="{{collected.length}}">
@@ -36,6 +45,7 @@
     </view>
   </block>
 
+  <button wx:if="{{!isFinal}}" class="next-btn" bindtap="goNext">下一关 →</button>
   <button class="home-btn" bindtap="goHome">返回首页</button>
 
   <!-- 昵称输入弹窗 -->

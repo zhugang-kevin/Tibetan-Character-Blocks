@@ -176,6 +176,31 @@ if (read('pages/result/result.js').includes('drawTibetanWrapped') && exists('uti
   ok('藏文 Canvas 断行走 tsheg 规则（utils/tibetan-text.js）');
 else warn('祝福卡藏文未使用 tsheg 断行工具（藏文排版规范风险）');
 
+// ---------- 10. P0 冲刺（Gate 1） ----------
+section('10. P0 冲刺（连击/特殊方块/发音/引导/埋点/印记）');
+if (exists('utils/tracker.js')) ok('埋点模块 utils/tracker.js 存在');
+else err('缺少 15 分钟埋点模块');
+var gameJs = read('pages/game/game.js');
+[['combo', '连击'], ['golden', '特殊方块'], ['pronounce', '发音'], ['guideStep', '新手引导'], ['tracker.track', '埋点接入']]
+  .forEach(function (p) {
+    if (gameJs.indexOf(p[0]) > -1) ok('game.js 已接入' + p[1]);
+    else err('game.js 未接入' + p[1]);
+  });
+if (gameJs.indexOf('audio.combo(') > -1) ok('连击变调音效已接入');
+else warn('连击音效未变调（可接受但建议）');
+if (read('utils/storage.js').indexOf('grantStamp') > -1) ok('护照印记存储已接入');
+else err('存储层缺少印记能力');
+var resultJs2 = read('pages/result/result.js');
+if (resultJs2.indexOf('goNext') > -1 && resultJs2.indexOf('next_level_click') > -1) ok('结算页「下一关」+ 埋点已接入');
+else err('结算页缺少下一关入口或埋点');
+if (resultJs2.indexOf('grantStamp') > -1) ok('通关授予印记逻辑已接入');
+else warn('结算页未授予印记');
+if (read('pages/index/index.js').indexOf('bestCombo') > -1) ok('首页展示最高连击/印记');
+else warn('首页未展示档案数据');
+if (exists('audio/voice')) ok('audio/voice 录音目录就绪（README 已说明规格）');
+else warn('缺少 audio/voice 录音目录');
+if (gameJs.indexOf('first_combination') === -1) warn('字块组合埋点为 V2 玩法占位，暂未接入（符合预期）');
+
 // ---------- 汇总 ----------
 console.log('\n========== 汇总 ==========');
 console.log('通过: ' + passed + ' | 错误: ' + errors.length + ' | 警告: ' + warnings.length);

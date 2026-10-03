@@ -1,9 +1,19 @@
 // pages/game/game.js — 游戏页：配对消除
+// P0 冲刺：连击系统 / 金色特殊方块 / 藏文发音 / 新手引导 / 15分钟埋点
 var levelsData = require('../../data/levels');
 var elements = require('../../data/elements');
 var cardsData = require('../../data/cards');
 var audio = require('../../utils/audio');
 var icons = require('../../utils/icons');
+var storage = require('../../utils/storage');
+var tracker = require('../../utils/tracker');
+
+// 新手引导 3 步文案（P0：15分钟体验表前置引导）
+var GUIDE = [
+  { title: '如何消除', text: '点击两张相同的藏文字母或文化图标，它们就会一起消失。' },
+  { title: '连击', text: '连续不断错地消除可以触发连击 ×N，分数更高，声音更亮。' },
+  { title: '文化卡', text: '每次消除会弹出文化卡，牌面上的金色 ✦ 字母是特殊方块，双倍积分。' }
+];
 
 Page({
   data: {
@@ -18,12 +28,20 @@ Page({
     showCard: false,
     card: null,
     cardColor: '#C0392B',
-    locked: false        // 弹窗/动画期间锁定点击
+    locked: false,       // 弹窗/动画期间锁定点击
+    score: 0,            // 本局积分（金色×2，连击加成）
+    combo: 0,            // 当前连击数
+    comboFx: '',         // 连击浮层文案（×2 起显示）
+    guideStep: 0,        // 新手引导步骤 0=关闭 1-3
+    guide: GUIDE[0]
   },
 
   firstIndex: -1,       // 当前已选中的第一张牌
   pendingRemove: [],    // 待移除的两张牌下标
   matchedCount: 0,      // 已消除对数（逻辑值）
+  comboVal: 0,          // 连击（逻辑值，与 data.combo 同步）
+  goldenSeen: false,    // 是否已见过特殊方块（埋点幂等）
+  comboTimer: null,
 
   onLoad: function (query) {
     var level = parseInt(query.level, 10) || 1;
@@ -32,7 +50,9 @@ Page({
       wx.redirectTo({ url: '/pages/index/index' });
       return;
     }
-    var tiles = this.buildBoard(cfg);
+    // 特殊方块：每局随机指定 1 种元素为金色（成对出现，消除双倍积分）
+    var goldenId = cfg.elements[Math.floor(Math.random() * cfg.elements.length)][0];
+    var tiles = this.buildBoard(cfg, goldenId);
     wx.setNavigationBarTitle({ title: '第 ' + level + ' 关' });
     this.setData({
       level: level,
@@ -43,6 +63,10 @@ Page({
       // 盘面宽约 686rpx，字号约为格子宽的 60%
       glyphSize: Math.round(686 / cfg.cols * 0.6)
     });
+    tracker.track('first_letter_seen');
+    if (!storage.isOnboardDone()) {
+      this.setData({ guideStep: 1, guide: GUIDE[0] });
+    }
     var that = this;
     icons.renderIcons(cfg.elements.map(function (e) { return e[0]; }))
       .then(function (map) {
@@ -52,8 +76,19 @@ Page({
       });
   },
 
+  // 新手引导：下一步 / 完成
+  guideNext: function () {
+    var s = this.data.guideStep + 1;
+    if (s > GUIDE.length) {
+      storage.setOnboardDone();
+      this.setData({ guideStep: 0 });
+    } else {
+      this.setData({ guideStep: s, guide: GUIDE[s - 1] });
+    }
+  },
+
   // 生成打乱后的牌面
-  buildBoard: function (cfg) {
+  buildBoard: function (cfg, goldenId) {
     var pool = [];
     cfg.elements.forEach(function (pair) {
       for (var k = 0; k < pair[1]; k++) pool.push(pair[0]);
@@ -72,6 +107,7 @@ Page({
         tibetan: el.tibetan || '',
         color: el.color,
         fallbackText: el.char || '',
+        golden: id === goldenId,   // 金色特殊方块（同元素全部实例）
         state: 'idle' // idle | selected | removing | removed | shake
       };
     });
@@ -92,6 +128,15 @@ Page({
 
     audio.tap();
 
+    // 埋点：第一次遇到特殊方块 / 第一次听到藏文发音
+    if (tile.golden && !this.goldenSeen) {
+      this.goldenSeen = true;
+      tracker.track('first_special');
+    }
+    if (tile.type === 'letter' && this.firstIndex === -1) {
+      if (audio.pronounce(tile.id)) tracker.track('first_pronunciation');
+    }
+
     if (this.firstIndex === -1) {
       this.firstIndex = idx;
       this.setData({ ['tiles[' + idx + '].state']: 'selected' });
@@ -111,17 +156,43 @@ Page({
     }
   },
 
-  // 配对成功：缩小淡出 + 铜铃声 + 弹文化卡
+  // 配对成功：缩小淡出 + 铜铃声（连击变调）+ 弹文化卡
   handleMatch: function (i, j) {
     var that = this;
     this.matchedCount++;
+    tracker.track('first_match');
+
+    // 连击：连续消除递增，失误清零
+    this.comboVal++;
+    if (this.comboVal >= 2) tracker.track('first_combo');
+    storage.recordCombo(this.comboVal);
+
+    // 积分：基础 10 分；金色特殊方块 ×2；连击每级 +2
+    var golden = this.data.tiles[i].golden;
+    var gain = 10 * (golden ? 2 : 1) + 2 * (this.comboVal - 1);
+    var score = this.data.score + gain;
+
     this.setData({
       ['tiles[' + i + '].state']: 'removing',
       ['tiles[' + j + '].state']: 'removing',
       matchedPairs: this.matchedCount,
+      score: score,
+      combo: this.comboVal,
+      comboFx: this.comboVal >= 2 ? ('连击 ×' + this.comboVal) : '',
       locked: true
     });
-    audio.match();
+    // 连击浮层 1.4s 后淡出
+    if (this.comboTimer) clearTimeout(this.comboTimer);
+    this.comboTimer = setTimeout(function () {
+      that.setData({ comboFx: '' });
+    }, 1400);
+
+    if (this.comboVal >= 2) {
+      audio.combo(this.comboVal);
+    } else {
+      audio.match();
+    }
+
     var id = this.data.tiles[i].id;
     var card = null;
     for (var k = 0; k < cardsData.length; k++) {
@@ -137,13 +208,16 @@ Page({
     }, 300);
   },
 
-  // 配对失败：抖动 + 轻声提示，无惩罚
+  // 配对失败：抖动 + 轻声提示，无惩罚（连击清零）
   handleMismatch: function (i, j) {
     var that = this;
     audio.mismatch();
+    this.comboVal = 0;
     this.setData({
       ['tiles[' + i + '].state']: 'shake',
       ['tiles[' + j + '].state']: 'shake',
+      combo: 0,
+      comboFx: '',
       locked: true
     });
     setTimeout(function () {
@@ -174,7 +248,9 @@ Page({
         wx.redirectTo({
           url: '/pages/result/result?level=' + that.data.level +
             '&pairs=' + that.data.totalPairs +
-            '&cards=' + that.collectedIds().join(',')
+            '&cards=' + that.collectedIds().join(',') +
+            '&score=' + that.data.score +
+            '&combo=' + that.comboVal
         });
       }, 900);
     }

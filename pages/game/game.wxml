@@ -3,19 +3,24 @@
   <!-- 顶部状态条 -->
   <view class="statusbar">
     <text class="status-level">第 {{level}} 关</text>
-    <text class="status-pairs">已消除 {{matchedPairs}} / {{totalPairs}} 对</text>
+    <text class="status-score">积分 {{score}}</text>
+    <text class="status-pairs">{{matchedPairs}}/{{totalPairs}} 对</text>
   </view>
+
+  <!-- 连击浮层 -->
+  <view wx:if="{{comboFx}}" class="combo-fx">{{comboFx}}</view>
 
   <!-- 游戏网格 -->
   <view class="board" style="grid-template-columns: repeat({{cols}}, 1fr);">
     <view
       wx:for="{{tiles}}"
       wx:key="uid"
-      class="tile {{item.state}}"
+      class="tile {{item.state}} {{item.golden ? 'golden' : ''}}"
       style="color: {{item.color}}; border-color: {{item.state === 'selected' ? item.color : '#E4DCC8'}}; font-size: {{glyphSize}}rpx;"
       data-index="{{index}}"
       bindtap="onTapTile"
     >
+      <view wx:if="{{item.golden}}" class="gold-star">✦</view>
       <text wx:if="{{item.type === 'letter'}}" class="glyph tibetan">{{item.tibetan}}</text>
       <image wx:elif="{{iconPaths[item.id]}}" class="glyph-img" src="{{iconPaths[item.id]}}" mode="aspectFit" />
       <text wx:else class="glyph-fallback" style="color: {{item.color}};">{{item.fallbackText}}</text>
@@ -42,6 +47,16 @@
       </view>
     </view>
     <button class="card-btn" style="background: {{cardColor}};" bindtap="onCloseCard">知道了</button>
+  </view>
+
+  <!-- 新手引导（首次进入，3 步） -->
+  <view wx:if="{{guideStep}}" class="guide-mask">
+    <view class="guide-card">
+      <view class="guide-step">{{guideStep}} / 3</view>
+      <view class="guide-title">{{guide.title}}</view>
+      <view class="guide-text">{{guide.text}}</view>
+      <button class="guide-btn" bindtap="guideNext">{{guideStep === 3 ? '开始玩' : '下一步'}}</button>
+    </view>
   </view>
 
 </view>

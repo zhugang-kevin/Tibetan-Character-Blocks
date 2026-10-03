@@ -1,9 +1,16 @@
 // pages/index/index.js — 首页：关卡选择
 var storage = require('../../utils/storage');
 
+// 印记定义（v0 仅拉萨；后续扩展七地市）
+var STAMPS = {
+  lhasa: { name: '拉萨' }
+};
+
 Page({
   data: {
-    levels: []
+    levels: [],
+    stamps: [],
+    bestCombo: 0
   },
 
   onShow: function () {
@@ -16,7 +23,10 @@ Page({
         done: p.completedLevels.indexOf(n) > -1
       });
     }
-    this.setData({ levels: levels });
+    var stamps = p.stamps.map(function (id) {
+      return { id: id, name: (STAMPS[id] || {}).name || id };
+    });
+    this.setData({ levels: levels, stamps: stamps, bestCombo: p.bestCombo });
   },
 
   onTapLevel: function (e) {

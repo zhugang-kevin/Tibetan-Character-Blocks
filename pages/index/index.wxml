@@ -6,6 +6,14 @@
     <view class="hero-sub">点击两张相同的藏文字母或文化图标进行配对消除，边玩边认藏文</view>
   </view>
 
+  <!-- 我的档案：护照印记 + 最高连击 -->
+  <view wx:if="{{stamps.length || bestCombo > 1}}" class="profile-row">
+    <view class="profile-stamps">
+      <view wx:for="{{stamps}}" wx:key="id" class="mini-stamp">{{item.name}}</view>
+    </view>
+    <view wx:if="{{bestCombo > 1}}" class="profile-combo">最高连击 ×{{bestCombo}}</view>
+  </view>
+
   <view class="level-grid">
     <view
       wx:for="{{levels}}"

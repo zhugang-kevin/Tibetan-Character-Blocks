@@ -2,14 +2,18 @@
 var cardsData = require('../../data/cards');
 var elements = require('../../data/elements');
 var storage = require('../../utils/storage');
+var tracker = require('../../utils/tracker');
 var tibText = require('../../utils/tibetan-text');
 
 Page({
   data: {
     level: 1,
     pairs: 0,
+    score: 0,
+    combo: 0,
     collected: [],       // 本关收集到的文化卡（去重）
     isFinal: false,      // 是否第10关
+    newStamp: false,     // 本局是否新获得护照印记
     showNameModal: false,
     nameInput: '',
     generating: false,
@@ -19,10 +23,21 @@ Page({
   onLoad: function (query) {
     var level = parseInt(query.level, 10) || 1;
     var pairs = parseInt(query.pairs, 10) || 0;
+    var score = parseInt(query.score, 10) || 0;
+    var combo = parseInt(query.combo, 10) || 0;
     // 记录通关 + 解锁下一关
     storage.completeLevel(level);
 
+    // 文化护照印记 v0：首次通过第 1 关授予「拉萨印章」（Day1 形成习惯）
+    var newStamp = false;
+    if (level === 1 && storage.grantStamp('lhasa')) {
+      newStamp = true;
+      tracker.track('first_stamp');
+    }
+
     var ids = (query.cards || '').split(',').filter(Boolean);
+    if (ids.length) tracker.track('first_card');
+
     var collected = ids.map(function (id) {
       var el = elements[id] || {};
       var card = null;
@@ -41,13 +56,23 @@ Page({
     this.setData({
       level: level,
       pairs: pairs,
+      score: score,
+      combo: combo,
       collected: collected,
-      isFinal: level === 10
+      isFinal: level === 10,
+      newStamp: newStamp
     });
   },
 
   goHome: function () {
     wx.redirectTo({ url: '/pages/index/index' });
+  },
+
+  // 下一关（15分钟体验终点：玩家主动点击）
+  goNext: function () {
+    tracker.track('next_level_click');
+    var next = Math.min(this.data.level + 1, 10);
+    wx.redirectTo({ url: '/pages/game/game?level=' + next });
   },
 
   // ===== 祝福卡 =====

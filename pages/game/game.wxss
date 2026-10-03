@@ -22,6 +22,106 @@
   color: #8A8375;
 }
 
+.status-score {
+  color: #B7950B;
+  font-weight: 700;
+}
+
+/* 金色特殊方块：暖底 + 金边 + 角标 */
+.tile.golden {
+  background: #FFF7E0;
+  border-color: #D4AC0D;
+  box-shadow: 0 2rpx 10rpx rgba(212, 172, 13, 0.35);
+}
+
+.gold-star {
+  position: absolute;
+  top: 6rpx;
+  right: 8rpx;
+  font-size: 22rpx;
+  color: #D4AC0D;
+  line-height: 1;
+}
+
+/* 连击浮层：顶部弹入弹出 */
+.combo-fx {
+  position: fixed;
+  top: 140rpx;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(192, 57, 43, 0.92);
+  color: #FFFFFF;
+  font-size: 40rpx;
+  font-weight: 700;
+  padding: 14rpx 44rpx;
+  border-radius: 40rpx;
+  z-index: 9;
+  animation: comboPop 1.4s ease forwards;
+  pointer-events: none;
+}
+
+@keyframes comboPop {
+  0%   { opacity: 0; transform: translateX(-50%) scale(0.6); }
+  18%  { opacity: 1; transform: translateX(-50%) scale(1.12); }
+  30%  { transform: translateX(-50%) scale(1); }
+  80%  { opacity: 1; }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-24rpx); }
+}
+
+/* 新手引导 */
+.guide-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(40, 34, 24, 0.6);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.guide-card {
+  width: 560rpx;
+  background: #FFFFFF;
+  border-radius: 28rpx;
+  padding: 44rpx 44rpx 40rpx;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+.guide-step {
+  font-size: 24rpx;
+  color: #B7950B;
+  font-weight: 700;
+  letter-spacing: 4rpx;
+}
+
+.guide-title {
+  margin-top: 12rpx;
+  font-size: 40rpx;
+  font-weight: 700;
+  color: #2C3E50;
+}
+
+.guide-text {
+  margin-top: 18rpx;
+  font-size: 28rpx;
+  color: #6B6455;
+  line-height: 1.7;
+  min-height: 96rpx;
+}
+
+.guide-btn {
+  margin-top: 30rpx;
+  width: 100%;
+  height: 88rpx;
+  line-height: 88rpx;
+  background: #C0392B;
+  color: #FFFFFF;
+  font-size: 32rpx;
+  font-weight: 600;
+  border-radius: 44rpx;
+}
+
 /* 盘面 */
 .board {
   display: grid;

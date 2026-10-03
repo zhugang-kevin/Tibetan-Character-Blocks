@@ -35,6 +35,63 @@
   color: #8A8375;
 }
 
+/* 文化护照印记 v0 */
+.stamp-banner {
+  display: flex;
+  align-items: center;
+  background: #FFFFFF;
+  border: 2rpx solid #E4DCC8;
+  border-radius: 20rpx;
+  padding: 24rpx 28rpx;
+  margin-bottom: 28rpx;
+}
+
+.stamp-seal {
+  width: 96rpx;
+  height: 96rpx;
+  line-height: 96rpx;
+  text-align: center;
+  border: 4rpx solid #C0392B;
+  border-radius: 16rpx;
+  color: #C0392B;
+  font-size: 34rpx;
+  font-weight: 700;
+  transform: rotate(-6deg);
+  background: #FDF6E3;
+  flex-shrink: 0;
+}
+
+.stamp-text {
+  margin-left: 26rpx;
+  display: flex;
+  flex-direction: column;
+}
+
+.stamp-title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #2C3E50;
+}
+
+.stamp-sub {
+  margin-top: 6rpx;
+  font-size: 24rpx;
+  color: #8A8375;
+}
+
+/* 下一关 */
+.next-btn {
+  width: 100%;
+  height: 96rpx;
+  line-height: 96rpx;
+  background: #C0392B;
+  color: #FFFFFF;
+  font-size: 34rpx;
+  font-weight: 600;
+  border-radius: 48rpx;
+  margin-bottom: 20rpx;
+}
+
 .section {
   background: #FFFFFF;
   border-radius: 20rpx;
