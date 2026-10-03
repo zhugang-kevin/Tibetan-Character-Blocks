@@ -172,6 +172,9 @@ if (read('app.js').includes('loadFontFace')) ok('已接入 wx.loadFontFace 藏�
 else warn('app.js 未接入 loadFontFace');
 if (read('pages/result/result.js').includes('canvasToTempFilePath')) ok('祝福卡 Canvas 导出已接入');
 else warn('祝福卡导出未接入');
+if (read('pages/result/result.js').includes('drawTibetanWrapped') && exists('utils/tibetan-text.js'))
+  ok('藏文 Canvas 断行走 tsheg 规则（utils/tibetan-text.js）');
+else warn('祝福卡藏文未使用 tsheg 断行工具（藏文排版规范风险）');
 
 // ---------- 汇总 ----------
 console.log('\n========== 汇总 ==========');

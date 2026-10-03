@@ -2,6 +2,7 @@
 var cardsData = require('../../data/cards');
 var elements = require('../../data/elements');
 var storage = require('../../utils/storage');
+var tibText = require('../../utils/tibetan-text');
 
 Page({
   data: {
@@ -130,8 +131,9 @@ Page({
       ctx.fillStyle = '#FFFFFF';
 
       // 顶部藏文大字
+      // 排版规范：断行只发生在 tsheg ( ་ ) 之后，shad ( ། ) 不落行首
       ctx.font = '500 92px "Noto Serif Tibetan", serif';
-      ctx.fillText('བཀྲ་ཤིས་བདེ་ལེགས', W / 2, 240);
+      tibText.drawTibetanWrapped(ctx, 'བཀྲ་ཤིས་བདེ་ལེགས', W / 2, 240, W - 160, 130);
 
       // 分隔线
       ctx.strokeStyle = 'rgba(255,255,255,0.7)';
