@@ -156,7 +156,7 @@
 
 .card-desc {
   font-size: 28rpx;
-  color: #3E3A33;
+  color: #2C3E50;
   line-height: 1.7;
 }
 

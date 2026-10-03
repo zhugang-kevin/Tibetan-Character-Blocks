@@ -3,7 +3,8 @@ page {
   background: #FDF6E3;
   font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'PingFang SC',
     'Microsoft YaHei', sans-serif;
-  color: #3E3A33;
+  /* 品牌规范：不用纯黑，文字主色 #2C3E50 */
+  color: #2C3E50;
 }
 
 .tibetan {

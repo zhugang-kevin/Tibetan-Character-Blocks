@@ -73,6 +73,7 @@ Page({
   },
 
   // Canvas 2D 绘制祝福卡并导出图片（750×1050）
+  // 品牌规范：藏文大字 + 扎西德勒 + 昵称 + Logo水印 + 底部 Logo/文案 + 小程序码
   drawBlessingCard: function (name) {
     var that = this;
     var W = 750, H = 1050;
@@ -86,68 +87,107 @@ Page({
       return;
     }
 
-    // 背景：朱砂红 → 天然黄 柔和渐变
-    var g = ctx.createLinearGradient(0, 0, 0, H);
-    g.addColorStop(0, '#C0392B');
-    g.addColorStop(1, '#B7950B');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, W, H);
+    var blessImgs = { logo: null, watermark: null };
 
-    // 内边框
-    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
-    ctx.lineWidth = 3;
-    roundRect(ctx, 32, 32, W - 64, H - 64, 24);
-    ctx.stroke();
+    var finish = function () {
+      wx.canvasToTempFilePath({
+        canvas: canvas,
+        x: 0, y: 0, width: W, height: H,
+        destWidth: W, destHeight: H,
+        success: function (res) {
+          that.setData({ imagePath: res.tempFilePath, generating: false });
+        },
+        fail: function () {
+          that.setData({ generating: false });
+          wx.showToast({ title: '生成失败，请再试一次', icon: 'none' });
+        }
+      });
+    };
 
-    ctx.textAlign = 'center';
-    ctx.fillStyle = '#FFFFFF';
+    var paint = function () {
+      // 背景：朱砂红 → 天然黄 柔和渐变
+      var g = ctx.createLinearGradient(0, 0, 0, H);
+      g.addColorStop(0, '#C0392B');
+      g.addColorStop(1, '#B7950B');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, W, H);
 
-    // 顶部藏文大字
-    ctx.font = '500 92px "Noto Serif Tibetan", serif';
-    ctx.fillText('བཀྲ་ཤིས་བདེ་ལེགས', W / 2, 240);
+      // 内边框
+      ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+      ctx.lineWidth = 3;
+      roundRect(ctx, 32, 32, W - 64, H - 64, 24);
+      ctx.stroke();
 
-    // 分隔线
-    ctx.strokeStyle = 'rgba(255,255,255,0.7)';
-    ctx.beginPath();
-    ctx.moveTo(W / 2 - 130, 310);
-    ctx.lineTo(W / 2 + 130, 310);
-    ctx.stroke();
-
-    // 中文祝福
-    ctx.font = '700 76px sans-serif';
-    ctx.fillText('扎西德勒', W / 2, 430);
-
-    // 昵称
-    ctx.font = '40px sans-serif';
-    ctx.fillText('—— 致 ' + name + ' ——', W / 2, 530);
-
-    // 底部小字
-    ctx.font = '28px sans-serif';
-    ctx.fillStyle = 'rgba(255,255,255,0.92)';
-    ctx.fillText('我在「藏文消除」小程序中学会了8个藏文字母', W / 2, 890);
-
-    // 右下角小程序码占位框（发布后可替换为真实小程序码图片）
-    var bs = 130;
-    var bx = W - 190, by = H - 200;
-    ctx.fillStyle = 'rgba(255,255,255,0.95)';
-    roundRect(ctx, bx, by, bs, bs, 16);
-    ctx.fill();
-    ctx.fillStyle = '#C0392B';
-    ctx.font = '24px sans-serif';
-    ctx.fillText('小程序码', bx + bs / 2, by + bs / 2 + 8);
-
-    wx.canvasToTempFilePath({
-      canvas: canvas,
-      x: 0, y: 0, width: W, height: H,
-      destWidth: W, destHeight: H,
-      success: function (res) {
-        that.setData({ imagePath: res.tempFilePath, generating: false });
-      },
-      fail: function () {
-        that.setData({ generating: false });
-        wx.showToast({ title: '生成失败，请重试', icon: 'none' });
+      // 半透明 Logo 水印（右上角，不抢主图）
+      if (blessImgs.watermark) {
+        ctx.save();
+        ctx.globalAlpha = 0.5;
+        ctx.drawImage(blessImgs.watermark, W - 140, 70, 60, 60);
+        ctx.restore();
       }
-    });
+
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#FFFFFF';
+
+      // 顶部藏文大字
+      ctx.font = '500 92px "Noto Serif Tibetan", serif';
+      ctx.fillText('བཀྲ་ཤིས་བདེ་ལེགས', W / 2, 240);
+
+      // 分隔线
+      ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+      ctx.beginPath();
+      ctx.moveTo(W / 2 - 130, 310);
+      ctx.lineTo(W / 2 + 130, 310);
+      ctx.stroke();
+
+      // 中文祝福
+      ctx.font = '700 76px sans-serif';
+      ctx.fillText('扎西德勒', W / 2, 430);
+
+      // 昵称
+      ctx.font = '40px sans-serif';
+      ctx.fillText('—— 致 ' + name + ' ——', W / 2, 530);
+
+      // 底部小字
+      ctx.font = '28px sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.92)';
+      ctx.fillText('我在「藏字方块」中认了8个藏文字母', W / 2, 870);
+      ctx.font = '600 34px sans-serif';
+      ctx.fillText('玩方块，认藏文', W / 2, 930);
+
+      // 底部左侧：藏字方块 Logo
+      if (blessImgs.logo) {
+        ctx.drawImage(blessImgs.logo, 70, H - 195, 100, 100);
+      }
+
+      // 右下角小程序码占位框（发布后可替换为真实小程序码图片）
+      var bs = 130;
+      var bx = W - 190, by = H - 200;
+      ctx.fillStyle = 'rgba(255,255,255,0.95)';
+      roundRect(ctx, bx, by, bs, bs, 16);
+      ctx.fill();
+      ctx.fillStyle = '#C0392B';
+      ctx.font = '24px sans-serif';
+      ctx.fillText('小程序码', bx + bs / 2, by + bs / 2 + 8);
+
+      finish();
+    };
+
+    // 加载品牌 Logo（打包在项目内的本地图片）
+    var loadImg = function (src) {
+      return new Promise(function (resolve) {
+        try {
+          var img = canvas.createImage();
+          img.onload = function () { resolve(img); };
+          img.onerror = function () { resolve(null); };
+          img.src = src;
+        } catch (e) { resolve(null); }
+      });
+    };
+    Promise.all([
+      loadImg('/images/logo-80.png').then(function (img) { blessImgs.logo = img; }),
+      loadImg('/images/logo-watermark.png').then(function (img) { blessImgs.watermark = img; })
+    ]).then(paint);
   },
 
   // 保存到相册
@@ -170,7 +210,7 @@ Page({
             }
           });
         } else {
-          wx.showToast({ title: '保存失败，请重试', icon: 'none' });
+          wx.showToast({ title: '保存失败，请再试一次', icon: 'none' });
         }
       }
     });
@@ -185,7 +225,7 @@ Page({
   // 好友分享（右上角菜单 / 按钮 open-type="share"）
   onShareAppMessage: function () {
     return {
-      title: '扎西德勒！我在「藏文消除」学会了8个藏文字母',
+      title: '藏字方块，玩方块，认藏文',
       path: '/pages/index/index',
       imageUrl: this.data.imagePath || undefined
     };

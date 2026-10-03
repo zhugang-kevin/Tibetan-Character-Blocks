@@ -10,18 +10,26 @@
   padding: 30rpx 0 50rpx;
 }
 
-.hero-tibetan {
-  display: block;
-  font-size: 56rpx;
-  color: #C0392B;
-  letter-spacing: 4rpx;
+.hero-logo {
+  width: 200rpx;
+  height: 200rpx;
+  border-radius: 44rpx;
+  box-shadow: 0 10rpx 30rpx rgba(192, 57, 43, 0.3);
 }
 
 .hero-title {
-  margin-top: 16rpx;
+  margin-top: 24rpx;
   font-size: 48rpx;
   font-weight: 700;
-  color: #3E3A33;
+  color: #2C3E50;
+}
+
+.hero-slogan {
+  margin-top: 12rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #C0392B;
+  letter-spacing: 2rpx;
 }
 
 .hero-sub {
@@ -97,4 +105,10 @@
   text-align: center;
   font-size: 24rpx;
   color: #A79F8D;
+}
+
+/* 品牌规范：文字主色用深灰 #2C3E50，不用纯黑 */
+page,
+.page {
+  color: #2C3E50;
 }

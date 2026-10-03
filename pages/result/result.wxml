@@ -10,8 +10,7 @@
     <view class="section-title">本关收集的文化卡（{{collected.length}} 张）</view>
     <view class="chips">
       <view wx:for="{{collected}}" wx:key="id" class="chip" style="border-color: {{item.color}};">
-        <text wx:if="{{item.isLetter}}" class="chip-glyph tibetan" style="color: {{item.color}};">{{item.label}}</text>
-        <text wx:else class="chip-glyph" style="color: {{item.color}};">{{item.label}}</text>
+        <text wx:if="{{item.isLetter}}" class="chip-glyph tibetan" style="color: {{item.color}};">{{item.label}}</text>        <text wx:else class="chip-glyph" style="color: {{item.color}};">{{item.label}}</text>
         <text class="chip-name">{{item.name}}</text>
       </view>
     </view>
@@ -20,7 +19,7 @@
   <!-- 祝福卡（仅第10关） -->
   <block wx:if="{{isFinal}}">
     <view class="bless-section" wx:if="{{!imagePath}}">
-      <view class="bless-title">🎉 恭喜通关全部10关！</view>
+      <view class="bless-title">🎉 扎西德勒！通关全部10关</view>
       <view class="bless-sub">生成你的专属扎西德勒祝福卡，分享给朋友吧</view>
       <button class="primary-btn" bindtap="openNameModal" disabled="{{generating}}">
         {{generating ? '生成中…' : '生成我的祝福卡'}}

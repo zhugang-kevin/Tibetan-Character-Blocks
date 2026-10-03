@@ -1,8 +1,9 @@
 <view class="page">
   <view class="hero">
-    <text class="hero-tibetan tibetan">བཀྲ་ཤིས་བདེ་ལེགས</text>
-    <view class="hero-title">藏文消除</view>
-    <view class="hero-sub">点击两张相同的藏文字母或文化图标进行配对消除，边玩边学藏文</view>
+    <image class="hero-logo" src="/images/logo-200.png" mode="aspectFit" />
+    <view class="hero-title">藏字方块</view>
+    <view class="hero-slogan">玩方块，认藏文</view>
+    <view class="hero-sub">点击两张相同的藏文字母或文化图标进行配对消除，边玩边认藏文</view>
   </view>
 
   <view class="level-grid">

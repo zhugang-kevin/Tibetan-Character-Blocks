@@ -5,7 +5,7 @@
     "pages/result/result"
   ],
   "window": {
-    "navigationBarTitleText": "藏文消除",
+    "navigationBarTitleText": "藏字方块",
     "navigationBarBackgroundColor": "#C0392B",
     "navigationBarTextStyle": "white",
     "backgroundColor": "#FDF6E3",

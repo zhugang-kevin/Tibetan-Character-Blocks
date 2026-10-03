@@ -1,5 +1,5 @@
 {
-  "description": "藏文消除 - 配对消除休闲小游戏",
+  "description": "藏字方块 — 玩方块，认藏文（配对消除休闲小游戏）",
   "packOptions": {
     "ignore": [],
     "include": []
@@ -19,6 +19,6 @@
   "compileType": "miniprogram",
   "libVersion": "2.33.0",
   "appid": "touristappid",
-  "projectname": "tibetan-match",
+  "projectname": "zangzi-fangkuai",
   "condition": {}
 }

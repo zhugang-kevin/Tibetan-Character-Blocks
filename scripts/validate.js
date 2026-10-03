@@ -124,8 +124,48 @@ section('7. WXML 事件绑定与 JS 方法对应');
   });
 });
 
-// ---------- 8. 关键存储与分享 ----------
-section('8. 关键能力');
+// ---------- 8. 品牌规范 ----------
+section('8. 品牌规范（藏字方块）');
+try {
+  const appJsonBrand = JSON.parse(read('app.json'));
+  if (appJsonBrand.window.navigationBarTitleText === '藏字方块') ok('品牌名「藏字方块」已应用于导航栏');
+  else err('导航栏标题应为「藏字方块」');
+} catch (e) { err('无法读取 app.json 品牌名'); }
+if (read('pages/index/index.wxml').includes('玩方块，认藏文')) ok('Slogan「玩方块，认藏文」已上首页');
+else warn('首页缺少 Slogan');
+if (read('pages/index/index.wxml').includes('logo-200.png')) ok('首页使用 Logo（200px 完整方块版）');
+else warn('首页未引用 Logo');
+const brandAssets = ['images/logo-144.png', 'images/logo-200.png', 'images/logo-80.png', 'images/logo-watermark.png', 'images/logo-master.png'];
+brandAssets.forEach(f => { if (exists(f)) ok(f + ' 存在'); else err('品牌资产缺失: ' + f); });
+// 品牌规范：文字不用纯黑
+let pureBlack = 0;
+(function scanWxss(dir) {
+  fs.readdirSync(dir).forEach(f => {
+    const full = path.join(dir, f);
+    if (fs.statSync(full).isDirectory()) { if (f !== 'node_modules' && f !== 'scripts') scanWxss(full); }
+    else if (f.endsWith('.wxss')) {
+      const src = fs.readFileSync(full, 'utf8');
+      if (/:\s*#000000\b/i.test(src) || /:\s*black\b/i.test(src)) {
+        err(path.relative(ROOT, full) + ' 使用了纯黑（应改用 #2C3E50）');
+        pureBlack++;
+      }
+    }
+  });
+})(ROOT);
+if (!pureBlack) ok('无纯黑文字色（符合「用 #2C3E50 代替纯黑」规范）');
+const resultWxml = read('pages/result/result.wxml');
+if (resultWxml.indexOf('恭喜通关') === -1) ok('语气规范：未使用「恭喜通关」（品牌语气用「扎西德勒」）');
+else warn('结算页仍使用「恭喜通关」，应改为「扎西德勒」');
+const resultJs = read('pages/result/result.js');
+if (resultJs.indexOf('恭喜') === -1) ok('语气规范：JS 文案无「恭喜」表述');
+else warn('result.js 存在「恭喜」表述');
+if (resultJs.includes('玩方块，认藏文')) ok('Slogan 已写入祝福卡');
+else warn('祝福卡未包含 Slogan');
+if (resultJs.includes('logo-watermark.png')) ok('祝福卡已包含半透明 Logo 水印');
+else warn('祝福卡缺少 Logo 水印');
+
+// ---------- 9. 关键能力 ----------
+section('9. 关键能力');
 if (read('utils/storage.js').includes("'progress'")) ok('进度存储 key = progress');
 else warn('未找到 progress 存储约定');
 if (read('app.js').includes('loadFontFace')) ok('已接入 wx.loadFontFace 藏文字体加载');
