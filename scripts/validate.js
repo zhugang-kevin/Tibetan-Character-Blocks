@@ -201,6 +201,31 @@ if (exists('audio/voice')) ok('audio/voice 录音目录就绪（README 已说明
 else warn('缺少 audio/voice 录音目录');
 if (gameJs.indexOf('first_combination') === -1) warn('字块组合埋点为 V2 玩法占位，暂未接入（符合预期）');
 
+// ---------- 11. 本地体验版（零安装，浏览器） ----------
+section('11. 本地体验版（浏览器）');
+if (exists('preview/template.html')) ok('preview/template.html 存在');
+else err('缺少浏览器体验版模板 preview/template.html');
+if (exists('preview/play.html')) ok('preview/play.html 已生成（双击即可玩）');
+else warn('preview/play.html 未生成，运行 node scripts/build-h5.js');
+if (exists('scripts/build-h5.js')) ok('构建脚本 scripts/build-h5.js 存在');
+else err('缺少 scripts/build-h5.js');
+if (exists('scripts/test-h5.js')) ok('端到端测试脚本 scripts/test-h5.js 存在');
+else warn('缺少 scripts/test-h5.js');
+if (exists('preview/play.html')) {
+  var play = read('preview/play.html');
+  if (play.indexOf('__DATA__') === -1) ok('体验版数据已注入（无残留占位符）');
+  else err('preview/play.html 仍含未替换的 __DATA__ 占位符');
+  if (play.indexOf('base64') > -1) ok('品牌 Logo 已内联为 base64（离线可用）');
+  else warn('体验版未内联 Logo 图片');
+  // 与小程序同源：元素/关卡文案必须一致
+  var srcElements = read('data/elements.js');
+  var missingGlyphs = ['ཀ', 'ཁ', 'ག', 'ང', 'ཅ', 'ཆ', 'ཇ', 'ཉ'].filter(function (g) {
+    return srcElements.indexOf(g) > -1 && play.indexOf(g) === -1;
+  });
+  if (!missingGlyphs.length) ok('8 个藏文字母在体验版中完整');
+  else err('体验版缺少藏文字母: ' + missingGlyphs.join(' '));
+}
+
 // ---------- 汇总 ----------
 console.log('\n========== 汇总 ==========');
 console.log('通过: ' + passed + ' | 错误: ' + errors.length + ' | 警告: ' + warnings.length);

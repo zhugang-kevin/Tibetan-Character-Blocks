@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>藏字方块 · 本地体验版</title>
+<style>
+  :root {
+    --red: #C0392B;
+    --green: #1E8449;
+    --blue: #2471A3;
+    --yellow: #B7950B;
+    --bg: #FDF6E3;
+    --ink: #2C3E50;
+    --muted: #8A8375;
+    --line: #E4DCC8;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: #EFE7D3;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    color: var(--ink);
+    display: flex;
+    justify-content: center;
+  }
+  .phone {
+    width: 100%;
+    max-width: 430px;
+    min-height: 100vh;
+    background: var(--bg);
+    position: relative;
+    overflow-x: hidden;
+  }
+  .screen { display: none; padding: 20px 18px 40px; }
+  .screen.active { display: block; }
+  .tib { font-family: "Noto Serif Tibetan", "Microsoft Himalaya", "Jomolhari", "Kailasa", "PingFang SC", serif; }
+
+  /* ---------- 首页 ---------- */
+  .hero { text-align: center; padding: 14px 0 22px; }
+  .hero-logo { width: 116px; height: 116px; margin: 0 auto; display: block; }
+  .hero-title { margin-top: 14px; font-size: 30px; font-weight: 800; letter-spacing: 2px; }
+  .hero-slogan {
+    margin: 10px auto 0; display: inline-block; font-size: 14px; color: var(--red);
+    border: 1px solid rgba(192,57,43,.35); border-radius: 999px; padding: 5px 14px;
+  }
+  .hero-greet { margin-top: 12px; font-size: 26px; color: var(--red); letter-spacing: 3px; }
+
+  .profile-row { display: flex; justify-content: space-between; align-items: center; margin: 6px 0 18px; padding: 0 2px; }
+  .profile-stamps { display: flex; gap: 8px; align-items: center; }
+  .mini-stamp {
+    width: 42px; height: 42px; line-height: 40px; text-align: center;
+    border: 2px solid var(--red); border-radius: 9px; color: var(--red);
+    font-size: 15px; font-weight: 800; background: var(--bg); transform: rotate(-4deg);
+  }
+  .stamp-empty { font-size: 13px; color: var(--muted); }
+  .profile-combo {
+    font-size: 13px; font-weight: 700; color: var(--yellow);
+    background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 6px 13px;
+  }
+
+  .level-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+  .level-btn {
+    position: relative; background: #fff; border: 1.5px solid var(--line); border-radius: 14px;
+    padding: 14px 0 12px; text-align: center; cursor: pointer; transition: transform .12s, box-shadow .12s;
+  }
+  .level-btn:active { transform: scale(.96); }
+  .level-btn .lv-num { font-size: 19px; font-weight: 800; color: var(--ink); }
+  .level-btn .lv-tag { font-size: 10px; color: var(--muted); margin-top: 3px; }
+  .level-btn.done { border-color: var(--green); background: #F3FAF5; }
+  .level-btn.done .lv-tag { color: var(--green); }
+  .level-btn.locked { background: #F1ECDD; border-color: #E0D8C4; cursor: not-allowed; }
+  .level-btn.locked .lv-num { color: #B9B1A0; }
+  .level-btn .badge {
+    position: absolute; top: -7px; right: -6px; width: 20px; height: 20px; line-height: 19px;
+    border-radius: 50%; font-size: 12px; color: #fff; text-align: center;
+  }
+  .level-btn.done .badge { background: var(--green); }
+  .level-btn.locked .badge { background: #C9C1AF; font-size: 10px; }
+
+  .footer { margin-top: 26px; text-align: center; font-size: 13px; color: var(--yellow); letter-spacing: 1px; }
+  .footer-sub { margin-top: 8px; text-align: center; font-size: 12px; color: var(--muted); }
+  .reset-link { margin-top: 14px; text-align: center; font-size: 12px; color: #B9B1A0; text-decoration: underline; cursor: pointer; }
+
+  /* ---------- 游戏页 ---------- */
+  .statusbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+  .back-btn {
+    border: 1px solid var(--line); background: #fff; border-radius: 10px; padding: 7px 12px;
+    font-size: 14px; color: var(--ink); cursor: pointer;
+  }
+  .status-mid { flex: 1; text-align: center; font-size: 14px; font-weight: 700; }
+  .status-right { font-size: 13px; color: var(--yellow); font-weight: 700; text-align: right; min-width: 82px; }
+  .status-right .sc { color: var(--ink); }
+  .combo-pill { font-size: 11px; color: var(--muted); font-weight: 400; }
+
+  .board-wrap { position: relative; }
+  .board { display: grid; gap: 7px; width: 100%; }
+  .tile {
+    position: relative; background: #fff; border: 2px solid var(--line); border-radius: 12px;
+    aspect-ratio: 5 / 6; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; overflow: hidden;
+    transition: transform .2s ease, opacity .2s ease, border-color .15s, background .2s;
+  }
+  .tile.selected { border-color: currentColor; box-shadow: 0 0 0 3px rgba(192,57,43,.10) inset; }
+  .tile.removing { transform: scale(.2); opacity: 0; }
+  .tile.removed { visibility: hidden; pointer-events: none; }
+  .tile.shake { animation: shake .42s ease; }
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-4px); } 40% { transform: translateX(4px); }
+    60% { transform: translateX(-3px); } 80% { transform: translateX(3px); }
+  }
+  .tile.golden { background: linear-gradient(160deg, #FFF9E6, #FFEFC2); border-color: #E0B84A; }
+  .tile .glyph { font-weight: 400; line-height: 1; }
+  .tile .icon-img { width: 74%; height: 74%; object-fit: contain; }
+  .tile .fallback { font-size: 60%; font-weight: 700; }
+  .tile .star {
+    position: absolute; top: 3px; right: 5px; font-size: 11px; color: #E0A800; font-weight: 700;
+  }
+
+  .combo-fx {
+    position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%) scale(.6);
+    font-size: 34px; font-weight: 900; color: var(--yellow);
+    text-shadow: 0 2px 0 #fff, 0 0 14px rgba(183,149,11,.6);
+    pointer-events: none; opacity: 0; transition: opacity .2s, transform .25s;
+    white-space: nowrap;
+  }
+  .combo-fx.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+
+  /* ---------- 文化卡弹窗 ---------- */
+  .sheet-mask {
+    position: fixed; inset: 0; background: rgba(44,62,80,.42); display: none;
+    align-items: flex-end; justify-content: center; z-index: 40;
+  }
+  .sheet-mask.show { display: flex; }
+  .sheet {
+    width: 100%; max-width: 430px; background: #fff; border-radius: 22px 22px 0 0;
+    padding: 22px 22px 26px; animation: slideUp .28s cubic-bezier(.2,.8,.2,1);
+  }
+  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  .sheet .card-glyph { font-size: 60px; text-align: center; line-height: 1.1; }
+  .sheet .card-icon { display: block; width: 64px; height: 64px; margin: 0 auto; }
+  .sheet .card-title { margin-top: 8px; text-align: center; font-size: 24px; font-weight: 800; }
+  .sheet .card-sub { margin-top: 6px; text-align: center; font-size: 15px; color: var(--muted); }
+  .sheet .divider { height: 1px; background: var(--line); margin: 16px 0; }
+  .sheet .card-desc { font-size: 15px; line-height: 1.7; }
+  .sheet .fact {
+    margin-top: 14px; background: var(--bg); border-left: 4px solid var(--yellow);
+    border-radius: 8px; padding: 12px 14px; font-size: 14px; line-height: 1.7; color: #5B5343;
+  }
+  .sheet .fact b { color: var(--yellow); }
+  .primary-btn {
+    width: 100%; margin-top: 20px; border: 0; border-radius: 14px; padding: 15px 0;
+    font-size: 17px; font-weight: 700; color: #fff; background: var(--red); cursor: pointer;
+  }
+  .primary-btn:active { opacity: .88; }
+  .ghost-btn {
+    width: 100%; margin-top: 12px; border: 1.5px solid var(--line); border-radius: 14px;
+    padding: 14px 0; font-size: 16px; font-weight: 700; color: var(--ink); background: #fff; cursor: pointer;
+  }
+  .ghost-btn:active { background: #F7F2E4; }
+
+  /* ---------- 引导 ---------- */
+  .guide-mask { position: fixed; inset: 0; background: rgba(44,62,80,.55); display: none; align-items: center; justify-content: center; z-index: 60; padding: 24px; }
+  .guide-mask.show { display: flex; }
+  .guide-box { background: #fff; border-radius: 20px; padding: 26px 22px; width: 100%; max-width: 330px; text-align: center; }
+  .guide-step { font-size: 12px; color: var(--muted); letter-spacing: 1px; }
+  .guide-title { margin-top: 10px; font-size: 21px; font-weight: 800; color: var(--red); }
+  .guide-text { margin-top: 12px; font-size: 15px; line-height: 1.75; color: #5B5343; }
+
+  /* ---------- 结算页 ---------- */
+  .result-hero { text-align: center; padding: 24px 0 8px; }
+  .result-check {
+    width: 76px; height: 76px; line-height: 76px; margin: 0 auto; border-radius: 50%;
+    background: var(--green); color: #fff; font-size: 40px; font-weight: 700;
+  }
+  .result-title { margin-top: 16px; font-size: 27px; font-weight: 800; }
+  .result-sub { margin-top: 8px; font-size: 15px; color: var(--muted); }
+  .stat-row { display: flex; gap: 12px; margin-top: 20px; }
+  .stat-box { flex: 1; background: #fff; border: 1.5px solid var(--line); border-radius: 14px; padding: 14px 8px; text-align: center; }
+  .stat-box .v { font-size: 24px; font-weight: 800; color: var(--red); }
+  .stat-box .k { margin-top: 4px; font-size: 12px; color: var(--muted); }
+
+  .stamp-banner {
+    margin-top: 18px; border: 2px dashed var(--red); border-radius: 16px; padding: 16px;
+    display: flex; align-items: center; gap: 14px; background: #FFF8F6;
+  }
+  .stamp-banner .big-stamp {
+    width: 58px; height: 58px; line-height: 54px; text-align: center; border: 3px solid var(--red);
+    border-radius: 12px; color: var(--red); font-weight: 800; font-size: 19px; transform: rotate(-6deg); flex: 0 0 auto;
+  }
+  .stamp-banner .txt { font-size: 14px; line-height: 1.6; color: #5B5343; }
+  .stamp-banner .txt b { color: var(--red); }
+
+  .section-title { margin: 24px 0 12px; font-size: 15px; font-weight: 800; }
+  .chips { display: flex; flex-wrap: wrap; gap: 9px; }
+  .chip {
+    display: flex; align-items: center; gap: 7px; background: #fff; border: 1.5px solid var(--line);
+    border-radius: 10px; padding: 7px 11px; font-size: 14px;
+  }
+  .chip .chip-glyph { font-size: 19px; }
+  .chip img { width: 20px; height: 20px; }
+
+  .bless-box { margin-top: 24px; background: #fff; border: 1.5px solid var(--line); border-radius: 16px; padding: 18px; text-align: center; }
+  .bless-box .t { font-size: 17px; font-weight: 800; }
+  .bless-box .s { margin-top: 8px; font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+  .name-input {
+    width: 100%; margin-top: 14px; border: 1.5px solid var(--line); border-radius: 12px;
+    padding: 13px 14px; font-size: 16px; color: var(--ink); background: var(--bg); outline: none;
+  }
+  .name-input:focus { border-color: var(--red); }
+
+  .bless-preview { margin-top: 16px; }
+  .bless-preview img { width: 100%; border-radius: 14px; box-shadow: 0 8px 22px rgba(44,62,80,.16); }
+  .dl-btn {
+    display: block; margin-top: 14px; text-align: center; text-decoration: none;
+    background: var(--green); color: #fff; border-radius: 14px; padding: 14px 0;
+    font-size: 16px; font-weight: 700;
+  }
+  .hint { margin-top: 12px; font-size: 12px; color: var(--muted); text-align: center; line-height: 1.6; }
+</style>
+</head>
+<body>
+<div class="phone">
+
+  <!-- ============ 首页 ============ -->
+  <section id="screen-home" class="screen active">
+    <div class="hero">
+      <img id="hero-logo" class="hero-logo" alt="藏字方块">
+      <div class="hero-title">藏字方块</div>
+      <div><span class="hero-slogan">玩方块，认藏文</span></div>
+      <div class="hero-greet tib">བཀྲ་ཤིས་བདེ་ལེགས</div>
+    </div>
+
+    <div class="profile-row">
+      <div class="profile-stamps" id="profile-stamps"></div>
+      <div class="profile-combo" id="profile-combo">最高连击 ×0</div>
+    </div>
+
+    <div class="level-grid" id="level-grid"></div>
+
+    <div class="footer">每个字母，都是一座西藏</div>
+    <div class="footer-sub">共 10 关 · 进度保存在本机浏览器</div>
+    <div class="reset-link" id="reset-link">清空进度，重新开始</div>
+  </section>
+
+  <!-- ============ 游戏页 ============ -->
+  <section id="screen-game" class="screen">
+    <div class="statusbar">
+      <button class="back-btn" id="game-back">← 返回</button>
+      <div class="status-mid" id="status-mid">第 1 关</div>
+      <div class="status-right">
+        <div><span class="sc" id="status-score">0</span> 分</div>
+        <div class="combo-pill" id="status-combo">已消除 0/0 对</div>
+      </div>
+    </div>
+    <div class="board-wrap">
+      <div class="board" id="board"></div>
+      <div class="combo-fx" id="combo-fx"></div>
+    </div>
+  </section>
+
+  <!-- ============ 结算页 ============ -->
+  <section id="screen-result" class="screen">
+    <div class="result-hero">
+      <div class="result-check">✓</div>
+      <div class="result-title" id="res-title">第 1 关完成！</div>
+      <div class="result-sub" id="res-sub">共消除 0 对</div>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat-box"><div class="v" id="res-score">0</div><div class="k">本关积分</div></div>
+      <div class="stat-box"><div class="v" id="res-combo">0</div><div class="k">最高连击</div></div>
+      <div class="stat-box"><div class="v" id="res-cards">0</div><div class="k">文化卡</div></div>
+    </div>
+
+    <div id="res-stamp"></div>
+
+    <div class="section-title">本关收集到的文化卡</div>
+    <div class="chips" id="res-chips"></div>
+
+    <div id="res-bless"></div>
+
+    <div id="res-actions" style="margin-top: 26px;"></div>
+  </section>
+
+</div>
+
+<!-- 文化卡 -->
+<div class="sheet-mask" id="card-mask">
+  <div class="sheet" id="card-sheet"></div>
+</div>
+
+<!-- 新手引导 -->
+<div class="guide-mask" id="guide-mask">
+  <div class="guide-box">
+    <div class="guide-step" id="guide-step">第 1 / 3 步</div>
+    <div class="guide-title" id="guide-title"></div>
+    <div class="guide-text" id="guide-text"></div>
+    <button class="primary-btn" id="guide-next">下一步</button>
+  </div>
+</div>
+
+<script>
+/* ================================================================
+   藏字方块 · 浏览器本地体验版
+   数据由 scripts/build-h5.js 从 data/*.js 自动注入，与小程序同源。
+   仅用于本地体验验收；正式发布仍以微信小程序为准。
+   ================================================================ */
+const DATA = /*__DATA__*/;
+const IMAGES = /*__IMAGES__*/;
+
+const ELEMENTS = DATA.elements;
+const CARDS = DATA.cards;
+const LEVELS = DATA.levels;
+const CARD_BY_ID = {};
+CARDS.forEach(function (c) { CARD_BY_ID[c.id] = c; });
+
+const TIB_FONT = '"Noto Serif Tibetan","Microsoft Himalaya","Jomolhari","Kailasa",serif';
+
+/* ---------------- 存储（对应 utils/storage.js） ---------------- */
+const SKEY = 'zangzi_progress';
+const MAX_LEVEL = 10;
+let memoryStore = null;   // file:// 下 localStorage 不可用时的兜底
+
+function readRaw() {
+  try { return JSON.parse(localStorage.getItem(SKEY) || 'null'); }
+  catch (e) { return memoryStore; }
+}
+function writeRaw(p) {
+  try { localStorage.setItem(SKEY, JSON.stringify(p)); }
+  catch (e) { memoryStore = p; }
+}
+function getProgress() {
+  const p = readRaw();
+  return {
+    unlockedLevel: (p && p.unlockedLevel) || 1,
+    completedLevels: (p && p.completedLevels) || [],
+    stamps: (p && p.stamps) || [],
+    bestCombo: (p && p.bestCombo) || 0,
+    onboardDone: !!(p && p.onboardDone)
+  };
+}
+function saveProgress(p) { writeRaw(p); }
+function completeLevel(n) {
+  const p = getProgress();
+  if (p.completedLevels.indexOf(n) === -1) p.completedLevels.push(n);
+  p.unlockedLevel = Math.max(p.unlockedLevel, Math.min(n + 1, MAX_LEVEL));
+  saveProgress(p);
+  return p;
+}
+function recordCombo(n) {
+  const p = getProgress();
+  if (n > p.bestCombo) { p.bestCombo = n; saveProgress(p); return true; }
+  return false;
+}
+function grantStamp(id) {
+  const p = getProgress();
+  if (p.stamps.indexOf(id) > -1) return false;
+  p.stamps.push(id); saveProgress(p); return true;
+}
+function isOnboardDone() { return getProgress().onboardDone; }
+function setOnboardDone() { const p = getProgress(); p.onboardDone = true; saveProgress(p); }
+function clearProgress() { try { localStorage.removeItem(SKEY); } catch (e) {} memoryStore = null; }
+
+/* ---------------- 音效（Web Audio 合成，对应 utils/audio.js） ---------------- */
+let AC = null;
+function audioCtx() {
+  if (!AC) {
+    const C = window.AudioContext || window.webkitAudioContext;
+    if (!C) return null;
+    try { AC = new C(); } catch (e) { return null; }
+  }
+  if (AC.state === 'suspended') { AC.resume(); }
+  return AC;
+}
+/* [频率, 音量, 时长(秒)] */
+const SOUNDS = {
+  tap: [[1150, 0.20, 0.09]],
+  match: [[1318, 0.26, 0.50], [1975, 0.13, 0.50], [2637, 0.07, 0.50]],
+  mismatch: [[190, 0.16, 0.16]],
+  win: [[1318, 0.20, 1.00], [1975, 0.08, 1.00], [147, 0.15, 1.00], [220, 0.06, 1.00], [294, 0.03, 1.00]]
+};
+function playSound(name, rate) {
+  const c = audioCtx();
+  if (!c) return;
+  const now = c.currentTime;
+  SOUNDS[name].forEach(function (part) {
+    const o = c.createOscillator();
+    o.type = 'sine';
+    o.frequency.value = part[0] * (rate || 1);
+    const g = c.createGain();
+    g.gain.setValueAtTime(0.0001, now);
+    g.gain.linearRampToValueAtTime(part[1], now + 0.006);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + part[2]);
+    o.connect(g); g.connect(c.destination);
+    o.start(now); o.stop(now + part[2] + 0.03);
+  });
+}
+const audio = {
+  tap: function () { playSound('tap'); },
+  match: function () { playSound('match'); },
+  mismatch: function () { playSound('mismatch'); },
+  win: function () { playSound('win'); },
+  combo: function (n) { playSound('match', Math.min(2, 1 + 0.1 * Math.max(0, n - 1))); }
+};
+
+/* ---------------- 文化图标绘制（对应 utils/icons.js） ---------------- */
+function roundRectPath(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+function drawKnot(ctx, s) {
+  const c = s / 2;
+  ctx.beginPath();
+  ctx.moveTo(c, s * 0.12); ctx.lineTo(s * 0.88, c); ctx.lineTo(c, s * 0.88); ctx.lineTo(s * 0.12, c);
+  ctx.closePath(); ctx.stroke();
+  roundRectPath(ctx, c - s * 0.19, c - s * 0.19, s * 0.38, s * 0.38, s * 0.04); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(s * 0.12, c); ctx.bezierCurveTo(c, c - s * 0.32, c, c + s * 0.32, s * 0.88, c); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(c, s * 0.12); ctx.bezierCurveTo(c - s * 0.32, c, c + s * 0.32, c, c, s * 0.88); ctx.stroke();
+}
+function drawLotus(ctx, s) {
+  const c = s / 2;
+  for (let i = 0; i < 8; i++) {
+    ctx.save();
+    ctx.translate(c, c); ctx.rotate(i * Math.PI / 4);
+    ctx.beginPath();
+    ctx.moveTo(0, -s * 0.10);
+    ctx.quadraticCurveTo(s * 0.15, -s * 0.28, 0, -s * 0.42);
+    ctx.quadraticCurveTo(-s * 0.15, -s * 0.28, 0, -s * 0.10);
+    ctx.stroke();
+    ctx.restore();
+  }
+  ctx.beginPath(); ctx.arc(c, c, s * 0.07, 0, Math.PI * 2); ctx.stroke();
+}
+function drawMountain(ctx, s) {
+  ctx.beginPath();
+  ctx.moveTo(s * 0.08, s * 0.82); ctx.lineTo(s * 0.34, s * 0.30); ctx.lineTo(s * 0.48, s * 0.50);
+  ctx.lineTo(s * 0.68, s * 0.20); ctx.lineTo(s * 0.92, s * 0.82);
+  ctx.closePath(); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(s * 0.61, s * 0.33); ctx.lineTo(s * 0.57, s * 0.38); ctx.lineTo(s * 0.65, s * 0.42); ctx.lineTo(s * 0.61, s * 0.47);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(s * 0.29, s * 0.38); ctx.lineTo(s * 0.25, s * 0.43); ctx.lineTo(s * 0.33, s * 0.46);
+  ctx.stroke();
+}
+function drawFlags(ctx, s) {
+  const y0 = s * 0.24, cy = s * 0.40, y1 = s * 0.20;
+  ctx.beginPath(); ctx.moveTo(s * 0.08, y0); ctx.quadraticCurveTo(s * 0.5, cy, s * 0.92, y1); ctx.stroke();
+  const colors = ['#2471A3', '#FFFFFF', '#C0392B', '#1E8449', '#B7950B'];
+  for (let i = 0; i < 5; i++) {
+    const t = (i + 0.5) / 5;
+    const x = s * 0.08 + s * 0.84 * t;
+    const y = (1 - t) * (1 - t) * y0 + 2 * (1 - t) * t * cy + t * t * y1;
+    ctx.fillStyle = colors[i];
+    ctx.fillRect(x - s * 0.055, y, s * 0.11, s * 0.20);
+    roundRectPath(ctx, x - s * 0.055, y, s * 0.11, s * 0.20, s * 0.015);
+    ctx.stroke();
+  }
+}
+const DRAWERS = { knot: drawKnot, lotus: drawLotus, mountain: drawMountain, flags: drawFlags };
+
+const iconCache = {};
+function iconDataUrl(id) {
+  if (iconCache[id]) return iconCache[id];
+  const el = ELEMENTS[id];
+  const S = 160;
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = S;
+  const ctx = cv.getContext('2d');
+  ctx.strokeStyle = el.color;
+  ctx.fillStyle = el.color;
+  ctx.lineWidth = S * 0.05;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  DRAWERS[el.iconKey](ctx, S);
+  iconCache[id] = cv.toDataURL();
+  return iconCache[id];
+}
+
+/* ---------------- 藏文断行（对应 utils/tibetan-text.js） ---------------- */
+const TSHEG = '\u0F0B';
+const PUNCT = ['\u0F0D', '\u0F0E', '\u0F0F'];
+function tokenize(text) {
+  const units = [];
+  let cur = '';
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    cur += ch;
+    const isBreakAfter = ch === TSHEG;
+    const isPunct = PUNCT.indexOf(ch) > -1;
+    if (isBreakAfter) { units.push(cur); cur = ''; }
+    else if (isPunct && i + 1 < text.length) { units.push(cur); cur = ''; }
+  }
+  if (cur) units.push(cur);
+  return units;
+}
+function wrapTibetan(measure, text, maxWidth) {
+  const units = tokenize(text);
+  const lines = [];
+  let line = '';
+  for (let i = 0; i < units.length; i++) {
+    const cand = line + units[i];
+    if (line && measure(cand) > maxWidth) { lines.push(line); line = units[i]; }
+    else { line = cand; }
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
+/* ---------------- 游戏状态 ---------------- */
+const GUIDE = [
+  { title: '如何消除', text: '点击两张相同的藏文字母或文化图标，它们就会一起消失。' },
+  { title: '连击', text: '连续不断错地消除可以触发连击 ×N，分数更高，声音更亮。' },
+  { title: '文化卡', text: '每次消除会弹出文化卡；牌面上的金色 ✦ 是特殊方块，双倍积分。' }
+];
+
+const state = {
+  level: 1, cols: 6, rows: 4, tiles: [],
+  firstIndex: -1, matchedCount: 0, score: 0, combo: 0,
+  pendingRemove: [], locked: false, goldenId: null, guideStep: 0,
+  collected: [], maxCombo: 0
+};
+
+const $ = function (id) { return document.getElementById(id); };
+
+/* ---------------- 屏幕切换 ---------------- */
+function showScreen(name) {
+  ['home', 'game', 'result'].forEach(function (n) {
+    $('screen-' + n).classList.toggle('active', n === name);
+  });
+  window.scrollTo(0, 0);
+}
+
+/* ---------------- 首页 ---------------- */
+function renderHome() {
+  const p = getProgress();
+  $('hero-logo').src = IMAGES.logo200;
+
+  const stampsEl = $('profile-stamps');
+  if (p.stamps.length) {
+    stampsEl.innerHTML = p.stamps.map(function () {
+      return '<div class="mini-stamp">拉萨</div>';
+    }).join('');
+  } else {
+    stampsEl.innerHTML = '<div class="stamp-empty">还没有印记 · 通关第 1 关获得</div>';
+  }
+  $('profile-combo').textContent = '最高连击 ×' + p.bestCombo;
+
+  const grid = $('level-grid');
+  grid.innerHTML = '';
+  for (let n = 1; n <= MAX_LEVEL; n++) {
+    const done = p.completedLevels.indexOf(n) > -1;
+    const unlocked = n <= p.unlockedLevel;
+    const btn = document.createElement('div');
+    btn.className = 'level-btn' + (done ? ' done' : '') + (unlocked ? '' : ' locked');
+    btn.innerHTML =
+      '<div class="badge">' + (done ? '✓' : (unlocked ? '' : '🔒')) + '</div>' +
+      '<div class="lv-num">' + n + '</div>' +
+      '<div class="lv-tag">' + (done ? '已通关' : (unlocked ? '未通关' : '未解锁')) + '</div>';
+    if (unlocked) btn.addEventListener('click', function () { startLevel(n); });
+    grid.appendChild(btn);
+  }
+  showScreen('home');
+}
+
+/* ---------------- 开始关卡 ---------------- */
+function startLevel(level) {
+  const cfg = LEVELS[level - 1];
+  if (!cfg) return;
+  state.level = level;
+  state.cols = cfg.cols;
+  state.rows = cfg.rows;
+  state.firstIndex = -1;
+  state.matchedCount = 0;
+  state.score = 0;
+  state.combo = 0;
+  state.maxCombo = 0;
+  state.pendingRemove = [];
+  state.locked = false;
+  state.collected = [];
+  state.goldenId = cfg.elements[Math.floor(Math.random() * cfg.elements.length)][0];
+
+  // 牌池 + Fisher-Yates 洗牌
+  const pool = [];
+  cfg.elements.forEach(function (pair) {
+    for (let k = 0; k < pair[1]; k++) pool.push(pair[0]);
+  });
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp;
+  }
+  state.tiles = pool.map(function (id, idx) {
+    const el = ELEMENTS[id];
+    return {
+      uid: idx, id: id, type: el.type,
+      tibetan: el.tibetan || '', color: el.color,
+      fallbackText: el.char || '',
+      golden: id === state.goldenId,
+      state: 'idle'
+    };
+  });
+
+  $('status-mid').textContent = '第 ' + level + ' 关';
+  renderBoard();
+  updateHud();
+  showScreen('game');
+
+  if (!isOnboardDone()) {
+    state.guideStep = 1;
+    showGuide();
+  }
+}
+
+function updateHud() {
+  $('status-score').textContent = state.score;
+  $('status-combo').textContent = '已消除 ' + state.matchedCount + '/' + (state.tiles.length / 2) + ' 对';
+}
+
+function renderBoard() {
+  const board = $('board');
+  board.style.gridTemplateColumns = 'repeat(' + state.cols + ', 1fr)';
+  board.style.gap = (state.cols >= 8 ? 5 : 7) + 'px';
+  board.innerHTML = '';
+
+  state.tiles.forEach(function (t, idx) {
+    const d = document.createElement('div');
+    d.className = 'tile' + (t.golden ? ' golden' : '') + (t.state !== 'idle' ? ' ' + t.state : '');
+    d.style.color = t.color;
+    d.dataset.index = idx;
+
+    let inner = '';
+    if (t.type === 'letter') {
+      inner = '<span class="glyph tib" style="color:' + t.color + '">' + t.tibetan + '</span>';
+    } else {
+      inner = '<img class="icon-img" src="' + iconDataUrl(t.id) + '" alt="">';
+    }
+    if (t.golden) inner += '<span class="star">✦</span>';
+    d.innerHTML = inner;
+
+    d.addEventListener('click', function () { onTapTile(idx); });
+    board.appendChild(d);
+  });
+  fitGlyph();
+  window.requestAnimationFrame(fitGlyph);
+}
+
+/* 藏文字号随格子宽度自适应（约为格子宽的 60%） */
+function fitGlyph() {
+  const tile = document.querySelector('#board .tile');
+  if (!tile) return;
+  const w = tile.clientWidth;
+  if (!w) return;
+  document.querySelectorAll('#board .glyph').forEach(function (g) {
+    g.style.fontSize = Math.round(w * 0.62) + 'px';
+  });
+}
+window.addEventListener('resize', fitGlyph);
+
+/* ---------------- 点击逻辑（对应 game.js onTapTile） ---------------- */
+function onTapTile(idx) {
+  if (state.locked) return;
+  const tile = state.tiles[idx];
+  if (!tile || tile.state === 'removed' || tile.state === 'removing') return;
+
+  // 再点已选中的牌 → 取消选中
+  if (state.firstIndex === idx) {
+    state.firstIndex = -1;
+    updateTile(idx, 'idle');
+    return;
+  }
+
+  audio.tap();
+
+  if (state.firstIndex === -1) {
+    state.firstIndex = idx;
+    updateTile(idx, 'selected');
+    return;
+  }
+
+  const first = state.firstIndex;
+  const second = idx;
+  state.firstIndex = -1;
+
+  if (state.tiles[first].id === state.tiles[second].id) {
+    handleMatch(first, second);
+  } else {
+    handleMismatch(first, second);
+  }
+}
+
+function updateTile(idx, st) {
+  state.tiles[idx].state = st;
+  const d = document.querySelector('#board .tile[data-index="' + idx + '"]');
+  if (!d) return;
+  d.classList.remove('selected', 'removing', 'removed', 'shake');
+  if (st !== 'idle') d.classList.add(st);
+}
+
+function handleMatch(i, j) {
+  state.pendingRemove = [i, j];
+  state.matchedCount++;
+  state.combo++;
+  state.maxCombo = Math.max(state.maxCombo, state.combo);
+  recordCombo(state.combo);
+
+  const golden = state.tiles[i].golden;
+  state.score += 10 * (golden ? 2 : 1) + 2 * (state.combo - 1);
+
+  state.locked = true;
+  updateTile(i, 'removing');
+  updateTile(j, 'removing');
+  updateHud();
+
+  if (state.combo >= 2) {
+    audio.combo(state.combo);
+    const fx = $('combo-fx');
+    fx.textContent = '连击 ×' + state.combo;
+    fx.classList.add('show');
+    clearTimeout(fx._t);
+    fx._t = setTimeout(function () { fx.classList.remove('show'); }, 1200);
+  } else {
+    audio.match();
+  }
+
+  const id = state.tiles[i].id;
+  if (state.collected.indexOf(id) === -1) state.collected.push(id);
+
+  setTimeout(function () {
+    // 注意：这里不解锁。弹窗期间必须保持锁定，直到玩家点「知道了」
+    showCard(id);
+  }, 260);
+}
+
+function handleMismatch(i, j) {
+  audio.mismatch();
+  state.combo = 0;
+  state.locked = true;
+  updateTile(i, 'shake');
+  updateTile(j, 'shake');
+  $('combo-fx').classList.remove('show');
+  setTimeout(function () {
+    updateTile(i, 'idle');
+    updateTile(j, 'idle');
+    state.locked = false;
+  }, 440);
+}
+
+/* ---------------- 文化卡 ---------------- */
+function showCard(id) {
+  const card = CARD_BY_ID[id];
+  const el = ELEMENTS[id];
+  if (!card) return;
+  const sheet = $('card-sheet');
+  let head = '';
+  if (card.type === 'icon') {
+    head = '<img class="card-icon" src="' + iconDataUrl(id) + '" alt="">';
+  } else {
+    head = '<div class="card-glyph tib" style="color:' + el.color + '">' + card.title + '</div>';
+  }
+  sheet.innerHTML =
+    head +
+    '<div class="card-title">' + card.title + '</div>' +
+    (card.subtitle ? '<div class="card-sub">' + card.subtitle + '</div>' : '') +
+    '<div class="divider"></div>' +
+    '<div class="card-desc">' + card.description + '</div>' +
+    '<div class="fact"><b>冷知识</b> · ' + card.funFact + '</div>' +
+    '<button class="primary-btn" id="card-ok" style="background:' + el.color + '">知道了</button>';
+  $('card-mask').classList.add('show');
+  $('card-ok').addEventListener('click', onCloseCard);
+}
+
+function onCloseCard() {
+  $('card-mask').classList.remove('show');
+  const pr = state.pendingRemove;
+  if (pr.length === 2) {
+    updateTile(pr[0], 'removed');
+    updateTile(pr[1], 'removed');
+  }
+  state.pendingRemove = [];
+  state.locked = false;
+
+  if (state.matchedCount === state.tiles.length / 2) {
+    audio.win();
+    setTimeout(finishLevel, 800);
+  }
+}
+
+/* ---------------- 引导 ---------------- */
+function showGuide() {
+  const g = GUIDE[state.guideStep - 1];
+  if (!g) return;
+  $('guide-step').textContent = '第 ' + state.guideStep + ' / ' + GUIDE.length + ' 步';
+  $('guide-title').textContent = g.title;
+  $('guide-text').textContent = g.text;
+  $('guide-next').textContent = state.guideStep >= GUIDE.length ? '开始玩' : '下一步';
+  $('guide-mask').classList.add('show');
+}
+$('guide-next').addEventListener('click', function () {
+  state.guideStep++;
+  if (state.guideStep > GUIDE.length) {
+    setOnboardDone();
+    $('guide-mask').classList.remove('show');
+  } else {
+    showGuide();
+  }
+});
+
+/* ---------------- 结算 ---------------- */
+function finishLevel() {
+  const level = state.level;
+  const hadStamp = getProgress().stamps.indexOf('lhasa') > -1;
+  completeLevel(level);
+  const stampNew = !hadStamp && grantStamp('lhasa');
+  const p = getProgress();
+
+  $('res-title').textContent = '第 ' + level + ' 关完成！';
+  $('res-sub').textContent = '共消除 ' + state.matchedCount + ' 对 · 最高连击 ×' + state.maxCombo;
+  $('res-score').textContent = state.score;
+  $('res-combo').textContent = '×' + state.maxCombo;
+  $('res-cards').textContent = state.collected.length;
+
+  // 印记
+  const stampEl = $('res-stamp');
+  if (p.stamps.indexOf('lhasa') > -1) {
+    stampEl.innerHTML =
+      '<div class="stamp-banner">' +
+      '<div class="big-stamp">拉萨</div>' +
+      '<div class="txt">' + (stampNew ? '<b>新印记解锁！</b><br>' : '') +
+      '你获得了「拉萨」文化印记，这是文化护照的第一枚印章。</div>' +
+      '</div>';
+  } else {
+    stampEl.innerHTML = '';
+  }
+
+  // 文化卡 chips
+  const chips = $('res-chips');
+  chips.innerHTML = state.collected.map(function (id) {
+    const card = CARD_BY_ID[id];
+    const el = ELEMENTS[id];
+    if (!card) return '';
+    const inner = card.type === 'icon'
+      ? '<img src="' + iconDataUrl(id) + '" alt="">'
+      : '<span class="chip-glyph tib" style="color:' + el.color + '">' + card.title + '</span>';
+    return '<div class="chip">' + inner + '<span>' + (card.subtitle || card.title) + '</span></div>';
+  }).join('');
+
+  // 祝福卡（仅第 10 关）
+  const blessEl = $('res-bless');
+  if (level === MAX_LEVEL) {
+    blessEl.innerHTML =
+      '<div class="bless-box">' +
+      '<div class="t">🎉 扎西德勒！通关全部 10 关</div>' +
+      '<div class="s">生成你的专属祝福卡，保存下来分享给朋友</div>' +
+      '<input class="name-input" id="bless-name" maxlength="10" placeholder="输入你的名字（可留空，默认「朋友」）">' +
+      '<button class="primary-btn" id="bless-gen">生成我的祝福卡</button>' +
+      '<div id="bless-out"></div>' +
+      '</div>';
+    $('bless-gen').addEventListener('click', generateBlessing);
+  } else {
+    blessEl.innerHTML = '';
+  }
+
+  // 底部按钮
+  const actions = $('res-actions');
+  actions.innerHTML = '';
+  if (level < MAX_LEVEL) {
+    const next = document.createElement('button');
+    next.className = 'primary-btn';
+    next.textContent = '下一关 →';
+    next.addEventListener('click', function () { startLevel(level + 1); });
+    actions.appendChild(next);
+  }
+  const back = document.createElement('button');
+  back.className = 'ghost-btn';
+  back.textContent = '返回首页';
+  back.addEventListener('click', renderHome);
+  actions.appendChild(back);
+
+  showScreen('result');
+}
+
+/* ---------------- 祝福卡（Canvas 绘制） ---------------- */
+function generateBlessing() {
+  const nameInput = $('bless-name');
+  const name = (nameInput && nameInput.value.trim()) || '朋友';
+  const W = 750, H = 1000;
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+
+  // 背景：朱砂红 → 天然黄 柔和渐变
+  const grad = ctx.createLinearGradient(0, 0, W, H);
+  grad.addColorStop(0, '#C0392B');
+  grad.addColorStop(0.55, '#B4552F');
+  grad.addColorStop(1, '#B7950B');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  // 内描边
+  ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(28, 28, W - 56, H - 56);
+
+  ctx.textAlign = 'center';
+
+  // 顶部藏文大字（tsheg 断行，永不把 ། 放行首）
+  const TIBC = 'བཀྲ་ཤིས་བདེ་ལེགས';
+  const measure = function (s) {
+    ctx.font = '600 78px ' + TIB_FONT;
+    return ctx.measureText(s).width;
+  };
+  const lines = wrapTibetan(measure, TIBC, W - 160);
+  ctx.fillStyle = '#FFFFFF';
+  lines.forEach(function (ln, i) {
+    ctx.font = '600 78px ' + TIB_FONT;
+    ctx.fillText(ln, W / 2, 220 + i * 96);
+  });
+
+  // 中文「扎西德勒」
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = '800 76px "PingFang SC","Microsoft YaHei",sans-serif';
+  ctx.fillText('扎西德勒', W / 2, 470);
+
+  // 用户昵称
+  ctx.font = '500 42px "PingFang SC","Microsoft YaHei",sans-serif';
+  ctx.fillText('—— ' + name, W / 2, 545);
+
+  // 分隔线
+  ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(W * 0.3, 600); ctx.lineTo(W * 0.7, 600); ctx.stroke();
+
+  // 底部说明
+  ctx.font = '400 28px "PingFang SC","Microsoft YaHei",sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.92)';
+  ctx.fillText('我在藏字方块中学会了 8 个藏文字母', W / 2, 668);
+
+  // slogan
+  ctx.font = '700 30px "PingFang SC","Microsoft YaHei",sans-serif';
+  ctx.fillStyle = '#FFF3D6';
+  ctx.fillText('玩方块，认藏文', W / 2, 716);
+
+  // Logo（左下）+ 小程序码占位（右下）
+  // 先输出一版（Logo 未加载也能拿到图），Logo 就绪后再重绘刷新
+  renderBlessOut(cv, name);
+  const logo = new Image();
+  logo.onload = function () {
+    drawCardFooter(ctx, W, H, logo);
+    renderBlessOut(cv, name);
+  };
+  logo.onerror = function () { /* 保持无 Logo 版本 */ };
+  logo.src = IMAGES.logo80;
+}
+
+function drawCardFooter(ctx, W, H, logo) {
+  if (logo) ctx.drawImage(logo, 70, H - 190, 120, 120);
+  // 小程序码占位框
+  ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(W - 210, H - 200, 140, 140);
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+  ctx.textAlign = 'center';
+  ctx.font = '400 20px "PingFang SC","Microsoft YaHei",sans-serif';
+  ctx.fillText('小程序码', W - 140, H - 120);
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = '700 26px "PingFang SC","Microsoft YaHei",sans-serif';
+  ctx.fillText('藏字方块', 210, H - 118);
+  ctx.font = '400 20px "PingFang SC","Microsoft YaHei",sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+  ctx.fillText('每个字母，都是一座西藏', 210, H - 86);
+}
+
+function renderBlessOut(cv, name) {
+  const url = cv.toDataURL('image/png');
+  $('bless-out').innerHTML =
+    '<div class="bless-preview"><img src="' + url + '" alt="祝福卡"></div>' +
+    '<a class="dl-btn" download="藏字方块-扎西德勒-' + name + '.png" href="' + url + '">保存到本地（PNG）</a>' +
+    '<div class="hint">手机上长按图片即可保存到相册；小程序版会用 canvasToTempFilePath 导出并支持转发给朋友。</div>';
+}
+
+/* ---------------- 事件绑定 ---------------- */
+$('game-back').addEventListener('click', function () {
+  if (state.matchedCount > 0 && state.matchedCount < state.tiles.length / 2) {
+    if (!window.confirm('本关还没完成，确定要退出吗？')) return;
+  }
+  renderHome();
+});
+$('reset-link').addEventListener('click', function () {
+  if (!window.confirm('清空所有进度和印记，重新开始？')) return;
+  clearProgress();
+  renderHome();
+});
+$('card-mask').addEventListener('click', function (e) {
+  if (e.target === $('card-mask')) onCloseCard();
+});
+
+/* ---------------- 启动 ---------------- */
+renderHome();
+</script>
+</body>
+</html>
