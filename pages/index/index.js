@@ -63,5 +63,10 @@ Page({
   // 打开文化护照（12 张证书 + 印章 + 收藏 + 图谱）
   openPassport: function () {
     wx.navigateTo({ url: '/pages/passport/passport' });
+  },
+
+  // 打开权益中心（双轨制到店权益，凭通关进度领取）
+  openBenefits: function () {
+    wx.navigateTo({ url: '/pages/benefits/benefits' });
   }
 });

@@ -24,7 +24,8 @@ function exists(p) { return fs.existsSync(path.join(ROOT, p)); }
 section('1. JSON 配置文件语法');
 const jsonFiles = ['app.json', 'sitemap.json', 'project.config.json',
   'pages/index/index.json', 'pages/game/game.json', 'pages/result/result.json',
-  'pages/cert/cert.json', 'pages/passport/passport.json'];
+  'pages/cert/cert.json', 'pages/passport/passport.json',
+  'pages/benefits/benefits.json'];
 jsonFiles.forEach(f => {
   if (!exists(f)) { err(f + ' 不存在'); return; }
   try { JSON.parse(read(f)); ok(f + ' 语法正确'); }
@@ -42,8 +43,8 @@ try {
       else err(f + ' 缺失（app.json 已注册）');
     });
   });
-  if (appJson.pages.length === 5) ok('页面数量 = 5（关卡 / 结算 / 证书 / 护照）');
-  else err('页面数量应为 5，实际 ' + appJson.pages.length);
+  if (appJson.pages.length === 6) ok('页面数量 = 6（关卡 / 结算 / 证书 / 护照 / 权益中心）');
+  else err('页面数量应为 6，实际 ' + appJson.pages.length);
 } catch (e) { err('app.json 无法解析，跳过'); }
 
 // ---------- 3. 关卡数据 ----------
@@ -92,7 +93,9 @@ section('5. 音效文件');
 // ---------- 6. 禁用 API（规格红线） ----------
 section('6. 禁用 API 检查');
 const banned = ['wx.login', 'wx.getUserProfile', 'wx.requestPayment',
-  'wx.requestSubscribeMessage', 'getUserInfo', 'cloud.init'];
+  'wx.requestSubscribeMessage', 'getUserInfo', 'cloud.init',
+  // 位置权限：教育/内容类目拿不到，且「按位置推商家」是高危驳回点 → 一律用城市主动选择
+  'wx.getLocation', 'wx.getFuzzyLocation', 'wx.chooseLocation'];
 const jsFiles = [];
 (function walk(dir) {
   fs.readdirSync(dir).forEach(f => {
@@ -112,11 +115,12 @@ if (!bannedFound) ok('未使用任何禁用 API（登录/支付/订阅/云初始
 
 // ---------- 7. WXML 事件绑定 ----------
 section('7. WXML 事件绑定与 JS 方法对应');
-[['pages/index/index', ['onTapLevel', 'openPassport']],
+[['pages/index/index', ['onTapLevel', 'openPassport', 'openBenefits']],
  ['pages/game/game', ['onTapTile', 'dismissCard', 'guideNext']],
  ['pages/result/result', ['goHome', 'openNameModal', 'closeNameModal', 'onNameInput', 'confirmGenerate', 'saveToAlbum', 'previewShare', 'openCert', 'openPassport']],
  ['pages/cert/cert', ['openNameModal', 'closeNameModal', 'onNameInput', 'confirmName', 'generate', 'saveToAlbum', 'previewShare', 'goPassport', 'goHome']],
- ['pages/passport/passport', ['openCert', 'goHome']]
+ ['pages/passport/passport', ['openCert', 'goHome']],
+ ['pages/benefits/benefits', ['onSwitchMode', 'onPickCity', 'onClaim', 'goHome']]
 ].forEach(([page, handlers]) => {
   const wxml = read(page + '.wxml');
   const js = read(page + '.js');
@@ -255,7 +259,8 @@ else warn('文化卡未实现自动收起');
 // 纹样层为 WXSS 平铺背景（base64）；经幡天空层与雪山地面层为 <image>
 var sceneryImgs = ['bg-ground.png', 'bg-sky.png'];
 [['pages/index/index', '首页'], ['pages/game/game', '游戏页'], ['pages/result/result', '结算页'],
- ['pages/cert/cert', '证书页'], ['pages/passport/passport', '护照页']].forEach(function (p) {
+ ['pages/cert/cert', '证书页'], ['pages/passport/passport', '护照页'],
+ ['pages/benefits/benefits', '权益中心']].forEach(function (p) {
   var wxml = read(p[0] + '.wxml');
   var wxss = read(p[0] + '.wxss');
   var missImg = sceneryImgs.filter(function (s) { return wxml.indexOf(s) === -1; });
@@ -537,6 +542,89 @@ section('15. 通关情绪引擎（粒子 / 震动 / 藏语语音 / 唐卡画卷 
       tpl.indexOf('tashi_delek') > -1 && tpl.indexOf('blessing_01') > -1)
     ok('体验版已镜像情绪引擎（celebrate / 语音 / 画卷）');
   else err('preview/template.html 未镜像情绪引擎');
+})();
+
+// ---------- 16. 权益中心（双轨制）合规自检 ----------
+section('16. 权益中心（双轨制）');
+(function () {
+  const mchSrc = read('data/merchants.js');
+  const benSrc = read('utils/benefits.js');
+  const bw = read('pages/benefits/benefits.wxml');
+  const bj = read('pages/benefits/benefits.js');
+  const iw = read('pages/index/index.wxml');
+  const tpl = read('preview/template.html');
+
+  let merchants = [];
+  try { merchants = require(path.join(ROOT, 'data', 'merchants')); }
+  catch (e) { err('data/merchants.js 无法加载: ' + e.message); }
+
+  // 16.1 双轨标签
+  const tracks = {};
+  merchants.forEach(m => { tracks[m.track] = (tracks[m.track] || 0) + 1; });
+  if (tracks.local > 0 && tracks.tourist > 0 && tracks.both > 0)
+    ok('双轨标签齐全（本地生活 ' + tracks.local + ' / 游客专属 ' + tracks.tourist + ' / 通用 ' + tracks.both + '）');
+  else err('双轨标签不全（需同时有 local / tourist / both）');
+  if (merchants.some(m => m.need === 0)) ok('存在 need=0 的权益（新用户即可领取，闭环不空转）');
+  else err('缺少 need=0 的权益，新用户无券可领');
+
+  // 16.2 券不承载金额（最关键的一条定性）
+  const moneyHit = ['¥', '元'].filter(sym => mchSrc.indexOf(sym) > -1);
+  if (!moneyHit.length) ok('商家数据不含任何金额字样（¥/元）—— 券不承载金额');
+  else err('data/merchants.js 出现金额字样：' + moneyHit.join('、') + '（券不得承载金额）');
+  const moneyField = ['price', 'amount', 'discount', 'settle'].filter(k =>
+    new RegExp('\\b' + k + '\\s*:').test(mchSrc));
+  if (!moneyField.length) ok('商家数据无 price/amount/discount/settle 字段（平台不经手结算）');
+  else err('data/merchants.js 含金额或结算字段：' + moneyField.join('、'));
+
+  // 16.3 宗教场所与文物景区不得商业联动
+  const sacred = ['布达拉宫', '大昭寺', '小昭寺', '扎什伦布寺', '哲蚌寺', '色拉寺', '甘丹寺', '寺庙', '寺院', '景区'];
+  const mchText = merchants.map(m => m.name + m.category + m.offer).join('|');
+  const sacredHit = sacred.filter(s => mchText.indexOf(s) > -1);
+  if (!sacredHit.length) ok('未把宗教活动场所 / 文物景区列入商业权益');
+  else err('data/merchants.js 出现宗教场所或景区字样：' + sacredHit.join('、'));
+
+  // 16.4 定性声明必须出现在券卡上
+  if (benSrc.indexOf('PROVIDER_NOTE') > -1 && benSrc.indexOf('不参与交易') > -1)
+    ok('权益定性声明已定义（由商家提供并兑现 · 平台不参与交易）');
+  else err('utils/benefits.js 缺 PROVIDER_NOTE 定性声明');
+  if (bw.indexOf('providerNote') > -1) ok('每张权益卡都展示定性声明');
+  else err('benefits.wxml 未展示 providerNote');
+  if (benSrc.indexOf('不涉及任何支付与资金结算') > -1)
+    ok('页面级声明含「不涉及任何支付与资金结算」');
+  else err('缺少页面级合规声明');
+
+  // 16.5 双轨前端：Tab 一键切换 + 城市主动选择（不用定位）
+  if (bw.indexOf('onSwitchMode') > -1 && bw.indexOf("mode === 'local'") > -1 && bw.indexOf("mode === 'tourist'") > -1)
+    ok('前端双轨 Tab 可一键切换（本地生活 / 游客专属）');
+  else err('benefits.wxml 缺双轨 Tab 切换');
+  if (bw.indexOf('onPickCity') > -1 && benSrc.indexOf('CITIES') > -1)
+    ok('城市由用户主动选择（不申请任何位置权限）');
+  else err('缺少城市主动选择（不得用定位）');
+  if (bj.indexOf('onSwitchMode') > -1 && bj.indexOf('onPickCity') > -1 && bj.indexOf('onClaim') > -1)
+    ok('权益页方法齐全（切换模式 / 选城市 / 领取凭证）');
+  else err('benefits.js 方法不全');
+
+  // 16.6 首次进入用内嵌引导而非弹窗（沿用「不打断用户」约束）
+  if (bw.indexOf('bn-guide') > -1 && bw.indexOf('你是从哪里来') > -1)
+    ok('首次进入用内嵌引导卡（不弹窗、不打断）');
+  else err('缺少内嵌模式引导');
+  if (bw.indexOf('showModal') === -1 && bj.indexOf('showModal') === -1)
+    ok('权益中心未使用阻塞式弹窗');
+  else err('权益中心使用了 showModal（与「不弹窗」约束冲突）');
+
+  // 16.7 入口与镜像
+  if (iw.indexOf('openBenefits') > -1) ok('首页已接入权益中心入口');
+  else err('index.wxml 缺权益中心入口');
+  if (tpl.indexOf('screen-benefits') > -1 && tpl.indexOf('renderBenefits') > -1 &&
+      tpl.indexOf('BENEFIT_PROVIDER') > -1 && tpl.indexOf('claimBenefit') > -1)
+    ok('体验版已镜像权益中心（双轨 Tab / 领取 / 定性声明）');
+  else err('preview/template.html 未镜像权益中心');
+
+  // 16.8 存储层
+  const st = read('utils/storage.js');
+  if (st.indexOf('userMode') > -1 && st.indexOf('benefits') > -1 && st.indexOf('benefitSeq') > -1)
+    ok('进度存储已扩展（userMode / benefits / benefitSeq）');
+  else err('utils/storage.js 缺权益字段');
 })();
 
 // ---------- 汇总 ----------

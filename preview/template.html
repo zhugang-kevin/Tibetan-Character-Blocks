@@ -448,6 +448,55 @@
     border-radius: 4px; background: linear-gradient(180deg, #B7950B, #8A6D08); box-shadow: 0 2px 5px rgba(74,50,24,.4); }
   .roller::before { left: -7px; }
   .roller::after { right: -7px; }
+
+  /* ---------- 藏文权益中心（双轨制：本地生活 / 游客专属） ---------- */
+  .bn-hero { text-align: center; padding: 20px 16px 18px; border-radius: 16px; border: 2px solid #B7950B; background: linear-gradient(180deg, #fff, #FDF6E3); box-shadow: 0 6px 18px rgba(96,78,44,.14); margin-bottom: 16px; }
+  .bn-title { font-size: 23px; font-weight: 800; letter-spacing: 2px; color: #C0392B; }
+  .bn-sub { margin-top: 6px; font-size: 13px; color: #6B6455; }
+  .bn-note { margin-top: 9px; font-size: 11.5px; color: #B7950B; line-height: 1.6; }
+  .bn-guide { padding: 16px 14px; border-radius: 14px; background: rgba(255,255,255,.94); border: 1.5px dashed #C0392B; margin-bottom: 14px; }
+  .bn-guide-title { font-size: 16px; font-weight: 800; color: #2C3E50; }
+  .bn-guide-sub { margin-top: 5px; font-size: 12px; color: #6B6455; }
+  .bn-guide-btns { display: flex; margin-top: 12px; }
+  .bn-guide-btn { flex: 1; padding: 12px 8px; border-radius: 12px; text-align: center; cursor: pointer; }
+  .bn-guide-btn.local { background: linear-gradient(180deg, #FDF1E8, #F7E2D2); border: 1.5px solid #C0392B; margin-right: 9px; }
+  .bn-guide-btn.tourist { background: linear-gradient(180deg, #EAF3FA, #DCEAF6); border: 1.5px solid #2471A3; }
+  .gb-name { font-size: 15px; font-weight: 800; }
+  .bn-guide-btn.local .gb-name { color: #C0392B; }
+  .bn-guide-btn.tourist .gb-name { color: #2471A3; }
+  .gb-desc { margin-top: 4px; font-size: 11px; color: #6B6455; }
+  .bn-tabs { display: flex; padding: 4px; border-radius: 12px; background: rgba(255,255,255,.9); border: 1.5px solid #E5D8BC; margin-bottom: 12px; }
+  .bn-tab { flex: 1; text-align: center; padding: 10px 0; font-size: 15px; font-weight: 700; color: #6B6455; border-radius: 9px; cursor: pointer; }
+  .bn-tab.on { background: linear-gradient(180deg, #C0392B, #A93226); color: #fff; box-shadow: 0 3px 9px rgba(192,57,43,.3); }
+  .bn-cities { display: flex; flex-wrap: wrap; margin-bottom: 10px; }
+  .bn-city { padding: 6px 15px; margin: 0 7px 7px 0; font-size: 13px; color: #6B6455; background: rgba(255,255,255,.9); border: 1.5px solid #E5D8BC; border-radius: 999px; cursor: pointer; }
+  .bn-city.on { color: #fff; background: #B7950B; border-color: #B7950B; }
+  .bn-empty { padding: 32px 12px; text-align: center; font-size: 13px; color: #9A9384; background: rgba(255,255,255,.7); border-radius: 12px; }
+  .bn-count { font-size: 12px; color: #6B6455; margin: 0 0 10px; }
+  .bn-card { padding: 14px 14px 12px; border-radius: 13px; background: rgba(255,255,255,.95); border: 1.5px solid #E5D8BC; box-shadow: 0 4px 12px rgba(96,78,44,.1); margin-bottom: 12px; }
+  .bn-card.got { border-color: #1E8449; background: linear-gradient(180deg, #fff, #F2F8F2); }
+  .bc-top { display: flex; align-items: center; justify-content: space-between; }
+  .bc-name { font-size: 15.5px; font-weight: 800; color: #2C3E50; flex: 1; }
+  .bc-kind { font-size: 11px; color: #B7950B; border: 1.5px solid #E8D9A8; border-radius: 999px; padding: 2px 9px; margin-left: 8px; flex-shrink: 0; }
+  .bc-meta { margin-top: 5px; font-size: 11.5px; color: #9A9384; }
+  .bc-offer { margin-top: 8px; padding: 9px 10px; border-radius: 8px; background: #FDF6E3; font-size: 13px; color: #2C3E50; line-height: 1.6; }
+  .bc-provider { margin-top: 7px; font-size: 11px; color: #1E8449; line-height: 1.5; }
+  .bc-foot { margin-top: 11px; display: flex; align-items: center; justify-content: space-between; }
+  .bc-need { font-size: 11.5px; color: #9A9384; }
+  .bc-need.ok { color: #1E8449; }
+  .bc-btn { padding: 7px 20px; border-radius: 999px; font-size: 13px; font-weight: 800; color: #fff; background: linear-gradient(180deg, #C0392B, #A93226); box-shadow: 0 3px 9px rgba(192,57,43,.26); cursor: pointer; }
+  .bc-code { padding: 6px 13px; border-radius: 7px; font-size: 13px; font-weight: 800; letter-spacing: 2px; color: #1E8449; background: #EAF4EC; border: 1.5px dashed #1E8449; }
+  .bc-lock { padding: 6px 14px; border-radius: 999px; font-size: 12px; color: #9A9384; background: #F2EDE0; }
+  .bn-disclaimer { margin: 14px 2px 0; font-size: 11px; color: #9A9384; line-height: 1.7; }
+
+  /* 首页权益中心入口 */
+  .benefit-card { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; padding: 14px 15px; margin-bottom: 14px; border-radius: 14px; border: 2px solid #B7950B; background: linear-gradient(135deg, #fff, #FCF6E4); box-shadow: 0 5px 14px rgba(96,78,44,.12); cursor: pointer; }
+  .bc-left { flex: 1; min-width: 0; }
+  .bc-right { text-align: center; flex-shrink: 0; margin-left: 10px; }
+  .bc-title { font-size: 16px; font-weight: 800; color: #B7950B; }
+  .bc-sub { margin-top: 5px; font-size: 12px; color: #6B6455; }
+  .bc-arrow { font-size: 22px; font-weight: 800; color: #B7950B; line-height: 1; text-align: center; }
+  .bc-label { margin-top: 3px; font-size: 10px; color: #8A8375; text-align: center; }
 </style>
 </head>
 <body>
@@ -473,6 +522,10 @@
       <div class="profile-stamps" id="profile-stamps"></div>
       <div class="profile-combo" id="profile-combo">最高连击 ×0</div>
     </div>
+
+    <!-- 文化护照入口（总档案：12 张藏文成长证书 + 印章 + 收藏） -->
+    <!-- 权益中心入口（双轨制：本地生活 / 游客专属） -->
+    <div id="home-benefits"></div>
 
     <!-- 文化护照入口（总档案：12 张藏文成长证书 + 印章 + 收藏） -->
     <div id="home-passport"></div>
@@ -598,6 +651,21 @@
     <button class="pp-home" id="cert-home" style="margin-top:14px; border:1.5px solid var(--red); border-radius:14px; padding:13px 0; width:100%; font-size:15px; font-weight:700; color:var(--red); background:rgba(255,255,255,.92); cursor:pointer;">返回首页</button>
   </section>
 
+  <!-- ============ 藏文权益中心（双轨制） ============ -->
+  <section id="screen-benefits" class="screen">
+    <div class="bn-hero">
+      <div class="bn-title">藏文权益中心</div>
+      <div class="bn-sub">玩方块攒进度，到店解锁藏地体验</div>
+      <div class="bn-note" id="bn-note"></div>
+    </div>
+    <div id="bn-guide"></div>
+    <div class="bn-tabs" id="bn-tabs"></div>
+    <div class="bn-cities" id="bn-cities"></div>
+    <div id="bn-body"></div>
+    <div class="bn-disclaimer" id="bn-disclaimer"></div>
+    <button class="pp-home" id="bn-home" style="margin-top:16px; border:1.5px solid var(--red); border-radius:14px; padding:13px 0; width:100%; font-size:15px; font-weight:700; color:var(--red); background:rgba(255,255,255,.92); cursor:pointer;">返回首页</button>
+  </section>
+
 </div>
 
 <!-- 重复匹配轻提示（非阻塞） -->
@@ -652,6 +720,7 @@ const ELEMENTS = DATA.elements;
 const CARDS = DATA.cards;
 const LEVELS = DATA.levels;
 const STAGES = DATA.stages;
+const Merchants = DATA.merchants;   // 权益中心（双轨制到店权益）
 const CARD_BY_ID = {};
 CARDS.forEach(function (c) { CARD_BY_ID[c.id] = c; });
 
@@ -684,7 +753,12 @@ function getProgress() {
     levelStats: (p && p.levelStats) || {},
     certs: (p && p.certs) || [],
     certSeq: (p && p.certSeq) || 0,
-    holderName: (p && p.holderName) || ''
+    holderName: (p && p.holderName) || '',
+    // 权益中心（双轨制）：模式 / 城市 / 已领凭证 / 核销码流水
+    userMode: (p && p.userMode) || '',
+    city: (p && p.city) || '',
+    benefits: (p && p.benefits) || [],
+    benefitSeq: (p && p.benefitSeq) || 0
   };
 }
 function saveProgress(p) { writeRaw(p); }
@@ -1158,14 +1232,17 @@ const state = {
   attempts: 0, matches: 0, misses: 0,       // 正确率统计（证书质量门槛）
   vibrateCount: 0,                          // 震动次数（情绪引擎，测试断言用）
   speakLog: [],                             // 语音播放记录（tashi_delek / blessing_01）
-  fxCount: 0                                // 通关粒子数
+  fxCount: 0,                               // 通关粒子数
+  // 权益中心（双轨制）可断言状态
+  benefitMode: '', benefitCity: 'lhasa', benefitDone: 0,
+  benefitClaimable: 0, benefitGot: 0, lastBenefitCode: ''
 };
 
 const $ = function (id) { return document.getElementById(id); };
 
 /* ---------------- 屏幕切换 ---------------- */
 function showScreen(name) {
-  ['home', 'game', 'result', 'cert', 'passport'].forEach(function (n) {
+  ['home', 'game', 'result', 'cert', 'passport', 'benefits'].forEach(function (n) {
     $('screen-' + n).classList.toggle('active', n === name);
   });
   window.scrollTo(0, 0);
@@ -1222,6 +1299,18 @@ function renderHome() {
     '</div>' +
     '</div>';
   hp.querySelector('.passport-card').addEventListener('click', showPassport);
+
+  // 权益中心入口（双轨制到店权益）
+  const hb = $('home-benefits');
+  hb.innerHTML =
+    '<div class="benefit-card">' +
+    '<div class="bc-left">' +
+    '<div class="bc-title">藏文权益中心</div>' +
+    '<div class="bc-sub">凭通关进度领取到店权益 · 本地生活 / 游客专属</div>' +
+    '</div>' +
+    '<div class="bc-right"><div class="bc-arrow">&rsaquo;</div><div class="bc-label">去逛逛</div></div>' +
+    '</div>';
+  hb.querySelector('.benefit-card').addEventListener('click', showBenefits);
 
   const grid = $('level-grid');
   grid.innerHTML = '';
@@ -2009,6 +2098,175 @@ function generateCertImage(cert) {
   logo.src = IMAGES.logo80;
 }
 
+/* ---------------- 藏文权益中心（双轨制，对应 pages/benefits） ---------------- */
+const BENEFIT_CITIES = [
+  { id: 'lhasa', name: '拉萨' },
+  { id: 'nyingchi', name: '林芝' },
+  { id: 'shigatse', name: '日喀则' },
+  { id: 'shannan', name: '山南' }
+];
+const BENEFIT_MODES = [
+  { id: 'local', name: '本地生活', desc: '日常刚需 · 高频实惠' },
+  { id: 'tourist', name: '游客专属', desc: '体验打卡 · 纪念感' }
+];
+const BENEFIT_KINDS = { gift: '赠礼', combo: '专属组合', priority: '优先权', stamp: '联名印章' };
+const BENEFIT_PROVIDER = '由商家自主提供并兑现 · 藏字方块不参与交易、不收取任何款项';
+const BENEFIT_PAGE_NOTE = '本页只发放「到店权益凭证」，不涉及任何支付与资金结算';
+const BENEFIT_DISCLAIMER = BENEFIT_PAGE_NOTE +
+  '。权益由商家自主提供并在店内兑现，平台不承诺金额、不发代金券或预付卡；凭证绑定本人微信，请到店出示核销码。';
+const BENEFIT_DEFAULT_CITY = 'lhasa';
+
+function bnNormalizeMode(v) { return (v === 'local' || v === 'tourist') ? v : ''; }
+function bnCityName(id) {
+  const c = BENEFIT_CITIES.filter(function (x) { return x.id === id; })[0];
+  return c ? c.name : '';
+}
+function bnNormalizeCity(v) { return bnCityName(v) ? v : BENEFIT_DEFAULT_CITY; }
+function bnFind(id) { return Merchants.filter(function (m) { return m.id === id; })[0] || null; }
+function bnUnlocked(done, need) { return done >= need; }
+// 模式未选定时返回空 —— 「一键切换」才有意义，避免默认塞一堆不相关的券
+function bnList(mode, city) {
+  const m = bnNormalizeMode(mode);
+  if (!m) return [];
+  return Merchants.filter(function (x) {
+    return (x.track === m || x.track === 'both') && x.city === city;
+  }).sort(function (a, b) { return a.need - b.need || (a.id < b.id ? -1 : 1); });
+}
+// 核销码可复算（测试要能断言），不用随机数
+function bnMakeCode(seq) {
+  let s = String(((seq || 1) % 10000 + 10000) % 10000);
+  while (s.length < 4) s = '0' + s;
+  return 'ZW' + s;
+}
+function hasBenefit(mid) {
+  return getProgress().benefits.some(function (r) { return r.mid === mid; });
+}
+function showTip(text) {
+  $('toast-glyph').textContent = '·';
+  $('toast-text').textContent = text;
+  $('toast').classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(hideToast, 1700);
+}
+
+function setBenefitMode(mode) {
+  mode = bnNormalizeMode(mode);
+  if (!mode) return;
+  const p = getProgress();
+  p.userMode = mode;
+  saveProgress(p);
+  renderBenefits();
+}
+function setBenefitCity(id) {
+  const p = getProgress();
+  p.city = bnNormalizeCity(id);
+  saveProgress(p);
+  renderBenefits();
+}
+function claimBenefit(mid) {
+  const m = bnFind(mid);
+  if (!m) return false;
+  const p = getProgress();
+  const done = p.completedLevels.length;
+  if (hasBenefit(mid)) { showTip('已领取，请到店出示核销码'); return false; }
+  if (!bnUnlocked(done, m.need)) { showTip('还差 ' + (m.need - done) + ' 关，通关后即可领取'); return false; }
+  p.benefitSeq = (p.benefitSeq || 0) + 1;
+  p.benefits = p.benefits || [];
+  const rec = { mid: m.id, name: m.name, city: m.city, code: bnMakeCode(p.benefitSeq), at: Date.now(), status: 'claimed' };
+  p.benefits.push(rec);
+  saveProgress(p);
+  state.lastBenefitCode = rec.code;
+  renderBenefits();
+  showTip('已领取 · 到店出示 ' + rec.code);
+  return true;
+}
+
+function showBenefits() { renderBenefits(); showScreen('benefits'); }
+
+function renderBenefits() {
+  const p = getProgress();
+  const mode = bnNormalizeMode(p.userMode);
+  const city = bnNormalizeCity(p.city);
+  const done = p.completedLevels.length;
+  const claimedMap = {};
+  p.benefits.forEach(function (r) { claimedMap[r.mid] = r; });
+
+  state.benefitMode = mode;
+  state.benefitCity = city;
+  state.benefitDone = done;
+
+  $('bn-note').textContent = BENEFIT_PAGE_NOTE;
+  $('bn-disclaimer').textContent = BENEFIT_DISCLAIMER;
+
+  // 首次进入：内嵌模式引导（替代弹窗，不打断）
+  const guide = $('bn-guide');
+  if (!mode) {
+    guide.innerHTML =
+      '<div class="bn-guide">' +
+      '<div class="bn-guide-title">你是从哪里来？</div>' +
+      '<div class="bn-guide-sub">选一个模式，只看适合你的权益；随时可在顶部切换</div>' +
+      '<div class="bn-guide-btns">' +
+      '<div class="bn-guide-btn local" data-mode="local"><div class="gb-name">本地生活</div><div class="gb-desc">日常刚需 · 高频实惠</div></div>' +
+      '<div class="bn-guide-btn tourist" data-mode="tourist"><div class="gb-name">游客专属</div><div class="gb-desc">体验打卡 · 纪念感</div></div>' +
+      '</div></div>';
+    Array.prototype.forEach.call(guide.querySelectorAll('.bn-guide-btn'), function (b) {
+      b.addEventListener('click', function () { setBenefitMode(b.getAttribute('data-mode')); });
+    });
+  } else {
+    guide.innerHTML = '';
+  }
+
+  // 双轨 Tab
+  $('bn-tabs').innerHTML = BENEFIT_MODES.map(function (m) {
+    return '<div class="bn-tab' + (mode === m.id ? ' on' : '') + '" data-mode="' + m.id + '">' + m.name + '</div>';
+  }).join('');
+  Array.prototype.forEach.call($('bn-tabs').querySelectorAll('.bn-tab'), function (t) {
+    t.addEventListener('click', function () { setBenefitMode(t.getAttribute('data-mode')); });
+  });
+
+  // 城市（用户主动选择，不用定位）
+  $('bn-cities').innerHTML = BENEFIT_CITIES.map(function (c) {
+    return '<div class="bn-city' + (city === c.id ? ' on' : '') + '" data-city="' + c.id + '">' + c.name + '</div>';
+  }).join('');
+  Array.prototype.forEach.call($('bn-cities').querySelectorAll('.bn-city'), function (c) {
+    c.addEventListener('click', function () { setBenefitCity(c.getAttribute('data-city')); });
+  });
+
+  // 列表
+  const body = $('bn-body');
+  if (!mode) {
+    body.innerHTML = '<div class="bn-empty">请先在上方选择「本地生活」或「游客专属」</div>';
+    return;
+  }
+  const list = bnList(mode, city);
+  let claimable = 0, got = 0;
+  const cards = list.map(function (m) {
+    const rec = claimedMap[m.id];
+    const unlocked = bnUnlocked(done, m.need);
+    if (rec) got++; else if (unlocked) claimable++;
+    return '<div class="bn-card' + (rec ? ' got' : '') + '" data-mid="' + m.id + '">' +
+      '<div class="bc-top"><div class="bc-name">' + m.name + '</div>' +
+      '<div class="bc-kind">' + (BENEFIT_KINDS[m.kind] || '到店权益') + '</div></div>' +
+      '<div class="bc-meta">' + bnCityName(m.city) + ' · ' + m.category + '</div>' +
+      '<div class="bc-offer">' + m.offer + '</div>' +
+      '<div class="bc-provider">' + BENEFIT_PROVIDER + '</div>' +
+      '<div class="bc-foot"><div class="bc-need' + (unlocked ? ' ok' : '') + '">通关 ' + m.need + ' 关可领</div>' +
+      (rec ? '<div class="bc-code">' + rec.code + '</div>'
+        : (unlocked ? '<div class="bc-btn" data-mid="' + m.id + '">领取凭证</div>'
+          : '<div class="bc-lock">还差 ' + (m.need - done) + ' 关</div>')) +
+      '</div></div>';
+  }).join('');
+  state.benefitClaimable = claimable;
+  state.benefitGot = got;
+
+  body.innerHTML =
+    '<div class="bn-count">共 ' + list.length + ' 家 · 通关 ' + done + ' 关 · 可领 ' + claimable +
+    ' 家 · 已领 ' + got + '</div>' + '<div class="bn-list">' + cards + '</div>';
+  Array.prototype.forEach.call(body.querySelectorAll('.bc-btn'), function (b) {
+    b.addEventListener('click', function () { claimBenefit(b.getAttribute('data-mid')); });
+  });
+}
+
 /* ---------------- 事件绑定 ---------------- */
 $('game-back').addEventListener('click', function () {
   if (state.matchedCount > 0 && state.matchedCount < state.tiles.length / 2) {
@@ -2023,6 +2281,7 @@ $('reset-link').addEventListener('click', function () {
 });
 $('pp-home').addEventListener('click', renderHome);
 $('cert-home').addEventListener('click', renderHome);
+$('bn-home').addEventListener('click', renderHome);
 $('card-x').addEventListener('click', hideCard);
 // 点击卡片外任意处收起（不阻止牌面点击，游戏不中断）
 document.addEventListener('click', function (e) {

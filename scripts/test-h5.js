@@ -569,6 +569,88 @@ function mockCtx() {
     JSON.stringify(savedCert && savedCert.levelStats && savedCert.levelStats['10']));
   check('holderName 已持久化', savedCert && savedCert.holderName === '小藏', savedCert && savedCert.holderName);
 
+  /* ---------- 20. 藏文权益中心（双轨制） ---------- */
+  section('20. 藏文权益中心（双轨制）');
+  ev('renderHome()');
+  await sleep(40);
+  check('首页有权益中心入口', !!$('#home-benefits .benefit-card'));
+
+  $('#home-benefits .benefit-card').click();
+  await sleep(60);
+  check('可从首页进入权益中心', activeScreen() === 'screen-benefits', activeScreen());
+  check('首次进入显示内嵌模式引导（非弹窗）',
+    !!$('#bn-guide .bn-guide') && doc.body.textContent.indexOf('你是从哪里来') > -1);
+  check('未选模式时不展示券列表', !!$('#bn-body .bn-empty'));
+  check('双轨 Tab 已渲染两个入口', $$('#bn-tabs .bn-tab').length === 2,
+    '实际 ' + $$('#bn-tabs .bn-tab').length);
+  check('未选模式时两个 Tab 均不高亮', $$('#bn-tabs .bn-tab.on').length === 0);
+  check('页头声明「不涉及任何支付与资金结算」',
+    doc.body.textContent.indexOf('不涉及任何支付与资金结算') > -1);
+  check('未选模式时列表为空（一键切换才有意义）',
+    ev('bnList("", "lhasa").length') === 0);
+
+  // 一键切到「本地生活」
+  ev('setBenefitMode("local")');
+  await sleep(40);
+  check('切换为本地生活模式', ev('state.benefitMode') === 'local', ev('state.benefitMode'));
+  check('选定后引导卡自动收起', !$('#bn-guide .bn-guide'));
+  check('本地生活 Tab 高亮',
+    $$('#bn-tabs .bn-tab.on').length === 1 && $('#bn-tabs .bn-tab.on').textContent === '本地生活');
+  let mids = $$('#bn-body .bn-card').map(function (c) { return c.getAttribute('data-mid'); });
+  check('本地生活只出本地 / 通用商家',
+    mids.length > 0 && mids.every(function (id) { return id.indexOf('m_tour_') === -1; }), mids.join(','));
+  check('通用轨（both）两端都可见', mids.indexOf('m_both_02') > -1);
+  check('每张券卡都写明权益由商家提供',
+    $$('#bn-body .bc-provider').length === mids.length &&
+    $('#bn-body .bc-provider').textContent.indexOf('不参与交易') > -1);
+  check('券卡不含金额字样', !/[¥]|元/.test($('#bn-body').textContent));
+
+  // 一键切到「游客专属」
+  ev('setBenefitMode("tourist")');
+  await sleep(40);
+  mids = $$('#bn-body .bn-card').map(function (c) { return c.getAttribute('data-mid'); });
+  check('切换为游客专属模式', ev('state.benefitMode') === 'tourist');
+  check('游客专属不出本地生活商家',
+    mids.every(function (id) { return id.indexOf('m_local_') === -1; }), mids.join(','));
+  check('游客专属含游客商家', mids.indexOf('m_tour_01') > -1);
+
+  // 城市：用户主动选择（不申请任何位置权限）
+  check('城市选择器提供 4 个地市', $$('#bn-cities .bn-city').length === 4);
+  check('默认城市为拉萨', ev('state.benefitCity') === 'lhasa');
+  $$('#bn-cities .bn-city')[1].click();
+  await sleep(40);
+  mids = $$('#bn-body .bn-card').map(function (c) { return c.getAttribute('data-mid'); });
+  check('切到林芝后出林芝商家', mids.indexOf('m_tour_04') > -1, mids.join(','));
+  check('切城市后拉萨商家被过滤', mids.indexOf('m_tour_01') === -1, mids.join(','));
+  ev('setBenefitCity("lhasa")');
+  await sleep(40);
+
+  // 领取凭证：本地生成核销码，平台不经手资金
+  check('未领取时凭证记录为空', ev('getProgress().benefits.length') === 0);
+  ev('claimBenefit("m_tour_01")');
+  await sleep(40);
+  const benRec = ev('getProgress().benefits')[0];
+  check('领取后写入凭证记录', !!benRec && benRec.mid === 'm_tour_01', JSON.stringify(benRec));
+  check('核销码为 ZW + 4 位流水', !!benRec && benRec.code === 'ZW0001', benRec && benRec.code);
+  check('券卡转为已领取态并显示核销码',
+    !!$('#bn-body .bn-card.got') && $('#bn-body').textContent.indexOf('ZW0001') > -1);
+  check('重复领取不产生第二条记录',
+    ev('claimBenefit("m_tour_01")') === false && ev('getProgress().benefits.length') === 1);
+  const rawB = JSON.parse(win.localStorage.getItem('zangzi_progress') || 'null');
+  check('凭证与流水已持久化',
+    !!(rawB && rawB.benefits && rawB.benefits.length === 1 && rawB.benefitSeq === 1));
+  check('所选模式已持久化（下次进入不再问）', rawB && rawB.userMode === 'tourist', rawB && rawB.userMode);
+
+  // 反向：通关不足时只能「还差 N 关」，领不到
+  ev('(function(){var p=getProgress(); p.completedLevels=[]; p.benefits=[]; p.benefitSeq=0; saveProgress(p); renderBenefits();})()');
+  await sleep(40);
+  check('进度为 0 时券卡显示「还差 N 关」', $$('#bn-body .bc-lock').length > 0,
+    '实际 ' + $$('#bn-body .bc-lock').length);
+  check('进度不足的券不可领取', ev('claimBenefit("m_tour_03")') === false);
+  check('通关门槛判定正确（bnUnlocked）',
+    ev('bnUnlocked(0, 3)') === false && ev('bnUnlocked(3, 3)') === true && ev('bnUnlocked(2, 3)') === false);
+  check('已领凭证不因重置进度而重复发码', ev('bnMakeCode(2)') === 'ZW0002');
+
   /* ---------- 汇总 ---------- */
   check('全程无脚本运行时错误', errors.length === 0, errors[0]);
 

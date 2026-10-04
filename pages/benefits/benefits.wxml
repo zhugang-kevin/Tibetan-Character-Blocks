@@ -1,0 +1,80 @@
+<view class="page">
+
+  <!-- 藏文化背景层（与其余页面统一） -->
+  <view class="scenery" aria-hidden="true">
+    <view class="sc-pattern"></view>
+    <image class="sc-ground" src="/images/bg-ground.png" mode="widthFix" />
+    <image class="sc-sky" src="/images/bg-sky.png" mode="widthFix" />
+  </view>
+
+  <view class="content">
+
+    <view class="bn-hero">
+      <view class="bn-title">藏文权益中心</view>
+      <view class="bn-sub">玩方块攒进度，到店解锁藏地体验</view>
+      <view class="bn-note">{{pageNote}}</view>
+    </view>
+
+    <!-- 首次进入：内嵌模式引导（替代弹窗，不打断） -->
+    <view wx:if="{{!mode}}" class="bn-guide">
+      <view class="bn-guide-title">你是从哪里来？</view>
+      <view class="bn-guide-sub">选一个模式，只看适合你的权益；随时可在顶部切换</view>
+      <view class="bn-guide-btns">
+        <view class="bn-guide-btn local" data-mode="local" bindtap="onSwitchMode">
+          <view class="gb-name">本地生活</view>
+          <view class="gb-desc">日常刚需 · 高频实惠</view>
+        </view>
+        <view class="bn-guide-btn tourist" data-mode="tourist" bindtap="onSwitchMode">
+          <view class="gb-name">游客专属</view>
+          <view class="gb-desc">体验打卡 · 纪念感</view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 双轨 Tab -->
+    <view class="bn-tabs">
+      <view class="bn-tab {{mode === 'local' ? 'on' : ''}}" data-mode="local" bindtap="onSwitchMode">本地生活</view>
+      <view class="bn-tab {{mode === 'tourist' ? 'on' : ''}}" data-mode="tourist" bindtap="onSwitchMode">游客专属</view>
+    </view>
+
+    <!-- 城市：用户主动选择（不申请定位权限） -->
+    <view class="bn-cities">
+      <view
+        wx:for="{{cities}}"
+        wx:key="id"
+        class="bn-city {{item.id === city ? 'on' : ''}}"
+        data-city="{{item.id}}"
+        bindtap="onPickCity"
+      >{{item.name}}</view>
+    </view>
+
+    <view wx:if="{{!mode}}" class="bn-empty">请先在上方选择「本地生活」或「游客专属」</view>
+
+    <block wx:else>
+      <view class="bn-count">共 {{total}} 家 · 通关 {{doneCount}} 关 · 可领 {{claimable}} 家 · 已领 {{claimedCount}}</view>
+
+      <view class="bn-list">
+        <view wx:for="{{list}}" wx:key="id" class="bn-card {{item.claimed ? 'got' : ''}}">
+          <view class="bc-top">
+            <view class="bc-name">{{item.name}}</view>
+            <view class="bc-kind">{{item.kindLabel}}</view>
+          </view>
+          <view class="bc-meta">{{item.cityName}} · {{item.category}}</view>
+          <view class="bc-offer">{{item.offer}}</view>
+          <view class="bc-provider">{{item.providerNote}}</view>
+          <view class="bc-foot">
+            <view class="bc-need {{item.unlocked ? 'ok' : ''}}">通关 {{item.need}} 关可领</view>
+            <view wx:if="{{item.claimed}}" class="bc-code">{{item.code}}</view>
+            <view wx:if="{{!item.claimed && item.unlocked}}" class="bc-btn" data-mid="{{item.id}}" bindtap="onClaim">领取凭证</view>
+            <view wx:if="{{!item.unlocked}}" class="bc-lock">还差 {{item.shortBy}} 关</view>
+          </view>
+        </view>
+      </view>
+    </block>
+
+    <view class="bn-disclaimer">{{disclaimer}}</view>
+
+    <button class="home-btn" bindtap="goHome">返回首页</button>
+
+  </view>
+</view>

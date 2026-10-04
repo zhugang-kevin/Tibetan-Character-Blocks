@@ -35,7 +35,8 @@ const DATA = {
   elements: require(path.join(ROOT, 'data', 'elements')),
   cards: require(path.join(ROOT, 'data', 'cards')),
   levels: require(path.join(ROOT, 'data', 'levels')),
-  stages: require(path.join(ROOT, 'data', 'stages'))
+  stages: require(path.join(ROOT, 'data', 'stages')),
+  merchants: require(path.join(ROOT, 'data', 'merchants'))
 };
 
 // ---------- 2. 注入品牌与背景资产 ----------
@@ -107,6 +108,33 @@ stages.forEach(function (s, i) {
 });
 if (stageBad) process.exit(1);
 
+// ---------- 6. 权益中心一致性抽查（双轨标签合法 + 城市合法 + 无金额字段） ----------
+const CITY_IDS = require(path.join(ROOT, 'utils', 'benefits')).CITIES.map(function (c) { return c.id; });
+const TRACKS = ['local', 'tourist', 'both'];
+const KINDS = ['gift', 'combo', 'priority', 'stamp'];
+let merchantBad = 0;
+const seenMid = {};
+DATA.merchants.forEach(function (m) {
+  if (seenMid[m.id]) { console.error('✗ 商家 id 重复：' + m.id); merchantBad++; }
+  seenMid[m.id] = true;
+  if (TRACKS.indexOf(m.track) === -1) { console.error('✗ ' + m.id + ' 轨标签非法：' + m.track); merchantBad++; }
+  if (CITY_IDS.indexOf(m.city) === -1) { console.error('✗ ' + m.id + ' 城市非法：' + m.city); merchantBad++; }
+  if (KINDS.indexOf(m.kind) === -1) { console.error('✗ ' + m.id + ' 权益类型非法：' + m.kind); merchantBad++; }
+  if (!m.offer || m.need < 0) { console.error('✗ ' + m.id + ' 缺少 offer 或 need 非法'); merchantBad++; }
+  // 券不承载金额：不得出现平台侧价格字段
+  ['price', 'amount', 'discount', 'fee', 'rate', 'settle'].forEach(function (k) {
+    if (Object.prototype.hasOwnProperty.call(m, k)) {
+      console.error('✗ ' + m.id + ' 含金额/结算字段 ' + k + '（券不承载金额，见 docs/privilege-system-v1.md）');
+      merchantBad++;
+    }
+  });
+});
+if (!DATA.merchants.some(function (m) { return m.need === 0; })) {
+  console.error('✗ 至少要有 1 条 need=0 的权益，新用户才有的可领');
+  merchantBad++;
+}
+if (merchantBad) process.exit(1);
+
 fs.mkdirSync(path.dirname(OUT), { recursive: true });
 fs.writeFileSync(OUT, html, 'utf8');
 
@@ -118,4 +146,8 @@ console.log('  阶梯：' + stages.length + ' 个阶段（已开放 ' +
   stages.filter(function (s) { return s.open; }).length + ' 个，每阶段 10 关一张证书）');
 console.log('  资产：4 个 Logo + 3 个背景（经幡/布达拉宫/纹样，已内联 base64）');
 console.log('  牌数一致性：10 关全部通过');
+console.log('  权益中心：' + DATA.merchants.length + ' 家商家（本地生活 ' +
+  DATA.merchants.filter(function (m) { return m.track === 'local'; }).length + ' / 游客专属 ' +
+  DATA.merchants.filter(function (m) { return m.track === 'tourist'; }).length + ' / 通用 ' +
+  DATA.merchants.filter(function (m) { return m.track === 'both'; }).length + '）');
 console.log('\n  双击 preview/play.html 即可在浏览器试玩。');

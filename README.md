@@ -16,6 +16,7 @@
 - **Canvas 藏文字体守卫**：`wx.loadFontFace` 未生效时祝福卡回退到预渲染藏文图，不出现"豆腐块"
 - **藏文成长阶梯与证书**：每 10 关一个阶段，通关颁发证书；等级分金 / 银 / 普通（按正确率门槛），编号 `ZWFK-YYYY-NNNN`，可保存分享
 - **文化护照**（总档案）：12 张证书位 + 文化收藏册 + 地区印章 + 现实足迹 + 个人文化图谱
+- **藏文权益中心（双轨制）**：本地生活 / 游客专属一键切换，按通关进度领取**到店权益凭证**；城市由用户主动选择（不申请位置权限），发凭证不承载金额、平台不参与交易
 - 文化护照印记（首通第 1 关得「拉萨」印章）
 - Canvas 2D 生成可分享的扎西德勒祝福卡 / 藏文成长证书
 - 藏文化背景（平铺菱格纹 / 经幡 / 雪山布达拉宫）
@@ -26,13 +27,13 @@
 ## 自检
 
 ```bash
-node scripts/validate.js         # 小程序静态自检：15 大类 210 项
+node scripts/validate.js         # 小程序静态自检：16 大类 237 项
 node scripts/test-tibetan.js     # 藏文排版规则：1392 项断言（无需依赖）
 ```
 
 ```bash
 # 浏览器体验版端到端测试（需 jsdom）
-NODE_PATH="<node_modules 路径>" node scripts/test-h5.js   # 164 项断言
+NODE_PATH="<node_modules 路径>" node scripts/test-h5.js   # 197 项断言
 ```
 
 ## 两种本地体验方式
@@ -61,9 +62,9 @@ node scripts/build-h5.js        # 重新生成（改了 data/ 或 images/ 之后
 
 ```
 ├── app.js / app.json / app.wxss   # 全局配置与藏文字体加载
-├── data/                          # 元素库、文化卡（12）、关卡（10）、成长阶梯（12 阶段）
+├── data/                          # 元素库、文化卡（12）、关卡（10）、成长阶梯（12 阶段）、商家（14）
 ├── pages/index|game|result/       # 首页 / 游戏页 / 结算页
-├── pages/cert|passport/           # 藏文成长证书页 / 文化护照页
+├── pages/cert|passport|benefits/  # 藏文成长证书页 / 文化护照页 / 权益中心（双轨制）
 ├── utils/                         # 音效、存储、证书、图标绘制、藏文断行、埋点
 ├── audio/ images/                 # 音效与品牌 Logo / 背景资产
 ├── preview/                       # 浏览器体验版（template + 生成物）
@@ -80,6 +81,9 @@ node scripts/build-h5.js        # 重新生成（改了 data/ 或 images/ 之后
 | [`docs/tibetan-typography.md`](docs/tibetan-typography.md) | 藏文排版规范（tsheg / shad 断行规则） |
 | [`docs/business-model-v2.md`](docs/business-model-v2.md) | **商业化方案 v2**（无广告 · 商家核销 · 公益；含政策核验与合规资金流） |
 | [`docs/merchant-system-review.md`](docs/merchant-system-review.md) | **商家合作与核销方案评审**（技术选型纠正 + 合规红线 + 修正后的核销方案） |
+| [`docs/merchant-system-v2.md`](docs/merchant-system-v2.md) | **商家与核销系统 v2**（把评审的问题逐条变成可落地的替代设计） |
+| [`docs/monetization-v3.md`](docs/monetization-v3.md) | **商业化方案 v3**（虚拟支付通道更正 + 五条变现引擎 + 资金流架构） |
+| [`docs/privilege-system-v1.md`](docs/privilege-system-v1.md) | **双轨制权益体系**（本地生活 / 游客专属 + 非价格让利 + 三块钱来源 + 已落地代码） |
 | [`docs/release-and-monetization.md`](docs/release-and-monetization.md) | 上线开通指南（主体 / 认证 / 备案 / 商户号材料与流程） |
 | [`docs/plan-4.1-review.md`](docs/plan-4.1-review.md) | 4.1 方案专家评审与执行路线 |
 

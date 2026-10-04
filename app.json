@@ -4,7 +4,8 @@
     "pages/game/game",
     "pages/result/result",
     "pages/cert/cert",
-    "pages/passport/passport"
+    "pages/passport/passport",
+    "pages/benefits/benefits"
   ],
   "window": {
     "navigationBarTitleText": "藏字方块",

@@ -20,7 +20,12 @@ function getProgress() {
     levelStats: (p && p.levelStats) || {},
     certs: (p && p.certs) || [],
     certSeq: (p && p.certSeq) || 0,
-    holderName: (p && p.holderName) || ''
+    holderName: (p && p.holderName) || '',
+    // 权益中心（双轨制）：模式 / 城市 / 已领凭证 / 核销码流水
+    userMode: (p && p.userMode) || '',
+    city: (p && p.city) || '',
+    benefits: (p && p.benefits) || [],
+    benefitSeq: (p && p.benefitSeq) || 0
   };
 }
 
@@ -157,6 +162,62 @@ function getHolderName() {
   return getProgress().holderName || '';
 }
 
+// ---------- 权益中心：模式 / 城市 / 凭证 ----------
+// 模式只有 'local' / 'tourist' 两个合法值（见 utils/benefits.js）
+function setUserMode(mode) {
+  var p = getProgress();
+  p.userMode = (mode === 'local' || mode === 'tourist') ? mode : '';
+  save(p);
+  return p.userMode;
+}
+
+function getUserMode() {
+  return getProgress().userMode || '';
+}
+
+// 城市由用户主动选择（不申请定位权限）
+function setCity(id) {
+  var p = getProgress();
+  p.city = id || '';
+  save(p);
+  return p.city;
+}
+
+function getCity() {
+  return getProgress().city || '';
+}
+
+// 记录一张已领取的到店权益凭证（同一商家不重复发码）
+function addBenefit(record) {
+  var p = getProgress();
+  var found = false;
+  for (var i = 0; i < p.benefits.length; i++) {
+    if (p.benefits[i].mid === record.mid) { found = true; break; }
+  }
+  if (!found) p.benefits.push(record);
+  save(p);
+  return record;
+}
+
+function getBenefits() {
+  return getProgress().benefits;
+}
+
+function hasBenefit(mid) {
+  var list = getProgress().benefits;
+  for (var i = 0; i < list.length; i++) {
+    if (list[i].mid === mid) return true;
+  }
+  return false;
+}
+
+function nextBenefitSeq() {
+  var p = getProgress();
+  p.benefitSeq = (p.benefitSeq || 0) + 1;
+  save(p);
+  return p.benefitSeq;
+}
+
 module.exports = {
   MAX_LEVEL: MAX_LEVEL,
   getProgress: getProgress,
@@ -175,5 +236,13 @@ module.exports = {
   nextCertSeq: nextCertSeq,
   getCertSeq: getCertSeq,
   setHolderName: setHolderName,
-  getHolderName: getHolderName
+  getHolderName: getHolderName,
+  setUserMode: setUserMode,
+  getUserMode: getUserMode,
+  setCity: setCity,
+  getCity: getCity,
+  addBenefit: addBenefit,
+  getBenefits: getBenefits,
+  hasBenefit: hasBenefit,
+  nextBenefitSeq: nextBenefitSeq
 };

@@ -1,0 +1,295 @@
+/* pages/passport/passport.wxss — 我的西藏文化护照 */
+.page {
+  min-height: 100vh;
+  padding: 40rpx 32rpx 80rpx;
+  box-sizing: border-box;
+  position: relative;
+  background: linear-gradient(180deg, #FDF6E3 0%, #FAF0DA 52%, #F2E4C6 100%);
+  color: #2C3E50;
+}
+
+/* ============ 藏文化背景层（与首页/游戏页/结算页统一） ============ */
+.scenery {
+  position: fixed;
+  left: 0; right: 0; top: 0; bottom: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.sc-pattern {
+  position: absolute;
+  left: 0; top: 0; right: 0; bottom: 0;
+  background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEgAAABICAYAAABV7bNHAAAFtElEQVR4nOWcS2wbRRjHvxmnIbvrOBDIDdEDqDQPXioiBCQ4cIAqioQIG4g4cKqgLaEVouEhpCEqB3qIIPFuJM48RBOgUYjXDhFNpUoVBzjRRqpoKhA3FKnqI0pCvPOhWXvdrRs7fqz3xV9K1h7788z8PDPffJ7ZAdhGjAEVV2OiPZHS5A/nNanXmR5yEfEvM55oT2vyR5lJ+RHxfFqF2HZvbipOEBDGxoAvaRDfhM0DJuJFZXX9N0QghACH8Atzdbl2xdCVOU75YFpTsvvfWrugqhCbmQGzpKXdQmZPQGtKl0czU9JgMfmoSEAS1x8/V3oMXTkuruK5gLQjnLQmH0slc3Dy6V7BIXbBvZANI60p3UZSOi6uzvRAwUFHPkGAVBhvAwEHc/nMfQGyMRHvcKb5CakwcFtwdHnUDzis4DEhMa8pb6d16eOSTd0jSBn9JiRifNmeoFc3DwDlf75waP37vBfDXKtvrGyPKb6gZlk+BBSXIRtbAWoOE0K/rcizuCg7LzFgN+3iLxNKTkFalz/I+NhyZou6dsGzlBs0Gyg7r8Wk8pBozbCQnwTm5SscxoBOV+pZPChfKtm8x6s8C6rEKVTsfhuogpPwMnxgVXjMQEHyQqyG6UQQIHkiVsdcK/KQmAsT0chCYi7O0iMHidUGp2ywGhlIrAY4lQaroYfEaoFTZbAaWkisBji1Bquhg8TqgCNsjKT8nqFLA8ZEvKvSCocGEqsTTj3BauAhMRfh1BqsBhYScxlOPcFq4CCxBsGxFWpIrMFwQg2JeQQnlJCYx3BCBYn5BCcUkJjPcAINiXkPJzxjEvMQDoObv42Lx87oPpCQ/OhW0yrElp7d3VJJ+XyF5DEcYoF5qufxpd7Og6d7u9453df9vPHEA4m8XdUtqdxKTbU2pEQait1lQDcOIuCl/pEdl6RrsbG60hgAP9PX+RgnMESBXieIHAETJpLzz/2y/I3oaqTMMri9XCwqygGGAeFk/8ja7/kNX1ivDd0O2OyJu1uhafN1sVZeIZxqbSy7MQD8dd++XSaHJymH6wCQRWsHGL0CBO4/+3TXfQKOc3wqlqioyEus4yMhXwPBgXk93ikqWqpVVGOz3QegSTckRH4PNWN/iITu7lwLKVXIGm0su0THVUqASEgIB0RiDc5UFAxjWU5lqEI0e+MyRUDAbIdbNsWALIKDx9b+oUCnecx8Tfw2MzQEZpmBrBabnB0A3ZO5tAmUXCCACQsSISYgV0wkqx338st2S6tkhwhpko8AxYv9hzfOiu4i0uu1ua0FiTfYzc/coidjMf6K6KuiWZaqcC02ll2+4s0ke44juQCILYCgAJJVNPlPPTPL/+bJ4E4VvUOR3+QcV/YfXv9BDFrizy2bwLjRn/s6d5/p7e6cVlX7/STQs3vVW0i3FBCDDscPSAhAynmswMEJ1NQ+qHCCAinQcPyGFAo4fkEKFRyvIYUSjleQQg2n0ZAiAadRkCIFpxGQIgfHLUhpTfokMxnfOz0OknVjzVSE4LgBSdwbIe6PNTT5/bQuvRQ5OG6487nJ5r0LWssz+WQSOTj1QKp023/o4dQLqdyKRGTgBCVYDYVUn4LVUEn1OFgNpVSPglXXFYTbr1WXgtUGiAQSEgsAnMKiwfxU211BgsSCACfP4tw4SCCOiBHTfGfBvZDqUrDqtuwvaPFTaDOSylGyoMmPcoIvZrfodwNH187bOx+8KIzq2GUBwIcJj311bevGX60t8ggnuNLv50EHcfkNCuRv64Xi4xj8aEmLVQarbuuWrq3Lo3YZCgd4+Lk7nVUZrDYqf7tr2+cmFcIe+8H/5h51hyp2Cr5v4Yedg1WP4dwuG0bxsVXMw0L7Acd5HNmO456zJaU0aSyVnwL41QUaJKsupz5ru9NIyu9W7RTsgdvQlYcFpPRU64OODwi7rMFf7KlM6coRI6m8KhJLwfkP3cuvRz2rHxsAAAAASUVORK5CYII=');
+  background-repeat: repeat;
+  background-size: 60rpx 60rpx;
+  opacity: 0.10;
+}
+.sc-ground {
+  position: absolute;
+  left: 0; bottom: 0; width: 100%;
+  opacity: 0.88;
+}
+.sc-sky {
+  position: absolute;
+  left: 0; top: 0; width: 100%;
+  opacity: 0.95;
+}
+
+.content {
+  position: relative;
+  z-index: 1;
+}
+
+/* ============ 页头 ============ */
+.bn-hero {
+  text-align: center;
+  padding: 34rpx 26rpx 30rpx;
+  border-radius: 26rpx;
+  border: 4rpx solid #B7950B;
+  background: linear-gradient(180deg, #FFFFFF 0%, #FDF6E3 100%);
+  box-shadow: 0 12rpx 34rpx rgba(96, 78, 44, 0.16);
+  margin-bottom: 28rpx;
+}
+.bn-title {
+  font-size: 44rpx;
+  font-weight: 700;
+  letter-spacing: 4rpx;
+  color: #C0392B;
+}
+.bn-sub {
+  margin-top: 12rpx;
+  font-size: 26rpx;
+  color: #6B6455;
+}
+.bn-note {
+  margin-top: 18rpx;
+  font-size: 22rpx;
+  color: #B7950B;
+  line-height: 1.6;
+}
+
+/* ============ 首次进入：内嵌模式引导（不弹窗、不打断） ============ */
+.bn-guide {
+  padding: 30rpx 26rpx 26rpx;
+  border-radius: 24rpx;
+  background: rgba(255, 255, 255, 0.94);
+  border: 2rpx dashed #C0392B;
+  margin-bottom: 26rpx;
+}
+.bn-guide-title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #2C3E50;
+}
+.bn-guide-sub {
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: #6B6455;
+}
+.bn-guide-btns {
+  display: flex;
+  margin-top: 22rpx;
+}
+.bn-guide-btn {
+  flex: 1;
+  padding: 22rpx 16rpx;
+  border-radius: 18rpx;
+  text-align: center;
+}
+.bn-guide-btn.local {
+  background: linear-gradient(180deg, #FDF1E8 0%, #F7E2D2 100%);
+  border: 2rpx solid #C0392B;
+  margin-right: 16rpx;
+}
+.bn-guide-btn.tourist {
+  background: linear-gradient(180deg, #EAF3FA 0%, #DCEAF6 100%);
+  border: 2rpx solid #2471A3;
+}
+.gb-name {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #2C3E50;
+}
+.bn-guide-btn.local .gb-name { color: #C0392B; }
+.bn-guide-btn.tourist .gb-name { color: #2471A3; }
+.gb-desc {
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: #6B6455;
+}
+.bn-guide-foot {
+  margin-top: 18rpx;
+  font-size: 22rpx;
+  color: #9A9384;
+  text-align: center;
+}
+
+/* ============ 双轨 Tab ============ */
+.bn-tabs {
+  display: flex;
+  padding: 8rpx;
+  border-radius: 20rpx;
+  background: rgba(255, 255, 255, 0.9);
+  border: 2rpx solid #E5D8BC;
+  margin-bottom: 22rpx;
+}
+.bn-tab {
+  flex: 1;
+  text-align: center;
+  padding: 20rpx 0;
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #6B6455;
+  border-radius: 16rpx;
+}
+.bn-tab.on {
+  background: linear-gradient(180deg, #C0392B 0%, #A93226 100%);
+  color: #FFFFFF;
+  box-shadow: 0 6rpx 16rpx rgba(192, 57, 43, 0.3);
+}
+
+/* ============ 城市（用户主动选择，不用定位） ============ */
+.bn-cities {
+  display: flex;
+  flex-wrap: wrap;
+  margin-bottom: 20rpx;
+}
+.bn-city {
+  padding: 12rpx 26rpx;
+  margin: 0 14rpx 14rpx 0;
+  font-size: 25rpx;
+  color: #6B6455;
+  background: rgba(255, 255, 255, 0.9);
+  border: 2rpx solid #E5D8BC;
+  border-radius: 999rpx;
+}
+.bn-city.on {
+  color: #FFFFFF;
+  background: #B7950B;
+  border-color: #B7950B;
+}
+
+.bn-empty {
+  padding: 60rpx 20rpx;
+  text-align: center;
+  font-size: 26rpx;
+  color: #9A9384;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 20rpx;
+}
+
+.bn-count {
+  font-size: 24rpx;
+  color: #6B6455;
+  margin: 4rpx 0 20rpx;
+}
+
+/* ============ 权益卡 ============ */
+.bn-list { }
+.bn-card {
+  padding: 26rpx 26rpx 22rpx;
+  border-radius: 22rpx;
+  background: rgba(255, 255, 255, 0.95);
+  border: 2rpx solid #E5D8BC;
+  box-shadow: 0 8rpx 22rpx rgba(96, 78, 44, 0.10);
+  margin-bottom: 22rpx;
+}
+.bn-card.got {
+  border-color: #1E8449;
+  background: linear-gradient(180deg, #FFFFFF 0%, #F2F8F2 100%);
+}
+.bc-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.bc-name {
+  font-size: 31rpx;
+  font-weight: 700;
+  color: #2C3E50;
+  flex: 1;
+}
+.bc-kind {
+  font-size: 21rpx;
+  color: #B7950B;
+  border: 2rpx solid #E8D9A8;
+  border-radius: 999rpx;
+  padding: 4rpx 16rpx;
+  margin-left: 14rpx;
+  flex-shrink: 0;
+}
+.bc-meta {
+  margin-top: 10rpx;
+  font-size: 22rpx;
+  color: #9A9384;
+}
+.bc-offer {
+  margin-top: 16rpx;
+  padding: 16rpx 18rpx;
+  border-radius: 14rpx;
+  background: #FDF6E3;
+  font-size: 26rpx;
+  color: #2C3E50;
+  line-height: 1.6;
+}
+.bc-provider {
+  margin-top: 14rpx;
+  font-size: 21rpx;
+  color: #1E8449;
+  line-height: 1.5;
+}
+.bc-foot {
+  margin-top: 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.bc-need {
+  font-size: 23rpx;
+  color: #9A9384;
+}
+.bc-need.ok { color: #1E8449; }
+.bc-btn {
+  padding: 14rpx 38rpx;
+  border-radius: 999rpx;
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #FFFFFF;
+  background: linear-gradient(180deg, #C0392B 0%, #A93226 100%);
+  box-shadow: 0 6rpx 16rpx rgba(192, 57, 43, 0.26);
+}
+.bc-code {
+  padding: 12rpx 24rpx;
+  border-radius: 12rpx;
+  font-size: 26rpx;
+  font-weight: 700;
+  letter-spacing: 4rpx;
+  color: #1E8449;
+  background: #EAF4EC;
+  border: 2rpx dashed #1E8449;
+}
+.bc-lock {
+  padding: 12rpx 26rpx;
+  border-radius: 999rpx;
+  font-size: 24rpx;
+  color: #9A9384;
+  background: #F2EDE0;
+}
+
+.bn-disclaimer {
+  margin: 26rpx 4rpx 0;
+  font-size: 21rpx;
+  color: #9A9384;
+  line-height: 1.7;
+}
+
+.home-btn {
+  margin-top: 34rpx;
+  border: 2rpx solid #C0392B;
+  border-radius: 18rpx;
+  padding: 24rpx 0;
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #C0392B;
+  background: rgba(255, 255, 255, 0.94);
+}

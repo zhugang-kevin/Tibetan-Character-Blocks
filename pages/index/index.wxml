@@ -40,6 +40,18 @@
     </view>
   </view>
 
+  <!-- 权益中心入口（双轨制：本地生活 / 游客专属 · 凭通关进度领到店权益） -->
+  <view class="benefit-card" bindtap="openBenefits">
+    <view class="bc-left">
+      <view class="bc-title">藏文权益中心</view>
+      <view class="bc-sub">凭通关进度领取到店权益 · 本地生活 / 游客专属</view>
+    </view>
+    <view class="bc-right">
+      <view class="bc-arrow">›</view>
+      <view class="bc-label">去逛逛</view>
+    </view>
+  </view>
+
   <view class="stage-head">
     <text class="stage-name">第一阶段 · 简单基字</text>
     <text class="stage-range">第 1-10 关 · 通关可得证书</text>

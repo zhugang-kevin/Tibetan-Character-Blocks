@@ -274,3 +274,54 @@ page,
   font-size: 22rpx;
   color: #8A8375;
 }
+
+/* 权益中心入口（双轨制到店权益） */
+.benefit-card {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 26rpx 28rpx;
+  margin-bottom: 26rpx;
+  border-radius: 22rpx;
+  border: 3rpx solid #B7950B;
+  background: linear-gradient(135deg, #FFFFFF 0%, #FCF6E4 100%);
+  box-shadow: 0 10rpx 26rpx rgba(96, 78, 44, 0.12);
+}
+
+.bc-left {
+  flex: 1;
+  min-width: 0;
+}
+
+.bc-title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #B7950B;
+}
+
+.bc-sub {
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: #6B6455;
+}
+
+.bc-right {
+  text-align: center;
+  flex-shrink: 0;
+  margin-left: 20rpx;
+}
+
+.bc-arrow {
+  font-size: 44rpx;
+  font-weight: 700;
+  color: #B7950B;
+  line-height: 1;
+}
+
+.bc-label {
+  margin-top: 6rpx;
+  font-size: 20rpx;
+  color: #8A8375;
+}
