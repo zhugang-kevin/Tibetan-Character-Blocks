@@ -25,7 +25,13 @@ Page({
   },
 
   onLoad: function (query) {
-    this.setData({ stage: parseInt(query.stage, 10) || 1 });
+    var stage = parseInt(query.stage, 10) || 1;
+    // 阶段号非法（越界 / 被手改）时直接回首页，避免渲染空证书
+    if (!certificate.stageByNo(stage)) {
+      wx.redirectTo({ url: '/pages/index/index' });
+      return;
+    }
+    this.setData({ stage: stage });
     this.refresh();
     tracker.track('cert_view');
   },
