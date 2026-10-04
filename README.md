@@ -7,6 +7,9 @@
 
 ## 特性
 
+- **四层立体棋盘（PRD v4 视觉重构）**：高原夜色背景（暗红→深蓝）+ 卷草暗纹、青金石蓝底盘（圆角 16px + 外阴影）、凹陷槽位（inset 内阴影）、3D 凸起方块（渐变底色 + 底部投影 + 顶部高光，藏文字母为暖金浮雕）
+- **障碍物玩法**：冰霜（❄ 半透明蓝罩，消除相邻牌即解冻）与藏式木箱（金色剩余耐久，相邻消除逐次敲开）；布点确定性、总遮挡 ≤ 25%，每种元素至少保留 2 张可点的牌，保证关卡可推进
+- **消除破碎特效**：方块先上浮再炸碎成金粉 / 五色风马旗碎片（六向粒子）+ 机身轻震 + 铜铃音
 - 配对消除玩法：6×4 到 6×8 共 10 关，难度递进
 - 8 个藏文字母（ཀ ཁ ག ང ཅ ཆ ཇ ཉ）+ 4 个藏文化图标（吉祥结 / 莲花 / 雪山 / 经幡）
 - 12 张文化知识卡，仅首次发现时滑出（非阻塞、自动收起）
@@ -27,13 +30,13 @@
 ## 自检
 
 ```bash
-node scripts/validate.js         # 小程序静态自检：16 大类 237 项
+node scripts/validate.js         # 小程序静态自检：16 大类 238 项
 node scripts/test-tibetan.js     # 藏文排版规则：1392 项断言（无需依赖）
 ```
 
 ```bash
 # 浏览器体验版端到端测试（需 jsdom）
-NODE_PATH="<node_modules 路径>" node scripts/test-h5.js   # 197 项断言
+NODE_PATH="<node_modules 路径>" node scripts/test-h5.js   # 232 项断言
 ```
 
 ## 两种本地体验方式
@@ -74,18 +77,26 @@ node scripts/build-h5.js        # 重新生成（改了 data/ 或 images/ 之后
 
 ## 文档
 
-| 文档 | 内容 |
-|---|---|
-| [`docs/run-local.md`](docs/run-local.md) | 本地体验指南（两种方式 + 常见问题） |
-| [`docs/certificate-system.md`](docs/certificate-system.md) | 藏文成长阶梯 · 证书体系（阶梯 / 等级门槛 / 编号 / 与护照关系） |
-| [`docs/tibetan-typography.md`](docs/tibetan-typography.md) | 藏文排版规范（tsheg / shad 断行规则） |
-| [`docs/business-model-v2.md`](docs/business-model-v2.md) | **商业化方案 v2**（无广告 · 商家核销 · 公益；含政策核验与合规资金流） |
-| [`docs/merchant-system-review.md`](docs/merchant-system-review.md) | **商家合作与核销方案评审**（技术选型纠正 + 合规红线 + 修正后的核销方案） |
-| [`docs/merchant-system-v2.md`](docs/merchant-system-v2.md) | **商家与核销系统 v2**（把评审的问题逐条变成可落地的替代设计） |
-| [`docs/monetization-v3.md`](docs/monetization-v3.md) | **商业化方案 v3**（虚拟支付通道更正 + 五条变现引擎 + 资金流架构） |
-| [`docs/privilege-system-v1.md`](docs/privilege-system-v1.md) | **双轨制权益体系**（本地生活 / 游客专属 + 非价格让利 + 三块钱来源 + 已落地代码） |
-| [`docs/release-and-monetization.md`](docs/release-and-monetization.md) | 上线开通指南（主体 / 认证 / 备案 / 商户号材料与流程） |
-| [`docs/plan-4.1-review.md`](docs/plan-4.1-review.md) | 4.1 方案专家评审与执行路线 |
+> ⚠️ **先读 [`docs/DECISIONS.md`](docs/DECISIONS.md)（决策台账 · 唯一真相源）。**
+> 本项目的结论只以那份为准；下表其他文档是论证与专题展开。**两份冲突时，以 DECISIONS.md 为准。**
+> 每份文档头部都标了自己的状态（🟢 有效 / 🟡 部分过期 / 📦 已归档），别信已归档的结论。
+
+| 文档 | 状态 | 内容 |
+|---|---|---|
+| [`docs/DECISIONS.md`](docs/DECISIONS.md) | 🟢 **唯一真相源** | **决策台账**：文档状态表 + 已拍板结论 + 待拍板项 + 下一步唯一动作 |
+| [`docs/run-local.md`](docs/run-local.md) | 🟢 有效 | 本地体验指南（两种方式 + 常见问题） |
+| [`docs/certificate-system.md`](docs/certificate-system.md) | 🟢 有效 | 藏文成长阶梯 · 证书体系（阶梯 / 等级门槛 / 编号 / 与护照关系） |
+| [`docs/tibetan-typography.md`](docs/tibetan-typography.md) | 🟢 有效 | 藏文排版规范（tsheg / shad 断行规则） |
+| [`docs/monetization-v3.md`](docs/monetization-v3.md) | 🟢 有效 | **商业化方案 v3**（虚拟支付通道更正 + 五条变现引擎 + 资金流架构） |
+| [`docs/merchant-system-v2.md`](docs/merchant-system-v2.md) | 🟢 有效 | **商家与核销系统 v2**（把评审的问题逐条变成可落地的替代设计） |
+| [`docs/privilege-system-v1.md`](docs/privilege-system-v1.md) | 🟢 有效 | **双轨制权益体系**（本地生活 / 游客专属 + 非价格让利 + 三块钱来源 + 已落地代码） |
+| [`docs/release-and-monetization.md`](docs/release-and-monetization.md) | 🟢 有效 | 上线开通指南（主体 / 认证 / 备案 / 商户号材料与流程） |
+| [`docs/business-model-v2.md`](docs/business-model-v2.md) | 🟡 部分过期 | 商业化方案 v2（§0.2 / §1 / §2.3 已更正，其余有效） |
+| [`docs/prd-v3-audit.md`](docs/prd-v3-audit.md) | 🟡 部分过期 | PRD v3 对照评审（§三冲突 2「内购做不了」已作废，其余有效） |
+| [`docs/merchant-system-review.md`](docs/merchant-system-review.md) | 📦 已归档 | 商家合作与核销方案评审（只找问题，替代方案见 v2） |
+| [`docs/plan-4.1-review.md`](docs/plan-4.1-review.md) | 📦 已归档 | 4.1 方案专家评审（广告三阶段 / 版号待确认 / 云同步 P0 三条已作废） |
+
+> **文档纪律**：不新增策划文档。新结论进 `DECISIONS.md`；需展开论证时**覆盖写回**原专题文档。
 
 ## 发布前待办
 

@@ -2,6 +2,8 @@
 // P0 冲刺：连击系统 / 金色特殊方块 / 藏文发音 / 新手引导 / 15分钟埋点
 // 体验优化：文化卡仅首次发现弹出（非阻塞、自动收起），重复匹配只出轻提示；
 //           牌面尺寸全关卡统一（以 8 列为基准），盘面居中。
+// PRD v4 视觉重构：四层物理层次（夜色背景 → 青金石蓝底盘 → 凹陷槽位 → 3D 凸起方块）、
+//           冰霜/木箱障碍物、消除破碎成金粉与风马旗碎片。
 var levelsData = require('../../data/levels');
 var elements = require('../../data/elements');
 var cardsData = require('../../data/cards');
@@ -9,21 +11,25 @@ var audio = require('../../utils/audio');
 var icons = require('../../utils/icons');
 var storage = require('../../utils/storage');
 var tracker = require('../../utils/tracker');
+var obstacles = require('../../utils/obstacles');
 
 var GUIDE = [
   { title: '如何消除', text: '点击两张相同的藏文字母或文化图标，它们就会一起消失。' },
   { title: '听发音', text: '每消除成功一次，都会读出这个字的藏文发音——边玩边听，记得更牢。连击不断，声音还会越清亮。' },
-  { title: '文化卡', text: '第一次消除某种字母或图标时，底部会滑出它的文化卡，不打断游戏；之后只出现小提示。金色 ✦ 是特殊方块，双倍积分。' }
+  { title: '冰霜与木箱', text: '带 ❄ 的牌先碰不得，消除它旁边的牌即可解冻；藏式木箱上的金色数字是剩余耐久，消除它旁边的牌会一点点敲开它。金色 ✦ 是特殊方块，双倍积分。' }
 ];
 
 // 统一牌面尺寸：以 8 列为基准（所有关卡牌一样大，只变数量）
 var REF_COLS = 8;
 var PAGE_PAD = 20;     // 页面左右留白（rpx）
-var PANEL_PAD = 14;    // 盘面纸面板内边距
-var OUTLINE_PAD = 10;  // 盘面虚线框内边距
-var AVAIL_W = 750 - PAGE_PAD * 2 - PANEL_PAD * 2 - OUTLINE_PAD * 2 - 4;
+var PANEL_PAD = 18;    // 底盘内边距（rpx）
+var OUTLINE_PAD = 12;  // 凹槽内边距（rpx）
+var AVAIL_W = 750 - PAGE_PAD * 2 - PANEL_PAD * 2 - OUTLINE_PAD * 2 - 6;
 var CARD_AUTO_MS = 5200;
 var TOAST_MS = 1700;
+
+// 破碎粒子的六个方向 × 颜色（金粉 + 五色风马旗）
+var BIT_SLOTS = ['d0 gold', 'd1 r', 'd2 g', 'd3 b', 'd4 y', 'd5 w'];
 
 function findCard(id) {
   for (var k = 0; k < cardsData.length; k++) {
@@ -32,13 +38,19 @@ function findCard(id) {
   return null;
 }
 
-// 颜色加深（用于卡片头图渐变的深色端）
+// 颜色加深/提亮（用于卡片头图渐变与 3D 方块的高光/投影）
 function shade(hex, f) {
   var n = parseInt(hex.slice(1), 16);
   var r = Math.min(255, Math.round(((n >> 16) & 255) * f));
   var g = Math.min(255, Math.round(((n >> 8) & 255) * f));
   var b = Math.min(255, Math.round((n & 255) * f));
   return 'rgb(' + r + ',' + g + ',' + b + ')';
+}
+
+// 3D 方块内联样式：顶部提亮 → 本色 → 底部加深，配 0 偏移投影与顶部内高光
+function pieceStyle(color) {
+  return 'background-image: linear-gradient(180deg, ' + shade(color, 1.42) + ' 0%, ' + color + ' 58%, ' + shade(color, 0.68) + ' 100%);' +
+    ' box-shadow: 0 6rpx 0 ' + shade(color, 0.46) + ', 0 10rpx 18rpx rgba(0, 0, 0, 0.46), inset 0 3rpx 8rpx rgba(255, 255, 255, 0.42);';
 }
 
 Page({
@@ -74,7 +86,9 @@ Page({
     combo: 0,
     comboFx: '',
     guideStep: 0,
-    guide: GUIDE[0]
+    guide: GUIDE[0],
+    bitSlots: BIT_SLOTS,   // 破碎粒子方向/颜色类名
+    brokenFx: ''           // 破冰/破箱浮层文字
   },
 
   firstIndex: -1,
@@ -159,7 +173,7 @@ Page({
       var j = Math.floor(Math.random() * (i + 1));
       var tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp;
     }
-    return pool.map(function (id, idx) {
+    var tiles = pool.map(function (id, idx) {
       var el = elements[id];
       return {
         uid: idx,
@@ -169,9 +183,23 @@ Page({
         color: el.color,
         fallbackText: el.char || '',
         golden: id === goldenId,
+        pieceStyle: pieceStyle(el.color),
+        frost: false,
+        crate: 0,
+        blocked: false,
+        shatter: false,
         state: 'idle' // idle | selected | removing | removed | shake
       };
     });
+    // 障碍物：确定性布点（冰霜 / 藏式木箱），保证每种元素至少留 2 张可点的牌
+    obstacles.planOverlays(cfg, pool).forEach(function (o) {
+      var t = tiles[o.index];
+      if (!t) return;
+      if (o.kind === 'frost') t.frost = true;
+      else t.crate = o.hp;
+      t.blocked = true;
+    });
+    return tiles;
   },
 
   onTapTile: function (e) {
@@ -179,6 +207,12 @@ Page({
     var idx = e.currentTarget.dataset.index;
     var tile = this.data.tiles[idx];
     if (!tile || tile.state === 'removed' || tile.state === 'removing') return;
+
+    // 障碍物：冰霜/木箱罩住的牌不能直接点（不计入正确率、不惩罚）
+    if (obstacles.isBlocked(tile)) {
+      this.showBlockedTip(tile);
+      return;
+    }
 
     if (this.firstIndex === idx) {
       this.firstIndex = -1;
@@ -234,12 +268,39 @@ Page({
 
     this.setData({
       ['tiles[' + i + '].state']: 'removing',
+      ['tiles[' + i + '].shatter']: true,
       ['tiles[' + j + '].state']: 'removing',
+      ['tiles[' + j + '].shatter']: true,
       matchedPairs: this.matchedCount,
       score: this.data.score + gain,
       combo: this.comboVal,
       comboFx: this.comboVal >= 2 ? ('连击 ×' + this.comboVal) : ''
     });
+
+    // 轻微震动 + 铜铃（PRD 3.2：消除=铃音 + 机身轻震）
+    try {
+      if (wx.vibrateShort) wx.vibrateShort({ type: 'light' });
+    } catch (err) { /* 部分机型不支持，忽略 */ }
+
+    // 障碍物结算：相邻冰霜解冻、相邻木箱扣耐久（破开后在原格浮字提示）
+    var settled = obstacles.resolveMatch(this.data.tiles, [i, j], this.data.cols, this.data.rows);
+    if (settled.changed.length) {
+      var patch = {};
+      var brokeLabels = [];
+      settled.changed.forEach(function (c) {
+        if (c.kind === 'frost') {
+          patch['tiles[' + c.index + '].frost'] = false;
+          patch['tiles[' + c.index + '].blocked'] = false;
+        } else {
+          patch['tiles[' + c.index + '].crate'] = c.hp;
+          patch['tiles[' + c.index + '].blocked'] = c.hp > 0;
+        }
+        if (c.broken) brokeLabels.push(c.kind === 'frost' ? '破冰！' : '木箱破开！');
+      });
+      this.setData(patch);
+      if (brokeLabels.length) this.showBreakFx(brokeLabels[0]);
+      tracker.track('obstacle_broken');
+    }
     if (this.comboTimer) clearTimeout(this.comboTimer);
     this.comboTimer = setTimeout(function () {
       that.setData({ comboFx: '' });
@@ -278,7 +339,9 @@ Page({
     if (pr.length === 2) {
       this.setData({
         ['tiles[' + pr[0] + '].state']: 'removed',
-        ['tiles[' + pr[1] + '].state']: 'removed'
+        ['tiles[' + pr[0] + '].shatter']: false,
+        ['tiles[' + pr[1] + '].state']: 'removed',
+        ['tiles[' + pr[1] + '].shatter']: false
       });
     }
     if (this.matchedCount === this.data.totalPairs) {
@@ -407,6 +470,42 @@ Page({
     if (this.data.toastShow) this.setData({ toastShow: false });
   },
 
+  // ---------- 障碍物提示（冰霜/木箱，非阻塞，不计入正确率） ----------
+  showBlockedTip: function (tile) {
+    var that = this;
+    this.setData({
+      ['tiles[' + this.data.tiles.indexOf(tile) + '].state']: 'shake',
+      toastShow: true,
+      toastIsIcon: false,
+      toastGlyph: tile.frost ? '❄' : '📦',
+      toastIcon: '',
+      toastText: tile.frost ? '这块被冰霜罩住了 · 先消除旁边的牌' : ('藏式木箱还剩 ' + tile.crate + ' 次 · 消除旁边的牌来敲开'),
+      toastColor: tile.frost ? '#2471A3' : '#8A5A2B'
+    });
+    var idx = this.data.tiles.indexOf(tile);
+    setTimeout(function () {
+      that.setData({ ['tiles[' + idx + '].state']: 'idle' });
+    }, 420);
+    if (this.toastTimer) clearTimeout(this.toastTimer);
+    this.toastTimer = setTimeout(function () {
+      that.setData({ toastShow: false });
+    }, TOAST_MS);
+  },
+
+  // 破冰/破箱浮字（复用 combo-fx 的观感，独立节点避免互相打断）
+  showBreakFx: function (label) {
+    var that = this;
+    this.setData({ brokenFx: label });
+    if (this.breakTimer) clearTimeout(this.breakTimer);
+    this.breakTimer = setTimeout(function () { that.setData({ brokenFx: '' }); }, 1100);
+  },
+
+  // 文化卡喇叭：播放该元素的藏文发音（PRD 4.3「点击播放」）
+  speakCard: function () {
+    if (!this.data.card) return;
+    if (audio.pronounce(this.data.card.id)) tracker.track('card_pronounce');
+  },
+
   collectedIds: function () {
     var seen = {};
     var out = [];
@@ -427,5 +526,6 @@ Page({
     if (this.voiceTimer) clearTimeout(this.voiceTimer);
     if (this.fxTimer) clearTimeout(this.fxTimer);
     if (this.tashiTimer) clearTimeout(this.tashiTimer);
+    if (this.breakTimer) clearTimeout(this.breakTimer);
   }
 });

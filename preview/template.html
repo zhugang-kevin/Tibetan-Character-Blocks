@@ -497,6 +497,136 @@
   .bc-sub { margin-top: 5px; font-size: 12px; color: #6B6455; }
   .bc-arrow { font-size: 22px; font-weight: 800; color: #B7950B; line-height: 1; text-align: center; }
   .bc-label { margin-top: 3px; font-size: 10px; color: #8A8375; text-align: center; }
+
+  /* ============ PRD v4 视觉重构：高原夜色 + 四层物理层次（体验版镜像） ============ */
+  #screen-game.active { background: linear-gradient(180deg, #6B1A1A 0%, #3A1520 22%, #10203A 58%, #0B1E36 100%); }
+  .sc-night {
+    position: absolute; left: 0; top: 0; right: 0; bottom: 0; z-index: 0;
+    background: radial-gradient(ellipse at 50% 30%, rgba(255,214,140,.10) 0%, rgba(11,30,54,.55) 46%, rgba(6,14,26,.82) 100%);
+  }
+  #screen-game .statusbar {
+    background: linear-gradient(180deg, rgba(33,58,92,.92), rgba(18,36,62,.92));
+    border: 1px solid rgba(183,149,11,.42); color: #EAF2FA;
+    box-shadow: 0 4px 12px rgba(0,0,0,.45);
+  }
+  #screen-game .status-mid { color: #FFD98A; }
+  #screen-game .status-right { color: #FFD98A; }
+
+  /* 第二层：青金石蓝底盘（圆角 16px + 外阴影，从夜色中浮起） */
+  #screen-game .board-panel {
+    position: relative; z-index: 2;
+    background: linear-gradient(180deg, #24648F 0%, #1B4F72 52%, #143E5A 100%);
+    border: 1px solid rgba(183,149,11,.38);
+    border-radius: 16px;
+    padding: 12px;
+    box-shadow: 0 12px 26px rgba(0,0,0,.62), inset 0 2px 0 rgba(255,255,255,.16);
+    backdrop-filter: none;
+  }
+  /* 底盘内圈：下沉凹槽区 */
+  #screen-game .board-outline {
+    background: rgba(6,18,32,.62);
+    border: none;
+    border-radius: 12px;
+    padding: 8px;
+    box-shadow: inset 0 4px 10px rgba(0,0,0,.7);
+  }
+  /* 第三层：槽位（inset 内阴影，像挖空的坑） */
+  #board .tile {
+    background: #0D2137; border: none; border-radius: 7px;
+    box-shadow: inset 0 3px 6px rgba(0,0,0,.72);
+    overflow: visible;
+  }
+  /* 第四层：3D 凸起方块（渐变 + 底部投影 + 顶部高光，内联样式给出） */
+  #board .tile .piece {
+    position: relative; width: 100%; height: 100%; border-radius: 7px;
+    display: flex; align-items: center; justify-content: center; overflow: hidden;
+    transition: transform .18s ease, box-shadow .18s ease;
+  }
+  #board .tile .glyph {
+    color: #FFF6DC;
+    text-shadow: 0 2px 0 rgba(0,0,0,.45), 0 -1px 0 rgba(255,255,255,.42);
+    font-weight: 600;
+  }
+  #board .tile .icon-img { filter: drop-shadow(0 2px 2px rgba(0,0,0,.42)); }
+  #board .tile.selected { box-shadow: inset 0 0 0 3px rgba(255,217,138,.85), inset 0 3px 6px rgba(0,0,0,.6); }
+  #board .tile.selected .piece { transform: scale(1.07) translateY(-2px); }
+  #board .tile.golden { background: #0D2137; }
+  #board .tile.golden .piece {
+    background-image: linear-gradient(180deg, #FFF6D8 0%, #FFE9A8 58%, #E8C465 100%) !important;
+    box-shadow: 0 4px 0 #B8892A, 0 7px 12px rgba(0,0,0,.45), inset 0 2px 5px rgba(255,255,255,.5) !important;
+  }
+  #board .tile .star { color: #8A6414; text-shadow: 0 1px 0 rgba(255,255,255,.6); }
+  /* 消除：上浮后破碎（不是简单淡出） */
+  #board .tile.removing .piece { animation: shatterUp .34s cubic-bezier(.3,.9,.4,1) forwards; }
+  @keyframes shatterUp {
+    0% { transform: translateY(0) scale(1); opacity: 1; }
+    38% { transform: translateY(-8px) scale(1.1); opacity: 1; }
+    100% { transform: translateY(-2px) scale(.18); opacity: 0; }
+  }
+  /* 破碎粒子：金粉 / 五色风马旗碎片 */
+  #board .bits { position: absolute; left: 0; top: 0; right: 0; bottom: 0; pointer-events: none; }
+  #board .bit {
+    position: absolute; left: 50%; top: 50%; width: 7px; height: 7px; border-radius: 2px;
+    transform: translate(-50%,-50%); opacity: 0; animation: bitFly .46s ease-out forwards;
+  }
+  #board .bit.gold { background: #FFD98A; box-shadow: 0 0 6px rgba(255,217,138,.85); }
+  #board .bit.r { background: #C0392B; }
+  #board .bit.g { background: #1E8449; }
+  #board .bit.b { background: #2471A3; }
+  #board .bit.y { background: #B7950B; }
+  #board .bit.w { background: #FFFFFF; }
+  #board .bit.d0 { animation-name: bitFly0; }
+  #board .bit.d1 { animation-name: bitFly1; }
+  #board .bit.d2 { animation-name: bitFly2; }
+  #board .bit.d3 { animation-name: bitFly3; }
+  #board .bit.d4 { animation-name: bitFly4; }
+  #board .bit.d5 { animation-name: bitFly5; }
+  @keyframes bitFly0 { 0% { opacity: 1; transform: translate(-50%,-50%) scale(1); } 100% { opacity: 0; transform: translate(-190%,-230%) scale(.4); } }
+  @keyframes bitFly1 { 0% { opacity: 1; transform: translate(-50%,-50%) scale(1); } 100% { opacity: 0; transform: translate(60%,-260%) scale(.4); } }
+  @keyframes bitFly2 { 0% { opacity: 1; transform: translate(-50%,-50%) scale(1); } 100% { opacity: 0; transform: translate(220%,-150%) scale(.4); } }
+  @keyframes bitFly3 { 0% { opacity: 1; transform: translate(-50%,-50%) scale(1); } 100% { opacity: 0; transform: translate(210%,90%) scale(.4); } }
+  @keyframes bitFly4 { 0% { opacity: 1; transform: translate(-50%,-50%) scale(1); } 100% { opacity: 0; transform: translate(-40%,180%) scale(.4); } }
+  @keyframes bitFly5 { 0% { opacity: 1; transform: translate(-50%,-50%) scale(1); } 100% { opacity: 0; transform: translate(-220%,70%) scale(.4); } }
+  /* 障碍物一：冰霜（半透明蓝罩 + 白边高光） */
+  #board .frost {
+    position: absolute; left: 0; top: 0; right: 0; bottom: 0; border-radius: 7px;
+    background: linear-gradient(150deg, rgba(176,226,255,.62), rgba(88,156,214,.5));
+    border: 1.5px solid rgba(255,255,255,.78);
+    box-shadow: inset 0 0 10px rgba(255,255,255,.68), 0 2px 6px rgba(0,0,0,.35);
+    display: flex; align-items: center; justify-content: center; pointer-events: none;
+    font-size: 17px; color: rgba(255,255,255,.92); text-shadow: 0 0 6px rgba(120,190,240,.9);
+  }
+  /* 障碍物二：藏式木箱（木纹 + 金色剩余耐久） */
+  #board .crate {
+    position: absolute; left: 0; top: 0; right: 0; bottom: 0; border-radius: 7px;
+    background: linear-gradient(150deg, #9A6531 0%, #74461D 58%, #4E2E12 100%);
+    border: 1.5px solid rgba(60,34,12,.9);
+    box-shadow: inset 0 2px 0 rgba(255,214,140,.35), inset 0 -3px 7px rgba(0,0,0,.45), 0 2px 6px rgba(0,0,0,.45);
+    display: flex; align-items: center; justify-content: center; pointer-events: none;
+    font-size: 18px; font-weight: 700; color: #FFD98A; text-shadow: 0 1px 0 rgba(0,0,0,.6);
+  }
+  #board .bits, #board .frost, #board .crate { z-index: 3; }
+  .break-fx {
+    position: absolute; left: 50%; top: 42%; transform: translate(-50%,-50%);
+    background: rgba(36,113,163,.94); color: #FFF6DC; font-size: 17px; font-weight: 800;
+    padding: 6px 18px; border-radius: 999px; border: 1.5px solid rgba(255,255,255,.5);
+    box-shadow: 0 5px 14px rgba(0,0,0,.4); opacity: 0; pointer-events: none;
+    transition: opacity .2s, transform .25s; z-index: 9; white-space: nowrap;
+  }
+  .break-fx.show { opacity: 1; transform: translate(-50%,-50%) scale(1.08); }
+  /* 文化卡：藏纸卷轴形态（顶部卷轴杆 + 喇叭 + 知道了） */
+  .scroll-rod { height: 8px; background: linear-gradient(180deg, #E8D9A8 0%, #B7950B 42%, #7A5F06 100%); box-shadow: 0 2px 6px rgba(0,0,0,.35); }
+  .card-speak {
+    margin-top: 12px; display: flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 10px; border-radius: 10px; background: #FBF4E2;
+    border: 1px dashed rgba(183,149,11,.6); cursor: pointer; font-size: 13px; color: #8A6A12;
+  }
+  .card-know {
+    margin: 12px 0 4px; height: 40px; line-height: 40px; text-align: center; border-radius: 999px;
+    background: linear-gradient(180deg, #C0392B 0%, #96291D 100%); color: #FFF6DC;
+    font-size: 15px; font-weight: 800; letter-spacing: 2px; cursor: pointer;
+    box-shadow: 0 4px 0 #6E1D14, 0 7px 14px rgba(0,0,0,.25);
+  }
 </style>
 </head>
 <body>
@@ -540,6 +670,7 @@
 
   <!-- ============ 游戏页 ============ -->
   <section id="screen-game" class="screen">
+    <div class="sc-night" aria-hidden="true"></div>
     <div class="statusbar">
       <button class="back-btn" id="game-back">← 返回</button>
       <div class="status-mid" id="status-mid">第 1 关</div>
@@ -554,6 +685,7 @@
           <div class="board-wrap" id="board-wrap">
             <div class="board" id="board"></div>
             <div class="combo-fx" id="combo-fx"></div>
+            <div class="break-fx" id="break-fx"></div>
           </div>
         </div>
       </div>
@@ -674,8 +806,9 @@
   <span id="toast-text"></span>
 </div>
 
-<!-- 文化卡（仅首次发现该元素时出现；非阻塞，自动收起） -->
+<!-- 文化卡（仅首次发现该元素时出现；藏纸卷轴形态，非阻塞，自动收起） -->
 <div class="card-panel" id="card-panel">
+  <div class="scroll-rod"></div>
   <div class="card-hero" id="card-hero">
     <span class="card-orn-l">✦</span>
     <span class="card-orn-r">✦</span>
@@ -692,9 +825,11 @@
   <div class="card-body2">
     <div class="card-desc" id="card-desc"></div>
     <div class="card-fact"><span class="fact-tag">文化小知识</span><span id="card-fact"></span></div>
+    <div class="card-speak" id="card-speak">🔊 点击播放藏文读音</div>
+    <div class="card-know" id="card-know">知道了</div>
   </div>
   <div class="card-progress"><i id="card-bar"></i></div>
-  <div class="card-hint">游戏不会暂停 · 点击 ✕ 或继续消除即可收起</div>
+  <div class="card-hint">游戏不会暂停 · 点「知道了」或继续消除即可收起</div>
 </div>
 
 <!-- 新手引导 -->
@@ -1231,6 +1366,8 @@ const state = {
   pronounceCount: 0, lastPronounced: null,  // 朗读次数/最近朗读元素（供自动化测试断言）
   attempts: 0, matches: 0, misses: 0,       // 正确率统计（证书质量门槛）
   vibrateCount: 0,                          // 震动次数（情绪引擎，测试断言用）
+  // 障碍物（PRD 3.1）：冰霜 / 藏式木箱
+  frostTotal: 0, crateTotal: 0, brokenCount: 0, cardId: null,
   speakLog: [],                             // 语音播放记录（tashi_delek / blessing_01）
   fxCount: 0,                               // 通关粒子数
   // 权益中心（双轨制）可断言状态
@@ -1260,6 +1397,74 @@ function rgba(hex, a) {
   const n = parseInt(hex.slice(1), 16);
   return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
 }
+
+/* ---------------- 障碍物（与 utils/obstacles.js 同规则，体验版镜像） ----------------
+   冰霜：相邻消除一次破冰；木箱：相邻消除一次扣 1 点耐久，归零破开。
+   布点确定性、总遮挡 ≤ 25%、每种元素至少留 2 张可点的牌。 */
+function obsNeighbors(index, cols, rows) {
+  const row = Math.floor(index / cols), col = index % cols, out = [];
+  if (col > 0) out.push(index - 1);
+  if (col < cols - 1) out.push(index + 1);
+  if (row > 0) out.push(index - cols);
+  if (row < rows - 1) out.push(index + cols);
+  return out;
+}
+function obsSpread(total, n, offset) {
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    let idx = Math.floor((i + 1) * total / (n + 1)) + (offset || 0);
+    if (idx >= total) idx = idx % total;
+    if (out.indexOf(idx) === -1) out.push(idx);
+  }
+  return out;
+}
+function planOverlays(cfg, tileIds) {
+  const o = cfg.obstacles || {};
+  const total = cfg.cols * cfg.rows;
+  const plan = [];
+  const used = {};
+  const quota = {};
+  (tileIds || []).forEach(function (id) { quota[id] = (quota[id] === undefined ? 0 : quota[id]) + 1; });
+  Object.keys(quota).forEach(function (id) { quota[id] = Math.max(0, quota[id] - 2); });
+  const budget = Math.floor(total * 0.25);
+  function take(count, kind, hpFirst) {
+    obsSpread(total, count, kind === 'frost' ? 0 : 1).forEach(function (idx) {
+      if (plan.length >= budget || used[idx]) return;
+      const id = (tileIds || [])[idx];
+      if (id !== undefined && quota[id] <= 0) return;
+      used[idx] = true;
+      if (id !== undefined) quota[id] -= 1;
+      plan.push({ index: idx, kind: kind, hp: kind === 'crate' ? (hpFirst || 1) : 0 });
+    });
+  }
+  if (o.frost) take(o.frost, 'frost', 0);
+  if (o.crate) take(o.crate, 'crate', o.crateHp || 1);
+  return plan;
+}
+function obsBlocked(tile) {
+  return !!(tile && (tile.frost || (tile.crate && tile.crate > 0)));
+}
+function obsResolve(tiles, matched, cols, rows) {
+  const next = tiles.map(function (t) { return Object.assign({}, t); });
+  const changed = [];
+  const seen = {};
+  (matched || []).forEach(function (mi) {
+    obsNeighbors(mi, cols, rows).forEach(function (ni) {
+      if (seen[ni]) return;
+      const t = next[ni];
+      if (!t || t.state === 'removed' || t.state === 'removing') return;
+      if (t.frost) { t.frost = false; seen[ni] = true; changed.push({ index: ni, kind: 'frost', hp: 0, broken: true }); }
+      else if (t.crate > 0) { t.crate -= 1; seen[ni] = true; changed.push({ index: ni, kind: 'crate', hp: t.crate, broken: t.crate === 0 }); }
+    });
+  });
+  return { tiles: next, changed: changed };
+}
+// 3D 方块内联样式（顶部提亮 → 本色 → 底部加深 + 底投影 + 顶部内高光）
+function pieceStyle(color) {
+  return 'background-image: linear-gradient(180deg, ' + shade(color, 1.42) + ' 0%, ' + color + ' 58%, ' + shade(color, 0.68) + ' 100%);' +
+    ' box-shadow: 0 4px 0 ' + shade(color, 0.46) + ', 0 7px 12px rgba(0,0,0,.46), inset 0 2px 5px rgba(255,255,255,.42);';
+}
+const BIT_SLOTS = ['d0 gold', 'd1 r', 'd2 g', 'd3 b', 'd4 y', 'd5 w'];
 
 /* ---------------- 首页 ---------------- */
 function renderHome() {
@@ -1365,9 +1570,21 @@ function startLevel(level) {
       tibetan: el.tibetan || '', color: el.color,
       fallbackText: el.char || '',
       golden: id === state.goldenId,
+      pieceStyle: pieceStyle(el.color),
+      frost: false, crate: 0, blocked: false, shatter: false,
       state: 'idle'
     };
   });
+  // 障碍物布点（冰霜 / 藏式木箱）
+  planOverlays(cfg, pool).forEach(function (o) {
+    const t = state.tiles[o.index];
+    if (!t) return;
+    if (o.kind === 'frost') t.frost = true; else t.crate = o.hp;
+    t.blocked = true;
+  });
+  state.frostTotal = state.tiles.filter(function (t) { return t.frost; }).length;
+  state.crateTotal = state.tiles.filter(function (t) { return t.crate > 0; }).length;
+  state.brokenCount = 0;
 
   $('status-mid').textContent = '第 ' + level + ' 关';
   renderBoard();
@@ -1417,17 +1634,25 @@ function renderBoard() {
 
   state.tiles.forEach(function (t, idx) {
     const d = document.createElement('div');
-    d.className = 'tile' + (t.golden ? ' golden' : '') + (t.state !== 'idle' ? ' ' + t.state : '');
+    d.className = 'tile' + (t.golden ? ' golden' : '') + (t.blocked ? ' blocked' : '') + (t.state !== 'idle' ? ' ' + t.state : '');
     d.style.color = t.color;
     d.dataset.index = idx;
 
-    let inner = '';
+    // 第四层：3D 凸起方块容器（渐变/投影由内联样式给出）
+    let inner = '<div class="piece" style="' + t.pieceStyle + '">';
     if (t.type === 'letter') {
-      inner = '<span class="glyph tib" style="color:' + t.color + '">' + t.tibetan + '</span>';
+      inner += '<span class="glyph tib">' + t.tibetan + '</span>';
     } else {
-      inner = '<img class="icon-img" src="' + iconDataUrl(t.id) + '" alt="">';
+      inner += '<img class="icon-img" src="' + iconDataUrl(t.id) + '" alt="">';
     }
     if (t.golden) inner += '<span class="star">✦</span>';
+    // 破碎粒子（消除瞬间播放）
+    if (t.shatter) {
+      inner += '<div class="bits">' + BIT_SLOTS.map(function (b) { return '<i class="bit ' + b + '"></i>'; }).join('') + '</div>';
+    }
+    inner += '</div>';
+    if (t.frost) inner += '<div class="frost">❄</div>';
+    if (t.crate > 0) inner += '<div class="crate">' + t.crate + '</div>';
     d.innerHTML = inner;
 
     d.addEventListener('click', function () { onTapTile(idx); });
@@ -1445,6 +1670,12 @@ function onTapTile(idx) {
   if (state.locked) return;
   const tile = state.tiles[idx];
   if (!tile || tile.state === 'removed' || tile.state === 'removing') return;
+
+  // 障碍物：冰霜/木箱罩住的牌不能直接点（不计入正确率、不惩罚）
+  if (obsBlocked(tile)) {
+    blockedTip(idx, tile);
+    return;
+  }
 
   // 再点已选中的牌 → 取消选中
   if (state.firstIndex === idx) {
@@ -1483,6 +1714,54 @@ function updateTile(idx, st) {
   if (!d) return;
   d.classList.remove('selected', 'removing', 'removed', 'shake');
   if (st !== 'idle') d.classList.add(st);
+  // 破碎粒子：进入 removing 时注入，落定/复位时移除
+  const piece = d.querySelector('.piece');
+  if (piece) {
+    let bits = piece.querySelector('.bits');
+    if (st === 'removing') {
+      if (!bits) {
+        bits = document.createElement('div');
+        bits.className = 'bits';
+        bits.innerHTML = BIT_SLOTS.map(function (b) { return '<i class="bit ' + b + '"></i>'; }).join('');
+        piece.appendChild(bits);
+      }
+    } else if (bits) {
+      bits.parentNode.removeChild(bits);
+    }
+  }
+  refreshOverlay(d, state.tiles[idx]);
+}
+
+/* 障碍物罩层与 blocked 类随状态刷新 */
+function refreshOverlay(d, t) {
+  if (!d || !t) return;
+  let frost = d.querySelector('.frost');
+  let crate = d.querySelector('.crate');
+  if (t.frost) {
+    if (!frost) { frost = document.createElement('div'); frost.className = 'frost'; frost.textContent = '❄'; d.appendChild(frost); }
+  } else if (frost) { frost.parentNode.removeChild(frost); }
+  if (t.crate > 0) {
+    if (!crate) { crate = document.createElement('div'); crate.className = 'crate'; d.appendChild(crate); }
+    crate.textContent = t.crate;
+  } else if (crate) { crate.parentNode.removeChild(crate); }
+  d.classList.toggle('blocked', obsBlocked(t));
+}
+
+/* 冰霜/木箱轻提示（非阻塞，不计入正确率） */
+function blockedTip(idx, tile) {
+  updateTile(idx, 'shake');
+  showTip(tile.frost ? '❄ 这块被冰霜罩住了 · 先消除旁边的牌' : ('📦 藏式木箱还剩 ' + tile.crate + ' 次 · 消除旁边的牌来敲开'));
+  setTimeout(function () { updateTile(idx, 'idle'); }, 420);
+}
+
+/* 破冰 / 破箱浮字 */
+function showBreakFx(label) {
+  const el = $('break-fx');
+  if (!el) return;
+  el.textContent = label;
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(function () { el.classList.remove('show'); }, 1000);
 }
 
 function handleMatch(i, j) {
@@ -1499,6 +1778,22 @@ function handleMatch(i, j) {
   updateTile(i, 'removing');
   updateTile(j, 'removing');
   updateHud();
+
+  // 轻震动（PRD 3.2：消除 = 铜铃音 + 机身轻震）
+  haptic();
+
+  // 障碍物结算：相邻冰霜解冻、相邻木箱扣耐久
+  const settled = obsResolve(state.tiles, [i, j], state.cols, state.rows);
+  if (settled.changed.length) {
+    state.tiles = settled.tiles;
+    const labels = [];
+    settled.changed.forEach(function (c) {
+      const d = document.querySelector('#board .tile[data-index="' + c.index + '"]');
+      refreshOverlay(d, state.tiles[c.index]);
+      if (c.broken) { labels.push(c.kind === 'frost' ? '破冰！' : '木箱破开！'); state.brokenCount++; }
+    });
+    if (labels.length) showBreakFx(labels[0]);
+  }
 
   if (state.combo >= 2) {
     audio.combo(state.combo);
@@ -1594,6 +1889,7 @@ function showCard(id) {
   bar.style.width = '0%';
 
   $('card-panel').classList.add('show');
+  state.cardId = id;   // 供「🔊 点击播放藏文读音」使用
   clearTimeout(cardTimer);
   cardTimer = setTimeout(hideCard, CARD_AUTO_MS);
 }
@@ -2283,6 +2579,9 @@ $('pp-home').addEventListener('click', renderHome);
 $('cert-home').addEventListener('click', renderHome);
 $('bn-home').addEventListener('click', renderHome);
 $('card-x').addEventListener('click', hideCard);
+// 藏纸卷轴文化卡：喇叭播放藏文读音 + 「知道了」收起（PRD 4.3，保持不打断游戏）
+$('card-speak').addEventListener('click', function () { if (state.cardId) pronounce(state.cardId); });
+$('card-know').addEventListener('click', hideCard);
 // 点击卡片外任意处收起（不阻止牌面点击，游戏不中断）
 document.addEventListener('click', function (e) {
   const panel = $('card-panel');

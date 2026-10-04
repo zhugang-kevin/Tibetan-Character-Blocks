@@ -1,5 +1,7 @@
 # 藏文排版规范（Tibetan Typography Rules）
 
+> 🟢 **状态：有效（硬规则）** · 结论索引见 [`DECISIONS.md`](DECISIONS.md)（唯一真相源）。改动藏文渲染必须重跑 `node scripts/test-tibetan.js`（1392 项断言）。
+
 > 适用范围：藏字方块 全部涉及藏文文本渲染的场景（游戏页牌面、文化卡弹窗、祝福卡 Canvas、分享图）。
 > 本规范是硬性规则，任何藏文断行/截字实现都必须遵守。
 

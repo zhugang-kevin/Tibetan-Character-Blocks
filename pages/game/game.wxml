@@ -1,11 +1,13 @@
 <view class="page">
 
-  <!-- 藏文化背景层（三层：纹样 / 经幡 / 雪山布达拉宫） -->
+  <!-- 藏文化背景层（三层：纹样 / 经幡 / 雪山布达拉宫）+ 夜间色调罩 -->
   <view class="scenery" aria-hidden="true">
+    <image class="sc-bg" src="/images/bg-global.jpg" mode="aspectFill" />
     <view class="sc-pattern"></view>
     <view class="grain"></view>
     <image class="sc-ground" src="/images/bg-ground.png" mode="widthFix" />
     <image class="sc-sky" src="/images/bg-sky.png" mode="widthFix" />
+    <view class="sc-night"></view>
   </view>
 
   <!-- 顶部状态条 -->
@@ -18,7 +20,10 @@
   <!-- 连击浮层 -->
   <view wx:if="{{comboFx}}" class="combo-fx">{{comboFx}}</view>
 
-  <!-- 盘面：纸面面板与背景分层，牌面全关系统一尺寸并居中 -->
+  <!-- 破冰 / 破箱浮字 -->
+  <view wx:if="{{brokenFx}}" class="break-fx">{{brokenFx}}</view>
+
+  <!-- 盘面：第二层「青金石蓝底盘」+ 第三层「凹陷槽位」+ 第四层「3D 凸起方块」 -->
   <view class="game-body">
     <view class="board-panel">
       <view class="board-outline">
@@ -27,15 +32,26 @@
           <view
             wx:for="{{tiles}}"
             wx:key="uid"
-            class="tile {{item.state}} {{item.golden ? 'golden' : ''}}"
-            style="color: {{item.color}}; border-color: {{item.state === 'selected' ? item.color : '#E4DCC8'}}; width: {{tileW}}rpx; height: {{tileH}}rpx; font-size: {{glyphSize}}rpx;"
+            class="tile {{item.state}} {{item.blocked ? 'blocked' : ''}}"
+            style="width: {{tileW}}rpx; height: {{tileH}}rpx;"
             data-index="{{index}}"
             bindtap="onTapTile"
           >
-            <view wx:if="{{item.golden}}" class="gold-star">✦</view>
-            <text wx:if="{{item.type === 'letter'}}" class="glyph tibetan">{{item.tibetan}}</text>
-            <image wx:elif="{{iconPaths[item.id]}}" class="glyph-img" src="{{iconPaths[item.id]}}" mode="aspectFit" />
-            <text wx:else class="glyph-fallback" style="color: {{item.color}};">{{item.fallbackText}}</text>
+            <!-- 第四层：凸起方块（渐变底色 + 底部投影 + 顶部高光） -->
+            <view class="piece" style="{{item.pieceStyle}}">
+              <text wx:if="{{item.type === 'letter'}}" class="glyph tibetan" style="font-size: {{glyphSize}}rpx;">{{item.tibetan}}</text>
+              <image wx:elif="{{iconPaths[item.id]}}" class="glyph-img" src="{{iconPaths[item.id]}}" mode="aspectFit" />
+              <text wx:else class="glyph-fallback">{{item.fallbackText}}</text>
+              <view wx:if="{{item.golden}}" class="gold-star">✦</view>
+              <!-- 破碎粒子：金粉 / 风马旗碎片（消除瞬间播放） -->
+              <view wx:if="{{item.shatter}}" class="bits">
+                <view wx:for="{{bitSlots}}" wx:for-item="b" wx:key="*this" class="bit {{b}}"></view>
+              </view>
+            </view>
+            <!-- 障碍物：冰霜（半透明蓝罩 + 白边高光） -->
+            <view wx:if="{{item.frost}}" class="frost"><text class="frost-mark">❄</text></view>
+            <!-- 障碍物：藏式木箱（木纹 + 金色剩余耐久） -->
+            <view wx:if="{{item.crate > 0}}" class="crate"><text class="crate-num">{{item.crate}}</text></view>
           </view>
         </view>
       </view>
@@ -51,8 +67,9 @@
     <text>{{toastText}}</text>
   </view>
 
-  <!-- 文化卡（仅首次发现该元素时滑出；非阻塞，自动收起） -->
+  <!-- 文化卡（首次发现滑出 · 藏纸卷轴样式 · 不打断游戏） -->
   <view class="card-sheet {{showCard ? 'show' : ''}}" wx:if="{{card}}">
+    <view class="scroll-rod"></view>
     <view class="card-hero" style="background: linear-gradient(135deg, {{cardColor}}, {{cardColorDark}});">
       <view class="hero-pat"></view>
       <view class="card-x" bindtap="dismissCard">✕</view>
@@ -76,11 +93,17 @@
         <text class="fact-label">文化小知识</text>
         <text class="fact-text">{{card.funFact}}</text>
       </view>
+      <!-- 喇叭：点击播放本元素的藏文发音 -->
+      <view class="card-speak" bindtap="speakCard">
+        <text class="speak-icon">🔊</text>
+        <text class="speak-text">点击播放藏文读音</text>
+      </view>
+      <view class="card-know" bindtap="dismissCard">知道了</view>
     </view>
     <view class="card-progress">
       <view class="card-bar {{cardBarRun ? 'run' : ''}}" style="background: {{cardColor}};"></view>
     </view>
-    <view class="card-hint">游戏不会暂停 · 点 ✕ 或继续消除即可收起</view>
+    <view class="card-hint">游戏不会暂停 · 点「知道了」或继续消除即可收起</view>
   </view>
 
   <!-- 通关情绪反馈：金色莲花 + 风马旗碎片粒子 + 雪山金光（纯 CSS，零依赖） -->

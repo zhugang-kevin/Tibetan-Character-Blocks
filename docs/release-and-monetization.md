@@ -1,5 +1,7 @@
 # 藏字方块 · 上线与支付开通指南
 
+> 🟢 **状态：有效** · 结论索引见 [`DECISIONS.md`](DECISIONS.md)（唯一真相源）。
+> ⚠️ **本指南只写到「开通」，没写到「该不该现在开通」**：先验证留存（见 DECISIONS.md 第四节），再走本文的支付开通。
 > 更新：2026-10-04 · 配合《藏字方块》MVP（tibetan-match）使用
 > **商业化模式请看 [`docs/business-model-v2.md`](business-model-v2.md)**（无广告 · 商家核销 · 公益）。
 > 本文档只负责「主体 → 认证 → 备案 → 商户号」的**开通流程与材料**。
@@ -65,17 +67,21 @@
 
 ## 五、代码侧准备清单（已就绪/待办）
 
+> ⚠️ **本清单是「上线后要做的事」，不是「现在要做的事」。**
+> 依 [`DECISIONS.md`](DECISIONS.md) **D13**，本阶段**只做上线与验证留存**：
+> 标 🔒 的项**整体延后到留存验证通过之后**，现在动手等于在未证明需求前建后端。
+
 - [x] 分享、祝福卡等传播组件已就绪
 - [x] 本地进度存储（未来接云开发时迁移为云端存档）
 - [ ] 替换 `project.config.json` 的 appid（等注册完成）
 - [ ] `app.js` 填入藏文字体 HTTPS 地址（云开发静态托管）
 - [ ] 去游戏化表述改造（**阶段 0，最高优先级**，见 §3）
-- [ ] 核销闭环：`utils/coupon.js` 券状态机 + 云开发集合 + 商家端扫码（见 v2 §5）
-- [ ] 公益模块：匠人展示 + `wx.navigateToMiniProgram` 跳转（需配置跳转白名单）
-- [ ] 虚拟内容付费（引擎 A）：云函数 `createVirtualOrder` / `virtualPayNotify` + `utils/virtual-pay.js`（见 [`monetization-v3.md`](monetization-v3.md) §4.1）
-- [ ] 实物文创商城（引擎 B）：`pages/shop/` + 普通微信支付（见 §4.2）
+- [ ] 🔒 核销闭环：`utils/coupon.js` 券状态机 + 云开发集合 + 商家端扫码（见 v2 §5）—— 延后
+- [ ] 🔒 公益模块：匠人展示 + `wx.navigateToMiniProgram` 跳转（需配置跳转白名单）—— 延后
+- [ ] 🔒 虚拟内容付费（引擎 A）：云函数 `createVirtualOrder` / `virtualPayNotify` + `utils/virtual-pay.js`（见 [`monetization-v3.md`](monetization-v3.md) §4.1）—— 延后
+- [ ] 🔒 实物文创商城（引擎 B）：`pages/shop/` + 普通微信支付（见 §4.2）—— 延后
 - [ ] 支付模块：**提审版本仍不含支付代码**；开通虚拟/普通支付后再上
-- [ ] ~~广告位预留~~ **已排除**（无广告模式）
+- [ ] ~~广告位预留~~ **已排除**（无广告模式 = D5）
 
 ## 六、避坑提示
 

@@ -1,5 +1,7 @@
 # 本地体验指南
 
+> 🟢 **状态：有效（操作指南）** · 结论索引见 [`DECISIONS.md`](DECISIONS.md)（唯一真相源）。
+
 本机体检结论（2026-10-04）：**未安装微信开发者工具**（`C:\Program Files\Tencent\` 下只有微信本体 `Weixin.exe`，无 `微信web开发者工具`）。
 所以在装工具之前，先用 **A 方案** 零安装试玩；装好工具后再用 **B 方案** 跑真正的小程序。
 
@@ -30,7 +32,7 @@ cd tibetan-match
 node scripts/build-h5.js
 ```
 
-**自动验收**（模拟真人点击，197 项断言）：
+**自动验收**（模拟真人点击，232 项断言）：
 
 ```bash
 NODE_PATH="C:/Users/zhuga/.workbuddy/binaries/node/workspace/node_modules" \

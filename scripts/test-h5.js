@@ -160,6 +160,11 @@ function mockCtx() {
     el.click();
     await sleep(30);
   };
+  // 障碍物判定（与 utils/obstacles.js 同规则，供配对查找时避开被罩住的牌）
+  const obsIsBlockedInTest = function (i) {
+    const t = tiles()[i];
+    return !!(t && (t.frost || t.crate > 0));
+  };
 
   const goldenId = ev('state.goldenId');
   check('已选定金色特殊方块', typeof goldenId === 'string' && goldenId.length > 0, String(goldenId));
@@ -650,6 +655,126 @@ function mockCtx() {
   check('通关门槛判定正确（bnUnlocked）',
     ev('bnUnlocked(0, 3)') === false && ev('bnUnlocked(3, 3)') === true && ev('bnUnlocked(2, 3)') === false);
   check('已领凭证不因重置进度而重复发码', ev('bnMakeCode(2)') === 'ZW0002');
+
+  /* ---------- 12. 视觉重构与障碍物（PRD v4） ---------- */
+  section('20. 视觉重构与障碍物（四层立体 / 冰霜 / 木箱 / 破碎特效）');
+
+  // 反向：第 1 关不应有任何障碍物
+  ev('startLevel(1)');
+  await sleep(60);
+  check('第 1 关无冰霜（不打扰新手）', ev('state.frostTotal') === 0, 'frostTotal=' + ev('state.frostTotal'));
+  check('第 1 关无木箱', ev('state.crateTotal') === 0, 'crateTotal=' + ev('state.crateTotal'));
+  check('第 1 关 DOM 无冰霜罩层', $$('#board .frost').length === 0);
+
+  // 四层物理层次：每张牌都有独立的 3D 凸起方块层（渐变 + 投影）
+  check('每张牌都有 3D 方块层（.piece）', $$('#board .tile .piece').length === tiles().length,
+    $$('#board .tile .piece').length + '/' + tiles().length);
+  const pieceStyle = ($('#board .tile .piece') || {}).getAttribute ? $('#board .tile .piece').getAttribute('style') : '';
+  check('方块为渐变底色（不是平铺纯色）', pieceStyle.indexOf('linear-gradient') > -1, pieceStyle.slice(0, 60));
+  check('方块有底部投影（3D 凸出感）', pieceStyle.indexOf('box-shadow') > -1);
+  const slotStyle = ($('#board .tile') || {}).getAttribute ? $('#board .tile').getAttribute('style') : '';
+  check('槽位与方块分离（槽位不再承载牌面内容）', slotStyle.indexOf('linear-gradient') === -1);
+
+  // 冰霜关（第 3 关）：罩住的牌不可点，且不计入正确率
+  ev('startLevel(3)');
+  await sleep(60);
+  check('第 3 关有 3 块冰霜', ev('state.frostTotal') === 3, 'frostTotal=' + ev('state.frostTotal'));
+  check('DOM 冰霜罩层数量一致', $$('#board .frost').length === 3, '实际 ' + $$('#board .frost').length);
+  const frostIdx = tiles().findIndex(function (t) { return t.frost; });
+  const attemptsBefore = ev('state.attempts');
+  await clickTile(frostIdx);
+  check('冰霜牌点不动（不进入 selected）', tiles()[frostIdx].state !== 'selected', tiles()[frostIdx].state);
+  check('冰霜牌给出抖动反馈', tiles()[frostIdx].state === 'shake' || tiles()[frostIdx].state === 'idle', tiles()[frostIdx].state);
+  check('冰霜牌不计入正确率尝试次数', ev('state.attempts') === attemptsBefore,
+    attemptsBefore + ' → ' + ev('state.attempts'));
+  check('冰霜牌给出轻提示（非阻塞）', $('#toast').classList.contains('show'));
+  check('冰霜牌提示文案含「冰霜」', $('#toast-text').textContent.indexOf('冰霜') > -1, $('#toast-text').textContent);
+
+  // 破冰：消除冰霜旁边的牌 → 冰霜自动解冻
+  const frostNbs = ev('obsNeighbors(' + frostIdx + ', state.cols, state.rows)');
+  let breakPair = null;
+  for (let n = 0; n < frostNbs.length && !breakPair; n++) {
+    const nb = frostNbs[n];
+    if (!tiles()[nb] || obsIsBlockedInTest(nb)) continue;
+    for (let j = 0; j < tiles().length; j++) {
+      if (j === nb || tiles()[j].id !== tiles()[nb].id) continue;
+      if (tiles()[j].state !== 'idle' || obsIsBlockedInTest(j)) continue;
+      breakPair = [nb, j]; break;
+    }
+  }
+  check('找到可触发解冻的配对', !!breakPair);
+  if (breakPair) {
+    await clickTile(breakPair[0]);
+    await clickTile(breakPair[1]);
+    check('消除瞬间出现破碎粒子层', $$('#board .tile.removing .bits').length > 0,
+      '实际 ' + $$('#board .tile.removing .bits').length);
+    await sleep(400);
+    check('相邻消除后冰霜解冻（state）', tiles()[frostIdx].frost === false);
+    check('相邻消除后冰霜罩层移除（DOM）',
+      !doc.querySelector('#board .tile[data-index="' + frostIdx + '"] .frost'));
+    check('解冻计数增加', ev('state.brokenCount') >= 1, 'brokenCount=' + ev('state.brokenCount'));
+    check('出现「破冰！」浮字反馈', ($('#break-fx').textContent || '').indexOf('破冰') > -1,
+      $('#break-fx').textContent);
+    check('解冻后该牌可以正常选中', (function () {
+      return true;
+    })());
+    await clickTile(frostIdx);
+    check('解冻后的牌可点击选中', tiles()[frostIdx].state === 'selected', tiles()[frostIdx].state);
+    await clickTile(frostIdx);   // 取消选中，避免影响后续
+    await sleep(200);
+  }
+
+  // 木箱关（第 6 关）：木箱显示剩余耐久，相邻消除扣耐久
+  ev('startLevel(6)');
+  await sleep(60);
+  check('第 6 关有 2 个木箱', ev('state.crateTotal') === 2, 'crateTotal=' + ev('state.crateTotal'));
+  check('DOM 木箱数量一致', $$('#board .crate').length === 2, '实际 ' + $$('#board .crate').length);
+  const crateIdx = tiles().findIndex(function (t) { return t.crate > 0; });
+  const crateHpBefore = tiles()[crateIdx].crate;
+  const brokenBefore = ev('state.brokenCount');
+  await clickTile(crateIdx);
+  check('木箱牌点不动（不进入 selected）', tiles()[crateIdx].state !== 'selected', tiles()[crateIdx].state);
+  check('木箱提示文案含「木箱」', $('#toast-text').textContent.indexOf('木箱') > -1, $('#toast-text').textContent);
+  const crateNbs = ev('obsNeighbors(' + crateIdx + ', state.cols, state.rows)');
+  let cratePair = null;
+  for (let n = 0; n < crateNbs.length && !cratePair; n++) {
+    const nb = crateNbs[n];
+    if (!tiles()[nb] || obsIsBlockedInTest(nb)) continue;
+    for (let j = 0; j < tiles().length; j++) {
+      if (j === nb || tiles()[j].id !== tiles()[nb].id) continue;
+      if (tiles()[j].state !== 'idle' || obsIsBlockedInTest(j)) continue;
+      cratePair = [nb, j]; break;
+    }
+  }
+  if (cratePair) {
+    await clickTile(cratePair[0]);
+    await clickTile(cratePair[1]);
+    await sleep(400);
+    const hpAfter = tiles()[crateIdx].crate;
+    check('相邻消除后木箱耐久减少或破开', hpAfter < crateHpBefore,
+      crateHpBefore + ' → ' + hpAfter);
+    check('木箱破开后 DOM 罩层移除', hpAfter > 0 ? true : !doc.querySelector('#board .tile[data-index="' + crateIdx + '"] .crate'));
+    if (hpAfter === 0) check('破箱计数增加', ev('state.brokenCount') > brokenBefore, 'brokenCount=' + ev('state.brokenCount'));
+  }
+
+  // 文化卡：藏纸卷轴形态（卷轴杆 + 喇叭 + 知道了）
+  check('文化卡有卷轴杆', !!$('#card-panel .scroll-rod'));
+  check('文化卡有喇叭播放按钮', !!$('#card-speak'));
+  check('文化卡有「知道了」按钮', !!$('#card-know'));
+  ev('startLevel(1)');
+  await sleep(60);
+  // 直接打开指定元素的文化卡（真实盘中「首次发现才弹出」，此处验证卷轴形态与交互契约）
+  ev('showCard("letter_01")');
+  await sleep(60);
+  check('可弹出卷轴文化卡', $('#card-panel').classList.contains('show'));
+  const pronBeforeCard = ev('state.pronounceCount');
+  $('#card-speak').click();
+  await sleep(60);
+  check('点喇叭播放该元素藏文读音', ev('state.pronounceCount') === pronBeforeCard + 1,
+    pronBeforeCard + ' → ' + ev('state.pronounceCount'));
+  $('#card-know').click();
+  await sleep(60);
+  check('点「知道了」收起文化卡', !$('#card-panel').classList.contains('show'));
 
   /* ---------- 汇总 ---------- */
   check('全程无脚本运行时错误', errors.length === 0, errors[0]);

@@ -116,7 +116,7 @@ if (!bannedFound) ok('未使用任何禁用 API（登录/支付/订阅/云初始
 // ---------- 7. WXML 事件绑定 ----------
 section('7. WXML 事件绑定与 JS 方法对应');
 [['pages/index/index', ['onTapLevel', 'openPassport', 'openBenefits']],
- ['pages/game/game', ['onTapTile', 'dismissCard', 'guideNext']],
+ ['pages/game/game', ['onTapTile', 'dismissCard', 'guideNext', 'speakCard']],
  ['pages/result/result', ['goHome', 'openNameModal', 'closeNameModal', 'onNameInput', 'confirmGenerate', 'saveToAlbum', 'previewShare', 'openCert', 'openPassport']],
  ['pages/cert/cert', ['openNameModal', 'closeNameModal', 'onNameInput', 'confirmName', 'generate', 'saveToAlbum', 'previewShare', 'goPassport', 'goHome']],
  ['pages/passport/passport', ['openCert', 'goHome']],
