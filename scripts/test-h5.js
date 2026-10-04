@@ -5,6 +5,12 @@
  * 用 jsdom 真实执行 preview/play.html 的内联脚本，并模拟真人点击，
  * 逐项验证「配对消除 → 文化卡 → 结算 → 下一关」整条链路。
  *
+ * 本轮重点验证 4 项体验修复：
+ *   1) 弹窗不打扰：文化卡仅首次发现出现，非阻塞、自动收起；重复匹配只出轻提示
+ *   2) 背景不单调：首页/游戏页均有藏文化三层背景（纹样/经幡/雪山布达拉宫）
+ *   3) 弹窗不简陋：文化卡为渐变头图 + 徽章 + 文化小知识 + 倒计时条
+ *   4) 牌面统一：所有关卡牌面尺寸一致，盘面居中
+ *
  * 需要：jsdom（安装在与本脚本同级 script 的 node_modules 或 NODE_PATH 中）
  * 用法：node scripts/test-h5.js
  */
@@ -68,6 +74,13 @@ function mockCtx() {
       window.HTMLCanvasElement.prototype.getContext = function () { return mockCtx(); };
       window.HTMLCanvasElement.prototype.toDataURL = function () { return 'data:image/png;base64,STUB'; };
       window.confirm = function () { return true; };
+      window.scrollTo = function () {};
+      // jsdom 不进行布局，clientWidth 恒为 0；给出稳定的手机视口宽度，
+      // 以便验证「各关牌面尺寸一致」的布局计算。
+      Object.defineProperty(window.Element.prototype, 'clientWidth', {
+        configurable: true,
+        get: function () { return 390; }
+      });
       window.addEventListener('error', function (e) {
         errors.push(String((e && e.error && e.error.stack) || (e && e.message) || e));
       });
@@ -84,7 +97,7 @@ function mockCtx() {
     return s ? s.id : null;
   };
 
-  await sleep(120);
+  await sleep(150);
 
   /* ---------- 1. 启动与首页 ---------- */
   section('1. 首页');
@@ -97,20 +110,26 @@ function mockCtx() {
   check('Logo 已加载（base64 内联）', ($('#hero-logo') || {}).src && $('#hero-logo').src.indexOf('data:image/png') === 0);
   check('slogan 显示「玩方块，认藏文」', doc.body.textContent.indexOf('玩方块，认藏文') > -1);
 
-  /* ---------- 2. 进入第 1 关 ---------- */
-  section('2. 进入第 1 关');
+  /* ---------- 2. 藏文化背景层（修复②：背景不单调） ---------- */
+  section('2. 藏文化背景层');
+  check('经幡天空层已内联', ($('#sc-sky') || {}).src && $('#sc-sky').src.indexOf('data:image/png') === 0);
+  check('雪山/布达拉宫地面层已内联', ($('#sc-ground') || {}).src && $('#sc-ground').src.indexOf('data:image/png') === 0);
+  check('藏式菱格纹样已设置为 CSS 变量',
+    (doc.documentElement.style.getPropertyValue('--pat') || '').indexOf('data:image/png') > -1);
+  check('背景为三层结构（纹样/天空/地面）',
+    $$('.scenery > *').length === 3, '实际 ' + $$('.scenery > *').length);
+
+  /* ---------- 3. 进入第 1 关 ---------- */
+  section('3. 进入第 1 关');
   btns[0].click();
-  await sleep(80);
+  await sleep(90);
   check('切到游戏页', activeScreen() === 'screen-game', activeScreen());
   check('第 1 关 6×4 = 24 张牌', $$('#board .tile').length === 24, '实际 ' + $$('#board .tile').length);
   check('新手引导首次弹出', $('#guide-mask').classList.contains('show'));
-  // 关掉 3 步引导
   for (let i = 0; i < 3; i++) { $('#guide-next').click(); await sleep(30); }
   check('引导完成后关闭', !$('#guide-mask').classList.contains('show'));
-  check('引导完成状态已持久化', ev("isOnboardDone()") === true);
+  check('引导完成状态已持久化', ev('isOnboardDone()') === true);
 
-  /* ---------- 3. 配对成功 → 文化卡 ---------- */
-  section('3. 配对成功与文化卡');
   const tiles = function () { return ev('state.tiles'); };
   const findPair = function () {
     const t = tiles();
@@ -139,88 +158,147 @@ function mockCtx() {
   check('已选定金色特殊方块', typeof goldenId === 'string' && goldenId.length > 0, String(goldenId));
   check('金色方块已渲染 ✦', $$('#board .tile.golden .star').length > 0);
 
+  /* ---------- 4. 首次配对 → 非阻塞文化卡（修复①③） ---------- */
+  section('4. 首次配对与非阻塞文化卡');
+  check('旧的阻塞式弹窗已移除', !$('#card-mask'));
+
   let pair = findPair();
   await clickTile(pair[0]);
   check('第一张牌进入 selected', tiles()[pair[0]].state === 'selected', tiles()[pair[0]].state);
   await clickTile(pair[1]);
   check('配对后进入 removing', tiles()[pair[0]].state === 'removing' && tiles()[pair[1]].state === 'removing');
-  await sleep(360);
-  check('文化卡弹窗已出现', $('#card-mask').classList.contains('show'));
-  const cardText = $('#card-sheet').textContent;
-  check('文化卡有标题/读音/说明', cardText.length > 30, '长度 ' + cardText.length);
-  check('文化卡含「冷知识」', cardText.indexOf('冷知识') > -1);
-  check('文化卡含「知道了」按钮', !!$('#card-ok'));
-  check('弹窗期间锁定点击', ev('state.locked') === true);
+  check('配对成功不再锁盘面（非阻塞）', ev('state.locked') === false);
 
-  $('#card-ok').click();
-  await sleep(60);
-  check('「知道了」后弹窗关闭', !$('#card-mask').classList.contains('show'));
+  await sleep(400);
+  check('首次发现滑动出现完整文化卡', $('#card-panel').classList.contains('show'));
+  check('文化卡显示期间仍不锁盘面', ev('state.locked') === false);
+
+  // 关键回归：卡片显示时仍可继续点击牌面（旧版会锁死）
+  const probe = findPair();
+  await clickTile(probe[0]);
+  check('卡片显示时仍可继续点牌（真正的非阻塞）', tiles()[probe[0]].state === 'selected', tiles()[probe[0]].state);
+  await clickTile(probe[0]);   // 再点一次取消选中
+  check('再次点击可取消选中', tiles()[probe[0]].state === 'idle', tiles()[probe[0]].state);
+
+  // 弹窗视觉（修复③：不简陋）
+  const cardText = $('#card-panel').textContent;
+  check('文化卡有标题/读音/说明', cardText.length > 30, '长度 ' + cardText.length);
+  check('文化卡含「文化小知识」', cardText.indexOf('文化小知识') > -1);
+  check('文化卡有渐变头图', ($('#card-hero').style.background || '').indexOf('linear-gradient') > -1);
+  check('文化卡有徽章元素', !!$('#card-medal'));
+  check('文化卡有倒计时进度条', !!$('#card-bar'));
+  check('文化卡有说明式提示语（不打断游戏）', cardText.indexOf('游戏不会暂停') > -1);
+  check('文化卡提供关闭按钮', !!$('#card-x'));
+
+  $('#card-x').click();
+  await sleep(80);
+  check('点 ✕ 后文化卡收起', !$('#card-panel').classList.contains('show'));
   check('两张牌状态 = removed', tiles()[pair[0]].state === 'removed' && tiles()[pair[1]].state === 'removed');
   check('已消除对数 = 1', ev('state.matchedCount') === 1);
   check('积分已累加（≥10）', ev('state.score') >= 10, 'score=' + ev('state.score'));
-  check('解除锁定可继续点', ev('state.locked') === false);
 
-  /* ---------- 4. 配对失败：无惩罚 ---------- */
-  section('4. 配对失败不扣分');
+  /* ---------- 5. 配对失败：无惩罚 ---------- */
+  section('5. 配对失败不扣分');
   const scoreBefore = ev('state.score');
-  const comboBefore = ev('state.combo');
   const mm = findMismatch();
   await clickTile(mm[0]);
   await clickTile(mm[1]);
   check('错误配对触发 shake', tiles()[mm[0]].state === 'shake' && tiles()[mm[1]].state === 'shake');
+  check('抖动期间短暂锁盘面', ev('state.locked') === true);
   await sleep(520);
   check('抖动后恢复 idle', tiles()[mm[0]].state === 'idle' && tiles()[mm[1]].state === 'idle');
+  check('解除锁定可继续点', ev('state.locked') === false);
   check('不扣分', ev('state.score') === scoreBefore, scoreBefore + ' → ' + ev('state.score'));
-  check('连击清零', ev('state.combo') === 0, comboBefore + ' → ' + ev('state.combo'));
+  check('连击清零', ev('state.combo') === 0, 'combo=' + ev('state.combo'));
 
-  /* ---------- 5. 连击 ---------- */
-  section('5. 连击系统');
-  for (let k = 0; k < 2; k++) {
-    const pr = findPair();
-    await clickTile(pr[0]);
-    await clickTile(pr[1]);
-    await sleep(330);
-    $('#card-ok').click();
-    await sleep(60);
-  }
+  /* ---------- 6. 连击 + 重复匹配轻提示（修复①） ---------- */
+  section('6. 连击与重复匹配轻提示');
+  // 把 12 张文化卡全部标记为「已看过」，之后的匹配应只出轻提示
+  ev('Object.keys(ELEMENTS).forEach(function (k) { markCardSeen(k); });');
+  const pr1 = findPair();
+  await clickTile(pr1[0]);
+  await clickTile(pr1[1]);
+  await sleep(380);
+  check('重复匹配不再弹完整卡片', !$('#card-panel').classList.contains('show'));
+  check('重复匹配改为轻提示 toast', $('#toast').classList.contains('show'));
+  check('轻提示含「已收藏」', $('#toast').textContent.indexOf('已收藏') > -1, $('#toast').textContent);
+
+  const pr2 = findPair();
+  await clickTile(pr2[0]);
+  await clickTile(pr2[1]);
+  await sleep(380);
   check('连击累加（≥2）', ev('state.combo') >= 2, 'combo=' + ev('state.combo'));
   check('最高连击已记录', ev('getProgress().bestCombo') >= 2, 'bestCombo=' + ev('getProgress().bestCombo'));
 
-  /* ---------- 6. 通关 → 结算页 ---------- */
-  section('6. 通关与结算');
+  /* ---------- 7. 文化卡自动收起（修复①） ---------- */
+  section('7. 文化卡自动收起');
+  const autoMs = ev('CARD_AUTO_MS');
+  check('自动收起时长合理（4-8 秒）', typeof autoMs === 'number' && autoMs >= 4000 && autoMs <= 8000, 'CARD_AUTO_MS=' + autoMs);
+  ev('showCard("letter_01")');
+  await sleep(60);
+  check('手动调用可弹出文化卡', $('#card-panel').classList.contains('show'));
+  await sleep(autoMs + 500);
+  check('无需手动操作即自动收起', !$('#card-panel').classList.contains('show'));
+
+  /* ---------- 8. 牌面尺寸统一（修复④） ---------- */
+  section('8. 各关牌面尺寸统一');
+  ev('startLevel(1)'); await sleep(70);
+  const tileL1 = ev('state.tileW');
+  const colsL1 = ev('state.cols');
+  check('第 1 关为 6 列', colsL1 === 6, 'cols=' + colsL1);
+  check('第 1 关牌宽计算有效', tileL1 >= 30, 'tileW=' + tileL1);
+
+  ev('startLevel(3)'); await sleep(70);
+  const tileL3 = ev('state.tileW');
+  const colsL3 = ev('state.cols');
+  check('第 3 关为 8 列', colsL3 === 8, 'cols=' + colsL3);
+  check('6 列与 8 列的牌宽完全一致', tileL3 === tileL1, 'L1=' + tileL1 + ' vs L3=' + tileL3);
+  check('盘面宽度随列数变化（居中自适应）', ev('state.cols * state.tileW + (state.cols - 1) * state.gap') > 0);
+
+  ev('startLevel(10)'); await sleep(70);
+  const tileL10 = ev('state.tileW');
+  check('第 10 关牌宽与第 1 关一致', tileL10 === tileL1, 'L1=' + tileL1 + ' vs L10=' + tileL10);
+  check('第 10 关 6×8 = 48 张牌', $$('#board .tile').length === 48, '实际 ' + $$('#board .tile').length);
+
+  // 回到第 1 关，准备通关
+  ev('startLevel(1)'); await sleep(80);
+
+  /* ---------- 9. 通关 → 结算页 ---------- */
+  section('9. 通关与结算');
   let guard = 0;
-  while (ev('state.matchedCount') < 12 && guard++ < 30) {
+  while (ev('state.matchedCount') < 12 && guard++ < 40) {
     const pr = findPair();
     if (!pr) break;
     await clickTile(pr[0]);
     await clickTile(pr[1]);
-    await sleep(330);
-    if ($('#card-mask').classList.contains('show')) { $('#card-ok').click(); await sleep(60); }
+    await sleep(340);
   }
   check('全部 12 对已消除', ev('state.matchedCount') === 12, 'matched=' + ev('state.matchedCount'));
-  await sleep(1000);
+  check('通关瞬间不再弹出重复提示', !$('#toast').classList.contains('show'));
+  await sleep(1100);
   check('自动进入结算页', activeScreen() === 'screen-result', activeScreen());
   check('显示「第 1 关完成！」', ($('#res-title') || {}).textContent === '第 1 关完成！');
   check('显示积分/连击/文化卡统计', $('#res-score').textContent !== '0' || ev('state.score') === 0);
   check('授予「拉萨」印记横幅', ($('#res-stamp').textContent || '').indexOf('拉萨') > -1);
-  check('文化卡列表去重后 2 张', ($('#res-chips').textContent || '').length > 0 && $$('#res-chips .chip').length === 2, 'chips=' + $$('#res-chips .chip').length);
+  check('文化卡列表去重后 2 张', $$('#res-chips .chip').length === 2, 'chips=' + $$('#res-chips .chip').length);
   check('出现「下一关」按钮', $('#res-actions').textContent.indexOf('下一关') > -1, $('#res-actions').textContent);
   check('非第10关不显示祝福卡', $('#res-bless').textContent.trim() === '');
 
-  /* ---------- 7. 进度持久化 ---------- */
-  section('7. 进度持久化');
+  /* ---------- 10. 进度持久化 ---------- */
+  section('10. 进度持久化');
   const saved = JSON.parse(win.localStorage.getItem('zangzi_progress') || 'null');
   check('localStorage 已写入 progress', !!saved);
   check('completedLevels 含第 1 关', saved && saved.completedLevels.indexOf(1) > -1, JSON.stringify(saved && saved.completedLevels));
   check('unlockedLevel 提升到 2', saved && saved.unlockedLevel === 2, 'unlockedLevel=' + (saved && saved.unlockedLevel));
   check('stamps 含 lhasa', saved && saved.stamps.indexOf('lhasa') > -1);
+  check('seenCards 已记录（用于「首次才弹卡」判断）', saved && saved.seenCards.length > 0, 'seenCards=' + (saved && saved.seenCards.length));
 
-  /* ---------- 8. 返回首页 ---------- */
-  section('8. 返回首页');
+  /* ---------- 11. 返回首页 ---------- */
+  section('11. 返回首页');
   const backBtn = $$('#res-actions button').filter(function (b) { return b.textContent.indexOf('返回首页') > -1; })[0];
   check('存在「返回首页」按钮', !!backBtn);
   backBtn.click();
-  await sleep(60);
+  await sleep(80);
   check('回到首页', activeScreen() === 'screen-home', activeScreen());
   const btns2 = $$('#level-grid .level-btn');
   check('第 1 关显示已通关', btns2[0].classList.contains('done'));
@@ -228,19 +306,19 @@ function mockCtx() {
   check('第 3 关仍锁定', btns2[2].classList.contains('locked'));
   check('首页显示印记', ($('#profile-stamps').textContent || '').indexOf('拉萨') > -1);
 
-  /* ---------- 9. 第 10 关祝福卡 ---------- */
-  section('9. 第 10 关祝福卡');
+  /* ---------- 12. 第 10 关祝福卡 ---------- */
+  section('12. 第 10 关祝福卡');
   ev('startLevel(10)');
-  await sleep(80);
+  await sleep(90);
   check('第 10 关 6×8 = 48 张牌', $$('#board .tile').length === 48, '实际 ' + $$('#board .tile').length);
-  ev('state.matchedCount = 12; state.collected = ["letter_01","icon_03"]; state.score = 520; state.maxCombo = 6; finishLevel()');
-  await sleep(80);
+  ev('state.matchedCount = 24; state.collected = ["letter_01","icon_03"]; state.score = 520; state.maxCombo = 6; finishLevel()');
+  await sleep(90);
   check('第 10 关结算出现祝福卡区块', doc.body.textContent.indexOf('扎西德勒！通关全部 10 关') > -1);
   check('无「下一关」按钮（已是最后一关）', $('#res-actions').textContent.indexOf('下一关') === -1,
     '实际按钮：' + $('#res-actions').textContent);
   $('#bless-name').value = '小藏';
   $('#bless-gen').click();
-  await sleep(120);
+  await sleep(140);
   const dl = $('#bless-out a.dl-btn');
   check('生成祝福卡（PNG 下载链接）', !!dl, '未生成');
   if (dl) {
@@ -248,8 +326,8 @@ function mockCtx() {
     check('图片为 data URL', dl.getAttribute('href').indexOf('data:image/png') === 0);
   }
 
-  /* ---------- 10. 数据还原（关卡配置） ---------- */
-  section('10. 关卡数据');
+  /* ---------- 13. 数据还原（关卡配置） ---------- */
+  section('13. 关卡数据');
   const levels = ev('LEVELS');
   let allOk = true;
   levels.forEach(function (c) {

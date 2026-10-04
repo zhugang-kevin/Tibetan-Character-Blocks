@@ -3,9 +3,40 @@
   min-height: 100vh;
   padding: 40rpx 32rpx 60rpx;
   box-sizing: border-box;
+  position: relative;
+  background: linear-gradient(180deg, #FDF6E3 0%, #FAF0DA 52%, #F2E4C6 100%);
+}
+
+/* ============ 藏文化背景层 ============ */
+.scenery {
+  position: fixed;
+  left: 0; right: 0; top: 0; bottom: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.sc-pattern {
+  position: absolute;
+  left: 0; top: 0; right: 0; bottom: 0;
+  background-image: url('data:image/png;base64,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');
+  background-repeat: repeat;
+  background-size: 60rpx 60rpx;
+  opacity: 0.10;
+}
+.sc-ground {
+  position: absolute;
+  left: 0; bottom: 0; width: 100%;
+  opacity: 0.88;
+}
+.sc-sky {
+  position: absolute;
+  left: 0; top: 0; width: 100%;
+  opacity: 0.95;
 }
 
 .hero {
+  position: relative;
+  z-index: 1;
   text-align: center;
   padding: 30rpx 0 50rpx;
 }
@@ -41,6 +72,8 @@
 }
 
 .level-grid {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
@@ -101,6 +134,8 @@
 .state-locked { color: #A79F8D; }
 
 .footer {
+  position: relative;
+  z-index: 1;
   margin-top: 30rpx;
   text-align: center;
   font-size: 24rpx;
@@ -123,6 +158,8 @@ page,
 
 /* 我的档案：印记 + 连击 */
 .profile-row {
+  position: relative;
+  z-index: 1;
   display: flex;
   justify-content: space-between;
   align-items: center;

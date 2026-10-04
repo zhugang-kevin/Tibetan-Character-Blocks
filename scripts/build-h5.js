@@ -37,12 +37,15 @@ const DATA = {
   levels: require(path.join(ROOT, 'data', 'levels'))
 };
 
-// ---------- 2. 注入品牌资产 ----------
+// ---------- 2. 注入品牌与背景资产 ----------
 const IMAGES = {
   logo200: dataUrl('images/logo-200.png'),
   logo144: dataUrl('images/logo-144.png'),
   logo80: dataUrl('images/logo-80.png'),
-  watermark: dataUrl('images/logo-watermark.png')
+  watermark: dataUrl('images/logo-watermark.png'),
+  bgSky: dataUrl('images/bg-sky.png'),
+  bgGround: dataUrl('images/bg-ground.png'),
+  pattern: dataUrl('images/pat-tile.png')
 };
 
 let html = fs.readFileSync(TEMPLATE, 'utf8');
@@ -88,6 +91,6 @@ const size = fs.statSync(OUT).size;
 console.log('✓ 已生成 preview/play.html  (' + Math.round(size / 1024) + ' KB)');
 console.log('  数据：' + Object.keys(DATA.elements).length + ' 个元素 / ' +
   DATA.cards.length + ' 张文化卡 / ' + DATA.levels.length + ' 关');
-console.log('  资产：4 个 Logo（已内联为 base64）');
+console.log('  资产：4 个 Logo + 3 个背景（经幡/布达拉宫/纹样，已内联 base64）');
 console.log('  牌数一致性：10 关全部通过');
 console.log('\n  双击 preview/play.html 即可在浏览器试玩。');

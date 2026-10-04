@@ -1,4 +1,11 @@
 <view class="page">
+  <!-- 藏文化背景层（三层：纹样 / 经幡 / 雪山布达拉宫） -->
+  <view class="scenery" aria-hidden="true">
+    <view class="sc-pattern"></view>
+    <image class="sc-ground" src="/images/bg-ground.png" mode="widthFix" />
+    <image class="sc-sky" src="/images/bg-sky.png" mode="widthFix" />
+  </view>
+
   <view class="hero">
     <image class="hero-logo" src="/images/logo-200.png" mode="aspectFit" />
     <view class="hero-title">藏字方块</view>

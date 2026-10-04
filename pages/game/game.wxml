@@ -1,5 +1,12 @@
 <view class="page">
 
+  <!-- 藏文化背景层（三层：纹样 / 经幡 / 雪山布达拉宫） -->
+  <view class="scenery" aria-hidden="true">
+    <view class="sc-pattern"></view>
+    <image class="sc-ground" src="/images/bg-ground.png" mode="widthFix" />
+    <image class="sc-sky" src="/images/bg-sky.png" mode="widthFix" />
+  </view>
+
   <!-- 顶部状态条 -->
   <view class="statusbar">
     <text class="status-level">第 {{level}} 关</text>
@@ -10,34 +17,57 @@
   <!-- 连击浮层 -->
   <view wx:if="{{comboFx}}" class="combo-fx">{{comboFx}}</view>
 
-  <!-- 游戏网格 -->
-  <view class="board" style="grid-template-columns: repeat({{cols}}, 1fr);">
-    <view
-      wx:for="{{tiles}}"
-      wx:key="uid"
-      class="tile {{item.state}} {{item.golden ? 'golden' : ''}}"
-      style="color: {{item.color}}; border-color: {{item.state === 'selected' ? item.color : '#E4DCC8'}}; height: {{tileH}}rpx; font-size: {{glyphSize}}rpx;"
-      data-index="{{index}}"
-      bindtap="onTapTile"
-    >
-      <view wx:if="{{item.golden}}" class="gold-star">✦</view>
-      <text wx:if="{{item.type === 'letter'}}" class="glyph tibetan">{{item.tibetan}}</text>
-      <image wx:elif="{{iconPaths[item.id]}}" class="glyph-img" src="{{iconPaths[item.id]}}" mode="aspectFit" />
-      <text wx:else class="glyph-fallback" style="color: {{item.color}};">{{item.fallbackText}}</text>
+  <!-- 盘面：纸面面板与背景分层，牌面全关系统一尺寸并居中 -->
+  <view class="game-body">
+    <view class="board-panel">
+      <view class="board-outline">
+        <view class="board"
+          style="grid-template-columns: repeat({{cols}}, {{tileW}}rpx); gap: {{gap}}rpx; width: {{boardW}}rpx;">
+          <view
+            wx:for="{{tiles}}"
+            wx:key="uid"
+            class="tile {{item.state}} {{item.golden ? 'golden' : ''}}"
+            style="color: {{item.color}}; border-color: {{item.state === 'selected' ? item.color : '#E4DCC8'}}; width: {{tileW}}rpx; height: {{tileH}}rpx; font-size: {{glyphSize}}rpx;"
+            data-index="{{index}}"
+            bindtap="onTapTile"
+          >
+            <view wx:if="{{item.golden}}" class="gold-star">✦</view>
+            <text wx:if="{{item.type === 'letter'}}" class="glyph tibetan">{{item.tibetan}}</text>
+            <image wx:elif="{{iconPaths[item.id]}}" class="glyph-img" src="{{iconPaths[item.id]}}" mode="aspectFit" />
+            <text wx:else class="glyph-fallback" style="color: {{item.color}};">{{item.fallbackText}}</text>
+          </view>
+        </view>
+      </view>
     </view>
   </view>
 
-  <!-- 文化卡弹窗 -->
-  <view wx:if="{{card}}" class="mask {{showCard ? 'show' : ''}}" catchtap="noop"></view>
-  <view wx:if="{{card}}" class="card-sheet {{showCard ? 'show' : ''}}">
-    <view class="card-accent" style="background: {{cardColor}};"></view>
-    <view class="card-head">
-      <view class="card-big-wrap">
-        <text wx:if="{{card.tibetan}}" class="card-big tibetan" style="color: {{cardColor}};">{{card.tibetan}}</text>
-        <image wx:elif="{{iconPaths[card.id]}}" class="card-big-img" src="{{iconPaths[card.id]}}" mode="aspectFit" />
-        <text wx:else class="card-big" style="color: {{cardColor}};">{{card.title}}</text>
+  <!-- 重复匹配轻提示（非阻塞） -->
+  <view class="toast {{toastShow ? 'show' : ''}}">
+    <view class="toast-glyph" style="background: {{toastColor}};">
+      <image wx:if="{{toastIsIcon}}" class="toast-icon" src="{{toastIcon}}" mode="aspectFit" />
+      <text wx:else class="tibetan">{{toastGlyph}}</text>
+    </view>
+    <text>{{toastText}}</text>
+  </view>
+
+  <!-- 文化卡（仅首次发现该元素时滑出；非阻塞，自动收起） -->
+  <view class="card-sheet {{showCard ? 'show' : ''}}" wx:if="{{card}}">
+    <view class="card-hero" style="background: linear-gradient(135deg, {{cardColor}}, {{cardColorDark}});">
+      <view class="hero-pat"></view>
+      <view class="card-x" bindtap="dismissCard">✕</view>
+      <view class="card-orn-l">✦</view>
+      <view class="card-orn-r">✦</view>
+      <view class="card-row">
+        <view class="card-medal">
+          <text wx:if="{{card.tibetan}}" class="card-medal-g tibetan" style="color: {{cardColor}};">{{card.tibetan}}</text>
+          <image wx:elif="{{iconPaths[card.id]}}" class="card-medal-img" src="{{iconPaths[card.id]}}" mode="aspectFit" />
+          <text wx:else class="card-medal-g" style="color: {{cardColor}};">{{card.title}}</text>
+        </view>
+        <view class="card-head-txt">
+          <view class="card-title">{{card.title}}</view>
+          <view class="card-subtitle">{{card.subtitle}}</view>
+        </view>
       </view>
-      <view class="card-subtitle" style="color: {{cardColor}};">{{card.subtitle}}</view>
     </view>
     <view class="card-body">
       <view class="card-desc">{{card.description}}</view>
@@ -46,7 +76,10 @@
         <text class="fact-text">{{card.funFact}}</text>
       </view>
     </view>
-    <button class="card-btn" style="background: {{cardColor}};" bindtap="onCloseCard">知道了</button>
+    <view class="card-progress">
+      <view class="card-bar {{cardBarRun ? 'run' : ''}}" style="background: {{cardColor}};"></view>
+    </view>
+    <view class="card-hint">游戏不会暂停 · 点 ✕ 或继续消除即可收起</view>
   </view>
 
   <!-- 新手引导（首次进入，3 步） -->

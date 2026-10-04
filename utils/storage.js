@@ -14,6 +14,7 @@ function getProgress() {
     completedLevels: (p && p.completedLevels) || [],
     stamps: (p && p.stamps) || [],
     bestCombo: (p && p.bestCombo) || 0,
+    seenCards: (p && p.seenCards) || [],
     onboardDone: !!(p && p.onboardDone)
   };
 }
@@ -53,6 +54,19 @@ function grantStamp(id) {
   return true;
 }
 
+// 文化卡是否已展示过完整版（首次消除弹出，之后只出轻提示）
+function isCardSeen(id) {
+  return getProgress().seenCards.indexOf(id) > -1;
+}
+
+function markCardSeen(id) {
+  var p = getProgress();
+  if (p.seenCards.indexOf(id) === -1) {
+    p.seenCards.push(id);
+    save(p);
+  }
+}
+
 function isOnboardDone() {
   return getProgress().onboardDone;
 }
@@ -68,6 +82,8 @@ module.exports = {
   completeLevel: completeLevel,
   recordCombo: recordCombo,
   grantStamp: grantStamp,
+  isCardSeen: isCardSeen,
+  markCardSeen: markCardSeen,
   isOnboardDone: isOnboardDone,
   setOnboardDone: setOnboardDone
 };

@@ -1,5 +1,7 @@
 // pages/game/game.js — 游戏页：配对消除
 // P0 冲刺：连击系统 / 金色特殊方块 / 藏文发音 / 新手引导 / 15分钟埋点
+// 体验优化：文化卡仅首次发现弹出（非阻塞、自动收起），重复匹配只出轻提示；
+//           牌面尺寸全关卡统一（以 8 列为基准），盘面居中。
 var levelsData = require('../../data/levels');
 var elements = require('../../data/elements');
 var cardsData = require('../../data/cards');
@@ -8,12 +10,36 @@ var icons = require('../../utils/icons');
 var storage = require('../../utils/storage');
 var tracker = require('../../utils/tracker');
 
-// 新手引导 3 步文案（P0：15分钟体验表前置引导）
 var GUIDE = [
   { title: '如何消除', text: '点击两张相同的藏文字母或文化图标，它们就会一起消失。' },
   { title: '连击', text: '连续不断错地消除可以触发连击 ×N，分数更高，声音更亮。' },
-  { title: '文化卡', text: '每次消除会弹出文化卡，牌面上的金色 ✦ 字母是特殊方块，双倍积分。' }
+  { title: '文化卡', text: '第一次消除某种字母或图标时，底部会滑出它的文化卡，不打断游戏；之后只出现小提示。金色 ✦ 是特殊方块，双倍积分。' }
 ];
+
+// 统一牌面尺寸：以 8 列为基准（所有关卡牌一样大，只变数量）
+var REF_COLS = 8;
+var PAGE_PAD = 20;     // 页面左右留白（rpx）
+var PANEL_PAD = 14;    // 盘面纸面板内边距
+var OUTLINE_PAD = 10;  // 盘面虚线框内边距
+var AVAIL_W = 750 - PAGE_PAD * 2 - PANEL_PAD * 2 - OUTLINE_PAD * 2 - 4;
+var CARD_AUTO_MS = 5200;
+var TOAST_MS = 1700;
+
+function findCard(id) {
+  for (var k = 0; k < cardsData.length; k++) {
+    if (cardsData[k].id === id) return cardsData[k];
+  }
+  return null;
+}
+
+// 颜色加深（用于卡片头图渐变的深色端）
+function shade(hex, f) {
+  var n = parseInt(hex.slice(1), 16);
+  var r = Math.min(255, Math.round(((n >> 16) & 255) * f));
+  var g = Math.min(255, Math.round(((n >> 8) & 255) * f));
+  var b = Math.min(255, Math.round((n & 255) * f));
+  return 'rgb(' + r + ',' + g + ',' + b + ')';
+}
 
 Page({
   data: {
@@ -21,28 +47,42 @@ Page({
     cols: 6,
     rows: 4,
     tiles: [],
-    glyphSize: 70,       // 藏文字母字号（rpx），随列数自适应
-    iconPaths: {},       // iconId -> 临时图片路径
+    tileW: 73,           // 统一牌宽（rpx）
+    tileH: 88,           // 统一牌高（rpx）
+    glyphSize: 45,       // 藏文字号（rpx）
+    boardW: 498,         // 盘面宽（rpx，随列数变化，居中）
+    gap: 12,
+    iconPaths: {},
     matchedPairs: 0,
     totalPairs: 0,
     showCard: false,
     card: null,
     cardColor: '#C0392B',
-    locked: false,       // 弹窗/动画期间锁定点击
-    score: 0,            // 本局积分（金色×2，连击加成）
-    combo: 0,            // 当前连击数
-    comboFx: '',         // 连击浮层文案（×2 起显示）
-    tileH: 0,            // 格子高度（rpx，显式指定以兼容不支持 aspect-ratio 的旧机型）
-    guideStep: 0,        // 新手引导步骤 0=关闭 1-3
+    cardColorDark: '#8F2B20',
+    cardBarRun: false,   // 进度条动画开关（每次弹出重新触发）
+    toastShow: false,
+    toastIsIcon: false,
+    toastGlyph: '',
+    toastIcon: '',
+    toastText: '',
+    toastColor: '#C0392B',
+    locked: false,       // 仅失配抖动期间锁定
+    score: 0,
+    combo: 0,
+    comboFx: '',
+    guideStep: 0,
     guide: GUIDE[0]
   },
 
-  firstIndex: -1,       // 当前已选中的第一张牌
-  pendingRemove: [],    // 待移除的两张牌下标
-  matchedCount: 0,      // 已消除对数（逻辑值）
-  comboVal: 0,          // 连击（逻辑值，与 data.combo 同步）
-  goldenSeen: false,    // 是否已见过特殊方块（埋点幂等）
+  firstIndex: -1,
+  pendingRemove: [],
+  matchedCount: 0,
+  comboVal: 0,
+  goldenSeen: false,
   comboTimer: null,
+  cardTimer: null,
+  toastTimer: null,
+  barTimer: null,
 
   onLoad: function (query) {
     var level = parseInt(query.level, 10) || 1;
@@ -51,20 +91,28 @@ Page({
       wx.redirectTo({ url: '/pages/index/index' });
       return;
     }
-    // 特殊方块：每局随机指定 1 种元素为金色（成对出现，消除双倍积分）
     var goldenId = cfg.elements[Math.floor(Math.random() * cfg.elements.length)][0];
     var tiles = this.buildBoard(cfg, goldenId);
     wx.setNavigationBarTitle({ title: '第 ' + level + ' 关' });
+
+    // 统一牌面尺寸：tile 由 8 列基准算出，各关只变列数与行数
+    // 间距取固定值（不随列数变化），保证每一关的牌大小完全一致
+    var gap = 8;
+    var tileW = Math.floor((AVAIL_W - gap * (REF_COLS - 1)) / REF_COLS);
+    var tileH = Math.round(tileW * 1.2);
+    var boardW = cfg.cols * tileW + (cfg.cols - 1) * gap;
+
     this.setData({
       level: level,
       cols: cfg.cols,
       rows: cfg.rows,
       tiles: tiles,
       totalPairs: tiles.length / 2,
-      // 盘面宽约 686rpx，字号约为格子宽的 60%
-      glyphSize: Math.round(686 / cfg.cols * 0.6),
-      // 格子高度显式计算（宽 : 高 = 5 : 6），兼容 iOS 旧 WebView 不支持 aspect-ratio 的情况
-      tileH: Math.round((686 - (cfg.cols - 1) * 10) / cfg.cols * 6 / 5)
+      tileW: tileW,
+      tileH: tileH,
+      glyphSize: Math.round(tileW * 0.62),
+      boardW: boardW,
+      gap: gap
     });
     tracker.track('first_letter_seen');
     if (!storage.isOnboardDone()) {
@@ -79,7 +127,6 @@ Page({
       });
   },
 
-  // 新手引导：下一步 / 完成
   guideNext: function () {
     var s = this.data.guideStep + 1;
     if (s > GUIDE.length) {
@@ -90,13 +137,11 @@ Page({
     }
   },
 
-  // 生成打乱后的牌面
   buildBoard: function (cfg, goldenId) {
     var pool = [];
     cfg.elements.forEach(function (pair) {
       for (var k = 0; k < pair[1]; k++) pool.push(pair[0]);
     });
-    // Fisher-Yates 洗牌
     for (var i = pool.length - 1; i > 0; i--) {
       var j = Math.floor(Math.random() * (i + 1));
       var tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp;
@@ -110,7 +155,7 @@ Page({
         tibetan: el.tibetan || '',
         color: el.color,
         fallbackText: el.char || '',
-        golden: id === goldenId,   // 金色特殊方块（同元素全部实例）
+        golden: id === goldenId,
         state: 'idle' // idle | selected | removing | removed | shake
       };
     });
@@ -122,7 +167,6 @@ Page({
     var tile = this.data.tiles[idx];
     if (!tile || tile.state === 'removed' || tile.state === 'removing') return;
 
-    // 再次点击已选中的牌 → 取消选中
     if (this.firstIndex === idx) {
       this.firstIndex = -1;
       this.setData({ ['tiles[' + idx + '].state']: 'idle' });
@@ -131,7 +175,6 @@ Page({
 
     audio.tap();
 
-    // 埋点：第一次遇到特殊方块 / 第一次听到藏文发音
     if (tile.golden && !this.goldenSeen) {
       this.goldenSeen = true;
       tracker.track('first_special');
@@ -159,32 +202,29 @@ Page({
     }
   },
 
-  // 配对成功：缩小淡出 + 铜铃声（连击变调）+ 弹文化卡
+  // 配对成功：消除立即生效、不锁盘面；首次发现弹完整文化卡，重复只出轻提示
   handleMatch: function (i, j) {
     var that = this;
     this.matchedCount++;
     tracker.track('first_match');
 
-    // 连击：连续消除递增，失误清零
     this.comboVal++;
     if (this.comboVal >= 2) tracker.track('first_combo');
     storage.recordCombo(this.comboVal);
 
-    // 积分：基础 10 分；金色特殊方块 ×2；连击每级 +2
     var golden = this.data.tiles[i].golden;
     var gain = 10 * (golden ? 2 : 1) + 2 * (this.comboVal - 1);
-    var score = this.data.score + gain;
+
+    this.pendingRemove = [i, j];
 
     this.setData({
       ['tiles[' + i + '].state']: 'removing',
       ['tiles[' + j + '].state']: 'removing',
       matchedPairs: this.matchedCount,
-      score: score,
+      score: this.data.score + gain,
       combo: this.comboVal,
-      comboFx: this.comboVal >= 2 ? ('连击 ×' + this.comboVal) : '',
-      locked: true
+      comboFx: this.comboVal >= 2 ? ('连击 ×' + this.comboVal) : ''
     });
-    // 连击浮层 1.4s 后淡出
     if (this.comboTimer) clearTimeout(this.comboTimer);
     this.comboTimer = setTimeout(function () {
       that.setData({ comboFx: '' });
@@ -197,21 +237,45 @@ Page({
     }
 
     var id = this.data.tiles[i].id;
-    var card = null;
-    for (var k = 0; k < cardsData.length; k++) {
-      if (cardsData[k].id === id) { card = cardsData[k]; break; }
-    }
+    var firstTime = !storage.isCardSeen(id);
+    if (firstTime) storage.markCardSeen(id);
+
+    setTimeout(function () { that.finalizeMatch(); }, 240);
     setTimeout(function () {
-      that.pendingRemove = [i, j];
-      that.setData({
-        showCard: true,
-        card: card,
-        cardColor: elements[id].color
-      });
-    }, 300);
+      // 通关瞬间不再弹卡/提示，直接进结算（结算页会展示本关收集的文化卡）
+      if (that.matchedCount === that.data.totalPairs) return;
+      if (firstTime) that.showCard(id); else that.showToastTip(id);
+    }, 320);
   },
 
-  // 配对失败：抖动 + 轻声提示，无惩罚（连击清零）
+  // 消除落定：牌面转 removed；最后一对则进入结算
+  finalizeMatch: function () {
+    var that = this;
+    var pr = this.pendingRemove;
+    this.pendingRemove = [];
+    if (pr.length === 2) {
+      this.setData({
+        ['tiles[' + pr[0] + '].state']: 'removed',
+        ['tiles[' + pr[1] + '].state']: 'removed'
+      });
+    }
+    if (this.matchedCount === this.data.totalPairs) {
+      this.dismissCard();
+      this.hideToast();
+      audio.win();
+      setTimeout(function () {
+        wx.redirectTo({
+          url: '/pages/result/result?level=' + that.data.level +
+            '&pairs=' + that.data.totalPairs +
+            '&cards=' + that.collectedIds().join(',') +
+            '&score=' + that.data.score +
+            '&combo=' + that.comboVal
+        });
+      }, 900);
+    }
+  },
+
+  // 配对失败：抖动 + 轻声提示，无惩罚（连击清零）——唯一需要短暂锁盘面的场景
   handleMismatch: function (i, j) {
     var that = this;
     audio.mismatch();
@@ -232,31 +296,58 @@ Page({
     }, 450);
   },
 
-  // 文化卡「知道了」
-  onCloseCard: function () {
+  // ---------- 文化卡（首次发现：非阻塞 + 自动收起） ----------
+  showCard: function (id) {
     var that = this;
-    var pr = this.pendingRemove;
+    var card = findCard(id);
+    if (!card) return;
+    this.hideToast();
     this.setData({
-      showCard: false,
-      ['tiles[' + pr[0] + '].state']: 'removed',
-      ['tiles[' + pr[1] + '].state']: 'removed',
-      locked: false
+      showCard: true,
+      card: card,
+      cardColor: elements[id].color,
+      cardColorDark: shade(elements[id].color, 0.76),
+      cardBarRun: false
     });
-    this.pendingRemove = [];
+    // 重置进度条动画（下一拍重新触发，保证每次弹出都从头走）
+    if (this.barTimer) clearTimeout(this.barTimer);
+    this.barTimer = setTimeout(function () {
+      that.setData({ cardBarRun: true });
+    }, 40);
+    if (this.cardTimer) clearTimeout(this.cardTimer);
+    this.cardTimer = setTimeout(function () {
+      that.setData({ showCard: false });
+    }, CARD_AUTO_MS);
+  },
 
-    if (this.matchedCount === this.data.totalPairs) {
-      // 通关：铜铃 + 法号音，稍作停顿进入结算页
-      audio.win();
-      setTimeout(function () {
-        wx.redirectTo({
-          url: '/pages/result/result?level=' + that.data.level +
-            '&pairs=' + that.data.totalPairs +
-            '&cards=' + that.collectedIds().join(',') +
-            '&score=' + that.data.score +
-            '&combo=' + that.comboVal
-        });
-      }, 900);
-    }
+  dismissCard: function () {
+    if (this.cardTimer) { clearTimeout(this.cardTimer); this.cardTimer = null; }
+    if (this.barTimer) { clearTimeout(this.barTimer); this.barTimer = null; }
+    this.setData({ showCard: false, cardBarRun: false });
+  },
+
+  // ---------- 重复匹配轻提示（非阻塞） ----------
+  showToastTip: function (id) {
+    var that = this;
+    var card = findCard(id);
+    if (!card) return;
+    this.setData({
+      toastShow: true,
+      toastIsIcon: card.type === 'icon',
+      toastGlyph: card.type === 'icon' ? '' : card.title,
+      toastIcon: this.data.iconPaths[id] || '',
+      toastText: (card.subtitle || card.title) + ' · 已收藏',
+      toastColor: elements[id].color
+    });
+    if (this.toastTimer) clearTimeout(this.toastTimer);
+    this.toastTimer = setTimeout(function () {
+      that.setData({ toastShow: false });
+    }, TOAST_MS);
+  },
+
+  hideToast: function () {
+    if (this.toastTimer) { clearTimeout(this.toastTimer); this.toastTimer = null; }
+    if (this.data.toastShow) this.setData({ toastShow: false });
   },
 
   collectedIds: function () {
@@ -271,5 +362,10 @@ Page({
 
   noop: function () {},
 
-  onUnload: function () {}
+  onUnload: function () {
+    if (this.cardTimer) clearTimeout(this.cardTimer);
+    if (this.toastTimer) clearTimeout(this.toastTimer);
+    if (this.comboTimer) clearTimeout(this.comboTimer);
+    if (this.barTimer) clearTimeout(this.barTimer);
+  }
 });

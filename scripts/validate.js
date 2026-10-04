@@ -112,7 +112,7 @@ if (!bannedFound) ok('未使用任何禁用 API（登录/支付/订阅/云初始
 // ---------- 7. WXML 事件绑定 ----------
 section('7. WXML 事件绑定与 JS 方法对应');
 [['pages/index/index', ['onTapLevel']],
- ['pages/game/game', ['onTapTile', 'onCloseCard', 'noop']],
+ ['pages/game/game', ['onTapTile', 'dismissCard', 'guideNext']],
  ['pages/result/result', ['goHome', 'openNameModal', 'closeNameModal', 'onNameInput', 'confirmGenerate', 'saveToAlbum', 'previewShare']]
 ].forEach(([page, handlers]) => {
   const wxml = read(page + '.wxml');
@@ -225,6 +225,82 @@ if (exists('preview/play.html')) {
   if (!missingGlyphs.length) ok('8 个藏文字母在体验版中完整');
   else err('体验版缺少藏文字母: ' + missingGlyphs.join(' '));
 }
+
+// ---------- 12. 体验修复（弹窗/背景/卡片/牌面尺寸） ----------
+section('12. 体验修复（弹窗不打扰 / 背景不单调 / 卡片不简陋 / 牌面统一）');
+
+// 12.1 非阻塞弹窗
+var gameWxml = read('pages/game/game.wxml');
+var gameWxss = read('pages/game/game.wxss');
+if (gameWxml.indexOf('card-sheet') > -1 && gameWxml.indexOf('card-sheet') > -1) ok('文化卡改为底部滑出卡片（card-sheet）');
+else err('文化卡未使用底部滑出卡片结构');
+if (gameWxml.indexOf('catchtouchmove') === -1 && gameWxml.indexOf('card-mask') === -1)
+  ok('已移除阻塞式遮罩（不再抢焦点、不暂停游戏）');
+else err('仍存在阻塞式遮罩（card-mask / catchtouchmove）');
+if (gameJs.indexOf('showToastTip') > -1) ok('重复匹配走轻提示 showToastTip');
+else err('缺少重复匹配轻提示方法 showToastTip');
+if (gameJs.indexOf('.showToast(') === -1) ok('无对未定义方法 showToast 的调用（命名一致性）');
+else err('game.js 调用了未定义的 showToast（应为 showToastTip）');
+if (gameJs.indexOf('this.pendingRemove = [') > -1) ok('配对成功后写入 pendingRemove（保证牌面落定 removed）');
+else err('pendingRemove 未被赋值，牌面无法转为 removed');
+if (gameJs.indexOf('isCardSeen') > -1 && gameJs.indexOf('markCardSeen') > -1) ok('文化卡「仅首次发现弹出」逻辑已接入');
+else err('缺少「仅首次弹出」逻辑');
+if (gameJs.indexOf('CARD_AUTO_MS') > -1) ok('文化卡自动收起已实现');
+else warn('文化卡未实现自动收起');
+
+// 12.2 藏文化背景层（首页/游戏/结算三页一致）
+// 纹样层为 WXSS 平铺背景（base64）；经幡天空层与雪山地面层为 <image>
+var sceneryImgs = ['bg-ground.png', 'bg-sky.png'];
+[['pages/index/index', '首页'], ['pages/game/game', '游戏页'], ['pages/result/result', '结算页']].forEach(function (p) {
+  var wxml = read(p[0] + '.wxml');
+  var wxss = read(p[0] + '.wxss');
+  var missImg = sceneryImgs.filter(function (s) { return wxml.indexOf(s) === -1; });
+  var patBlock = /\.sc-pattern\s*\{[\s\S]*?\}/.exec(wxss);
+  var patOk = !!patBlock && /background-image:\s*url\('data:image\/png;base64,/.test(patBlock[0]) &&
+    /background-repeat:\s*repeat/.test(patBlock[0]);
+  var hasLayer = wxss.indexOf('.scenery') > -1 && wxss.indexOf('.sc-sky') > -1 && wxss.indexOf('.sc-ground') > -1;
+  if (!missImg.length && patOk && hasLayer) ok(p[1] + '背景层完整（平铺菱格纹/经幡/雪山布达拉宫）');
+  else err(p[1] + '背景层不完整（缺图: ' + missImg.join(',') + '，纹样平铺: ' + patOk + '，层样式: ' + hasLayer + '）');
+});
+sceneryImgs.concat(['pat-tile.png']).forEach(function (s) {
+  if (exists('images/' + s)) ok('背景资产 images/' + s + ' 存在');
+  else err('背景资产缺失: images/' + s);
+});
+
+// 12.3 文化卡视觉（不简陋）
+[['.card-hero', '渐变头图'], ['.card-medal', '元素徽章'], ['.card-progress', '倒计时进度条'],
+ ['.card-fact', '文化小知识区块'], ['.card-desc', '说明文本']].forEach(function (p) {
+  if (gameWxss.indexOf(p[0]) > -1) ok('文化卡含' + p[1] + '（' + p[0] + '）');
+  else err('文化卡缺少' + p[1] + '（' + p[0] + '）');
+});
+
+// 12.4 样式资源健康：不得存在损坏的内联图片（base64 前缀被重复）
+var badDataUrl = 0;
+(function scanBadUrl(dir) {
+  fs.readdirSync(dir).forEach(function (f) {
+    var full = path.join(dir, f);
+    if (fs.statSync(full).isDirectory()) { if (f !== 'node_modules' && f !== 'scripts' && f !== 'preview') scanBadUrl(full); }
+    else if (f.endsWith('.wxss') || f.endsWith('.html')) {
+      var src = fs.readFileSync(full, 'utf8');
+      if (src.indexOf('base64,data:image') > -1) {
+        err(path.relative(ROOT, full) + ' 含损坏的 data URL（base64 前缀重复）');
+        badDataUrl++;
+      }
+    }
+  });
+})(ROOT);
+if (!badDataUrl) ok('无损坏的内联 data URL');
+
+// 12.5 牌面尺寸统一（源与体验版保持一致）
+if (/REF_COLS/.test(gameJs) && gameJs.indexOf('cfg.cols >= REF_COLS ?') === -1)
+  ok('game.js 牌面尺寸以固定基准计算（各关一致）');
+else err('game.js 牌面尺寸仍随列数变化（各关不一致）');
+var tpl = exists('preview/template.html') ? read('preview/template.html') : '';
+if (tpl.indexOf('REF_COLS') > -1 && tpl.indexOf('state.cols >= REF_COLS ?') === -1)
+  ok('体验版牌面尺寸同样固定（源与体验版一致）');
+else warn('体验版牌面尺寸计算与源不一致');
+if (tpl.indexOf('id="board-wrap"') > -1) ok('体验版盘面容器 id 正确（布局生效）');
+else err('体验版缺少 id="board-wrap"，盘面布局不会生效');
 
 // ---------- 汇总 ----------
 console.log('\n========== 汇总 ==========');

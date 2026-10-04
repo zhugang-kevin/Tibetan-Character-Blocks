@@ -68,6 +68,9 @@ Page({
     wx.redirectTo({ url: '/pages/index/index' });
   },
 
+  // 阻止冒泡占位（弹窗内容区 catchtap 用）
+  noop: function () {},
+
   // 下一关（15分钟体验终点：玩家主动点击）
   goNext: function () {
     tracker.track('next_level_click');

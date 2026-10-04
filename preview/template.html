@@ -14,11 +14,12 @@
     --ink: #2C3E50;
     --muted: #8A8375;
     --line: #E4DCC8;
+    --pat: none;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; padding: 0; }
   body {
-    background: #EFE7D3;
+    background: linear-gradient(180deg, #EFE7D3, #E4D9BE);
     font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
     color: var(--ink);
     display: flex;
@@ -28,21 +29,38 @@
     width: 100%;
     max-width: 430px;
     min-height: 100vh;
-    background: var(--bg);
+    background: linear-gradient(180deg, #FDF6E3 0%, #FAF0DA 52%, #F2E4C6 100%);
     position: relative;
     overflow-x: hidden;
+    box-shadow: 0 0 40px rgba(90, 74, 44, .12);
   }
-  .screen { display: none; padding: 20px 18px 40px; }
+  .screen { display: none; padding: 20px 14px 40px; position: relative; z-index: 1; }
   .screen.active { display: block; }
   .tib { font-family: "Noto Serif Tibetan", "Microsoft Himalaya", "Jomolhari", "Kailasa", "PingFang SC", serif; }
 
+  /* ============ 藏文化背景层（三层：纹样 / 经幡 / 雪山布达拉宫） ============ */
+  .scenery {
+    position: fixed; top: 0; bottom: 0; left: 50%;
+    transform: translateX(-50%);
+    width: 100%; max-width: 430px;
+    z-index: 0; pointer-events: none; overflow: hidden;
+  }
+  .sc-pattern {
+    position: absolute; left: 0; right: 0; top: 0; bottom: 0;
+    background-image: var(--pat); background-size: 68px 68px;
+    opacity: .5;
+  }
+  .sc-sky    { position: absolute; top: 0; left: 0; width: 100%; opacity: .92; }
+  .sc-ground { position: absolute; bottom: 0; left: 0; width: 100%; opacity: .88; }
+
   /* ---------- 首页 ---------- */
   .hero { text-align: center; padding: 14px 0 22px; }
-  .hero-logo { width: 116px; height: 116px; margin: 0 auto; display: block; }
+  .hero-logo { width: 112px; height: 112px; margin: 0 auto; display: block; filter: drop-shadow(0 6px 14px rgba(150, 40, 24, .22)); }
   .hero-title { margin-top: 14px; font-size: 30px; font-weight: 800; letter-spacing: 2px; }
   .hero-slogan {
     margin: 10px auto 0; display: inline-block; font-size: 14px; color: var(--red);
     border: 1px solid rgba(192,57,43,.35); border-radius: 999px; padding: 5px 14px;
+    background: rgba(255,255,255,.55);
   }
   .hero-greet { margin-top: 12px; font-size: 26px; color: var(--red); letter-spacing: 3px; }
 
@@ -51,17 +69,17 @@
   .mini-stamp {
     width: 42px; height: 42px; line-height: 40px; text-align: center;
     border: 2px solid var(--red); border-radius: 9px; color: var(--red);
-    font-size: 15px; font-weight: 800; background: var(--bg); transform: rotate(-4deg);
+    font-size: 15px; font-weight: 800; background: rgba(255,255,255,.8); transform: rotate(-4deg);
   }
-  .stamp-empty { font-size: 13px; color: var(--muted); }
+  .stamp-empty { font-size: 13px; color: var(--muted); background: rgba(255,255,255,.6); border-radius: 999px; padding: 5px 12px; }
   .profile-combo {
     font-size: 13px; font-weight: 700; color: var(--yellow);
-    background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 6px 13px;
+    background: rgba(255,255,255,.8); border: 1px solid var(--line); border-radius: 999px; padding: 6px 13px;
   }
 
   .level-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
   .level-btn {
-    position: relative; background: #fff; border: 1.5px solid var(--line); border-radius: 14px;
+    position: relative; background: rgba(255,255,255,.88); border: 1.5px solid var(--line); border-radius: 14px;
     padding: 14px 0 12px; text-align: center; cursor: pointer; transition: transform .12s, box-shadow .12s;
   }
   .level-btn:active { transform: scale(.96); }
@@ -69,7 +87,7 @@
   .level-btn .lv-tag { font-size: 10px; color: var(--muted); margin-top: 3px; }
   .level-btn.done { border-color: var(--green); background: #F3FAF5; }
   .level-btn.done .lv-tag { color: var(--green); }
-  .level-btn.locked { background: #F1ECDD; border-color: #E0D8C4; cursor: not-allowed; }
+  .level-btn.locked { background: rgba(241,236,221,.8); border-color: #E0D8C4; cursor: not-allowed; }
   .level-btn.locked .lv-num { color: #B9B1A0; }
   .level-btn .badge {
     position: absolute; top: -7px; right: -6px; width: 20px; height: 20px; line-height: 19px;
@@ -78,14 +96,19 @@
   .level-btn.done .badge { background: var(--green); }
   .level-btn.locked .badge { background: #C9C1AF; font-size: 10px; }
 
-  .footer { margin-top: 26px; text-align: center; font-size: 13px; color: var(--yellow); letter-spacing: 1px; }
+  .footer { margin-top: 26px; text-align: center; font-size: 13px; color: #8a6d1c; letter-spacing: 1px; text-shadow: 0 1px 0 rgba(255,255,255,.6); }
   .footer-sub { margin-top: 8px; text-align: center; font-size: 12px; color: var(--muted); }
   .reset-link { margin-top: 14px; text-align: center; font-size: 12px; color: #B9B1A0; text-decoration: underline; cursor: pointer; }
 
   /* ---------- 游戏页 ---------- */
-  .statusbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+  #screen-game { padding-bottom: 24px; }
+  .statusbar {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px;
+    background: rgba(255,255,255,.72); border: 1px solid rgba(228,220,200,.8);
+    border-radius: 14px; padding: 9px 12px; backdrop-filter: blur(3px);
+  }
   .back-btn {
-    border: 1px solid var(--line); background: #fff; border-radius: 10px; padding: 7px 12px;
+    border: 1px solid var(--line); background: #fff; border-radius: 10px; padding: 6px 11px;
     font-size: 14px; color: var(--ink); cursor: pointer;
   }
   .status-mid { flex: 1; text-align: center; font-size: 14px; font-weight: 700; }
@@ -93,11 +116,28 @@
   .status-right .sc { color: var(--ink); }
   .combo-pill { font-size: 11px; color: var(--muted); font-weight: 400; }
 
-  .board-wrap { position: relative; }
-  .board { display: grid; gap: 7px; width: 100%; }
+  /* 盘面纸面面板：与背景形成明确的前后景层级 */
+  .board-panel {
+    background: rgba(255, 255, 255, .84);
+    border: 1px solid rgba(214, 202, 176, .9);
+    border-radius: 20px;
+    padding: 12px;
+    box-shadow: 0 10px 30px rgba(96, 78, 44, .16), inset 0 0 0 1px rgba(255,255,255,.6);
+    backdrop-filter: blur(2px);
+  }
+  .board-outline {
+    border: 2px dashed rgba(183, 149, 11, .35);
+    border-radius: 14px;
+    padding: 10px;
+  }
+  .game-body { flex: 1 1 auto; display: flex; align-items: center; justify-content: center; min-height: 300px; }
+  #screen-game.active { display: flex; flex-direction: column; min-height: calc(100vh - 60px); }
+  .board-wrap { position: relative; width: 100%; display: flex; justify-content: center; }
+  .board { display: grid; margin: 0 auto; }
   .tile {
     position: relative; background: #fff; border: 2px solid var(--line); border-radius: 12px;
-    aspect-ratio: 5 / 6; display: flex; align-items: center; justify-content: center;
+    height: var(--tileH, 52px);
+    display: flex; align-items: center; justify-content: center;
     cursor: pointer; overflow: hidden;
     transition: transform .2s ease, opacity .2s ease, border-color .15s, background .2s;
   }
@@ -119,46 +159,83 @@
   }
 
   .combo-fx {
-    position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%) scale(.6);
+    position: absolute; left: 50%; top: 38%; transform: translate(-50%, -50%) scale(.6);
     font-size: 34px; font-weight: 900; color: var(--yellow);
     text-shadow: 0 2px 0 #fff, 0 0 14px rgba(183,149,11,.6);
     pointer-events: none; opacity: 0; transition: opacity .2s, transform .25s;
-    white-space: nowrap;
+    white-space: nowrap; z-index: 5;
   }
   .combo-fx.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 
-  /* ---------- 文化卡弹窗 ---------- */
-  .sheet-mask {
-    position: fixed; inset: 0; background: rgba(44,62,80,.42); display: none;
-    align-items: flex-end; justify-content: center; z-index: 40;
+  /* ---------- 重复匹配轻提示（非阻塞） ---------- */
+  .toast {
+    position: fixed; left: 50%; bottom: 30px; transform: translateX(-50%) translateY(14px);
+    display: flex; align-items: center; gap: 9px;
+    background: rgba(44, 62, 80, .92); color: #fff;
+    border-radius: 999px; padding: 9px 18px 9px 12px;
+    font-size: 14px; opacity: 0; pointer-events: none;
+    transition: opacity .22s, transform .22s; z-index: 55;
+    max-width: 86%; white-space: nowrap; overflow: hidden;
   }
-  .sheet-mask.show { display: flex; }
-  .sheet {
-    width: 100%; max-width: 430px; background: #fff; border-radius: 22px 22px 0 0;
-    padding: 22px 22px 26px; animation: slideUp .28s cubic-bezier(.2,.8,.2,1);
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast-glyph {
+    width: 26px; height: 26px; line-height: 26px; border-radius: 8px; text-align: center;
+    background: rgba(255,255,255,.16); font-size: 16px; flex: 0 0 auto;
   }
-  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-  .sheet .card-glyph { font-size: 60px; text-align: center; line-height: 1.1; }
-  .sheet .card-icon { display: block; width: 64px; height: 64px; margin: 0 auto; }
-  .sheet .card-title { margin-top: 8px; text-align: center; font-size: 24px; font-weight: 800; }
-  .sheet .card-sub { margin-top: 6px; text-align: center; font-size: 15px; color: var(--muted); }
-  .sheet .divider { height: 1px; background: var(--line); margin: 16px 0; }
-  .sheet .card-desc { font-size: 15px; line-height: 1.7; }
-  .sheet .fact {
-    margin-top: 14px; background: var(--bg); border-left: 4px solid var(--yellow);
-    border-radius: 8px; padding: 12px 14px; font-size: 14px; line-height: 1.7; color: #5B5343;
+
+  /* ---------- 文化卡（首次发现，非阻塞底部面板 + 自动收起） ---------- */
+  .card-panel {
+    position: fixed; left: 50%; bottom: 0; width: 100%; max-width: 430px;
+    transform: translateX(-50%) translateY(112%);
+    transition: transform .3s cubic-bezier(.2,.8,.2,1);
+    z-index: 50; background: #fff;
+    border-radius: 22px 22px 0 0;
+    box-shadow: 0 -12px 40px rgba(60, 44, 16, .28);
+    overflow: hidden;
   }
-  .sheet .fact b { color: var(--yellow); }
-  .primary-btn {
-    width: 100%; margin-top: 20px; border: 0; border-radius: 14px; padding: 15px 0;
-    font-size: 17px; font-weight: 700; color: #fff; background: var(--red); cursor: pointer;
+  .card-panel.show { transform: translateX(-50%) translateY(0); }
+  .card-hero {
+    position: relative; padding: 18px 18px 14px; color: #fff; overflow: hidden;
   }
-  .primary-btn:active { opacity: .88; }
-  .ghost-btn {
-    width: 100%; margin-top: 12px; border: 1.5px solid var(--line); border-radius: 14px;
-    padding: 14px 0; font-size: 16px; font-weight: 700; color: var(--ink); background: #fff; cursor: pointer;
+  .card-hero::before {
+    content: ""; position: absolute; left: 0; right: 0; top: 0; bottom: 0;
+    background-image: var(--pat); background-size: 54px 54px; opacity: .18;
   }
-  .ghost-btn:active { background: #F7F2E4; }
+  .card-hero > * { position: relative; }
+  .card-x {
+    position: absolute; top: 10px; right: 12px; width: 30px; height: 30px; line-height: 28px;
+    border-radius: 50%; border: 1px solid rgba(255,255,255,.55); background: rgba(255,255,255,.16);
+    color: #fff; font-size: 14px; cursor: pointer; text-align: center; padding: 0;
+  }
+  .card-orn-l, .card-orn-r {
+    position: absolute; top: 20px; font-size: 15px; opacity: .75; color: #FFE9B8;
+  }
+  .card-orn-l { left: 16px; } .card-orn-r { right: 52px; }
+  .card-row { display: flex; align-items: center; gap: 15px; }
+  .card-medal {
+    width: 66px; height: 66px; border-radius: 18px; flex: 0 0 auto;
+    background: rgba(255,255,255,.94); display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,.18); overflow: hidden;
+  }
+  .card-medal .g { font-size: 40px; line-height: 1; }
+  .card-medal img { width: 72%; height: 72%; object-fit: contain; }
+  .card-name { font-size: 23px; font-weight: 800; letter-spacing: 1px; }
+  .card-sub { margin-top: 4px; font-size: 14px; opacity: .94; }
+  .card-tib-line { margin-top: 7px; font-size: 15px; opacity: .9; letter-spacing: 2px; }
+  .card-body2 { padding: 15px 18px 8px; }
+  .card-desc { font-size: 15px; line-height: 1.72; color: #3d3a30; }
+  .card-fact {
+    margin-top: 12px; background: #FBF4E2; border-left: 4px solid var(--yellow);
+    border-radius: 8px; padding: 11px 13px; font-size: 14px; line-height: 1.68; color: #5B5343;
+    display: flex; gap: 9px; align-items: flex-start;
+  }
+  .fact-tag {
+    flex: 0 0 auto; font-size: 11px; font-weight: 800; color: #fff; background: var(--yellow);
+    border-radius: 6px; padding: 3px 7px; margin-top: 2px; letter-spacing: 1px;
+  }
+  .card-progress { height: 4px; background: rgba(0,0,0,.07); margin-top: 12px; }
+  .card-progress i { display: block; height: 100%; width: 100%; background: var(--yellow); }
+  .card-hint { text-align: center; font-size: 11px; color: #B3AB99; padding: 7px 0 9px; }
 
   /* ---------- 引导 ---------- */
   .guide-mask { position: fixed; inset: 0; background: rgba(44,62,80,.55); display: none; align-items: center; justify-content: center; z-index: 60; padding: 24px; }
@@ -177,17 +254,18 @@
   .result-title { margin-top: 16px; font-size: 27px; font-weight: 800; }
   .result-sub { margin-top: 8px; font-size: 15px; color: var(--muted); }
   .stat-row { display: flex; gap: 12px; margin-top: 20px; }
-  .stat-box { flex: 1; background: #fff; border: 1.5px solid var(--line); border-radius: 14px; padding: 14px 8px; text-align: center; }
+  .stat-box { flex: 1; background: rgba(255,255,255,.9); border: 1.5px solid var(--line); border-radius: 14px; padding: 14px 8px; text-align: center; }
   .stat-box .v { font-size: 24px; font-weight: 800; color: var(--red); }
   .stat-box .k { margin-top: 4px; font-size: 12px; color: var(--muted); }
 
   .stamp-banner {
     margin-top: 18px; border: 2px dashed var(--red); border-radius: 16px; padding: 16px;
-    display: flex; align-items: center; gap: 14px; background: #FFF8F6;
+    display: flex; align-items: center; gap: 14px; background: rgba(255,248,246,.92);
   }
   .stamp-banner .big-stamp {
     width: 58px; height: 58px; line-height: 54px; text-align: center; border: 3px solid var(--red);
     border-radius: 12px; color: var(--red); font-weight: 800; font-size: 19px; transform: rotate(-6deg); flex: 0 0 auto;
+    background: rgba(255,255,255,.7);
   }
   .stamp-banner .txt { font-size: 14px; line-height: 1.6; color: #5B5343; }
   .stamp-banner .txt b { color: var(--red); }
@@ -195,13 +273,13 @@
   .section-title { margin: 24px 0 12px; font-size: 15px; font-weight: 800; }
   .chips { display: flex; flex-wrap: wrap; gap: 9px; }
   .chip {
-    display: flex; align-items: center; gap: 7px; background: #fff; border: 1.5px solid var(--line);
+    display: flex; align-items: center; gap: 7px; background: rgba(255,255,255,.9); border: 1.5px solid var(--line);
     border-radius: 10px; padding: 7px 11px; font-size: 14px;
   }
   .chip .chip-glyph { font-size: 19px; }
   .chip img { width: 20px; height: 20px; }
 
-  .bless-box { margin-top: 24px; background: #fff; border: 1.5px solid var(--line); border-radius: 16px; padding: 18px; text-align: center; }
+  .bless-box { margin-top: 24px; background: rgba(255,255,255,.92); border: 1.5px solid var(--line); border-radius: 16px; padding: 18px; text-align: center; }
   .bless-box .t { font-size: 17px; font-weight: 800; }
   .bless-box .s { margin-top: 8px; font-size: 13px; color: var(--muted); line-height: 1.6; }
 
@@ -223,6 +301,13 @@
 </head>
 <body>
 <div class="phone">
+
+  <!-- ============ 藏文化背景（三层） ============ -->
+  <div class="scenery" aria-hidden="true">
+    <div class="sc-pattern" id="sc-pattern"></div>
+    <img class="sc-ground" id="sc-ground" alt="">
+    <img class="sc-sky" id="sc-sky" alt="">
+  </div>
 
   <!-- ============ 首页 ============ -->
   <section id="screen-home" class="screen active">
@@ -255,9 +340,15 @@
         <div class="combo-pill" id="status-combo">已消除 0/0 对</div>
       </div>
     </div>
-    <div class="board-wrap">
-      <div class="board" id="board"></div>
-      <div class="combo-fx" id="combo-fx"></div>
+    <div class="game-body">
+      <div class="board-panel">
+        <div class="board-outline">
+          <div class="board-wrap" id="board-wrap">
+            <div class="board" id="board"></div>
+            <div class="combo-fx" id="combo-fx"></div>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -287,9 +378,33 @@
 
 </div>
 
-<!-- 文化卡 -->
-<div class="sheet-mask" id="card-mask">
-  <div class="sheet" id="card-sheet"></div>
+<!-- 重复匹配轻提示（非阻塞） -->
+<div class="toast" id="toast">
+  <span class="toast-glyph" id="toast-glyph"></span>
+  <span id="toast-text"></span>
+</div>
+
+<!-- 文化卡（仅首次发现该元素时出现；非阻塞，自动收起） -->
+<div class="card-panel" id="card-panel">
+  <div class="card-hero" id="card-hero">
+    <span class="card-orn-l">✦</span>
+    <span class="card-orn-r">✦</span>
+    <button class="card-x" id="card-x">✕</button>
+    <div class="card-row">
+      <div class="card-medal" id="card-medal"></div>
+      <div>
+        <div class="card-name" id="card-name"></div>
+        <div class="card-sub" id="card-sub"></div>
+        <div class="card-tib-line tib" id="card-tib"></div>
+      </div>
+    </div>
+  </div>
+  <div class="card-body2">
+    <div class="card-desc" id="card-desc"></div>
+    <div class="card-fact"><span class="fact-tag">文化小知识</span><span id="card-fact"></span></div>
+  </div>
+  <div class="card-progress"><i id="card-bar"></i></div>
+  <div class="card-hint">游戏不会暂停 · 点击 ✕ 或继续消除即可收起</div>
 </div>
 
 <!-- 新手引导 -->
@@ -298,7 +413,7 @@
     <div class="guide-step" id="guide-step">第 1 / 3 步</div>
     <div class="guide-title" id="guide-title"></div>
     <div class="guide-text" id="guide-text"></div>
-    <button class="primary-btn" id="guide-next">下一步</button>
+    <button class="primary-btn" id="guide-next" style="background: var(--red); color:#fff; border:0; border-radius:14px; padding:14px 0; width:100%; font-size:16px; font-weight:700; margin-top:18px; cursor:pointer;">下一步</button>
   </div>
 </div>
 
@@ -318,6 +433,7 @@ const CARD_BY_ID = {};
 CARDS.forEach(function (c) { CARD_BY_ID[c.id] = c; });
 
 const TIB_FONT = '"Noto Serif Tibetan","Microsoft Himalaya","Jomolhari","Kailasa",serif';
+const CARD_AUTO_MS = 5200;   // 文化卡自动收起时长
 
 /* ---------------- 存储（对应 utils/storage.js） ---------------- */
 const SKEY = 'zangzi_progress';
@@ -339,6 +455,7 @@ function getProgress() {
     completedLevels: (p && p.completedLevels) || [],
     stamps: (p && p.stamps) || [],
     bestCombo: (p && p.bestCombo) || 0,
+    seenCards: (p && p.seenCards) || [],
     onboardDone: !!(p && p.onboardDone)
   };
 }
@@ -359,6 +476,11 @@ function grantStamp(id) {
   const p = getProgress();
   if (p.stamps.indexOf(id) > -1) return false;
   p.stamps.push(id); saveProgress(p); return true;
+}
+function isCardSeen(id) { return getProgress().seenCards.indexOf(id) > -1; }
+function markCardSeen(id) {
+  const p = getProgress();
+  if (p.seenCards.indexOf(id) === -1) { p.seenCards.push(id); saveProgress(p); }
 }
 function isOnboardDone() { return getProgress().onboardDone; }
 function setOnboardDone() { const p = getProgress(); p.onboardDone = true; saveProgress(p); }
@@ -521,7 +643,7 @@ function wrapTibetan(measure, text, maxWidth) {
 const GUIDE = [
   { title: '如何消除', text: '点击两张相同的藏文字母或文化图标，它们就会一起消失。' },
   { title: '连击', text: '连续不断错地消除可以触发连击 ×N，分数更高，声音更亮。' },
-  { title: '文化卡', text: '每次消除会弹出文化卡；牌面上的金色 ✦ 是特殊方块，双倍积分。' }
+  { title: '文化卡', text: '第一次消除某种字母或图标时，底部会滑出它的文化卡，不会打断游戏；之后只出现小提示。金色 ✦ 是特殊方块，双倍积分。' }
 ];
 
 const state = {
@@ -539,6 +661,19 @@ function showScreen(name) {
     $('screen-' + n).classList.toggle('active', n === name);
   });
   window.scrollTo(0, 0);
+}
+
+/* ---------------- 颜色工具 ---------------- */
+function shade(hex, f) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = Math.min(255, Math.round(((n >> 16) & 255) * f));
+  const g = Math.min(255, Math.round(((n >> 8) & 255) * f));
+  const b = Math.min(255, Math.round((n & 255) * f));
+  return 'rgb(' + r + ',' + g + ',' + b + ')';
+}
+function rgba(hex, a) {
+  const n = parseInt(hex.slice(1), 16);
+  return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
 }
 
 /* ---------------- 首页 ---------------- */
@@ -626,10 +761,34 @@ function updateHud() {
   $('status-combo').textContent = '已消除 ' + state.matchedCount + '/' + (state.tiles.length / 2) + ' 对';
 }
 
+/* ---------------- 盘面布局：全关卡统一牌面尺寸 ----------------
+   以 8 列为基准计算牌宽，各关只改变牌的数量，盘面居中。
+   这样第 1 关（6×4）和第 10 关（6×8）的牌一样大，观感统一。 */
+const REF_COLS = 8;
+function layoutBoard() {
+  const wrap = $('board-wrap');
+  if (!wrap) return;
+  const availW = wrap.clientWidth - 2 * 10 - 4;   // outline padding + border
+  const gap = 7;                                  // 固定间距：各关牌面尺寸完全一致
+  const tile = Math.max(30, Math.floor((availW - gap * (REF_COLS - 1)) / REF_COLS));
+  const tileH = Math.round(tile * 1.2);
+
+  const board = $('board');
+  board.style.gridTemplateColumns = 'repeat(' + state.cols + ', ' + tile + 'px)';
+  board.style.gap = gap + 'px';
+  board.style.width = (state.cols * tile + (state.cols - 1) * gap) + 'px';
+  board.style.setProperty('--tileH', tileH + 'px');
+  state.tileW = tile;
+  state.tileH = tileH;
+  state.gap = gap;
+
+  const glyphs = document.querySelectorAll('#board .glyph');
+  const gsize = Math.round(tile * 0.62);
+  glyphs.forEach(function (g) { g.style.fontSize = gsize + 'px'; });
+}
+
 function renderBoard() {
   const board = $('board');
-  board.style.gridTemplateColumns = 'repeat(' + state.cols + ', 1fr)';
-  board.style.gap = (state.cols >= 8 ? 5 : 7) + 'px';
   board.innerHTML = '';
 
   state.tiles.forEach(function (t, idx) {
@@ -650,21 +809,12 @@ function renderBoard() {
     d.addEventListener('click', function () { onTapTile(idx); });
     board.appendChild(d);
   });
-  fitGlyph();
-  window.requestAnimationFrame(fitGlyph);
+  layoutBoard();
+  window.requestAnimationFrame(layoutBoard);
 }
-
-/* 藏文字号随格子宽度自适应（约为格子宽的 60%） */
-function fitGlyph() {
-  const tile = document.querySelector('#board .tile');
-  if (!tile) return;
-  const w = tile.clientWidth;
-  if (!w) return;
-  document.querySelectorAll('#board .glyph').forEach(function (g) {
-    g.style.fontSize = Math.round(w * 0.62) + 'px';
-  });
-}
-window.addEventListener('resize', fitGlyph);
+window.addEventListener('resize', function () {
+  if ($('screen-game').classList.contains('active')) layoutBoard();
+});
 
 /* ---------------- 点击逻辑（对应 game.js onTapTile） ---------------- */
 function onTapTile(idx) {
@@ -716,7 +866,7 @@ function handleMatch(i, j) {
   const golden = state.tiles[i].golden;
   state.score += 10 * (golden ? 2 : 1) + 2 * (state.combo - 1);
 
-  state.locked = true;
+  // 消除立即生效，不再锁定盘面——玩家可以无缝继续
   updateTile(i, 'removing');
   updateTile(j, 'removing');
   updateHud();
@@ -735,10 +885,30 @@ function handleMatch(i, j) {
   const id = state.tiles[i].id;
   if (state.collected.indexOf(id) === -1) state.collected.push(id);
 
+  const firstTime = !isCardSeen(id);
+  if (firstTime) markCardSeen(id);
+
+  setTimeout(function () { finalizeMatch(); }, 230);
   setTimeout(function () {
-    // 注意：这里不解锁。弹窗期间必须保持锁定，直到玩家点「知道了」
-    showCard(id);
-  }, 260);
+    if (state.matchedCount === state.tiles.length / 2) return; // 通关瞬间不再弹卡/提示，直接进结算
+    if (firstTime) showCard(id); else showToast(id);
+  }, 300);
+}
+
+/* 消除落定：牌面转为 removed；若是最后一对则进入结算 */
+function finalizeMatch() {
+  const pr = state.pendingRemove;
+  state.pendingRemove = [];
+  if (pr.length === 2) {
+    updateTile(pr[0], 'removed');
+    updateTile(pr[1], 'removed');
+  }
+  if (state.matchedCount === state.tiles.length / 2) {
+    hideCard();
+    hideToast();
+    audio.win();
+    setTimeout(finishLevel, 780);
+  }
 }
 
 function handleMismatch(i, j) {
@@ -755,44 +925,72 @@ function handleMismatch(i, j) {
   }, 440);
 }
 
-/* ---------------- 文化卡 ---------------- */
+/* ---------------- 文化卡（首次发现，非阻塞 + 自动收起） ---------------- */
+let cardTimer = null;
 function showCard(id) {
   const card = CARD_BY_ID[id];
   const el = ELEMENTS[id];
   if (!card) return;
-  const sheet = $('card-sheet');
-  let head = '';
+  hideToast();
+
+  const hero = $('card-hero');
+  hero.style.background = 'linear-gradient(135deg,' + el.color + ',' + shade(el.color, 0.76) + ')';
+
+  const medal = $('card-medal');
   if (card.type === 'icon') {
-    head = '<img class="card-icon" src="' + iconDataUrl(id) + '" alt="">';
+    medal.innerHTML = '<img src="' + iconDataUrl(id) + '" alt="">';
   } else {
-    head = '<div class="card-glyph tib" style="color:' + el.color + '">' + card.title + '</div>';
+    medal.innerHTML = '<div class="g tib" style="color:' + el.color + '">' + card.title + '</div>';
   }
-  sheet.innerHTML =
-    head +
-    '<div class="card-title">' + card.title + '</div>' +
-    (card.subtitle ? '<div class="card-sub">' + card.subtitle + '</div>' : '') +
-    '<div class="divider"></div>' +
-    '<div class="card-desc">' + card.description + '</div>' +
-    '<div class="fact"><b>冷知识</b> · ' + card.funFact + '</div>' +
-    '<button class="primary-btn" id="card-ok" style="background:' + el.color + '">知道了</button>';
-  $('card-mask').classList.add('show');
-  $('card-ok').addEventListener('click', onCloseCard);
+  $('card-name').textContent = card.title;
+  $('card-sub').textContent = card.subtitle || '';
+  $('card-tib').textContent = card.type === 'icon' ? '' : 'སྒྲ་སྒྲུག · ' + (card.subtitle || '').split('·')[0].trim();
+  $('card-tib').style.display = card.type === 'icon' ? 'none' : '';
+  $('card-desc').textContent = card.description;
+  $('card-fact').textContent = card.funFact;
+
+  const bar = $('card-bar');
+  bar.style.transition = 'none';
+  bar.style.width = '100%';
+  bar.style.background = el.color;
+  void bar.offsetWidth;   // 强制回流，让进度条从头开始
+  bar.style.transition = 'width ' + CARD_AUTO_MS + 'ms linear';
+  bar.style.width = '0%';
+
+  $('card-panel').classList.add('show');
+  clearTimeout(cardTimer);
+  cardTimer = setTimeout(hideCard, CARD_AUTO_MS);
 }
 
-function onCloseCard() {
-  $('card-mask').classList.remove('show');
-  const pr = state.pendingRemove;
-  if (pr.length === 2) {
-    updateTile(pr[0], 'removed');
-    updateTile(pr[1], 'removed');
-  }
-  state.pendingRemove = [];
-  state.locked = false;
+function hideCard() {
+  clearTimeout(cardTimer);
+  cardTimer = null;
+  $('card-panel').classList.remove('show');
+}
 
-  if (state.matchedCount === state.tiles.length / 2) {
-    audio.win();
-    setTimeout(finishLevel, 800);
+/* ---------------- 重复匹配轻提示 ---------------- */
+let toastTimer = null;
+function showToast(id) {
+  const card = CARD_BY_ID[id];
+  const el = ELEMENTS[id];
+  if (!card) return;
+  const g = $('toast-glyph');
+  if (card.type === 'icon') {
+    g.innerHTML = '<img src="' + iconDataUrl(id) + '" style="width:18px;height:18px;vertical-align:middle;">';
+  } else {
+    g.textContent = card.title;
+    g.style.color = '#fff';
   }
+  $('toast-text').textContent = (card.subtitle || card.title) + ' · 已收藏';
+  const t = $('toast');
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(hideToast, 1700);
+}
+function hideToast() {
+  clearTimeout(toastTimer);
+  toastTimer = null;
+  $('toast').classList.remove('show');
 }
 
 /* ---------------- 引导 ---------------- */
@@ -862,7 +1060,7 @@ function finishLevel() {
       '<div class="t">🎉 扎西德勒！通关全部 10 关</div>' +
       '<div class="s">生成你的专属祝福卡，保存下来分享给朋友</div>' +
       '<input class="name-input" id="bless-name" maxlength="10" placeholder="输入你的名字（可留空，默认「朋友」）">' +
-      '<button class="primary-btn" id="bless-gen">生成我的祝福卡</button>' +
+      '<button class="primary-btn" id="bless-gen" style="background: var(--red); color:#fff; border:0; border-radius:14px; padding:14px 0; width:100%; font-size:16px; font-weight:700; margin-top:14px; cursor:pointer;">生成我的祝福卡</button>' +
       '<div id="bless-out"></div>' +
       '</div>';
     $('bless-gen').addEventListener('click', generateBlessing);
@@ -877,12 +1075,14 @@ function finishLevel() {
     const next = document.createElement('button');
     next.className = 'primary-btn';
     next.textContent = '下一关 →';
+    next.setAttribute('style', 'background: var(--red); color:#fff; border:0; border-radius:14px; padding:14px 0; width:100%; font-size:16px; font-weight:700; cursor:pointer;');
     next.addEventListener('click', function () { startLevel(level + 1); });
     actions.appendChild(next);
   }
   const back = document.createElement('button');
   back.className = 'ghost-btn';
   back.textContent = '返回首页';
+  back.setAttribute('style', 'border:1.5px solid var(--line); border-radius:14px; padding:13px 0; width:100%; font-size:15px; font-weight:700; color:var(--ink); background:rgba(255,255,255,.9); margin-top:12px; cursor:pointer;');
   back.addEventListener('click', renderHome);
   actions.appendChild(back);
 
@@ -1001,11 +1201,19 @@ $('reset-link').addEventListener('click', function () {
   clearProgress();
   renderHome();
 });
-$('card-mask').addEventListener('click', function (e) {
-  if (e.target === $('card-mask')) onCloseCard();
-});
+$('card-x').addEventListener('click', hideCard);
+// 点击卡片外任意处收起（不阻止牌面点击，游戏不中断）
+document.addEventListener('click', function (e) {
+  const panel = $('card-panel');
+  if (!panel.classList.contains('show')) return;
+  if (panel.contains(e.target)) return;
+  hideCard();
+}, true);
 
 /* ---------------- 启动 ---------------- */
+$('sc-sky').src = IMAGES.bgSky;
+$('sc-ground').src = IMAGES.bgGround;
+document.documentElement.style.setProperty('--pat', 'url("' + IMAGES.pattern + '")');
 renderHome();
 </script>
 </body>
