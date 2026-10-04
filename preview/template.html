@@ -417,6 +417,37 @@
   .pc-total { font-size: 12px; color: #A79F8D; font-weight: 600; }
   .pc-label { margin-top: 3px; font-size: 10px; color: var(--muted); }
   .stage-head { font-size: 14px; font-weight: 700; color: var(--red); margin-bottom: 9px; padding: 0 2px; }
+
+  /* ============ 通关情绪反馈（与小程序 game.wxss 同口径） ============ */
+  .fx-layer { position: fixed; left: 0; top: 0; right: 0; bottom: 0; z-index: 60; pointer-events: none; overflow: hidden; }
+  .fx-glow { position: absolute; left: 0; top: 0; right: 0; bottom: 0;
+    background: radial-gradient(ellipse at 50% 78%, rgba(183,149,11,.42) 0%, rgba(183,149,11,.16) 34%, rgba(192,57,43,.10) 55%, rgba(0,0,0,0) 76%);
+    animation: fxGlow 1.5s ease-out both; }
+  @keyframes fxGlow { 0% { opacity: 0; transform: scale(.7); } 28% { opacity: 1; } 100% { opacity: .35; transform: scale(1.06); } }
+  .fx-bit { position: absolute; animation: fxPop 1.4s cubic-bezier(.16,.72,.36,1) both; }
+  .fx-bit.alt { animation-name: fxPopAlt; }
+  .fx-bit.lotus { border-radius: 50% 50% 50% 0; box-shadow: 0 0 6px rgba(183,149,11,.55); }
+  .fx-bit.flag { border-radius: 2px; }
+  @keyframes fxPop { 0% { opacity: 0; transform: translate(0,0) rotate(0) scale(.5); }
+    10% { opacity: 1; transform: translate(0,-15px) rotate(24deg) scale(1); }
+    100% { opacity: 0; transform: translate(-45px,-210px) rotate(-260deg) scale(.86); } }
+  @keyframes fxPopAlt { 0% { opacity: 0; transform: translate(0,0) rotate(0) scale(.5); }
+    10% { opacity: 1; transform: translate(0,-15px) rotate(-24deg) scale(1); }
+    100% { opacity: 0; transform: translate(45px,-210px) rotate(260deg) scale(.86); } }
+
+  /* ============ 唐卡画卷展开（结算页） ============ */
+  .result-scroll { position: relative; animation: unfurl .9s cubic-bezier(.18,.7,.3,1) both; transform-origin: 50% 0; }
+  @keyframes unfurl { 0% { opacity: 0; transform: scaleY(.06); } 40% { opacity: 1; }
+    70% { transform: scaleY(1.015); } 100% { opacity: 1; transform: scaleY(1); } }
+  .roller { position: absolute; left: 2%; right: 2%; height: 11px; border-radius: 6px;
+    background: linear-gradient(180deg, #9C7A4B 0%, #6B4A26 55%, #4A3218 100%);
+    box-shadow: 0 3px 7px rgba(74,50,24,.38); z-index: 5; }
+  .roller-top { top: -6px; }
+  .roller-bottom { bottom: -6px; }
+  .roller::before, .roller::after { content: ''; position: absolute; top: -4px; width: 13px; height: 19px;
+    border-radius: 4px; background: linear-gradient(180deg, #B7950B, #8A6D08); box-shadow: 0 2px 5px rgba(74,50,24,.4); }
+  .roller::before { left: -7px; }
+  .roller::after { right: -7px; }
 </style>
 </head>
 <body>
@@ -478,6 +509,8 @@
 
   <!-- ============ 结算页 ============ -->
   <section id="screen-result" class="screen">
+    <div class="result-scroll unfurl" id="result-scroll">
+      <div class="roller roller-top" aria-hidden="true"></div>
     <div class="result-hero">
       <div class="result-check">✓</div>
       <div class="result-title" id="res-title">第 1 关完成！</div>
@@ -500,6 +533,8 @@
     <div id="res-bless"></div>
 
     <div id="res-actions" style="margin-top: 26px;"></div>
+      <div class="roller roller-bottom" aria-hidden="true"></div>
+    </div>
   </section>
 
   <!-- ============ 文化护照（总档案） ============ -->
@@ -936,17 +971,64 @@ const audio = {
    一致的调用时机与「单声部」策略，并统计次数供自动化测试断言。
    无录音文件时静默回退，不阻塞游戏。 */
 let activeVoice = null;
-function pronounce(id) {
-  state.pronounceCount++;
-  state.lastPronounced = id;
+function playVoice(src) {
   try {
     if (activeVoice) { activeVoice.pause(); activeVoice = null; }
-    const a = new window.Audio('audio/voice/' + id + '.mp3');
+    const a = new window.Audio(src);
     activeVoice = a;
     const p = a.play();
     if (p && p.catch) p.catch(function () { /* 无录音文件：静默 */ });
   } catch (e) { /* 静默 */ }
+}
+function pronounce(id) {
+  state.pronounceCount++;
+  state.lastPronounced = id;
+  playVoice('audio/voice/' + id + '.mp3');
   return true;
+}
+/* 情绪语音（与小程序 utils/audio.js 的 speak 同口径）：
+   复用同一声部但不计入元素朗读次数。 */
+function speak(name) {
+  state.speakLog.push(name);
+  playVoice('audio/voice/' + name + '.mp3');
+  return true;
+}
+
+/* 轻震动（通关瞬间）。浏览器走 navigator.vibrate，缺失时仅计数。 */
+function haptic() {
+  state.vibrateCount++;
+  try { if (navigator.vibrate) navigator.vibrate(30); } catch (e) { /* 忽略 */ }
+}
+
+/* 通关粒子：金色莲花瓣 + 五色风马旗碎片（与小程序 game.js celebrate 同参数） */
+function celebrate() {
+  const colors = ['#C0392B', '#1E8449', '#2471A3', '#B7950B', '#FFFFFF'];
+  const layer = document.createElement('div');
+  layer.className = 'fx-layer';
+  layer.id = 'fx-layer';
+  const glow = document.createElement('div');
+  glow.className = 'fx-glow';
+  layer.appendChild(glow);
+  for (let i = 0; i < 18; i++) {
+    const isFlag = i % 3 === 2;
+    const b = document.createElement('div');
+    b.className = 'fx-bit ' + (isFlag ? 'flag' : 'lotus') + (i % 2 ? ' alt' : '');
+    b.style.left = (8 + Math.random() * 84) + '%';
+    b.style.top = (40 + Math.random() * 42) + '%';
+    const size = 7 + Math.floor(Math.random() * 3) * 3;
+    b.style.width = size + 'px';
+    b.style.height = size + 'px';
+    b.style.background = isFlag ? colors[i % 5] : (i % 2 ? '#B7950B' : '#C0392B');
+    b.style.animationDelay = Math.floor(Math.random() * 260) + 'ms';
+    layer.appendChild(b);
+  }
+  $('screen-game').appendChild(layer);
+  state.fxCount = 18;
+  haptic();
+  setTimeout(function () {
+    const l = document.getElementById('fx-layer');
+    if (l) l.remove();
+  }, 1700);
 }
 
 /* ---------------- 文化图标绘制（对应 utils/icons.js） ---------------- */
@@ -1073,7 +1155,10 @@ const state = {
   pendingRemove: [], locked: false, goldenId: null, guideStep: 0,
   collected: [], maxCombo: 0,
   pronounceCount: 0, lastPronounced: null,  // 朗读次数/最近朗读元素（供自动化测试断言）
-  attempts: 0, matches: 0, misses: 0        // 正确率统计（证书质量门槛）
+  attempts: 0, matches: 0, misses: 0,       // 正确率统计（证书质量门槛）
+  vibrateCount: 0,                          // 震动次数（情绪引擎，测试断言用）
+  speakLog: [],                             // 语音播放记录（tashi_delek / blessing_01）
+  fxCount: 0                                // 通关粒子数
 };
 
 const $ = function (id) { return document.getElementById(id); };
@@ -1367,7 +1452,9 @@ function finalizeMatch() {
     hideCard();
     hideToast();
     audio.win();
-    setTimeout(finishLevel, 780);
+    celebrate();
+    setTimeout(function () { speak('tashi_delek'); }, 350);   // 通关藏语：扎西德勒
+    setTimeout(finishLevel, 1200);                            // 让粒子先飘一会儿
   }
 }
 
@@ -1592,6 +1679,8 @@ function finishLevel() {
   actions.appendChild(back);
 
   showScreen('result');
+  // 舒缓祝福语：画卷展开时读一句（缺失录音静默回退）
+  setTimeout(function () { speak('blessing_01'); }, 650);
 }
 
 /* ---------------- 祝福卡（Canvas 绘制） ---------------- */

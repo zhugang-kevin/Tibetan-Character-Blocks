@@ -471,6 +471,74 @@ if (tpl.indexOf('this.attempts') === -1 && tpl.indexOf('state.attempts++') > -1)
   ok('体验版同样采集正确率（state.attempts）');
 else err('体验版未采集正确率');
 
+// ---------- 15. 通关情绪引擎（PRD 4.1 / 4.2） ----------
+section('15. 通关情绪引擎（粒子 / 震动 / 藏语语音 / 唐卡画卷 / 藏纸质感）');
+(function () {
+  var gj = read('pages/game/game.js');
+  var gw = read('pages/game/game.wxml');
+  var gs = read('pages/game/game.wxss');
+  var rj = read('pages/result/result.js');
+  var rw = read('pages/result/result.wxml');
+  var rs = read('pages/result/result.wxss');
+  var aj = read('utils/audio.js');
+  var tpl = read('preview/template.html');
+
+  // 15.1 游戏页：粒子 + 震动 + 藏语语音
+  if (gj.indexOf('celebrate') > -1 && gw.indexOf('fx-layer') > -1 && gw.indexOf('fx-bit') > -1)
+    ok('游戏页有通关粒子层（fx-layer / fx-bit）');
+  else err('游戏页缺通关粒子层（game.js celebrate / game.wxml fx-layer）');
+  if (gj.indexOf('vibrateShort') > -1) ok('通关触发轻震动（wx.vibrateShort）');
+  else err('game.js 未调用 wx.vibrateShort');
+  if (gs.indexOf('@keyframes fxPop') > -1 && gs.indexOf('fx-glow') > -1)
+    ok('粒子动画样式齐全（fxPop / fxGlow）');
+  else err('game.wxss 缺粒子动画（fxPop / fxGlow）');
+  if (gj.indexOf('celebrate();') > -1 && gj.indexOf('tashiDelek') > -1)
+    ok('通关链路调用 celebrate() + 朗读 tashi_delek');
+  else err('finalizeMatch 未接 celebrate() / tashiDelek');
+
+  // 15.2 语音通道
+  if (aj.indexOf('function speak') > -1 && aj.indexOf('tashiDelek') > -1 && aj.indexOf('blessing') > -1)
+    ok('audio.js 提供 speak / tashiDelek / blessing 通道');
+  else err('audio.js 缺 speak / tashiDelek / blessing');
+  var voiceReadme = read('audio/voice/README.txt');
+  if (voiceReadme.indexOf('tashi_delek.mp3') > -1 && voiceReadme.indexOf('blessing_01.mp3') > -1)
+    ok('录音清单含情绪语音（tashi_delek.mp3 / blessing_01.mp3）');
+  else err('voice README 缺 tashi_delek.mp3 / blessing_01.mp3 条目');
+
+  // 15.3 结算页：唐卡画卷展开
+  if (rw.indexOf('unfurl') > -1 && rw.indexOf('roller-top') > -1 && rw.indexOf('roller-bottom') > -1)
+    ok('结算页为唐卡画卷结构（.unfurl + 上下卷轴杆）');
+  else err('result.wxml 缺画卷结构（unfurl / roller）');
+  if (rs.indexOf('@keyframes unfurl') > -1) ok('画卷展开动画已定义（unfurl）');
+  else err('result.wxss 缺 @keyframes unfurl');
+  if (rj.indexOf('audio.blessing()') > -1) ok('结算页进入时播放舒缓祝福语');
+  else err('result.js 未调用 audio.blessing()');
+
+  // 15.4 Canvas 藏文字体守卫（PRD 八：Canvas 绘制藏文需降级方案）
+  if (rj.indexOf('fontLoaded') > -1 && rj.indexOf('tashi-delek.png') > -1)
+    ok('祝福卡藏文有字体守卫（fontLoaded → 预渲染 PNG 回退）');
+  else err('result.js 缺 Canvas 藏文字体守卫（fontLoaded / tashi-delek.png）');
+  if (exists('images/tashi-delek.png')) ok('预渲染藏文回退图 images/tashi-delek.png 存在');
+  else err('缺少 images/tashi-delek.png（Canvas 藏文回退图）');
+  if (read('pages/cert/cert.js').indexOf('Microsoft Himalaya') > -1)
+    ok('证书页藏文字体链含系统喜马拉雅字体兜底');
+  else err('cert.js 藏文字体链未含 Microsoft Himalaya 兜底');
+
+  // 15.5 藏纸颗粒质感（PRD 1.2）
+  var appCss = read('app.wxss');
+  var grainPages = ['pages/index/index', 'pages/game/game', 'pages/result/result'];
+  var allGrain = grainPages.every(function (p) { return read(p + '.wxml').indexOf('class="grain"') > -1; });
+  if (appCss.indexOf('.grain') > -1 && appCss.indexOf('background-repeat: repeat') > -1 && allGrain)
+    ok('藏纸颗粒噪点层已应用到首页/游戏/结算三页');
+  else err('颗粒质感层不完整（app.wxss .grain 或页面 class="grain"）');
+
+  // 15.6 体验版镜像一致性
+  if (tpl.indexOf('fx-bit') > -1 && tpl.indexOf('unfurl') > -1 && tpl.indexOf('celebrate') > -1 &&
+      tpl.indexOf('tashi_delek') > -1 && tpl.indexOf('blessing_01') > -1)
+    ok('体验版已镜像情绪引擎（celebrate / 语音 / 画卷）');
+  else err('preview/template.html 未镜像情绪引擎');
+})();
+
 // ---------- 汇总 ----------
 console.log('\n========== 汇总 ==========');
 console.log('通过: ' + passed + ' | 错误: ' + errors.length + ' | 警告: ' + warnings.length);

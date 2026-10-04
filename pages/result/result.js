@@ -5,6 +5,7 @@ var storage = require('../../utils/storage');
 var tracker = require('../../utils/tracker');
 var tibText = require('../../utils/tibetan-text');
 var certificate = require('../../utils/certificate');
+var audio = require('../../utils/audio');
 
 Page({
   data: {
@@ -100,6 +101,9 @@ Page({
       ownedCerts: certificate.ownedCount(),
       skillHint: certRes.skill ? certRes.skill.text : ''
     });
+
+    // 舒缓祝福语（PRD 4.1）：画卷展开时读一句藏语祝福，缺失录音静默回退
+    setTimeout(function () { audio.blessing(); }, 650);
   },
 
   goHome: function () {
@@ -170,7 +174,7 @@ Page({
       return;
     }
 
-    var blessImgs = { logo: null, watermark: null };
+    var blessImgs = { logo: null, watermark: null, tashi: null };
 
     var finish = function () {
       wx.canvasToTempFilePath({
@@ -214,8 +218,20 @@ Page({
 
       // 顶部藏文大字
       // 排版规范：断行只发生在 tsheg ( ་ ) 之后，shad ( ། ) 不落行首
-      ctx.font = '500 92px "Noto Serif Tibetan", serif';
-      tibText.drawTibetanWrapped(ctx, 'བཀྲ་ཤིས་བདེ་ལེགས', W / 2, 240, W - 160, 130);
+      // 字体守卫：wx.loadFontFace 对 Canvas 2D 不保证生效，未加载成功时
+      // Canvas 会画出"豆腐块"——此时回退到预渲染 PNG（images/tashi-delek.png），
+      // 图片也缺失时再用系统字体链兜底（Windows/Android 自带喜马拉雅字体）
+      var fontOk = !!(typeof getApp === 'function' &&
+        getApp().globalData && getApp().globalData.fontLoaded);
+      if (fontOk) {
+        ctx.font = '500 92px "Noto Serif Tibetan", serif';
+        tibText.drawTibetanWrapped(ctx, 'བཀྲ་ཤིས་བདེ་ལེགས', W / 2, 240, W - 160, 130);
+      } else if (blessImgs.tashi) {
+        ctx.drawImage(blessImgs.tashi, W / 2 - 300, 150, 600, 197);
+      } else {
+        ctx.font = '500 92px "Noto Serif Tibetan", "Microsoft Himalaya", serif';
+        tibText.drawTibetanWrapped(ctx, 'བཀྲ་ཤིས་བདེ་ལེགས', W / 2, 240, W - 160, 130);
+      }
 
       // 分隔线
       ctx.strokeStyle = 'rgba(255,255,255,0.7)';
@@ -270,7 +286,8 @@ Page({
     };
     Promise.all([
       loadImg('/images/logo-80.png').then(function (img) { blessImgs.logo = img; }),
-      loadImg('/images/logo-watermark.png').then(function (img) { blessImgs.watermark = img; })
+      loadImg('/images/logo-watermark.png').then(function (img) { blessImgs.watermark = img; }),
+      loadImg('/images/tashi-delek.png').then(function (img) { blessImgs.tashi = img; })
     ]).then(paint);
   },
 

@@ -2,6 +2,7 @@
   <!-- 藏文化背景层（三层：纹样 / 经幡 / 雪山布达拉宫） -->
   <view class="scenery" aria-hidden="true">
     <view class="sc-pattern"></view>
+    <view class="grain"></view>
     <image class="sc-ground" src="/images/bg-ground.png" mode="widthFix" />
     <image class="sc-sky" src="/images/bg-sky.png" mode="widthFix" />
   </view>

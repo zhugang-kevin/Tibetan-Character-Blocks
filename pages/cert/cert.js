@@ -156,7 +156,7 @@ Page({
       // 藏文装饰语（tsheg 断行，shad 类符号不落行首）
       ctx.textAlign = 'center';
       ctx.fillStyle = 'rgba(192, 57, 43, 0.75)';
-      ctx.font = '500 54px "Noto Serif Tibetan", serif';
+      ctx.font = '500 54px "Noto Serif Tibetan", "Microsoft Himalaya", serif';
       tibText.drawTibetanWrapped(ctx, CERT_TIB, W / 2, 148, W - 260, 68);
 
       // 主标题

@@ -3,6 +3,7 @@
   <!-- 藏文化背景层（三层：纹样 / 经幡 / 雪山布达拉宫） -->
   <view class="scenery" aria-hidden="true">
     <view class="sc-pattern"></view>
+    <view class="grain"></view>
     <image class="sc-ground" src="/images/bg-ground.png" mode="widthFix" />
     <image class="sc-sky" src="/images/bg-sky.png" mode="widthFix" />
   </view>
@@ -80,6 +81,17 @@
       <view class="card-bar {{cardBarRun ? 'run' : ''}}" style="background: {{cardColor}};"></view>
     </view>
     <view class="card-hint">游戏不会暂停 · 点 ✕ 或继续消除即可收起</view>
+  </view>
+
+  <!-- 通关情绪反馈：金色莲花 + 风马旗碎片粒子 + 雪山金光（纯 CSS，零依赖） -->
+  <view wx:if="{{fxOn}}" class="fx-layer" aria-hidden="true">
+    <view class="fx-glow"></view>
+    <view
+      wx:for="{{fx}}"
+      wx:key="index"
+      class="fx-bit {{item.kind}}{{item.alt}}"
+      style="left:{{item.left}};top:{{item.top}};width:{{item.size}};height:{{item.size}};background:{{item.color}};animation-delay:{{item.delay}}ms;"
+    ></view>
   </view>
 
   <!-- 新手引导（首次进入，3 步） -->

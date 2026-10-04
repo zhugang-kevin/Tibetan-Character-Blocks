@@ -301,8 +301,23 @@ function mockCtx() {
   check('本关 12 次配对 = 12 次朗读', ev('state.pronounceCount') - pronOnEnter === 12,
     '增加 ' + (ev('state.pronounceCount') - pronOnEnter) + ' 次');
   check('通关瞬间不再弹出重复提示', !$('#toast').classList.contains('show'));
-  await sleep(1100);
+
+  /* ---------- 9.5 通关情绪引擎（PRD 4.1/4.2） ---------- */
+  section('9.5 通关情绪引擎');
+  check('通关粒子已生成（≥12 片莲花/风马旗）', $$('.fx-bit').length >= 12, 'bits=' + $$('.fx-bit').length);
+  check('粒子含雪山金光层', !!$('.fx-glow'));
+  check('触发轻震动', ev('state.vibrateCount') >= 1, 'vibrate=' + ev('state.vibrateCount'));
+  await sleep(1200);
+  check('通关藏语语音已触发（tashi_delek）', ev('state.speakLog').indexOf('tashi_delek') > -1,
+    'speakLog=' + JSON.stringify(ev('state.speakLog')));
+  await sleep(600);
   check('自动进入结算页', activeScreen() === 'screen-result', activeScreen());
+  check('结算页为唐卡画卷（.unfurl）', !!$('#screen-result .unfurl'));
+  check('画卷有上下卷轴杆', $$('#screen-result .roller').length === 2, 'rollers=' + $$('#screen-result .roller').length);
+  check('画卷展开时播放舒缓祝福语', ev('state.speakLog').indexOf('blessing_01') > -1,
+    'speakLog=' + JSON.stringify(ev('state.speakLog')));
+  await sleep(400);
+  check('粒子层已自动清除', !$('#fx-layer'), 'fx-layer 仍在');
   check('显示「第 1 关完成！」', ($('#res-title') || {}).textContent === '第 1 关完成！');
   check('显示积分/连击/文化卡统计', $('#res-score').textContent !== '0' || ev('state.score') === 0);
   check('授予「拉萨」印记横幅', ($('#res-stamp').textContent || '').indexOf('拉萨') > -1);

@@ -418,3 +418,45 @@
   border: 2rpx solid #1E8449;
   box-sizing: border-box;
 }
+
+/* ============ 唐卡画卷展开（PRD 4.2 结算弹窗） ============ */
+/* 画卷自上而下缓缓展开；上下两根木质卷轴杆随画展开 */
+.content.unfurl {
+  transform-origin: 50% 0;
+  animation: unfurl 0.9s cubic-bezier(0.18, 0.7, 0.3, 1) both;
+}
+@keyframes unfurl {
+  0%   { opacity: 0; transform: scaleY(0.06); }
+  40%  { opacity: 1; }
+  70%  { transform: scaleY(1.015); }
+  100% { opacity: 1; transform: scaleY(1); }
+}
+.roller {
+  position: absolute;
+  left: 4%;
+  right: 4%;
+  height: 22rpx;
+  border-radius: 11rpx;
+  background: linear-gradient(180deg, #9C7A4B 0%, #6B4A26 55%, #4A3218 100%);
+  box-shadow: 0 6rpx 14rpx rgba(74, 50, 24, 0.38);
+  z-index: 5;
+}
+.roller-top {
+  top: -12rpx;
+}
+.roller-bottom {
+  bottom: -12rpx;
+}
+.roller::before,
+.roller::after {
+  content: '';
+  position: absolute;
+  top: -8rpx;
+  width: 26rpx;
+  height: 38rpx;
+  border-radius: 8rpx;
+  background: linear-gradient(180deg, #B7950B, #8A6D08);
+  box-shadow: 0 4rpx 10rpx rgba(74, 50, 24, 0.4);
+}
+.roller::before { left: -14rpx; }
+.roller::after { right: -14rpx; }

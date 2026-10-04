@@ -54,6 +54,12 @@ function pronounce(id) {
   }
 }
 
+// 复用单声部发音通道播放指定语音文件（audio/voice/{name}.mp3）
+// 新发音会打断旧发音；文件缺失时静默回退
+function speak(name) {
+  return pronounce(name);
+}
+
 // ---- 连击音效：复用铜铃声，播放速率随连击数升高 ----
 // playbackRate 支持范围约 0.5-2.0，部分机型不支持时自动忽略
 function combo(n) {
@@ -71,10 +77,15 @@ function combo(n) {
 module.exports = {
   play: play,
   pronounce: pronounce,
+  speak: speak,
   combo: combo,
   // 语义化封装
   tap: function () { play('tap'); },
   match: function () { play('match'); },
   mismatch: function () { play('mismatch'); },
-  win: function () { play('win'); }
+  win: function () { play('win'); },
+  // 通关藏语语音：བཀྲ་ཤིས་བདེ་ལེགས（扎西德勒）
+  tashiDelek: function () { return speak('tashi_delek'); },
+  // 结算页舒缓祝福语（每日一句，MVP 固定 blessing_01）
+  blessing: function () { return speak('blessing_01'); }
 };

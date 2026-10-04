@@ -67,6 +67,9 @@ Page({
     toastText: '',
     toastColor: '#C0392B',
     locked: false,       // 仅失配抖动期间锁定
+    // 通关情绪反馈：粒子参数数组 + 层开关
+    fxOn: false,
+    fx: [],
     score: 0,
     combo: 0,
     comboFx: '',
@@ -282,6 +285,9 @@ Page({
       this.dismissCard();
       this.hideToast();
       audio.win();
+      this.celebrate();
+      // 藏语语音延后：先让铜铃与粒子起势，再读 བཀྲ་ཤིས་བདེ་ལེགས
+      this.tashiTimer = setTimeout(function () { audio.tashiDelek(); }, 350);
       setTimeout(function () {
         wx.redirectTo({
           url: '/pages/result/result?level=' + that.data.level +
@@ -293,8 +299,37 @@ Page({
             '&att=' + that.attempts +
             '&miss=' + that.misses
         });
-      }, 900);
+      }, 1500);
     }
+  },
+
+  // ---- 通关情绪反馈（PRD 4.2）：金色莲花 + 风马旗碎片粒子 + 雪山金光 + 震动 ----
+  // 纯 CSS 动画 + wx.vibrateShort，零依赖；粒子由 JS 生成随机参数后交 WXSS 播放
+  celebrate: function () {
+    var that = this;
+    var flagColors = ['#C0392B', '#1E8449', '#2471A3', '#B7950B', '#FFFFFF'];
+    var fx = [];
+    for (var i = 0; i < 18; i++) {
+      var isFlag = i % 3 === 2;   // 每 3 片有 1 片风马旗
+      fx.push({
+        left: (8 + Math.random() * 84) + '%',
+        top: (40 + Math.random() * 42) + '%',
+        size: (14 + Math.floor(Math.random() * 3) * 6) + 'rpx',
+        color: isFlag ? flagColors[i % 5] : (i % 2 ? '#B7950B' : '#C0392B'),
+        kind: isFlag ? 'flag' : 'lotus',
+        alt: i % 2 ? ' alt' : '',
+        delay: Math.floor(Math.random() * 260)
+      });
+    }
+    this.setData({ fx: fx, fxOn: true });
+    try {
+      if (wx.vibrateShort) wx.vibrateShort({ type: 'light' });
+    } catch (e) { /* 部分机型不支持，忽略 */ }
+    if (this.fxTimer) clearTimeout(this.fxTimer);
+    this.fxTimer = setTimeout(function () {
+      that.setData({ fxOn: false, fx: [] });
+    }, 1700);
+    tracker.track('first_celebration');
   },
 
   // 配对失败：抖动 + 轻声提示，无惩罚（连击清零）——唯一需要短暂锁盘面的场景
@@ -390,5 +425,7 @@ Page({
     if (this.comboTimer) clearTimeout(this.comboTimer);
     if (this.barTimer) clearTimeout(this.barTimer);
     if (this.voiceTimer) clearTimeout(this.voiceTimer);
+    if (this.fxTimer) clearTimeout(this.fxTimer);
+    if (this.tashiTimer) clearTimeout(this.tashiTimer);
   }
 });
