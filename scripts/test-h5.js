@@ -119,12 +119,16 @@ function mockCtx() {
 
   /* ---------- 2. 藏文化背景层（修复②：背景不单调） ---------- */
   section('2. 藏文化背景层');
+  check('全局暗金光晕底图已内联',
+    ($('#sc-bg') || {}).src && $('#sc-bg').src.indexOf('data:image/jpeg') === 0,
+    ($('#sc-bg') || {}).src && $('#sc-bg').src.slice(0, 24));
   check('经幡天空层已内联', ($('#sc-sky') || {}).src && $('#sc-sky').src.indexOf('data:image/png') === 0);
   check('雪山/布达拉宫地面层已内联', ($('#sc-ground') || {}).src && $('#sc-ground').src.indexOf('data:image/png') === 0);
   check('藏式菱格纹样已设置为 CSS 变量',
     (doc.documentElement.style.getPropertyValue('--pat') || '').indexOf('data:image/png') > -1);
-  check('背景为三层结构（纹样/天空/地面）',
-    $$('.scenery > *').length === 3, '实际 ' + $$('.scenery > *').length);
+  check('背景为五层结构（底图/纹样/地面/天空/夜色罩）',
+    $$('.scenery > *').length === 5, '实际 ' + $$('.scenery > *').length);
+  check('夜色罩存在（压暗四角、突出中心金光）', !!$('.sc-night'));
 
   /* ---------- 3. 进入第 1 关 ---------- */
   section('3. 进入第 1 关');
@@ -319,6 +323,8 @@ function mockCtx() {
   check('自动进入结算页', activeScreen() === 'screen-result', activeScreen());
   check('结算页为唐卡画卷（.unfurl）', !!$('#screen-result .unfurl'));
   check('画卷有上下卷轴杆', $$('#screen-result .roller').length === 2, 'rollers=' + $$('#screen-result .roller').length);
+  // 祝福语由 finishLevel 内部 setTimeout(650ms) 触发，等它到达再断言（避免固定 sleep 的时序抖动）
+  for (let bw = 0; bw < 20 && ev('state.speakLog').indexOf('blessing_01') < 0; bw++) await sleep(100);
   check('画卷展开时播放舒缓祝福语', ev('state.speakLog').indexOf('blessing_01') > -1,
     'speakLog=' + JSON.stringify(ev('state.speakLog')));
   await sleep(400);
@@ -657,7 +663,7 @@ function mockCtx() {
   check('已领凭证不因重置进度而重复发码', ev('bnMakeCode(2)') === 'ZW0002');
 
   /* ---------- 12. 视觉重构与障碍物（PRD v4） ---------- */
-  section('20. 视觉重构与障碍物（四层立体 / 冰霜 / 木箱 / 破碎特效）');
+  section('21. 视觉重构与障碍物（四层立体 / 冰霜 / 木箱 / 破碎特效）');
 
   // 反向：第 1 关不应有任何障碍物
   ev('startLevel(1)');
@@ -775,6 +781,176 @@ function mockCtx() {
   $('#card-know').click();
   await sleep(60);
   check('点「知道了」收起文化卡', !$('#card-panel').classList.contains('show'));
+
+  /* ---------- 13. PRD v4 留存系统：藤蔓地图 / 资源条 / 悬浮入口 / 签到 / 唐卡 / 道具 / 菩提树 / 星级 ---------- */
+  section('22. 留存系统（藤蔓地图 / 签到 / 唐卡 / 道具 / 菩提树 / 星级）');
+
+  // 纯函数边界（与 utils/collect.js 同规则）
+  check('三星门槛：满正确率 + 连击≥3 → 3 星', ev('rateStars(12, 0, 4)') === 3, String(ev('rateStars(12, 0, 4)')));
+  check('二星门槛：正确率≥80% → 2 星', ev('rateStars(10, 2, 0)') === 2, String(ev('rateStars(10, 2, 0)')));
+  check('高正确率但连击不足 → 2 星', ev('rateStars(10, 0, 2)') === 2, String(ev('rateStars(10, 0, 2)')));
+  check('低正确率 → 1 星', ev('rateStars(10, 5, 0)') === 1, String(ev('rateStars(10, 5, 0)')));
+  check('唐卡集齐后 nextFragment 返回 -1', ev('nextFragment([0,1,2,3,4,5,6,7,8])') === -1);
+  check('同日重复签到判定 already', ev('advanceSignIn({streak:1,lastDate:"2026-10-04",totalDays:1,oil:1},"2026-10-04").already') === true);
+  check('次日签到连击 +1', ev('advanceSignIn({streak:1,lastDate:"2026-10-04",totalDays:1,oil:1},"2026-10-05").state.streak') === 2);
+  check('断签连击重置为 1', ev('advanceSignIn({streak:5,lastDate:"2026-10-01",totalDays:6,oil:5},"2026-10-05").state.streak') === 1);
+
+  // 从干净进度开始，避免前面用例残留
+  ev('clearProgress(); renderHome();');
+  await sleep(80);
+
+  // 藤蔓地图：五地剪影 + 10 个蜿蜒节点 + 主干
+  check('首页为藤蔓地图（.vine-map）', !!$('#screen-home .vine-map'));
+  check('有藤蔓主干', !!$('#screen-home .vine-stem'));
+  check('藤蔓上共 10 个关卡节点', $$('#screen-home #level-grid .level-item.node').length === 10,
+    '实际 ' + $$('#screen-home #level-grid .level-item.node').length);
+  check('五个地区剪影', $$('#screen-home #level-grid .region').length === 5,
+    '实际 ' + $$('#screen-home #level-grid .region').length);
+  check('第 1 关节点已点亮（open）', !!$('#screen-home #level-grid .level-item.open'));
+  check('未解锁关卡为锁定态（9 个）', $$('#screen-home #level-grid .level-item.locked').length === 9,
+    '实际 ' + $$('#screen-home #level-grid .level-item.locked').length);
+  check('反向：新号无已通关节点', $$('#screen-home #level-grid .level-item.done').length === 0);
+  check('关卡节点蜿蜒（左右位置不同）', (function () {
+    const l = $$('#screen-home #level-grid .level-item.node').map(function (n) { return n.style.left; });
+    return new Set(l).size > 1;
+  })());
+
+  // 资源条（灯油 / 积分 / 唐卡）
+  check('资源条含灯油/积分/唐卡三格', !!$('#res-oil') && !!$('#res-points') && !!$('#res-frag'));
+  check('新号资源条初始为 0/0/0-9',
+    $('#res-oil').textContent === '0' && $('#res-points').textContent === '0' && $('#res-frag').textContent === '0/9',
+    $('#res-oil').textContent + '|' + $('#res-points').textContent + '|' + $('#res-frag').textContent);
+
+  // 悬浮入口 + 底部平层：仅首页显示，进入游戏后隐藏（不遮挡棋盘）
+  check('首页显示左右悬浮入口', $('#side-left').classList.contains('show') && $('#side-right').classList.contains('show'));
+  check('首页显示底部大平层', $('#dock').classList.contains('show'));
+  ev('startLevel(1)');
+  await sleep(60);
+  check('进入游戏后悬浮入口/底部平层隐藏', !$('#side-left').classList.contains('show') && !$('#dock').classList.contains('show'));
+  ev('renderHome();');
+  await sleep(60);
+  check('返回首页后悬浮入口恢复', $('#side-left').classList.contains('show') && $('#dock').classList.contains('show'));
+
+  // 底部面板：非阻塞滑出（不切屏、不弹窗）
+  $('#side-left .side-btn[data-panel="lamp"]').click();
+  await sleep(60);
+  check('点悬浮入口打开底部面板', $('#entry-panel').classList.contains('show'));
+  check('面板标题正确（祈福长明灯）', $('#entry-title').textContent === '祈福长明灯', $('#entry-title').textContent);
+  check('面板为非阻塞（仍停留在首页）', activeScreen() === 'screen-home', String(activeScreen()));
+  $('#entry-x').click();
+  await sleep(60);
+  check('点 ✕ 收起面板', !$('#entry-panel').classList.contains('show'));
+
+  // 签到：7 天循环 + 只发本地奖励，重复签到不重复发奖
+  ev('openPanel("lamp")');
+  await sleep(50);
+  check('长明灯面板渲染 7 天签到环', $$('#entry-body .lamp-ring').length === 7,
+    '实际 ' + $$('#entry-body .lamp-ring').length);
+  const oilBeforeSign = ev('getProgress().signIn.oil');
+  $('#lamp-btn').click();
+  await sleep(60);
+  const progAfterSign = JSON.parse(win.localStorage.getItem('zangzi_progress') || 'null');
+  check('签到写入 lastDate', !!progAfterSign.signIn && String(progAfterSign.signIn.lastDate).length === 10,
+    JSON.stringify(progAfterSign.signIn));
+  check('签到累计天数 +1', progAfterSign.signIn.totalDays === 1, String(progAfterSign.signIn.totalDays));
+  check('签到发放灯油 +1', progAfterSign.signIn.oil === oilBeforeSign + 1, oilBeforeSign + ' → ' + progAfterSign.signIn.oil);
+  // 反向：同日重复签到不再发奖
+  const oilAfterFirst = ev('getProgress().signIn.oil');
+  ev('doSignIn()');
+  await sleep(50);
+  check('同日重复签到不再发奖', ev('getProgress().signIn.oil') === oilAfterFirst, 'oil=' + ev('getProgress().signIn.oil'));
+  check('重复签到给出「已点亮」提示',
+    $('#toast').classList.contains('show') && $('#toast-text').textContent.indexOf('已经点亮') > -1,
+    $('#toast-text').textContent);
+  check('签到奖励不含任何金额字样',
+    JSON.stringify(ev('DAILY.signInRewards')).indexOf('元') === -1 &&
+    JSON.stringify(ev('DAILY.signInRewards')).indexOf('¥') === -1);
+  $('#entry-x').click();
+  await sleep(50);
+
+  // 唐卡拼图：3×3 九片，未持有显示编号占位
+  ev('openPanel("thangka")');
+  await sleep(50);
+  check('唐卡拼图为 3×3 九片', $$('#entry-body .tk-cell').length === 9,
+    '实际 ' + $$('#entry-body .tk-cell').length);
+  check('未持有碎片显示编号占位', $$('#entry-body .tk-cell.on').length === 0);
+  $('#entry-x').click();
+  await sleep(50);
+
+  // 道具铺：积分不足拒买；积分足够则扣分入库（全流程无支付）
+  ev('openPanel("shop")');
+  await sleep(50);
+  check('道具铺至少 2 件道具', $$('#entry-body .shop-row').length >= 2);
+  const firstShopId = $$('#entry-body .shop-btn')[0].getAttribute('data-id');
+  const firstCost = ev('DAILY.shop.filter(function(i){return i.id==="' + firstShopId + '";})[0].cost');
+  ev('(function(){var p=getProgress(); p.points=0; saveProgress(p);})()');
+  $$('#entry-body .shop-btn')[0].click();
+  await sleep(50);
+  check('积分不足时拒买（给出提示）', ev('getProgress().points') === 0 && $('#toast-text').textContent.indexOf('积分不够') > -1,
+    $('#toast-text').textContent);
+  ev('(function(){var p=getProgress(); p.points=' + (firstCost + 5) + '; saveProgress(p);})()');
+  ev('openPanel("shop")');
+  await sleep(50);
+  $$('#entry-body .shop-btn')[0].click();
+  await sleep(50);
+  check('积分足够时成功兑换并扣分', ev('getProgress().points') === 5, String(ev('getProgress().points')));
+  check('兑换后道具进入背包', (ev('getProgress().inventory') || {})[firstShopId] >= 1,
+    JSON.stringify(ev('getProgress().inventory')));
+  $('#entry-x').click();
+  await sleep(50);
+
+  // 菩提树：浇水只用积分循环（无广告 / 无内购）
+  const potBefore = ev('getProgress().pot');
+  const ptsBeforeTree = ev('getProgress().points');
+  ev('openPanel("tree")');
+  await sleep(50);
+  $('#tree-btn').click();
+  await sleep(50);
+  check('浇树次数 +1', ev('getProgress().pot') === potBefore + 1, potBefore + ' → ' + ev('getProgress().pot'));
+  check('浇树发放固定积分（+12）', ev('getProgress().points') === ptsBeforeTree + 12,
+    ptsBeforeTree + ' → ' + ev('getProgress().points'));
+  $('#entry-x').click();
+  await sleep(50);
+
+  // 结算页：星级（只增不减）+ 积分入账 + 唐卡碎片掉落
+  ev('clearProgress(); renderHome();');
+  await sleep(60);
+  ev('startLevel(1)');
+  await sleep(60);
+  ev('(function(){ state.matchedCount = state.tiles.length / 2; state.maxCombo = 4; state.attempts = 12; state.misses = 0; state.score = 180; state.collected = []; })()');
+  ev('finishLevel()');
+  await sleep(80);
+  check('结算页渲染三颗星', $$('#res-stars .rs-star').length === 3,
+    '实际 ' + $$('#res-stars .rs-star').length);
+  check('满正确率 + 连击≥3 → 亮三颗星', $$('#res-stars .rs-star.on').length === 3,
+    '实际 ' + $$('#res-stars .rs-star.on').length);
+  check('结算页有积分 / 唐卡两张奖励卡', $$('#res-rewards .reward-box').length === 2,
+    '实际 ' + $$('#res-rewards .reward-box').length);
+  const progAfterLevel = JSON.parse(win.localStorage.getItem('zangzi_progress') || 'null');
+  check('本关积分入账（+180）', progAfterLevel.points === 180, String(progAfterLevel.points));
+  check('掉落第 1 片唐卡碎片', (progAfterLevel.fragments || []).length === 1 && progAfterLevel.fragments[0] === 0,
+    JSON.stringify(progAfterLevel.fragments));
+  check('本关星级写入进度（3 星）', progAfterLevel.stars['1'] === 3, JSON.stringify(progAfterLevel.stars));
+
+  // 反向：重玩表现更差时，星级只增不减（仍是 3 星，不降级）
+  ev('startLevel(1)');
+  await sleep(60);
+  ev('(function(){ state.matchedCount = state.tiles.length / 2; state.maxCombo = 0; state.attempts = 10; state.misses = 5; state.score = 40; state.collected = []; })()');
+  ev('finishLevel()');
+  await sleep(80);
+  check('重玩表现更差时星级不降级（仍 3 星）', $$('#res-stars .rs-star.on').length === 3,
+    '实际 ' + $$('#res-stars .rs-star.on').length);
+  check('未刷新评价时提示「本关评价」', $('#res-stars .rs-tip').textContent === '本关评价',
+    $('#res-stars .rs-tip').textContent);
+  check('重玩仍会累积积分（不惩罚）', ev('getProgress().points') === 220, String(ev('getProgress().points')));
+  // 反向：碎片不重复投放（已持有第 1 片 → 本次掉第 2 片）
+  check('碎片不重复投放（本次掉第 2 片）', (ev('getProgress().fragments') || []).indexOf(1) > -1,
+    JSON.stringify(ev('getProgress().fragments')));
+
+  ev('renderHome();');
+  await sleep(60);
+  check('重玩后首页节点显示星级', $$('#screen-home #level-grid .level-item .star.on').length === 3,
+    '实际 ' + $$('#screen-home #level-grid .level-item .star.on').length);
 
   /* ---------- 汇总 ---------- */
   check('全程无脚本运行时错误', errors.length === 0, errors[0]);

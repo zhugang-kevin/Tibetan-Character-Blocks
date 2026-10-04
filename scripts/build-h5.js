@@ -27,7 +27,8 @@ function read(rel) {
 }
 function dataUrl(rel) {
   const buf = fs.readFileSync(path.join(ROOT, rel));
-  return 'data:image/png;base64,' + buf.toString('base64');
+  const mime = /\.jpe?g$/i.test(rel) ? 'image/jpeg' : 'image/png';
+  return 'data:' + mime + ';base64,' + buf.toString('base64');
 }
 
 // ---------- 1. 注入数据（与小程序同源） ----------
@@ -36,7 +37,10 @@ const DATA = {
   cards: require(path.join(ROOT, 'data', 'cards')),
   levels: require(path.join(ROOT, 'data', 'levels')),
   stages: require(path.join(ROOT, 'data', 'stages')),
-  merchants: require(path.join(ROOT, 'data', 'merchants'))
+  merchants: require(path.join(ROOT, 'data', 'merchants')),
+  // PRD v4 首页：五地剪影 + 悬浮入口内容池（日签 / 盲盒 / 道具铺 / 菩提树 / 冬游）
+  regions: require(path.join(ROOT, 'data', 'regions')),
+  daily: require(path.join(ROOT, 'data', 'daily'))
 };
 
 // ---------- 2. 注入品牌与背景资产 ----------
@@ -47,6 +51,7 @@ const IMAGES = {
   watermark: dataUrl('images/logo-watermark.png'),
   bgSky: dataUrl('images/bg-sky.png'),
   bgGround: dataUrl('images/bg-ground.png'),
+  bgGlobal: dataUrl('images/bg-global-h5.jpg'),
   pattern: dataUrl('images/pat-tile.png')
 };
 
@@ -135,6 +140,44 @@ if (!DATA.merchants.some(function (m) { return m.need === 0; })) {
 }
 if (merchantBad) process.exit(1);
 
+// ---------- 7. 首页内容池一致性抽查（五地剪影 / 日签 / 盲盒 / 道具铺） ----------
+let homeBad = 0;
+if (!DATA.regions || DATA.regions.length !== 5) { console.error('✗ data/regions.js 应为 5 个地区剪影'); homeBad++; }
+(DATA.regions || []).forEach(function (r) {
+  if (!r.id || !r.name || !r.shape) { console.error('✗ 地区缺少 id/name/shape：' + JSON.stringify(r)); homeBad++; }
+  if (!(r.from >= 1 && r.to <= DATA.levels.length && r.from <= r.to)) {
+    console.error('✗ 地区 ' + r.id + ' 关卡区间非法：' + r.from + '-' + r.to); homeBad++;
+  }
+});
+// 五地必须完整覆盖 1-10 关，不能有断档
+const covered = {};
+(DATA.regions || []).forEach(function (r) { for (let n = r.from; n <= r.to; n++) covered[n] = (covered[n] || 0) + 1; });
+for (let n = 1; n <= DATA.levels.length; n++) {
+  if (covered[n] !== 1) { console.error('✗ 第 ' + n + ' 关未被任何地区覆盖一次（实际 ' + (covered[n] || 0) + ' 次）'); homeBad++; }
+}
+const daily = DATA.daily || {};
+if (!daily.greetings || daily.greetings.length < 7) { console.error('✗ data/daily.js 日签至少 7 条'); homeBad++; }
+(daily.greetings || []).forEach(function (g) {
+  if (!g.tibetan || !g.cn) { console.error('✗ 日签缺少藏文或中文：' + JSON.stringify(g)); homeBad++; }
+});
+if (!daily.trivia || daily.trivia.length < 6) { console.error('✗ data/daily.js 非遗小知识至少 6 条'); homeBad++; }
+if (!daily.signInRewards || daily.signInRewards.length !== 7) { console.error('✗ 签到奖励应为 7 天循环'); homeBad++; }
+(daily.signInRewards || []).forEach(function (r) {
+  if (['points', 'item', 'oil', 'card'].indexOf(r.kind) === -1) { console.error('✗ 签到奖励类型非法：' + r.kind); homeBad++; }
+});
+if (!daily.shop || daily.shop.length < 2) { console.error('✗ 道具铺至少 2 件道具'); homeBad++; }
+(daily.shop || []).forEach(function (it) {
+  if (!it.id || !(it.cost > 0)) { console.error('✗ 道具缺少 id 或 cost 非法：' + JSON.stringify(it)); homeBad++; }
+  // 道具用积分兑换：不得出现金额 / 结算字段
+  ['price', 'amount', 'fee', 'settle'].forEach(function (k) {
+    if (Object.prototype.hasOwnProperty.call(it, k)) { console.error('✗ 道具 ' + it.id + ' 含金额字段 ' + k); homeBad++; }
+  });
+});
+if (!daily.tree || !daily.winter || !daily.winter.items || !daily.winter.items.length) {
+  console.error('✗ data/daily.js 缺少菩提树 / 冬游西藏内容'); homeBad++;
+}
+if (homeBad) process.exit(1);
+
 fs.mkdirSync(path.dirname(OUT), { recursive: true });
 fs.writeFileSync(OUT, html, 'utf8');
 
@@ -144,7 +187,7 @@ console.log('  数据：' + Object.keys(DATA.elements).length + ' 个元素 / ' 
   DATA.cards.length + ' 张文化卡 / ' + DATA.levels.length + ' 关');
 console.log('  阶梯：' + stages.length + ' 个阶段（已开放 ' +
   stages.filter(function (s) { return s.open; }).length + ' 个，每阶段 10 关一张证书）');
-console.log('  资产：4 个 Logo + 3 个背景（经幡/布达拉宫/纹样，已内联 base64）');
+console.log('  资产：4 个 Logo + 4 个背景（全局底图/经幡/布达拉宫/纹样，已内联 base64）');
 console.log('  牌数一致性：10 关全部通过');
 console.log('  权益中心：' + DATA.merchants.length + ' 家商家（本地生活 ' +
   DATA.merchants.filter(function (m) { return m.track === 'local'; }).length + ' / 游客专属 ' +

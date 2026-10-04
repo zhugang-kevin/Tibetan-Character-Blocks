@@ -4,7 +4,7 @@
   padding: 40rpx 32rpx 80rpx;
   box-sizing: border-box;
   position: relative;
-  background: linear-gradient(180deg, #FDF6E3 0%, #FAF0DA 52%, #F2E4C6 100%);
+  background: linear-gradient(180deg, #451510 0%, #2E1220 26%, #101F38 62%, #0B1E36 100%);
   color: #2C3E50;
 }
 
@@ -15,6 +15,10 @@
   z-index: 0;
   pointer-events: none;
   overflow: hidden;
+}
+.sc-bg {
+  position: absolute;
+  left: 0; top: 0; width: 100%; height: 100%;
 }
 .sc-pattern {
   position: absolute;
@@ -27,12 +31,22 @@
 .sc-ground {
   position: absolute;
   left: 0; bottom: 0; width: 100%;
-  opacity: 0.88;
+  opacity: 0.16;
 }
 .sc-sky {
   position: absolute;
   left: 0; top: 0; width: 100%;
-  opacity: 0.95;
+  opacity: 0.14;
+}
+
+/* 夜色罩：压暗四角、突出中心金光，保证前景可读（禁止大白板） */
+.sc-night {
+  position: absolute;
+  left: 0; top: 0; right: 0; bottom: 0;
+  background: radial-gradient(ellipse at 50% 32%,
+    rgba(255, 214, 140, 0.08) 0%,
+    rgba(16, 22, 42, 0.42) 46%,
+    rgba(5, 8, 18, 0.8) 100%);
 }
 
 .content {
@@ -98,7 +112,7 @@
   font-size: 32rpx;
   font-weight: 700;
   color: #2C3E50;
-}
+}}
 
 .section-count {
   font-size: 26rpx;
@@ -153,10 +167,10 @@
   margin-top: 6rpx;
   font-size: 24rpx;
   font-weight: 700;
-  color: #2C3E50;
   line-height: 1.35;
   min-height: 64rpx;
-}
+  color: #2C3E50;
+}}
 
 .cert-slot.locked .slot-name {
   color: #A79F8D;

@@ -14,6 +14,10 @@
   pointer-events: none;
   overflow: hidden;
 }
+.sc-bg {
+  position: absolute;
+  left: 0; top: 0; width: 100%; height: 100%;
+}
 .sc-pattern {
   position: absolute;
   left: 0; top: 0; right: 0; bottom: 0;
@@ -25,17 +29,17 @@
 .sc-ground {
   position: absolute;
   left: 0; bottom: 0; width: 100%;
-  opacity: 0.85;
+  opacity: 0.16;
 }
 .sc-sky {
   position: absolute;
   left: 0; top: 0; width: 100%;
-  opacity: 0.92;
+  opacity: 0.14;
 }
 
-/* 页面背景：高原夜色（暗红 → 深蓝），与背景层配合形成「暗下来」的舞台 */
+/* 页面背景（兜底，被底图覆盖）：全局暗色舞台 */
 .page {
-  background: linear-gradient(180deg, #6B1A1A 0%, #3A1520 22%, #10203A 58%, #0B1E36 100%);
+  background: linear-gradient(180deg, #451510 0%, #2E1220 26%, #101F38 62%, #0B1E36 100%);
 }
 
 /* 夜色罩：把藏式纹样/雪山压暗，突出前方棋盘（禁止大白板） */
@@ -88,21 +92,31 @@
   min-height: 560rpx;
 }
 
-/* 第二层：青金石蓝底盘，圆角 16px（32rpx）+ 外阴影，从夜色中浮起 */
+/* 第二层：暗金浮雕底盘（金色渐变 + 厚重外阴影），从夜色光晕中浮起 */
+/* 分隔感三件套：① 深色描边外圈 ② 厚重外阴影（含投影偏移，产生"悬空"）③ 内圈凹槽下沉 */
 .board-panel {
-  background: linear-gradient(180deg, #24648F 0%, #1B4F72 52%, #143E5A 100%);
-  border: 2rpx solid rgba(183, 149, 11, 0.38);
-  border-radius: 32rpx;
-  padding: 18rpx;
-  box-shadow: 0 20rpx 40rpx rgba(0, 0, 0, 0.62), inset 0 2rpx 0 rgba(255, 255, 255, 0.16);
+  background:
+    linear-gradient(158deg, #8A6D1E 0%, #6E5416 26%, #4A3810 62%, #2E2209 100%);
+  border: 3rpx solid rgba(232, 200, 107, 0.5);
+  border-radius: 34rpx;
+  padding: 20rpx;
+  box-shadow:
+    0 2rpx 0 rgba(255, 240, 200, 0.30) inset,
+    0 -4rpx 10rpx rgba(0, 0, 0, 0.5) inset,
+    0 10rpx 0 rgba(0, 0, 0, 0.32),
+    0 30rpx 60rpx rgba(0, 0, 0, 0.72),
+    0 0 66rpx rgba(232, 200, 107, 0.20);
 }
 
-/* 底盘内圈：下沉的凹槽区（内阴影） */
+/* 底盘内圈：下沉的凹槽区（深色 + 内阴影，与金边形成高差分界） */
 .board-outline {
-  background: rgba(6, 18, 32, 0.62);
+  background: linear-gradient(180deg, #0A1626 0%, #060E1A 100%);
+  border: 2rpx solid rgba(232, 200, 107, 0.26);
   border-radius: 24rpx;
   padding: 12rpx;
-  box-shadow: inset 0 6rpx 14rpx rgba(0, 0, 0, 0.7);
+  box-shadow:
+    inset 0 8rpx 18rpx rgba(0, 0, 0, 0.82),
+    inset 0 -2rpx 0 rgba(232, 200, 107, 0.14);
 }
 
 .board {

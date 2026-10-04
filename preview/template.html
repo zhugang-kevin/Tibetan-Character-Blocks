@@ -19,7 +19,7 @@
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; padding: 0; }
   body {
-    background: linear-gradient(180deg, #EFE7D3, #E4D9BE);
+    background: #0A1424;
     font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
     color: var(--ink);
     display: flex;
@@ -29,10 +29,10 @@
     width: 100%;
     max-width: 430px;
     min-height: 100vh;
-    background: linear-gradient(180deg, #FDF6E3 0%, #FAF0DA 52%, #F2E4C6 100%);
+    background: linear-gradient(180deg, #451510 0%, #2E1220 26%, #101F38 62%, #0B1E36 100%);
     position: relative;
     overflow-x: hidden;
-    box-shadow: 0 0 40px rgba(90, 74, 44, .12);
+    box-shadow: 0 0 40px rgba(0, 0, 0, .55);
   }
   .screen { display: none; padding: 20px 14px 40px; position: relative; z-index: 1; }
   .screen.active { display: block; }
@@ -45,24 +45,41 @@
     width: 100%; max-width: 430px;
     z-index: 0; pointer-events: none; overflow: hidden;
   }
+  .sc-bg {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    object-fit: cover;
+  }
   .sc-pattern {
     position: absolute; left: 0; right: 0; top: 0; bottom: 0;
     background-image: var(--pat); background-size: 68px 68px;
-    opacity: .5;
+    opacity: .10;
   }
-  .sc-sky    { position: absolute; top: 0; left: 0; width: 100%; opacity: .92; }
-  .sc-ground { position: absolute; bottom: 0; left: 0; width: 100%; opacity: .88; }
+  .sc-sky    { position: absolute; top: 0; left: 0; width: 100%; opacity: .14; }
+  .sc-ground { position: absolute; bottom: 0; left: 0; width: 100%; opacity: .16; }
+  /* 夜色罩：压暗四角、突出中心金光（禁止大白板） */
+  .sc-night {
+    position: absolute; left: 0; right: 0; top: 0; bottom: 0;
+    background: radial-gradient(ellipse at 50% 32%,
+      rgba(255, 214, 140, .08) 0%,
+      rgba(16, 22, 42, .42) 46%,
+      rgba(5, 8, 18, .8) 100%);
+  }
+  /* 藏纸磨砂颗粒（浅色卡片内才可见） */
+  .grain {
+    position: absolute; left: 0; right: 0; top: 0; bottom: 0;
+    opacity: .3; pointer-events: none;
+  }
 
   /* ---------- 首页 ---------- */
   .hero { text-align: center; padding: 14px 0 22px; }
   .hero-logo { width: 112px; height: 112px; margin: 0 auto; display: block; filter: drop-shadow(0 6px 14px rgba(150, 40, 24, .22)); }
-  .hero-title { margin-top: 14px; font-size: 30px; font-weight: 800; letter-spacing: 2px; }
+  .hero-title { margin-top: 14px; font-size: 30px; font-weight: 800; letter-spacing: 2px; color: #F5E9CF; text-shadow: 0 2px 10px rgba(0,0,0,.55); }
   .hero-slogan {
     margin: 10px auto 0; display: inline-block; font-size: 14px; color: var(--red);
     border: 1px solid rgba(192,57,43,.35); border-radius: 999px; padding: 5px 14px;
     background: rgba(255,255,255,.55);
   }
-  .hero-greet { margin-top: 12px; font-size: 26px; color: var(--red); letter-spacing: 3px; }
+  .hero-greet { margin-top: 12px; font-size: 26px; letter-spacing: 3px; color: #FFC96B; }
 
   .profile-row { display: flex; justify-content: space-between; align-items: center; margin: 6px 0 18px; padding: 0 2px; }
   .profile-stamps { display: flex; gap: 8px; align-items: center; }
@@ -96,9 +113,9 @@
   .level-btn.done .badge { background: var(--green); }
   .level-btn.locked .badge { background: #C9C1AF; font-size: 10px; }
 
-  .footer { margin-top: 26px; text-align: center; font-size: 13px; color: #8a6d1c; letter-spacing: 1px; text-shadow: 0 1px 0 rgba(255,255,255,.6); }
-  .footer-sub { margin-top: 8px; text-align: center; font-size: 12px; color: var(--muted); }
-  .reset-link { margin-top: 14px; text-align: center; font-size: 12px; color: #B9B1A0; text-decoration: underline; cursor: pointer; }
+  .footer { margin-top: 26px; text-align: center; font-size: 13px; letter-spacing: 1px; color: #E8C86B; }
+  .footer-sub { margin-top: 8px; text-align: center; font-size: 12px; color: #C9BFA8; }
+  .reset-link { margin-top: 14px; text-align: center; font-size: 12px; text-decoration: underline; cursor: pointer; color: #9A9384; }
 
   /* ---------- 游戏页 ---------- */
   #screen-game { padding-bottom: 24px; }
@@ -251,8 +268,8 @@
     width: 76px; height: 76px; line-height: 76px; margin: 0 auto; border-radius: 50%;
     background: var(--green); color: #fff; font-size: 40px; font-weight: 700;
   }
-  .result-title { margin-top: 16px; font-size: 27px; font-weight: 800; }
-  .result-sub { margin-top: 8px; font-size: 15px; color: var(--muted); }
+  .result-title { margin-top: 16px; font-size: 27px; font-weight: 800; color: #F5E9CF; text-shadow: 0 2px 10px rgba(0,0,0,.55); }
+  .result-sub { margin-top: 8px; font-size: 15px; color: #C9BFA8; }
   .stat-row { display: flex; gap: 12px; margin-top: 20px; }
   .stat-box { flex: 1; background: rgba(255,255,255,.9); border: 1.5px solid var(--line); border-radius: 14px; padding: 14px 8px; text-align: center; }
   .stat-box .v { font-size: 24px; font-weight: 800; color: var(--red); }
@@ -270,7 +287,7 @@
   .stamp-banner .txt { font-size: 14px; line-height: 1.6; color: #5B5343; }
   .stamp-banner .txt b { color: var(--red); }
 
-  .section-title { margin: 24px 0 12px; font-size: 15px; font-weight: 800; }
+  .section-title { margin: 24px 0 12px; font-size: 15px; font-weight: 800; color: #FFD98A; }
   .chips { display: flex; flex-wrap: wrap; gap: 9px; }
   .chip {
     display: flex; align-items: center; gap: 7px; background: rgba(255,255,255,.9); border: 1.5px solid var(--line);
@@ -299,7 +316,7 @@
   .hint { margin-top: 12px; font-size: 12px; color: var(--muted); text-align: center; line-height: 1.6; }
 
   /* ============ 成长阶梯 · 证书 ============ */
-  .result-acc { margin-top: 8px; font-size: 13px; color: var(--muted); }
+  .result-acc { margin-top: 8px; font-size: 13px; color: #C9BFA8; }
   .result-acc.ok { color: var(--gold, #B7950B); font-weight: 700; }
 
   .cert-banner {
@@ -400,7 +417,7 @@
   .cert-preview { margin-top: 12px; }
   .cert-preview img { width: 100%; border-radius: 12px; box-shadow: 0 6px 18px rgba(96,78,44,.22); }
   .cert-dl { display: block; margin-top: 12px; text-align: center; text-decoration: none; background: var(--green); color: #fff; border-radius: 14px; padding: 13px 0; font-size: 15px; font-weight: 700; }
-  .cert-tip { margin-top: 10px; font-size: 12px; color: var(--muted); text-align: center; line-height: 1.7; }
+  .cert-tip { margin-top: 10px; font-size: 12px; text-align: center; line-height: 1.7; color: #C9BFA8; }
 
   /* 首页护照入口 */
   .passport-card {
@@ -416,7 +433,7 @@
   .pc-count { font-size: 22px; font-weight: 700; color: var(--red); line-height: 1; }
   .pc-total { font-size: 12px; color: #A79F8D; font-weight: 600; }
   .pc-label { margin-top: 3px; font-size: 10px; color: var(--muted); }
-  .stage-head { font-size: 14px; font-weight: 700; color: var(--red); margin-bottom: 9px; padding: 0 2px; }
+  .stage-head { font-size: 14px; font-weight: 700; margin-bottom: 9px; padding: 0 2px; color: #FFD98A; }
 
   /* ============ 通关情绪反馈（与小程序 game.wxss 同口径） ============ */
   .fx-layer { position: fixed; left: 0; top: 0; right: 0; bottom: 0; z-index: 60; pointer-events: none; overflow: hidden; }
@@ -472,7 +489,7 @@
   .bn-city { padding: 6px 15px; margin: 0 7px 7px 0; font-size: 13px; color: #6B6455; background: rgba(255,255,255,.9); border: 1.5px solid #E5D8BC; border-radius: 999px; cursor: pointer; }
   .bn-city.on { color: #fff; background: #B7950B; border-color: #B7950B; }
   .bn-empty { padding: 32px 12px; text-align: center; font-size: 13px; color: #9A9384; background: rgba(255,255,255,.7); border-radius: 12px; }
-  .bn-count { font-size: 12px; color: #6B6455; margin: 0 0 10px; }
+  .bn-count { font-size: 12px; margin: 0 0 10px; color: #C9BFA8; }
   .bn-card { padding: 14px 14px 12px; border-radius: 13px; background: rgba(255,255,255,.95); border: 1.5px solid #E5D8BC; box-shadow: 0 4px 12px rgba(96,78,44,.1); margin-bottom: 12px; }
   .bn-card.got { border-color: #1E8449; background: linear-gradient(180deg, #fff, #F2F8F2); }
   .bc-top { display: flex; align-items: center; justify-content: space-between; }
@@ -487,7 +504,7 @@
   .bc-btn { padding: 7px 20px; border-radius: 999px; font-size: 13px; font-weight: 800; color: #fff; background: linear-gradient(180deg, #C0392B, #A93226); box-shadow: 0 3px 9px rgba(192,57,43,.26); cursor: pointer; }
   .bc-code { padding: 6px 13px; border-radius: 7px; font-size: 13px; font-weight: 800; letter-spacing: 2px; color: #1E8449; background: #EAF4EC; border: 1.5px dashed #1E8449; }
   .bc-lock { padding: 6px 14px; border-radius: 999px; font-size: 12px; color: #9A9384; background: #F2EDE0; }
-  .bn-disclaimer { margin: 14px 2px 0; font-size: 11px; color: #9A9384; line-height: 1.7; }
+  .bn-disclaimer { margin: 14px 2px 0; font-size: 11px; line-height: 1.7; color: #A79E8B; }
 
   /* 首页权益中心入口 */
   .benefit-card { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; padding: 14px 15px; margin-bottom: 14px; border-radius: 14px; border: 2px solid #B7950B; background: linear-gradient(135deg, #fff, #FCF6E4); box-shadow: 0 5px 14px rgba(96,78,44,.12); cursor: pointer; }
@@ -512,23 +529,29 @@
   #screen-game .status-mid { color: #FFD98A; }
   #screen-game .status-right { color: #FFD98A; }
 
-  /* 第二层：青金石蓝底盘（圆角 16px + 外阴影，从夜色中浮起） */
+  /* 第二层：暗金浮雕底盘（金色渐变 + 厚重外阴影），从夜色光晕中浮起 */
+  /* 分隔感三件套：① 金色描边外圈 ② 厚重外阴影（含投影偏移，产生"悬空"）③ 内圈凹槽下沉 */
   #screen-game .board-panel {
     position: relative; z-index: 2;
-    background: linear-gradient(180deg, #24648F 0%, #1B4F72 52%, #143E5A 100%);
-    border: 1px solid rgba(183,149,11,.38);
-    border-radius: 16px;
-    padding: 12px;
-    box-shadow: 0 12px 26px rgba(0,0,0,.62), inset 0 2px 0 rgba(255,255,255,.16);
+    background: linear-gradient(158deg, #8A6D1E 0%, #6E5416 26%, #4A3810 62%, #2E2209 100%);
+    border: 2px solid rgba(232,200,107,.5);
+    border-radius: 18px;
+    padding: 13px;
+    box-shadow:
+      inset 0 2px 0 rgba(255,240,200,.30),
+      inset 0 -4px 10px rgba(0,0,0,.5),
+      0 6px 0 rgba(0,0,0,.32),
+      0 18px 38px rgba(0,0,0,.72),
+      0 0 42px rgba(232,200,107,.20);
     backdrop-filter: none;
   }
-  /* 底盘内圈：下沉凹槽区 */
+  /* 底盘内圈：下沉凹槽区（深色 + 内阴影，与金边形成高差分界） */
   #screen-game .board-outline {
-    background: rgba(6,18,32,.62);
-    border: none;
+    background: linear-gradient(180deg, #0A1626 0%, #060E1A 100%);
+    border: 1px solid rgba(232,200,107,.26);
     border-radius: 12px;
     padding: 8px;
-    box-shadow: inset 0 4px 10px rgba(0,0,0,.7);
+    box-shadow: inset 0 5px 12px rgba(0,0,0,.82), inset 0 -2px 0 rgba(232,200,107,.14);
   }
   /* 第三层：槽位（inset 内阴影，像挖空的坑） */
   #board .tile {
@@ -627,6 +650,107 @@
     font-size: 15px; font-weight: 800; letter-spacing: 2px; cursor: pointer;
     box-shadow: 0 4px 0 #6E1D14, 0 7px 14px rgba(0,0,0,.25);
   }
+
+  /* ============ PRD v4 首页：资源条 / 藤蔓地图 / 悬浮入口 / 底部平层 / 入口面板（体验版镜像） ============ */
+  .res-bar { display: flex; gap: 8px; margin-bottom: 12px; position: relative; z-index: 2; }
+  .res-item { flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px; padding: 8px 6px; border-radius: 11px; background: rgba(255,255,255,.86); border: 1px solid rgba(214,202,176,.95); box-shadow: 0 3px 9px rgba(96,78,44,.12); }
+  .res-ico { font-size: 14px; }
+  .res-val { font-size: 14px; font-weight: 800; color: #C0392B; }
+  .res-cap { font-size: 10px; color: #8A8375; }
+
+  .vine-map { position: relative; height: 660px; margin: 12px 0 6px; border-radius: 18px; overflow: hidden; background: linear-gradient(180deg, rgba(255,255,255,.5), rgba(250,240,218,.34)); border: 1px solid rgba(214,202,176,.7); }
+  .vine-stem { position: absolute; left: 50%; top: 4%; bottom: 4%; width: 15px; transform: translateX(-50%); border-radius: 999px; background: linear-gradient(180deg, #1E8449, #27AE60 42%, #145A32); box-shadow: inset 4px 0 7px rgba(255,255,255,.28), 0 4px 11px rgba(20,90,50,.28); }
+  .level-grid.vine { display: block; position: relative; height: 100%; }
+  .level-item.node { position: absolute; width: 62px; transform: translate(-50%,-50%); display: flex; flex-direction: column; align-items: center; gap: 4px; background: none; border: 0; padding: 0; cursor: pointer; }
+  .node-badge { width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 800; color: #fff; background: linear-gradient(180deg, #FFD98A, #B7950B); border: 3px solid rgba(255,255,255,.9); box-shadow: 0 5px 12px rgba(96,78,44,.32), inset 0 2px 6px rgba(255,255,255,.5); }
+  .level-item.open .node-badge { background: linear-gradient(180deg, #E9714F, #C0392B); }
+  .level-item.done .node-badge { background: linear-gradient(180deg, #34A853, #1E8449); }
+  .level-item.locked .node-badge { background: linear-gradient(180deg, #B9B1A0, #8A8375); color: #F6F1E4; }
+  .node-stars { display: flex; gap: 1px; }
+  .node-stars .star { font-size: 12px; line-height: 1; color: #DDD3BC; }
+  .node-stars .star.on { color: #F1C40F; }
+  .region { position: absolute; left: 0; right: 0; height: 78px; display: flex; align-items: center; padding-left: 10px; transform: translateY(-50%); pointer-events: none; }
+  .region-shape { width: 92px; height: 56px; opacity: .5; }
+  .region.dim .region-shape { filter: grayscale(1) brightness(1.16); opacity: .34; }
+  .region.lit .region-shape { opacity: .72; }
+  .region-txt { margin-left: 9px; display: flex; flex-direction: column; }
+  .region-name { font-size: 13px; font-weight: 800; color: #6B6455; }
+  .region.dim .region-name { color: #A9A192; }
+  .region-spot { font-size: 10px; color: #9A9384; }
+  .region-shape.potala { background: linear-gradient(180deg,#B7950B,#8A6A12); clip-path: polygon(6% 100%,6% 62%,22% 62%,22% 40%,38% 40%,38% 20%,50% 8%,62% 20%,62% 40%,78% 40%,78% 62%,94% 62%,94% 100%); }
+  .region-shape.forest { background: #1E8449; clip-path: polygon(0% 100%,16% 46%,30% 74%,44% 30%,58% 70%,72% 40%,88% 78%,100% 100%); }
+  .region-shape.valley { background: #2471A3; clip-path: polygon(0% 100%,0% 62%,26% 30%,50% 58%,74% 26%,100% 58%,100% 100%); }
+  .region-shape.monastery { background: #C0392B; clip-path: polygon(4% 100%,4% 58%,20% 58%,20% 34%,50% 12%,80% 34%,80% 58%,96% 58%,96% 100%); }
+  .region-shape.snow { background: #5D6D7E; clip-path: polygon(0% 100%,30% 22%,44% 52%,58% 10%,72% 48%,100% 100%); }
+
+  .side-rail { position: fixed; top: 30%; z-index: 6; display: none; flex-direction: column; gap: 9px; }
+  .side-rail.left { left: 6px; }
+  .side-rail.right { right: 6px; top: 38%; }
+  .side-rail.show { display: flex; }
+  .side-btn { position: relative; width: 58px; padding: 7px 4px 6px; border-radius: 12px; background: rgba(255,255,255,.92); border: 1px solid rgba(214,202,176,.95); box-shadow: 0 4px 11px rgba(96,78,44,.16); display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer; }
+  .side-ico { font-size: 18px; line-height: 1; }
+  .side-txt { font-size: 10px; color: #6B6455; }
+  .side-dot { display: none; position: absolute; top: -6px; right: -4px; min-width: 17px; height: 17px; border-radius: 999px; background: #C0392B; color: #fff; font-size: 10px; text-align: center; line-height: 17px; }
+  .side-dot.show { display: block; }
+
+  .dock { position: fixed; left: 50%; transform: translateX(-50%); bottom: 0; width: 100%; max-width: 430px; z-index: 7; display: none; justify-content: space-around; gap: 5px; padding: 9px 8px 12px; background: linear-gradient(180deg, rgba(253,246,227,.94), rgba(242,228,198,.98)); border-top: 1px solid rgba(214,202,176,.95); box-shadow: 0 -5px 14px rgba(96,78,44,.14); }
+  .dock.show { display: flex; }
+  .dock-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer; }
+  .dock-ico { font-size: 19px; }
+  .dock-txt { font-size: 10px; color: #6B6455; }
+
+  .entry-panel { position: fixed; left: 50%; bottom: 0; width: 100%; max-width: 430px; transform: translateX(-50%) translateY(112%); transition: transform .3s cubic-bezier(.2,.8,.2,1); z-index: 60; max-height: 74vh; background: #fff; border-radius: 20px 20px 0 0; box-shadow: 0 -12px 40px rgba(60,44,16,.28); overflow: hidden; }
+  .entry-panel.show { transform: translateX(-50%) translateY(0); }
+  .entry-head { display: flex; align-items: center; justify-content: space-between; padding: 13px 16px 9px; border-bottom: 1px solid rgba(214,202,176,.7); }
+  .entry-title { font-size: 16px; font-weight: 800; color: #2C3E50; }
+  .entry-x { font-size: 15px; color: #8A8375; cursor: pointer; padding: 0 5px; }
+  .entry-body { max-height: 56vh; overflow-y: auto; padding: 13px 16px; }
+  .entry-foot { padding: 9px 16px 13px; font-size: 10px; color: #9A9384; text-align: center; border-top: 1px solid rgba(214,202,176,.7); }
+  .entry-grid { display: flex; flex-wrap: wrap; gap: 9px; }
+  .entry-metric { flex: 1 1 46%; padding: 12px; border-radius: 11px; background: #FBF6E8; border: 1px solid rgba(214,202,176,.8); display: flex; flex-direction: column; gap: 3px; }
+  .em-v { font-size: 20px; font-weight: 800; color: #C0392B; }
+  .em-k { font-size: 11px; color: #8A8375; }
+  .entry-note { margin-top: 10px; font-size: 11px; color: #8A8375; line-height: 1.7; }
+  .entry-btn { margin-top: 12px; height: 44px; line-height: 44px; text-align: center; border-radius: 999px; background: linear-gradient(180deg,#C0392B,#96291D); color: #FFF6DC; font-size: 14px; font-weight: 800; cursor: pointer; box-shadow: 0 4px 0 #6E1D14; }
+  .entry-btn.off { background: linear-gradient(180deg,#B9B1A0,#8A8375); box-shadow: 0 4px 0 #6B6455; }
+  .lamp-row { display: flex; flex-wrap: wrap; gap: 7px; }
+  .lamp-ring { flex: 1 1 28%; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .lamp-dot { width: 40px; height: 40px; border-radius: 50%; background: #F2EDE0; color: #9A9384; font-size: 13px; display: flex; align-items: center; justify-content: center; border: 2px solid rgba(214,202,176,.9); }
+  .lamp-dot.on { background: radial-gradient(circle at 50% 38%, #FFE9A8, #F1C40F 52%, #B7950B); color: #6B4B00; border-color: rgba(183,149,11,.9); box-shadow: 0 0 11px rgba(241,196,15,.6); }
+  .lamp-label { font-size: 9px; color: #8A8375; text-align: center; }
+  .daily-tib { font-size: 30px; color: #C0392B; text-align: center; line-height: 1.5; }
+  .daily-roman { margin-top: 5px; text-align: center; font-size: 12px; color: #8A8375; }
+  .daily-cn { margin-top: 7px; text-align: center; font-size: 17px; font-weight: 800; color: #2C3E50; }
+  .tk-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tk-cell { width: calc((100% - 12px)/3); height: 82px; border-radius: 9px; background: #F2EDE0; border: 1px dashed rgba(183,149,11,.5); display: flex; align-items: center; justify-content: center; }
+  .tk-cell.on { background: linear-gradient(160deg,#FFF6D8,#F1C40F); border: 1px solid #B7950B; }
+  .tk-mark { font-size: 17px; color: #8A6A12; }
+  .tk-mark.dim { color: #B9B1A0; }
+  .box-open { padding: 15px; border-radius: 13px; text-align: center; font-size: 15px; font-weight: 800; color: #fff; background: linear-gradient(135deg,#2471A3,#1B4F72); cursor: pointer; box-shadow: 0 5px 13px rgba(36,113,163,.32); }
+  .box-text { margin-top: 10px; padding: 12px; border-radius: 11px; background: #FBF6E8; font-size: 13px; color: #4A4438; line-height: 1.7; }
+  .shop-row { display: flex; align-items: center; gap: 10px; padding: 11px 0; border-bottom: 1px solid rgba(214,202,176,.6); }
+  .shop-ico { font-size: 22px; }
+  .shop-main { flex: 1; }
+  .shop-name { font-size: 14px; font-weight: 800; color: #2C3E50; }
+  .shop-count { font-size: 10px; color: #8A8375; font-weight: 400; }
+  .shop-desc { margin-top: 3px; font-size: 11px; color: #8A8375; }
+  .shop-btn { padding: 7px 12px; border-radius: 999px; background: linear-gradient(180deg,#B7950B,#8A6A12); color: #FFF6DC; font-size: 11px; font-weight: 800; cursor: pointer; }
+  .rank-row { display: flex; align-items: center; justify-content: space-between; padding: 11px 0; border-bottom: 1px solid rgba(214,202,176,.6); }
+  .rank-k { font-size: 13px; color: #6B6455; }
+  .rank-v { font-size: 16px; font-weight: 800; color: #C0392B; }
+  .tree-art { font-size: 62px; text-align: center; }
+  .winter-card { padding: 11px 0; border-bottom: 1px solid rgba(214,202,176,.6); }
+  .wc-title { font-size: 14px; font-weight: 800; color: #2C3E50; }
+  .wc-text { margin-top: 4px; font-size: 12px; color: #6B6455; line-height: 1.7; }
+  #screen-home.active { padding-bottom: 80px; }
+  .result-stars { margin-top: 8px; display: flex; align-items: center; justify-content: center; gap: 5px; }
+  .rs-star { font-size: 24px; color: #DDD3BC; line-height: 1; }
+  .rs-star.on { color: #F1C40F; text-shadow: 0 2px 6px rgba(183,149,11,.5); }
+  .rs-tip { margin-left: 6px; font-size: 10px; color: #B9AE94; }
+  .reward-row { display: flex; gap: 9px; margin: 12px 0 4px; }
+  .reward-box { flex: 1; padding: 11px; border-radius: 11px; background: rgba(255,255,255,.9); border: 1px solid rgba(214,202,176,.9); text-align: center; }
+  .rw-v { font-size: 18px; font-weight: 800; color: #C0392B; }
+  .rw-k { margin-top: 3px; font-size: 10px; color: #8A8375; }
 </style>
 </head>
 <body>
@@ -634,13 +758,22 @@
 
   <!-- ============ 藏文化背景（三层） ============ -->
   <div class="scenery" aria-hidden="true">
+    <img class="sc-bg" id="sc-bg" alt="">
     <div class="sc-pattern" id="sc-pattern"></div>
     <img class="sc-ground" id="sc-ground" alt="">
     <img class="sc-sky" id="sc-sky" alt="">
+    <div class="sc-night"></div>
   </div>
 
   <!-- ============ 首页 ============ -->
   <section id="screen-home" class="screen active">
+    <!-- 顶部资源条（灯油 / 积分 / 唐卡碎片） -->
+    <div class="res-bar">
+      <div class="res-item"><span class="res-ico">🪔</span><span class="res-val" id="res-oil">0</span><span class="res-cap">灯油</span></div>
+      <div class="res-item"><span class="res-ico">✧</span><span class="res-val" id="res-points">0</span><span class="res-cap">积分</span></div>
+      <div class="res-item"><span class="res-ico">🖼</span><span class="res-val" id="res-frag">0/9</span><span class="res-cap">唐卡</span></div>
+    </div>
+
     <div class="hero">
       <img id="hero-logo" class="hero-logo" alt="藏字方块">
       <div class="hero-title">藏字方块</div>
@@ -661,12 +794,46 @@
     <div id="home-passport"></div>
     <div class="stage-head" id="home-stage-head">第一阶段 · 简单基字 · 第 1-10 关</div>
 
-    <div class="level-grid" id="level-grid"></div>
+    <!-- 藤蔓地图：五地剪影 + 弯曲向上的关卡节点（对标消消乐主地图） -->
+    <div class="vine-map" id="vine-map">
+      <div class="vine-stem"></div>
+      <div class="level-grid vine" id="level-grid"></div>
+    </div>
 
     <div class="footer">每个字母，都是一座西藏</div>
-    <div class="footer-sub">共 10 关 · 进度保存在本机浏览器</div>
+    <div class="footer-sub">共 10 关 · 进度保存在本机</div>
     <div class="reset-link" id="reset-link">清空进度，重新开始</div>
   </section>
+
+  <!-- 左右悬浮入口（首页专用，随屏幕切换显隐） -->
+  <div class="side-rail left" id="side-left">
+    <div class="side-btn" data-panel="journal"><span class="side-ico">📖</span><span class="side-txt">雪域游记</span></div>
+    <div class="side-btn" data-panel="lamp"><span class="side-ico">🪔</span><span class="side-txt">长明灯</span><span class="side-dot" id="side-dot">2</span></div>
+    <div class="side-btn" data-panel="market"><span class="side-ico">🏮</span><span class="side-txt">八廓集市</span></div>
+    <div class="side-btn" data-panel="daily"><span class="side-ico">📜</span><span class="side-txt">雪域日签</span></div>
+  </div>
+  <div class="side-rail right" id="side-right">
+    <div class="side-btn" data-panel="thangka"><span class="side-ico">🖼</span><span class="side-txt">唐卡拼图</span></div>
+    <div class="side-btn" data-panel="box"><span class="side-ico">🎁</span><span class="side-txt">非遗盲盒</span></div>
+  </div>
+
+  <!-- 底部大平层（首页专用） -->
+  <div class="dock" id="dock">
+    <div class="dock-btn" data-panel="shop"><span class="dock-ico">🧰</span><span class="dock-txt">道具铺</span></div>
+    <div class="dock-btn" data-panel="rank"><span class="dock-ico">🏔</span><span class="dock-txt">排行榜</span></div>
+    <div class="dock-btn" data-panel="tree"><span class="dock-ico">🌳</span><span class="dock-txt">菩提树</span></div>
+    <div class="dock-btn" data-panel="winter"><span class="dock-ico">❄</span><span class="dock-txt">冬游西藏</span></div>
+  </div>
+
+  <!-- 入口面板（统一底部滑出容器，非阻塞） -->
+  <div class="entry-panel" id="entry-panel">
+    <div class="entry-head">
+      <span class="entry-title" id="entry-title">雪域游记</span>
+      <span class="entry-x" id="entry-x">✕</span>
+    </div>
+    <div class="entry-body" id="entry-body"></div>
+    <div class="entry-foot" id="entry-foot">全部数据保存在本机 · 无需登录</div>
+  </div>
 
   <!-- ============ 游戏页 ============ -->
   <section id="screen-game" class="screen">
@@ -701,7 +868,12 @@
       <div class="result-title" id="res-title">第 1 关完成！</div>
       <div class="result-sub" id="res-sub">共消除 0 对</div>
       <div class="result-acc" id="res-acc"></div>
+      <!-- PRD v4：本关星级评价（只增不减） -->
+      <div class="result-stars" id="res-stars"></div>
     </div>
+
+    <!-- PRD v4：唐卡碎片掉落 + 积分入账 -->
+    <div class="reward-row" id="res-rewards"></div>
 
     <div class="stat-row">
       <div class="stat-box"><div class="v" id="res-score">0</div><div class="k">本关积分</div></div>
@@ -893,7 +1065,14 @@ function getProgress() {
     userMode: (p && p.userMode) || '',
     city: (p && p.city) || '',
     benefits: (p && p.benefits) || [],
-    benefitSeq: (p && p.benefitSeq) || 0
+    benefitSeq: (p && p.benefitSeq) || 0,
+    // PRD v4 留存系统
+    stars: (p && p.stars) || {},
+    points: (p && p.points) || 0,
+    signIn: (p && p.signIn) || { streak: 0, lastDate: '', totalDays: 0, oil: 0 },
+    fragments: (p && p.fragments) || [],
+    inventory: (p && p.inventory) || {},
+    pot: (p && p.pot) || 0
   };
 }
 function saveProgress(p) { writeRaw(p); }
@@ -922,6 +1101,32 @@ function markCardSeen(id) {
 function isOnboardDone() { return getProgress().onboardDone; }
 function setOnboardDone() { const p = getProgress(); p.onboardDone = true; saveProgress(p); }
 function clearProgress() { try { localStorage.removeItem(SKEY); } catch (e) {} memoryStore = null; }
+
+/* ---------------- PRD v4 留存系统（本地写入，对应 utils/storage.js 的同名方法） ---------------- */
+function addPoints(n) {
+  const p = getProgress();
+  p.points = (p.points || 0) + (n || 0);
+  saveProgress(p);
+  return p.points;
+}
+// 星级只增不减：返回 { stars 历史最优, improved 本次是否刷新, prev 此前最优 }
+function recordStars(level, stars) {
+  const p = getProgress();
+  p.stars = p.stars || {};
+  const prev = p.stars[level] || 0;
+  const improved = (stars || 0) > prev;
+  if (improved) { p.stars[level] = stars; saveProgress(p); }
+  return { stars: Math.max(prev, stars || 0), improved: improved, prev: prev };
+}
+// 唐卡碎片：确定性补一片（不重复），返回 { added, index }
+function addFragment(idx) {
+  const p = getProgress();
+  p.fragments = p.fragments || [];
+  if (idx < 0 || p.fragments.indexOf(idx) > -1) return { added: false, index: -1 };
+  p.fragments.push(idx);
+  saveProgress(p);
+  return { added: true, index: idx };
+}
 
 /* ---------------- 成长阶梯 · 证书（对应 utils/certificate.js） ----------------
    证书是「学习证明」：每 10 关一个阶段，通关该阶段最后一关颁发一张证书。
@@ -1382,6 +1587,12 @@ function showScreen(name) {
   ['home', 'game', 'result', 'cert', 'passport', 'benefits'].forEach(function (n) {
     $('screen-' + n).classList.toggle('active', n === name);
   });
+  // 首页专用：左右悬浮入口 + 底部大平层（其他屏幕隐藏，避免遮挡）
+  const isHome = name === 'home';
+  $('side-left').classList.toggle('show', isHome);
+  $('side-right').classList.toggle('show', isHome);
+  $('dock').classList.toggle('show', isHome);
+  if (!isHome) closePanel();
   window.scrollTo(0, 0);
 }
 
@@ -1466,6 +1677,257 @@ function pieceStyle(color) {
 }
 const BIT_SLOTS = ['d0 gold', 'd1 r', 'd2 g', 'd3 b', 'd4 y', 'd5 w'];
 
+/* ---------------- PRD v4 收集与留存（与 utils/collect.js 同规则，体验版镜像） ---------------- */
+const FRAGMENT_TOTAL = 9;
+const REGIONS = DATA.regions || [];
+const DAILY = DATA.daily || { greetings: [], signInRewards: [], trivia: [], shop: [], tree: { water: 12 }, winter: { items: [] } };
+const PANEL_TITLES = {
+  journal: '雪域游记', lamp: '祈福长明灯', daily: '雪域日签', thangka: '唐卡拼图',
+  box: '非遗盲盒', shop: '藏式道具铺', rank: '雪域排行榜', tree: '菩提树',
+  winter: '冬游西藏', market: '八廓街集市'
+};
+function colDayNumber(dateStr) {
+  const parts = String(dateStr).split('-');
+  return Math.floor(Date.UTC(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2])) / 86400000);
+}
+function colToday() {
+  const d = new Date();
+  const m = d.getMonth() + 1, day = d.getDate();
+  return d.getFullYear() + '-' + (m < 10 ? '0' + m : m) + '-' + (day < 10 ? '0' + day : day);
+}
+function rateStars(attempts, misses, combo) {
+  const tries = Math.max(1, attempts || 0);
+  const acc = Math.max(0, tries - (misses || 0)) / tries;
+  let stars = 1;
+  if (acc >= 0.8) stars = 2;
+  if (acc >= 0.95 && (combo || 0) >= 3) stars = 3;
+  return stars;
+}
+// 签到推进（纯函数）：返回 { already, state, day }，状态由调用方写入
+// 与 utils/collect.js 的 advanceSignIn 保持同一契约（state = 下一份签到状态）
+function advanceSignIn(signIn, today) {
+  const s = signIn || { streak: 0, lastDate: '', totalDays: 0, oil: 0 };
+  const streak = s.streak || 0;
+  const lastDate = s.lastDate || '';
+  const totalDays = s.totalDays || 0;
+  if (lastDate === today) {
+    return {
+      already: true,
+      state: { streak: streak, lastDate: lastDate, totalDays: totalDays, oil: s.oil || 0 },
+      day: totalDays ? ((totalDays - 1) % 7) + 1 : 1
+    };
+  }
+  const diff = lastDate ? colDayNumber(today) - colDayNumber(lastDate) : null;
+  const nextStreak = diff === 1 ? streak + 1 : 1;
+  const nextDays = totalDays + 1;
+  return {
+    already: false,
+    state: { streak: nextStreak, lastDate: today, totalDays: nextDays, oil: (s.oil || 0) + 1 },
+    day: ((nextDays - 1) % 7) + 1
+  };
+}
+function nextFragment(owned) {
+  for (let i = 0; i < FRAGMENT_TOTAL; i++) if ((owned || []).indexOf(i) === -1) return i;
+  return -1;
+}
+function pickDaily(pool, seed) {
+  if (!pool || !pool.length) return null;
+  return pool[Math.abs(Math.floor(seed || 0)) % pool.length];
+}
+// 藤蔓节点：第 1 关在底、第 10 关在顶，左右蜿蜒
+function vineNodePos(n) {
+  const top = 88 - (n - 1) * 9.1;
+  const base = n % 2 === 1 ? 32 : 68;
+  return { top: Math.round(top * 10) / 10, left: base + ((n * 7) % 9) - 4 };
+}
+
+/* ---------------- 首页：藤蔓地图 + 资源条 + 悬浮入口 ---------------- */
+let panelKey = '';
+function refreshHomeV4() {
+  const p = getProgress();
+  $('res-oil').textContent = (p.signIn && p.signIn.oil) || 0;
+  $('res-points').textContent = p.points || 0;
+  $('res-frag').textContent = (p.fragments || []).length + '/' + FRAGMENT_TOTAL;
+  const today = colToday();
+  const canSign = !p.signIn || p.signIn.lastDate !== today;
+  $('side-dot').classList.toggle('show', canSign);
+}
+function renderVine() {
+  const p = getProgress();
+  const grid = $('level-grid');
+  grid.innerHTML = '';
+  // 地区剪影（未解锁灰色，解锁点亮）
+  REGIONS.forEach(function (r) {
+    const el = document.createElement('div');
+    el.className = 'region ' + (p.unlockedLevel >= r.from ? 'lit' : 'dim');
+    el.style.top = (88 - (r.from - 1) * 9.1) + '%';
+    el.innerHTML = '<div class="region-shape ' + r.shape + '"></div>' +
+      '<div class="region-txt"><span class="region-name">' + r.name + '</span>' +
+      '<span class="region-spot">' + (p.unlockedLevel >= r.from ? r.spot : '未解锁') + '</span></div>';
+    grid.appendChild(el);
+  });
+  // 关卡节点（保留 .level-btn 类：与既有测试和样式契约一致）
+  for (let n = 1; n <= MAX_LEVEL; n++) {
+    const done = p.completedLevels.indexOf(n) > -1;
+    const unlocked = n <= p.unlockedLevel;
+    const stars = (p.stars && p.stars[n]) || 0;
+    const pos = vineNodePos(n);
+    const btn = document.createElement('div');
+    btn.className = 'level-btn level-item node ' + (done ? 'done' : (unlocked ? 'open' : 'locked'));
+    btn.style.top = pos.top + '%';
+    btn.style.left = pos.left + '%';
+    btn.dataset.n = n;
+    btn.innerHTML =
+      '<div class="node-badge">' + (unlocked ? n : '🔒') + '</div>' +
+      '<div class="node-stars">' +
+      '<span class="star ' + (stars >= 1 ? 'on' : '') + '">★</span>' +
+      '<span class="star ' + (stars >= 2 ? 'on' : '') + '">★</span>' +
+      '<span class="star ' + (stars >= 3 ? 'on' : '') + '">★</span>' +
+      '</div>';
+    if (unlocked) btn.addEventListener('click', function () { startLevel(n); });
+    grid.appendChild(btn);
+  }
+}
+function toastTip(text) { showTip(text); }
+
+/* ---------------- 入口面板 ---------------- */
+function openPanel(key) {
+  panelKey = key;
+  $('entry-title').textContent = PANEL_TITLES[key] || '';
+  const body = $('entry-body');
+  const p = getProgress();
+  if (key === 'journal') {
+    const letters = (p.seenCards || []).filter(function (id) { return id.indexOf('letter_') === 0; }).length;
+    let stars = 0;
+    Object.keys(p.stars || {}).forEach(function (k) { stars += p.stars[k]; });
+    body.innerHTML =
+      '<div class="entry-grid">' +
+      '<div class="entry-metric"><div class="em-v">' + letters + '</div><div class="em-k">已认识字母</div></div>' +
+      '<div class="entry-metric"><div class="em-v">' + (p.seenCards || []).length + '</div><div class="em-k">看过的文化卡</div></div>' +
+      '<div class="entry-metric"><div class="em-v">' + (p.completedLevels || []).length + '</div><div class="em-k">已通关</div></div>' +
+      '<div class="entry-metric"><div class="em-v">' + stars + '</div><div class="em-k">累计星星</div></div>' +
+      '</div><div class="entry-note">今天也可继续：每消一对，就多认识一个字。</div>';
+  } else if (key === 'lamp') {
+    const today = colToday();
+    const s = p.signIn || { streak: 0, lastDate: '', totalDays: 0, oil: 0 };
+    const day = s.totalDays ? ((s.totalDays - 1) % 7) + 1 : 0;
+    const canSign = s.lastDate !== today;
+    body.innerHTML =
+      '<div class="lamp-row">' + DAILY.signInRewards.map(function (r) {
+        return '<div class="lamp-ring"><div class="lamp-dot ' + (r.day <= day ? 'on' : '') + '">' + r.day + '</div>' +
+          '<div class="lamp-label">' + r.label + '</div></div>';
+      }).join('') + '</div>' +
+      '<div class="entry-note">连续签到 ' + (s.streak || 0) + ' 天 · 灯油 ' + (s.oil || 0) + ' · 累计 ' + (s.totalDays || 0) + ' 天</div>' +
+      '<div class="entry-btn' + (canSign ? '' : ' off') + '" id="lamp-btn">' + (canSign ? '点亮今日酥油灯' : '今日已点亮 · 明天再来') + '</div>' +
+      '<div class="entry-note">签到奖励全部为本地积分与道具，不含任何金额，也不需要登录。</div>';
+    $('lamp-btn').addEventListener('click', doSignIn);
+  } else if (key === 'daily') {
+    const g = pickDaily(DAILY.greetings, colDayNumber(colToday()));
+    body.innerHTML = '<div class="daily-tib tib">' + g.tibetan + '</div>' +
+      '<div class="daily-roman">' + (g.roman || '') + '</div>' +
+      '<div class="daily-cn">' + g.cn + '</div>' +
+      '<div class="entry-note">' + g.tip + '</div>';
+  } else if (key === 'thangka') {
+    let cells = '';
+    for (let i = 0; i < FRAGMENT_TOTAL; i++) {
+      const on = (p.fragments || []).indexOf(i) > -1;
+      cells += '<div class="tk-cell ' + (on ? 'on' : '') + '"><span class="tk-mark' + (on ? '' : ' dim') + '">' + (on ? '✦' : (i + 1)) + '</span></div>';
+    }
+    const got = (p.fragments || []).length;
+    body.innerHTML = '<div class="tk-grid">' + cells + '</div><div class="entry-note">' + got + '/9 片 · ' +
+      (got >= 9 ? '唐卡已拼成，完整图收入文化护照' : '还差 ' + (9 - got) + ' 片就能看全图了') + '</div>';
+  } else if (key === 'box') {
+    body.innerHTML = '<div class="box-open" id="box-btn">🎁 抽取今日非遗小知识</div>' +
+      '<div id="box-out"></div>' +
+      '<div class="entry-note">盲盒只装文化小知识：不发放优惠券、不涉及任何金额与交易。</div>';
+    $('box-btn').addEventListener('click', function () {
+      $('box-out').innerHTML = '<div class="box-text">' + pickDaily(DAILY.trivia, colDayNumber(colToday()) + 7) + '</div>';
+    });
+  } else if (key === 'shop') {
+    const inv = p.inventory || {};
+    body.innerHTML = DAILY.shop.map(function (it) {
+      return '<div class="shop-row"><span class="shop-ico">' + it.icon + '</span>' +
+        '<div class="shop-main"><div class="shop-name">' + it.name + ' <span class="shop-count">持有 ' + (inv[it.id] || 0) + '</span></div>' +
+        '<div class="shop-desc">' + it.desc + '</div></div>' +
+        '<div class="shop-btn" data-id="' + it.id + '">' + it.cost + ' 积分</div></div>';
+    }).join('') + '<div class="entry-note">道具用游戏积分兑换：全程不涉及支付，也不含广告。</div>';
+    Array.prototype.slice.call(body.querySelectorAll('.shop-btn')).forEach(function (b) {
+      b.addEventListener('click', function () { buyItem(b.dataset.id); });
+    });
+  } else if (key === 'rank') {
+    let stars = 0;
+    Object.keys(p.stars || {}).forEach(function (k) { stars += p.stars[k]; });
+    const letters = (p.seenCards || []).filter(function (id) { return id.indexOf('letter_') === 0; }).length;
+    body.innerHTML =
+      '<div class="rank-row"><span class="rank-k">累计积分</span><span class="rank-v">' + (p.points || 0) + '</span></div>' +
+      '<div class="rank-row"><span class="rank-k">最高连击</span><span class="rank-v">×' + p.bestCombo + '</span></div>' +
+      '<div class="rank-row"><span class="rank-k">累计星星</span><span class="rank-v">' + stars + '</span></div>' +
+      '<div class="rank-row"><span class="rank-k">已认识字母</span><span class="rank-v">' + letters + '</span></div>' +
+      '<div class="entry-note">这是你自己的雪域成绩单：全部数据保存在本机，不上传、不做全服排名。</div>';
+  } else if (key === 'tree') {
+    body.innerHTML = '<div class="tree-art">🌳</div>' +
+      '<div class="entry-note">已浇水 ' + (p.pot || 0) + ' 次 · 每次收获 ' + DAILY.tree.water + ' 积分</div>' +
+      '<div class="entry-btn" id="tree-btn">给菩提树浇一次水</div>' +
+      '<div class="entry-note">浇树只用游戏积分循环，不依赖广告，也不售卖任何东西。</div>';
+    $('tree-btn').addEventListener('click', waterTree);
+  } else if (key === 'winter') {
+    body.innerHTML = DAILY.winter.items.map(function (it) {
+      return '<div class="winter-card"><div class="wc-title">' + it.title + '</div><div class="wc-text">' + it.text + '</div></div>';
+    }).join('');
+  } else if (key === 'market') {
+    body.innerHTML = '<div class="entry-note">八廓街集市即「藏文权益中心」：用通关进度领取由商家提供并兑现的到店体验，平台不参与交易、不经手资金。</div>' +
+      '<div class="entry-btn" id="market-btn">进入藏文权益中心</div>';
+    $('market-btn').addEventListener('click', function () { closePanel(); showBenefits(); });
+  }
+  $('entry-panel').classList.add('show');
+}
+function closePanel() {
+  $('entry-panel').classList.remove('show');
+  panelKey = '';
+}
+function doSignIn() {
+  const p = getProgress();
+  const today = colToday();
+  const res = advanceSignIn(p.signIn, today);
+  if (res.already) { showTip('今天已经点亮过啦'); return; }
+  p.signIn = res.state;
+  // 奖励发放（全部本地：积分 / 道具 / 灯油；文化卡折算积分）
+  const reward = DAILY.signInRewards[res.day - 1];
+  if (reward.kind === 'points') p.points = (p.points || 0) + reward.value;
+  else if (reward.kind === 'card') p.points = (p.points || 0) + reward.value * 20;
+  else if (reward.kind === 'oil') p.signIn.oil = (p.signIn.oil || 0) + reward.value;
+  else if (reward.kind === 'item') { p.inventory = p.inventory || {}; p.inventory[reward.value] = (p.inventory[reward.value] || 0) + 1; }
+  saveProgress(p);
+  refreshHomeV4();
+  renderVine();
+  openPanel('lamp');
+  showTip('第 ' + res.day + ' 天 · ' + reward.label);
+}
+function buyItem(id) {
+  const item = DAILY.shop.filter(function (i) { return i.id === id; })[0];
+  if (!item) return;
+  const p = getProgress();
+  if ((p.points || 0) < item.cost) { showTip('积分不够，先去闯关吧'); return; }
+  p.points -= item.cost;
+  if (id === 'oil') p.signIn.oil = ((p.signIn && p.signIn.oil) || 0) + 2;
+  else { p.inventory = p.inventory || {}; p.inventory[id] = (p.inventory[id] || 0) + 1; }
+  saveProgress(p);
+  refreshHomeV4();
+  renderVine();
+  openPanel('shop');
+  showTip('已兑换 ' + item.name);
+}
+function waterTree() {
+  const p = getProgress();
+  p.pot = (p.pot || 0) + 1;
+  p.points = (p.points || 0) + DAILY.tree.water;
+  saveProgress(p);
+  refreshHomeV4();
+  renderVine();
+  openPanel('tree');
+  showTip('菩提树 +' + DAILY.tree.water + ' 积分');
+}
+
 /* ---------------- 首页 ---------------- */
 function renderHome() {
   const p = getProgress();
@@ -1517,20 +1979,11 @@ function renderHome() {
     '</div>';
   hb.querySelector('.benefit-card').addEventListener('click', showBenefits);
 
+  // 藤蔓地图：五地剪影 + 蜿蜒向上的关卡节点（结构化，含星级）
   const grid = $('level-grid');
-  grid.innerHTML = '';
-  for (let n = 1; n <= MAX_LEVEL; n++) {
-    const done = p.completedLevels.indexOf(n) > -1;
-    const unlocked = n <= p.unlockedLevel;
-    const btn = document.createElement('div');
-    btn.className = 'level-btn' + (done ? ' done' : '') + (unlocked ? '' : ' locked');
-    btn.innerHTML =
-      '<div class="badge">' + (done ? '✓' : (unlocked ? '' : '🔒')) + '</div>' +
-      '<div class="lv-num">' + n + '</div>' +
-      '<div class="lv-tag">' + (done ? '已通关' : (unlocked ? '未通关' : '未解锁')) + '</div>';
-    if (unlocked) btn.addEventListener('click', function () { startLevel(n); });
-    grid.appendChild(btn);
-  }
+  grid.classList.add('vine');
+  renderVine();
+  refreshHomeV4();
   showScreen('home');
 }
 
@@ -1965,6 +2418,23 @@ function finishLevel() {
   $('res-acc').textContent = '本关正确率 ' + certRes.accuracy + '%' +
     (state.misses === 0 ? ' · 全程无失误 ✦' : '');
   $('res-acc').className = 'result-acc' + (state.misses === 0 ? ' ok' : '');
+
+  // PRD v4 留存：星级（按正确率与连击，只增不减）+ 积分入账 + 唐卡碎片掉落
+  const att = state.attempts > 0 ? state.attempts : state.matchedCount;
+  const starRes = recordStars(level, rateStars(att, state.misses, state.maxCombo));
+  addPoints(state.score);
+  const fragRes = addFragment(nextFragment(getProgress().fragments));
+  const fragList = getProgress().fragments;
+  const fragDone = fragList.length >= FRAGMENT_TOTAL;
+
+  $('res-stars').innerHTML = [1, 2, 3].map(function (i) {
+    return '<span class="rs-star' + (starRes.stars >= i ? ' on' : '') + '">★</span>';
+  }).join('') + '<span class="rs-tip">' + (starRes.improved ? '刷新了本关最佳评价' : '本关评价') + '</span>';
+
+  $('res-rewards').innerHTML =
+    '<div class="reward-box"><div class="rw-v">+' + state.score + '</div><div class="rw-k">积分入账</div></div>' +
+    '<div class="reward-box"><div class="rw-v">' + (fragRes.added ? ('第 ' + (fragRes.index + 1) + ' 片') : '已集齐') + '</div>' +
+    '<div class="rw-k">' + (fragDone ? '唐卡已拼成' : ('唐卡碎片 ' + fragList.length + '/' + FRAGMENT_TOTAL)) + '</div></div>';
 
   // 证书横幅（新得 / 升级），否则展示阶段进度与「还差什么」
   const certEl = $('res-cert');
@@ -2590,7 +3060,14 @@ document.addEventListener('click', function (e) {
   hideCard();
 }, true);
 
+// 首页悬浮入口 + 底部大平层：统一打开底部滑出面板（非阻塞，不打断任何流程）
+Array.prototype.forEach.call(document.querySelectorAll('.side-btn, .dock-btn'), function (b) {
+  b.addEventListener('click', function () { openPanel(b.getAttribute('data-panel')); });
+});
+$('entry-x').addEventListener('click', closePanel);
+
 /* ---------------- 启动 ---------------- */
+$('sc-bg').src = IMAGES.bgGlobal;
 $('sc-sky').src = IMAGES.bgSky;
 $('sc-ground').src = IMAGES.bgGround;
 document.documentElement.style.setProperty('--pat', 'url("' + IMAGES.pattern + '")');

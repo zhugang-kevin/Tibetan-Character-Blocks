@@ -21,6 +21,23 @@
     <view class="result-acc {{clean ? 'ok' : ''}}">
       本关正确率 {{accuracy}}% {{clean ? '· 全程无失误 ✦' : ''}}
     </view>
+    <!-- PRD v4：本关星级评价（只增不减） -->
+    <view class="result-stars">
+      <text class="rs-star {{item}}" wx:for="{{starList}}" wx:key="*this">★</text>
+      <text class="rs-tip">{{starsImproved ? '刷新了本关最佳评价' : '本关评价'}}</text>
+    </view>
+  </view>
+
+  <!-- PRD v4：唐卡碎片掉落 + 积分入账 -->
+  <view class="reward-row">
+    <view class="reward-box">
+      <view class="rw-v">+{{pointsGained}}</view>
+      <view class="rw-k">积分入账</view>
+    </view>
+    <view class="reward-box">
+      <view class="rw-v">{{fragmentNew ? ('第 ' + fragmentNew + ' 片') : '已集齐'}}</view>
+      <view class="rw-k">{{fragmentDone ? '唐卡已拼成' : ('唐卡碎片 ' + fragmentCount + '/9')}}</view>
+    </view>
   </view>
 
   <!-- 成长阶梯 · 证书（通关某阶段最后一关时颁发 / 升级） -->

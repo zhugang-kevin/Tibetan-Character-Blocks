@@ -4,7 +4,7 @@
   padding: 40rpx 32rpx 60rpx;
   box-sizing: border-box;
   position: relative;
-  background: linear-gradient(180deg, #FDF6E3 0%, #FAF0DA 52%, #F2E4C6 100%);
+  background: linear-gradient(180deg, #451510 0%, #2E1220 26%, #101F38 62%, #0B1E36 100%);
 }
 
 /* ============ 藏文化背景层 ============ */
@@ -14,6 +14,10 @@
   z-index: 0;
   pointer-events: none;
   overflow: hidden;
+}
+.sc-bg {
+  position: absolute;
+  left: 0; top: 0; width: 100%; height: 100%;
 }
 .sc-pattern {
   position: absolute;
@@ -26,12 +30,22 @@
 .sc-ground {
   position: absolute;
   left: 0; bottom: 0; width: 100%;
-  opacity: 0.88;
+  opacity: 0.16;
 }
 .sc-sky {
   position: absolute;
   left: 0; top: 0; width: 100%;
-  opacity: 0.95;
+  opacity: 0.14;
+}
+
+/* 夜色罩：压暗四角、突出中心金光，保证前景可读（禁止大白板） */
+.sc-night {
+  position: absolute;
+  left: 0; top: 0; right: 0; bottom: 0;
+  background: radial-gradient(ellipse at 50% 32%,
+    rgba(255, 214, 140, 0.08) 0%,
+    rgba(16, 22, 42, 0.42) 46%,
+    rgba(5, 8, 18, 0.8) 100%);
 }
 
 .hero {
@@ -52,24 +66,25 @@
   margin-top: 24rpx;
   font-size: 48rpx;
   font-weight: 700;
-  color: #2C3E50;
-}
+  color: #F5E9CF;
+  text-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.55);
+}}
 
 .hero-slogan {
   margin-top: 12rpx;
   font-size: 30rpx;
   font-weight: 600;
-  color: #C0392B;
   letter-spacing: 2rpx;
-}
+  color: #FFC96B;
+}}
 
 .hero-sub {
   margin: 20rpx auto 0;
   max-width: 560rpx;
   font-size: 26rpx;
-  color: #8A8375;
   line-height: 1.6;
-}
+  color: #C9BFA8;
+}}
 
 .level-grid {
   position: relative;
@@ -139,16 +154,16 @@
   margin-top: 30rpx;
   text-align: center;
   font-size: 24rpx;
-  color: #A79F8D;
-}
+  color: #C9BFA8;
+}}
 
 .footer-tagline {
   font-size: 26rpx;
   font-weight: 600;
-  color: #B7950B;
   margin-bottom: 8rpx;
   letter-spacing: 2rpx;
-}
+  color: #E8C86B;
+}}
 
 /* 品牌规范：文字主色用深灰 #2C3E50，不用纯黑 */
 page,
@@ -267,13 +282,13 @@ page,
 .stage-name {
   font-size: 30rpx;
   font-weight: 700;
-  color: #C0392B;
-}
+  color: #FFD98A;
+}}
 
 .stage-range {
   font-size: 22rpx;
-  color: #8A8375;
-}
+  color: #B9AE94;
+}}
 
 /* 权益中心入口（双轨制到店权益） */
 .benefit-card {
@@ -325,3 +340,378 @@ page,
   font-size: 20rpx;
   color: #8A8375;
 }
+
+/* ============ PRD v4 首页：资源条 / 藤蔓地图 / 悬浮入口 / 底部平层 / 入口面板 ============ */
+.page { padding-bottom: 190rpx; }
+
+/* 顶部资源条（灯油 / 积分 / 唐卡碎片） */
+.res-bar {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  justify-content: space-between;
+  gap: 12rpx;
+  margin-bottom: 14rpx;
+}
+.res-item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  padding: 12rpx 10rpx;
+  border-radius: 16rpx;
+  background: rgba(255, 255, 255, 0.86);
+  border: 1rpx solid rgba(214, 202, 176, 0.95);
+  box-shadow: 0 4rpx 12rpx rgba(96, 78, 44, 0.12);
+}
+.res-ico { font-size: 28rpx; }
+.res-val { font-size: 28rpx; font-weight: 700; color: #C0392B; }
+.res-cap { font-size: 20rpx; color: #8A8375; }
+
+/* 藤蔓地图 */
+.vine-map {
+  position: relative;
+  z-index: 1;
+  height: 1180rpx;
+  margin: 18rpx 0 8rpx;
+  border-radius: 26rpx;
+  overflow: hidden;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.5) 0%, rgba(250, 240, 218, 0.34) 100%);
+  border: 1rpx solid rgba(214, 202, 176, 0.7);
+}
+
+/* 藤蔓主干：一条弯曲向上的绿藤 */
+.vine-stem {
+  position: absolute;
+  left: 50%;
+  top: 4%;
+  bottom: 4%;
+  width: 26rpx;
+  transform: translateX(-50%);
+  border-radius: 999rpx;
+  background: linear-gradient(180deg, #1E8449 0%, #27AE60 42%, #145A32 100%);
+  box-shadow: inset 6rpx 0 10rpx rgba(255, 255, 255, 0.28), 0 6rpx 16rpx rgba(20, 90, 50, 0.28);
+}
+.vine-stem::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 8rpx;
+  transform: translateX(-50%);
+  background-image: linear-gradient(180deg, #A8DFB8 0 20rpx, transparent 20rpx 40rpx);
+  background-size: 8rpx 40rpx;
+  background-repeat: repeat-y;
+  opacity: 0.7;
+}
+
+/* 关卡节点（藤蔓上的果实） */
+.level-item.node {
+  position: absolute;
+  width: 96rpx;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6rpx;
+  background: none;
+  border: none;
+  padding: 0;
+}
+.node-badge {
+  width: 84rpx;
+  height: 84rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #FFFFFF;
+  background: linear-gradient(180deg, #FFD98A 0%, #B7950B 100%);
+  border: 4rpx solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 6rpx 14rpx rgba(96, 78, 44, 0.32), inset 0 3rpx 8rpx rgba(255, 255, 255, 0.5);
+}
+.level-item.open .node-badge {
+  background: linear-gradient(180deg, #E9714F 0%, #C0392B 100%);
+  animation: nodePulse 1.8s ease-in-out infinite;
+}
+.level-item.done .node-badge {
+  background: linear-gradient(180deg, #34A853 0%, #1E8449 100%);
+}
+.level-item.locked .node-badge {
+  background: linear-gradient(180deg, #B9B1A0 0%, #8A8375 100%);
+  color: #F6F1E4;
+}
+@keyframes nodePulse {
+  0%, 100% { box-shadow: 0 6rpx 14rpx rgba(96, 78, 44, 0.32), inset 0 3rpx 8rpx rgba(255, 255, 255, 0.5); }
+  50% { box-shadow: 0 8rpx 20rpx rgba(192, 57, 43, 0.45), inset 0 3rpx 8rpx rgba(255, 255, 255, 0.6); }
+}
+
+.node-stars { display: flex; gap: 2rpx; }
+.node-stars .star { font-size: 22rpx; line-height: 1; color: #DDD3BC; }
+.node-stars .star.on { color: #F1C40F; text-shadow: 0 1rpx 2rpx rgba(120, 90, 0, 0.4); }
+
+/* 地区剪影：未解锁灰色，解锁后点亮 */
+.region {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 130rpx;
+  display: flex;
+  align-items: center;
+  padding-left: 18rpx;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.region-shape {
+  width: 150rpx;
+  height: 92rpx;
+  opacity: 0.5;
+  background-repeat: no-repeat;
+  background-size: contain;
+}
+.region.dim .region-shape { filter: grayscale(1) brightness(1.16); opacity: 0.34; }
+.region.lit .region-shape { filter: none; opacity: 0.72; }
+.region-txt { margin-left: 14rpx; display: flex; flex-direction: column; }
+.region-name { font-size: 24rpx; font-weight: 700; color: #6B6455; }
+.region.dim .region-name { color: #A9A192; }
+.region-spot { font-size: 20rpx; color: #9A9384; }
+
+/* 五地剪影造型（简笔线条感，用 CSS 形状表达） */
+.region-shape.potala {
+  background: linear-gradient(180deg, #B7950B 0%, #8A6A12 100%);
+  clip-path: polygon(6% 100%, 6% 62%, 22% 62%, 22% 40%, 38% 40%, 38% 20%, 50% 8%, 62% 20%, 62% 40%, 78% 40%, 78% 62%, 94% 62%, 94% 100%);
+}
+.region-shape.forest { background: #1E8449; clip-path: polygon(0% 100%, 16% 46%, 30% 74%, 44% 30%, 58% 70%, 72% 40%, 88% 78%, 100% 100%); }
+.region-shape.valley { background: #2471A3; clip-path: polygon(0% 100%, 0% 62%, 26% 30%, 50% 58%, 74% 26%, 100% 58%, 100% 100%); }
+.region-shape.monastery { background: #C0392B; clip-path: polygon(4% 100%, 4% 58%, 20% 58%, 20% 34%, 50% 12%, 80% 34%, 80% 58%, 96% 58%, 96% 100%); }
+.region-shape.snow { background: #5D6D7E; clip-path: polygon(0% 100%, 30% 22%, 44% 52%, 58% 10%, 72% 48%, 100% 100%); }
+
+/* 左右悬浮入口 */
+.side-rail {
+  position: fixed;
+  top: 34%;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+.side-rail.left { left: 10rpx; }
+.side-rail.right { right: 10rpx; top: 42%; }
+.side-btn {
+  position: relative;
+  width: 96rpx;
+  padding: 12rpx 6rpx 10rpx;
+  border-radius: 18rpx;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1rpx solid rgba(214, 202, 176, 0.95);
+  box-shadow: 0 6rpx 16rpx rgba(96, 78, 44, 0.16);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4rpx;
+}
+.side-ico { font-size: 32rpx; line-height: 1; }
+.side-txt { font-size: 18rpx; color: #6B6455; }
+.side-dot {
+  position: absolute;
+  top: -10rpx;
+  right: -6rpx;
+  min-width: 30rpx;
+  height: 30rpx;
+  border-radius: 999rpx;
+  background: #C0392B;
+  color: #FFFFFF;
+  font-size: 18rpx;
+  text-align: center;
+  line-height: 30rpx;
+}
+
+/* 底部大平层 */
+.dock {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 7;
+  display: flex;
+  justify-content: space-around;
+  gap: 8rpx;
+  padding: 14rpx 12rpx calc(14rpx + env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, rgba(253, 246, 227, 0.94), rgba(242, 228, 198, 0.98));
+  border-top: 1rpx solid rgba(214, 202, 176, 0.95);
+  box-shadow: 0 -8rpx 22rpx rgba(96, 78, 44, 0.14);
+}
+.dock-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4rpx;
+}
+.dock-ico { font-size: 34rpx; }
+.dock-txt { font-size: 20rpx; color: #6B6455; }
+
+/* 入口面板（统一底部滑出，非阻塞） */
+.entry-panel {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 8;
+  max-height: 74vh;
+  background: #FFFFFF;
+  border-radius: 30rpx 30rpx 0 0;
+  transform: translateY(112%);
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  box-shadow: 0 -12rpx 40rpx rgba(60, 44, 16, 0.28);
+  overflow: hidden;
+}
+.entry-panel.show { transform: translateY(0); }
+.entry-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20rpx 26rpx 12rpx;
+  border-bottom: 1rpx solid rgba(214, 202, 176, 0.7);
+}
+.entry-title { font-size: 32rpx; font-weight: 700; color: #2C3E50; }
+.entry-x { font-size: 28rpx; color: #8A8375; padding: 0 8rpx; }
+.entry-body { max-height: 58vh; padding: 20rpx 26rpx; }
+.entry-foot {
+  padding: 12rpx 26rpx calc(18rpx + env(safe-area-inset-bottom));
+  font-size: 20rpx;
+  color: #9A9384;
+  text-align: center;
+  border-top: 1rpx solid rgba(214, 202, 176, 0.7);
+}
+.entry-grid { display: flex; flex-wrap: wrap; gap: 16rpx; }
+.entry-metric {
+  flex: 1 1 46%;
+  padding: 20rpx;
+  border-radius: 16rpx;
+  background: #FBF6E8;
+  border: 1rpx solid rgba(214, 202, 176, 0.8);
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+}
+.em-v { font-size: 38rpx; font-weight: 700; color: #C0392B; }
+.em-k { font-size: 22rpx; color: #8A8375; }
+.entry-note { margin-top: 16rpx; font-size: 22rpx; color: #8A8375; line-height: 1.7; }
+.entry-btn {
+  margin-top: 20rpx;
+  height: 84rpx;
+  line-height: 84rpx;
+  text-align: center;
+  border-radius: 42rpx;
+  background: linear-gradient(180deg, #C0392B, #96291D);
+  color: #FFF6DC;
+  font-size: 28rpx;
+  font-weight: 700;
+  box-shadow: 0 6rpx 0 #6E1D14;
+}
+.entry-btn.off { background: linear-gradient(180deg, #B9B1A0, #8A8375); box-shadow: 0 6rpx 0 #6B6455; }
+
+/* 长明灯 */
+.lamp-row { display: flex; flex-wrap: wrap; gap: 12rpx; }
+.lamp-ring { flex: 1 1 28%; display: flex; flex-direction: column; align-items: center; gap: 6rpx; }
+.lamp-dot {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 50%;
+  background: #F2EDE0;
+  color: #9A9384;
+  font-size: 24rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3rpx solid rgba(214, 202, 176, 0.9);
+}
+.lamp-dot.on {
+  background: radial-gradient(circle at 50% 38%, #FFE9A8 0%, #F1C40F 52%, #B7950B 100%);
+  color: #6B4B00;
+  border-color: rgba(183, 149, 11, 0.9);
+  box-shadow: 0 0 18rpx rgba(241, 196, 15, 0.6);
+}
+.lamp-label { font-size: 18rpx; color: #8A8375; text-align: center; }
+
+/* 雪域日签 */
+.daily-tib { font-size: 56rpx; color: #C0392B; text-align: center; line-height: 1.5; }
+.daily-roman { margin-top: 8rpx; text-align: center; font-size: 24rpx; color: #8A8375; }
+.daily-cn { margin-top: 12rpx; text-align: center; font-size: 32rpx; font-weight: 700; color: #2C3E50; }
+
+/* 唐卡拼图 */
+.tk-grid { display: flex; flex-wrap: wrap; gap: 10rpx; }
+.tk-cell {
+  width: calc((100% - 20rpx) / 3);
+  height: 150rpx;
+  border-radius: 14rpx;
+  background: #F2EDE0;
+  border: 2rpx dashed rgba(183, 149, 11, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tk-cell.on {
+  background: linear-gradient(160deg, #FFF6D8, #F1C40F);
+  border: 2rpx solid #B7950B;
+  box-shadow: inset 0 3rpx 8rpx rgba(255, 255, 255, 0.6);
+}
+.tk-mark { font-size: 32rpx; color: #8A6A12; }
+.tk-mark.dim { color: #B9B1A0; }
+
+/* 非遗盲盒 */
+.box-open {
+  padding: 26rpx;
+  border-radius: 20rpx;
+  text-align: center;
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #FFFFFF;
+  background: linear-gradient(135deg, #2471A3, #1B4F72);
+  box-shadow: 0 8rpx 20rpx rgba(36, 113, 163, 0.32);
+}
+.box-text { margin-top: 18rpx; padding: 20rpx; border-radius: 16rpx; background: #FBF6E8; font-size: 26rpx; color: #4A4438; line-height: 1.7; }
+
+/* 道具铺 */
+.shop-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 18rpx 0;
+  border-bottom: 1rpx solid rgba(214, 202, 176, 0.6);
+}
+.shop-ico { font-size: 40rpx; }
+.shop-main { flex: 1; }
+.shop-name { font-size: 28rpx; font-weight: 700; color: #2C3E50; }
+.shop-count { font-size: 20rpx; color: #8A8375; font-weight: 400; }
+.shop-desc { margin-top: 6rpx; font-size: 22rpx; color: #8A8375; }
+.shop-btn {
+  padding: 12rpx 20rpx;
+  border-radius: 999rpx;
+  background: linear-gradient(180deg, #B7950B, #8A6A12);
+  color: #FFF6DC;
+  font-size: 22rpx;
+  font-weight: 700;
+}
+
+/* 排行榜（本地成绩单） */
+.rank-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18rpx 0;
+  border-bottom: 1rpx solid rgba(214, 202, 176, 0.6);
+}
+.rank-k { font-size: 26rpx; color: #6B6455; }
+.rank-v { font-size: 30rpx; font-weight: 700; color: #C0392B; }
+
+/* 菩提树 / 冬游 */
+.tree-art { font-size: 120rpx; text-align: center; }
+.winter-card { padding: 18rpx 0; border-bottom: 1rpx solid rgba(214, 202, 176, 0.6); }
+.wc-title { font-size: 28rpx; font-weight: 700; color: #2C3E50; }
+.wc-text { margin-top: 8rpx; font-size: 24rpx; color: #6B6455; line-height: 1.7; }

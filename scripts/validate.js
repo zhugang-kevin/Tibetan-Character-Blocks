@@ -115,7 +115,7 @@ if (!bannedFound) ok('未使用任何禁用 API（登录/支付/订阅/云初始
 
 // ---------- 7. WXML 事件绑定 ----------
 section('7. WXML 事件绑定与 JS 方法对应');
-[['pages/index/index', ['onTapLevel', 'openPassport', 'openBenefits']],
+[['pages/index/index', ['onTapLevel', 'openPassport', 'openBenefits', 'openPanel', 'closePanel', 'doSignIn', 'openBox', 'buyItem', 'waterTree']],
  ['pages/game/game', ['onTapTile', 'dismissCard', 'guideNext', 'speakCard']],
  ['pages/result/result', ['goHome', 'openNameModal', 'closeNameModal', 'onNameInput', 'confirmGenerate', 'saveToAlbum', 'previewShare', 'openCert', 'openPassport']],
  ['pages/cert/cert', ['openNameModal', 'closeNameModal', 'onNameInput', 'confirmName', 'generate', 'saveToAlbum', 'previewShare', 'goPassport', 'goHome']],
@@ -625,6 +625,116 @@ section('16. 权益中心（双轨制）');
   if (st.indexOf('userMode') > -1 && st.indexOf('benefits') > -1 && st.indexOf('benefitSeq') > -1)
     ok('进度存储已扩展（userMode / benefits / benefitSeq）');
   else err('utils/storage.js 缺权益字段');
+})();
+
+// ---------- 17. PRD v4 留存系统（藤蔓地图 / 签到 / 唐卡 / 道具 / 菩提树） ----------
+section('17. 留存系统与首页重构（PRD v4）');
+
+(function () {
+  // 17.1 首页数据：五地剪影区间无缝覆盖 1-10 关
+  const regSrc = exists('data/regions.js') ? read('data/regions.js') : '';
+  const regions = regSrc ? eval('(' + regSrc.replace(/^module\.exports\s*=\s*/, '').replace(/;\s*$/, '') + ')') : [];
+  if (regions.length === 5) ok('data/regions.js 五个地区剪影');
+  else err('data/regions.js 应为 5 个地区，实际 ' + regions.length);
+  const cover = {};
+  let overlap = 0;
+  regions.forEach(r => { for (let n = r.from; n <= r.to; n++) { cover[n] = (cover[n] || 0) + 1; if (cover[n] > 1) overlap++; } });
+  const gap = [];
+  for (let n = 1; n <= 10; n++) if (!cover[n]) gap.push(n);
+  if (!overlap && !gap.length) ok('地区区间无缝覆盖第 1-10 关（不重叠、无缺口）');
+  else err('地区区间覆盖有误（重叠 ' + overlap + ' / 缺口 ' + gap.join(',') + '）');
+  const SHAPES = ['potala', 'forest', 'valley', 'monastery', 'snow'];
+  const badShape = regions.filter(r => SHAPES.indexOf(r.shape) === -1);
+  if (!badShape.length) ok('地区剪影形状均在样式表定义内（' + SHAPES.join('/') + '）');
+  else err('存在未定义剪影形状：' + badShape.map(r => r.shape).join('、'));
+
+  // 17.2 daily 数据合规：不含金额 / 结算字段（签到、盲盒、道具只用本地点数）
+  const dailySrc = exists('data/daily.js') ? read('data/daily.js') : '';
+  const daily = dailySrc ? eval('(' + dailySrc.replace(/^module\.exports\s*=\s*/, '').replace(/;\s*$/, '') + ')') : {};
+  if (/[¥￥元]/.test(dailySrc)) err('data/daily.js 含金额字样（¥/￥/元）—— 奖励须为本地积分/道具');
+  else ok('data/daily.js 不含任何金额字样（签到/盲盒/道具不承载金额）');
+  const moneyKey = ['price', 'amount', 'discount', 'settle', 'rmb', 'cny'].filter(k => new RegExp('\\b' + k + '\\s*:').test(dailySrc));
+  if (!moneyKey.length) ok('data/daily.js 无 price/amount/discount/settle 字段（不经手结算）');
+  else err('data/daily.js 含结算字段：' + moneyKey.join('、'));
+  if ((daily.signInRewards || []).length === 7) ok('祈福长明灯为 7 天循环签到');
+  else err('签到奖励应为 7 天，实际 ' + (daily.signInRewards || []).length);
+  const KINDS = ['points', 'card', 'item', 'oil'];
+  const badKind = (daily.signInRewards || []).filter(r => KINDS.indexOf(r.kind) === -1);
+  if (!badKind.length) ok('签到奖励类型均为本地奖励（points/card/item/oil）');
+  else err('签到奖励存在非法类型：' + badKind.map(r => r.kind).join('、'));
+  if ((daily.trivia || []).length >= 6) ok('非遗盲盒小知识 ≥ 6 条（只装文化知识）');
+  else err('非遗盲盒小知识不足 6 条');
+  if ((daily.shop || []).length >= 2 && (daily.shop || []).every(it => typeof it.cost === 'number' && it.cost > 0))
+    ok('道具铺道具以积分标价（cost 为正数，非金额）');
+  else err('道具铺道具缺少积分 cost');
+  if (daily.tree && daily.tree.water > 0) ok('菩提树浇水奖励为本地积分（无广告施肥）');
+  else err('data/daily.js 缺菩提树配置');
+  if (daily.winter && (daily.winter.items || []).length) ok('冬游西藏为静态文化专题（不涉及地图/下单）');
+  else err('data/daily.js 缺冬游西藏内容');
+
+  // 17.3 collect 纯逻辑模块（页面只做绑定，规则集中在 utils/）
+  const colSrc = exists('utils/collect.js') ? read('utils/collect.js') : '';
+  ['rateStars', 'advanceSignIn', 'nextFragment', 'fragmentComplete', 'pickDaily', 'waterReward'].forEach(fn => {
+    if (colSrc.indexOf(fn) > -1) ok('utils/collect.js 提供 ' + fn + '()');
+    else err('utils/collect.js 缺少 ' + fn + '()');
+  });
+  if (/FRAGMENT_TOTAL\s*=\s*9/.test(colSrc)) ok('唐卡碎片总数 = 9（3×3 一幅）');
+  else err('唐卡碎片总数应为 9');
+  if (/CYCLE_DAYS\s*=\s*7/.test(colSrc)) ok('签到循环 = 7 天');
+  else err('签到循环应为 7 天');
+  if (colSrc.indexOf('require(') === -1) ok('utils/collect.js 为纯函数模块（不依赖 wx / DOM）');
+  else err('utils/collect.js 不应依赖其他模块');
+
+  // 17.4 首页结构（藤蔓地图 / 悬浮入口 / 底部平层 / 资源条 / 入口面板）
+  const iw = read('pages/index/index.wxml');
+  ['vine-map', 'vine-stem', 'region', 'side-rail', 'dock', 'entry-panel', 'res-bar'].forEach(cls => {
+    if (iw.indexOf(cls) > -1) ok('index.wxml 含 ' + cls);
+    else err('index.wxml 缺少 ' + cls);
+  });
+  if (iw.indexOf('wx:if="{{canSignIn}}"') > -1 && iw.indexOf('side-dot') > -1)
+    ok('签到红点仅在未签到时显示（canSignIn 控制）');
+  else err('侧栏红点未受 canSignIn 控制');
+  const ij = read('pages/index/index.js');
+  ['openPanel', 'closePanel', 'doSignIn', 'openBox', 'buyItem', 'waterTree'].forEach(fn => {
+    if (ij.indexOf(fn + ':') > -1) ok('index.js 提供 ' + fn + '()');
+    else err('index.js 缺少 ' + fn + '()');
+  });
+  if (ij.indexOf('collect.advanceSignIn') > -1 && ij.indexOf('res.state') > -1)
+    ok('签到走纯函数 advanceSignIn 且持久化 res.state');
+  else err('签到未复用纯函数 advanceSignIn（或未持久化 state）');
+  if (ij.indexOf('showModal') === -1) ok('首页入口面板不使用阻塞式弹窗');
+  else err('首页使用了 showModal（与「不打扰」约束冲突）');
+
+  // 17.5 结算页星级 / 积分 / 碎片（只增不减）
+  const rw = read('pages/result/result.wxml');
+  const rj = read('pages/result/result.js');
+  if (rw.indexOf('result-stars') > -1 && rw.indexOf('starList') > -1) ok('结算页展示本关星级（starList）');
+  else err('结算页缺少星级展示');
+  if (rw.indexOf('reward-row') > -1 && rw.indexOf('fragmentNew') > -1) ok('结算页展示积分入账 + 唐卡碎片掉落');
+  else err('结算页缺少奖励展示');
+  if (rj.indexOf('collect.rateStars') > -1 && rj.indexOf('recordStars') > -1) ok('结算页星级只增不减（recordStars）');
+  else err('结算页未记录星级');
+  if (rj.indexOf('addFragment') > -1 && rj.indexOf('nextFragment') > -1) ok('结算页确定性掉落唐卡碎片（不重复）');
+  else err('结算页未掉落碎片');
+
+  // 17.6 体验版镜像（源与镜像必须一致，否则体验版测不了）
+  const tplHtml = read('preview/template.html');
+  ['vine-map', 'side-rail', 'entry-panel', 'renderVine', 'refreshHomeV4', 'openPanel',
+    'doSignIn', 'buyItem', 'waterTree', 'rateStars', 'res-stars', 'res-rewards'].forEach(key => {
+    if (tplHtml.indexOf(key) > -1) ok('体验版已镜像 ' + key);
+    else err('preview/template.html 未镜像 ' + key);
+  });
+  if (tplHtml.indexOf('function advanceSignIn') > -1 && tplHtml.indexOf('res.state') > -1)
+    ok('体验版 advanceSignIn 契约与 utils/collect.js 一致（返回 state）');
+  else err('体验版 advanceSignIn 返回值与源不一致');
+
+  // 17.7 存储层扩展（进度字段只增不减）
+  const stSrc = read('utils/storage.js');
+  ['addPoints', 'spendPoints', 'recordStars', 'applySignIn', 'addOil', 'addFragment', 'addItem', 'waterPot']
+    .forEach(fn => {
+      if (new RegExp('function ' + fn + '\\s*\\(').test(stSrc)) ok('storage.js 提供 ' + fn + '()');
+      else err('utils/storage.js 缺少 ' + fn + '()');
+    });
 })();
 
 // ---------- 汇总 ----------

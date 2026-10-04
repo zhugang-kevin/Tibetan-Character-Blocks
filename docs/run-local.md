@@ -20,6 +20,7 @@ C:\Users\zhuga\WorkBuddy\2026-10-04-00-41-14\tibetan-match\preview\play.html
 **它能验什么**：10 关解锁/通关流程、配对消除、文化卡弹窗（仅首次/非阻塞/自动收起）、
 连击与金色方块、积分、配对后朗读判定、牌面尺寸统一、拉萨印记、下一关、
 第 10 关祝福卡生成与保存、**成长阶梯与证书（正确率统计 / 等级门槛 / 编号 / 升级 / 文化护照 12 格 / 证书页导出）**、
+**PRD v4 视觉与留存（四层立体棋盘 / 冰霜·木箱障碍物 / 破碎特效 / 藤蔓地图 / 7 天签到 / 唐卡碎片 / 道具铺 / 菩提树 / 星级只增不减）**、
 进度持久化（浏览器 localStorage）。
 
 **它不能验什么**：真机触摸手感、微信原生音效播放（这里用 Web Audio 合成等效音色）、
@@ -32,7 +33,7 @@ cd tibetan-match
 node scripts/build-h5.js
 ```
 
-**自动验收**（模拟真人点击，232 项断言）：
+**自动验收**（模拟真人点击，284 项断言）：
 
 ```bash
 NODE_PATH="C:/Users/zhuga/.workbuddy/binaries/node/workspace/node_modules" \

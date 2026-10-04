@@ -25,7 +25,14 @@ function getProgress() {
     userMode: (p && p.userMode) || '',
     city: (p && p.city) || '',
     benefits: (p && p.benefits) || [],
-    benefitSeq: (p && p.benefitSeq) || 0
+    benefitSeq: (p && p.benefitSeq) || 0,
+    // PRD v4 留存系统：每关最佳星数 / 积分 / 长明灯签到 / 唐卡碎片 / 道具 / 菩提树
+    stars: (p && p.stars) || {},
+    points: (p && p.points) || 0,
+    signIn: (p && p.signIn) || { streak: 0, lastDate: '', totalDays: 0, oil: 0 },
+    fragments: (p && p.fragments) || [],
+    inventory: (p && p.inventory) || {},
+    pot: (p && p.pot) || 0
   };
 }
 
@@ -218,6 +225,105 @@ function nextBenefitSeq() {
   return p.benefitSeq;
 }
 
+// ---------- PRD v4：积分 / 星级 / 长明灯签到 / 唐卡碎片 / 道具 / 菩提树 ----------
+// 成就与进度类字段只增不减（点数只加，星级只取更高）
+
+function addPoints(n) {
+  var p = getProgress();
+  var add = Math.max(0, Math.floor(n || 0));
+  p.points = (p.points || 0) + add;
+  save(p);
+  return p.points;
+}
+
+// 消耗积分（不足则返回 false，不做负数）
+function spendPoints(n) {
+  var p = getProgress();
+  var cost = Math.max(0, Math.floor(n || 0));
+  if ((p.points || 0) < cost) return false;
+  p.points -= cost;
+  save(p);
+  return true;
+}
+
+function getPoints() { return getProgress().points || 0; }
+
+// 星级只取历史最优（重玩不会降星）
+function recordStars(level, stars) {
+  var p = getProgress();
+  var cur = p.stars[level] || 0;
+  if (stars > cur) {
+    p.stars[level] = stars;
+    save(p);
+    return { stars: stars, improved: true };
+  }
+  return { stars: cur, improved: false };
+}
+
+function getStars(level) { return getProgress().stars[level] || 0; }
+function getStarsMap() { return getProgress().stars || {}; }
+
+// 签到（祈福长明灯）：跨天判定与 7 天循环由 utils/collect.js 计算，这里只负责持久化
+function applySignIn(nextState) {
+  var p = getProgress();
+  p.signIn = nextState;
+  save(p);
+  return p.signIn;
+}
+
+function getSignIn() { return getProgress().signIn; }
+
+// 灯油（签到与道具铺可增加）
+function addOil(n) {
+  var p = getProgress();
+  var s = p.signIn || { streak: 0, lastDate: '', totalDays: 0, oil: 0 };
+  s.oil = (s.oil || 0) + Math.max(0, Math.floor(n || 0));
+  p.signIn = s;
+  save(p);
+  return s.oil;
+}
+
+// 唐卡碎片：一片只记一次（集齐 9 片拼成一幅）
+function addFragment(index) {
+  var p = getProgress();
+  if (index === undefined || index === null || index < 0) return { added: false, fragments: p.fragments };
+  if (p.fragments.indexOf(index) > -1) return { added: false, fragments: p.fragments };
+  p.fragments.push(index);
+  save(p);
+  return { added: true, fragments: p.fragments };
+}
+
+function getFragments() { return getProgress().fragments; }
+
+// 道具（提示 / 洗牌）
+function addItem(id, n) {
+  var p = getProgress();
+  p.inventory[id] = (p.inventory[id] || 0) + Math.max(1, Math.floor(n || 1));
+  save(p);
+  return p.inventory[id];
+}
+
+function getInventory() { return getProgress().inventory || {}; }
+
+function useItem(id) {
+  var p = getProgress();
+  if (!p.inventory[id] || p.inventory[id] <= 0) return false;
+  p.inventory[id] -= 1;
+  save(p);
+  return true;
+}
+
+// 菩提树：浇水计数 + 积分（无广告）
+function waterPot(reward) {
+  var p = getProgress();
+  p.pot = (p.pot || 0) + 1;
+  p.points = (p.points || 0) + Math.max(0, Math.floor(reward || 0));
+  save(p);
+  return { pot: p.pot, points: p.points };
+}
+
+function getPot() { return getProgress().pot || 0; }
+
 module.exports = {
   MAX_LEVEL: MAX_LEVEL,
   getProgress: getProgress,
@@ -244,5 +350,22 @@ module.exports = {
   addBenefit: addBenefit,
   getBenefits: getBenefits,
   hasBenefit: hasBenefit,
-  nextBenefitSeq: nextBenefitSeq
+  nextBenefitSeq: nextBenefitSeq,
+  // PRD v4 留存系统
+  addPoints: addPoints,
+  spendPoints: spendPoints,
+  getPoints: getPoints,
+  recordStars: recordStars,
+  getStars: getStars,
+  getStarsMap: getStarsMap,
+  applySignIn: applySignIn,
+  getSignIn: getSignIn,
+  addOil: addOil,
+  addFragment: addFragment,
+  getFragments: getFragments,
+  addItem: addItem,
+  getInventory: getInventory,
+  useItem: useItem,
+  waterPot: waterPot,
+  getPot: getPot
 };

@@ -4,7 +4,7 @@
   padding: 50rpx 40rpx 80rpx;
   box-sizing: border-box;
   position: relative;
-  background: linear-gradient(180deg, #FDF6E3 0%, #FAF0DA 52%, #F2E4C6 100%);
+  background: linear-gradient(180deg, #451510 0%, #2E1220 26%, #101F38 62%, #0B1E36 100%);
 }
 
 /* ============ 藏文化背景层（与首页/游戏页统一） ============ */
@@ -14,6 +14,10 @@
   z-index: 0;
   pointer-events: none;
   overflow: hidden;
+}
+.sc-bg {
+  position: absolute;
+  left: 0; top: 0; width: 100%; height: 100%;
 }
 .sc-pattern {
   position: absolute;
@@ -26,12 +30,22 @@
 .sc-ground {
   position: absolute;
   left: 0; bottom: 0; width: 100%;
-  opacity: 0.85;
+  opacity: 0.16;
 }
 .sc-sky {
   position: absolute;
   left: 0; top: 0; width: 100%;
-  opacity: 0.92;
+  opacity: 0.14;
+}
+
+/* 夜色罩：压暗四角、突出中心金光，保证前景可读（禁止大白板） */
+.sc-night {
+  position: absolute;
+  left: 0; top: 0; right: 0; bottom: 0;
+  background: radial-gradient(ellipse at 50% 32%,
+    rgba(255, 214, 140, 0.08) 0%,
+    rgba(16, 22, 42, 0.42) 46%,
+    rgba(5, 8, 18, 0.8) 100%);
 }
 .content {
   position: relative;
@@ -59,14 +73,15 @@
   margin-top: 24rpx;
   font-size: 44rpx;
   font-weight: 700;
-  color: #2C3E50;
-}
+  color: #F5E9CF;
+  text-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.55);
+}}
 
 .result-sub {
   margin-top: 12rpx;
   font-size: 28rpx;
-  color: #8A8375;
-}
+  color: #C9BFA8;
+}}
 
 /* 文化护照印记 v0 */
 .stamp-banner {
@@ -105,7 +120,7 @@
   font-size: 30rpx;
   font-weight: 700;
   color: #2C3E50;
-}
+}}
 
 .stamp-sub {
   margin-top: 6rpx;
@@ -279,7 +294,7 @@
   font-size: 34rpx;
   font-weight: 700;
   color: #2C3E50;
-}
+}}
 
 .modal-sub {
   text-align: center;
@@ -332,8 +347,8 @@
 .result-acc {
   margin-top: 14rpx;
   font-size: 26rpx;
-  color: #8A8375;
-}
+  color: #C9BFA8;
+}}
 
 .result-acc.ok {
   color: #B7950B;
@@ -373,7 +388,7 @@
   font-size: 30rpx;
   font-weight: 700;
   color: #2C3E50;
-}
+}}
 
 .cert-line2 {
   margin-top: 8rpx;
@@ -460,3 +475,28 @@
 }
 .roller::before { left: -14rpx; }
 .roller::after { right: -14rpx; }
+
+/* ============ PRD v4：本关星级 / 积分与唐卡碎片奖励 ============ */
+.result-stars {
+  margin-top: 14rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+}
+.rs-star { font-size: 44rpx; color: #DDD3BC; line-height: 1; }
+.rs-star.on { color: #F1C40F; text-shadow: 0 2rpx 6rpx rgba(183, 149, 11, 0.5); }
+.rs-tip { margin-left: 10rpx; font-size: 20rpx; color: #B9AE94; }
+
+.reward-row { display: flex; gap: 16rpx; margin: 18rpx 0 6rpx; }
+.reward-box {
+  flex: 1;
+  padding: 18rpx;
+  border-radius: 18rpx;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1rpx solid rgba(214, 202, 176, 0.9);
+  box-shadow: 0 4rpx 12rpx rgba(96, 78, 44, 0.12);
+  text-align: center;
+}
+.rw-v { font-size: 34rpx; font-weight: 700; color: #C0392B; }
+.rw-k { margin-top: 6rpx; font-size: 20rpx; color: #8A8375; }

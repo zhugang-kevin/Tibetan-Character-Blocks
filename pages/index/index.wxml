@@ -6,7 +6,13 @@
     <view class="grain"></view>
     <image class="sc-ground" src="/images/bg-ground.png" mode="widthFix" />
     <image class="sc-sky" src="/images/bg-sky.png" mode="widthFix" />
-    <view class="sc-night"></view>
+  </view>
+
+  <!-- 顶部资源条（灯油 / 积分 / 唐卡碎片） -->
+  <view class="res-bar">
+    <view class="res-item"><text class="res-ico">🪔</text><text class="res-val">{{oil}}</text><text class="res-cap">灯油</text></view>
+    <view class="res-item"><text class="res-ico">✧</text><text class="res-val">{{points}}</text><text class="res-cap">积分</text></view>
+    <view class="res-item"><text class="res-ico">🖼</text><text class="res-val">{{fragCount}}/9</text><text class="res-cap">唐卡</text></view>
   </view>
 
   <view class="hero">
@@ -22,6 +28,49 @@
       <view wx:for="{{stamps}}" wx:key="id" class="mini-stamp">{{item.name}}</view>
     </view>
     <view wx:if="{{bestCombo > 1}}" class="profile-combo">最高连击 ×{{bestCombo}}</view>
+  </view>
+
+  <!-- 藤蔓地图：五地剪影 + 弯曲向上的关卡节点（对标消消乐主地图） -->
+  <view class="stage-head">
+    <text class="stage-name">第一阶段 · 简单基字</text>
+    <text class="stage-range">第 1-10 关 · 通关可得证书</text>
+  </view>
+
+  <view class="vine-map">
+    <!-- 地区剪影：未解锁为灰色剪影，解锁后点亮 -->
+    <view
+      wx:for="{{regions}}"
+      wx:key="id"
+      class="region {{item.lit ? 'lit' : 'dim'}}"
+      style="top: {{item.top}}%; left: {{item.left}}%;"
+    >
+      <view class="region-shape {{item.shape}}"></view>
+      <view class="region-txt">
+        <text class="region-name">{{item.name}}</text>
+        <text class="region-spot">{{item.lit ? item.spot : '未解锁'}}</text>
+      </view>
+    </view>
+
+    <!-- 藤蔓主干 -->
+    <view class="vine-stem"></view>
+
+    <!-- 关卡节点：藤蔓上一左一右蜿蜒向上，节点下显示星级 -->
+    <view
+      wx:for="{{levels}}"
+      wx:key="n"
+      class="level-item node {{item.unlocked ? (item.done ? 'done' : 'open') : 'locked'}}"
+      style="top: {{item.top}}%; left: {{item.left}}%;"
+      data-n="{{item.n}}"
+      bindtap="onTapLevel"
+    >
+      <view class="node-badge">
+        <text wx:if="{{item.unlocked}}">{{item.n}}</text>
+        <text wx:else>🔒</text>
+      </view>
+      <view class="node-stars">
+        <text class="star {{item.s1}}">★</text><text class="star {{item.s2}}">★</text><text class="star {{item.s3}}">★</text>
+      </view>
+    </view>
   </view>
 
   <!-- 文化护照入口（总档案：12 张藏文成长证书 + 印章 + 收藏） -->
@@ -42,42 +91,150 @@
     </view>
   </view>
 
-  <!-- 权益中心入口（双轨制：本地生活 / 游客专属 · 凭通关进度领到店权益） -->
-  <view class="benefit-card" bindtap="openBenefits">
-    <view class="bc-left">
-      <view class="bc-title">藏文权益中心</view>
-      <view class="bc-sub">凭通关进度领取到店权益 · 本地生活 / 游客专属</view>
-    </view>
-    <view class="bc-right">
-      <view class="bc-arrow">›</view>
-      <view class="bc-label">去逛逛</view>
-    </view>
-  </view>
-
-  <view class="stage-head">
-    <text class="stage-name">第一阶段 · 简单基字</text>
-    <text class="stage-range">第 1-10 关 · 通关可得证书</text>
-  </view>
-
-  <view class="level-grid">
-    <view
-      wx:for="{{levels}}"
-      wx:key="n"
-      class="level-item {{item.unlocked ? (item.done ? 'done' : 'open') : 'locked'}}"
-      data-n="{{item.n}}"
-      bindtap="onTapLevel"
-    >
-      <view class="level-num">第 {{item.n}} 关</view>
-      <view class="level-state">
-        <text wx:if="{{item.done}}" class="state-done">✓ 已通关</text>
-        <text wx:elif="{{item.unlocked}}" class="state-open">开始</text>
-        <text wx:else class="state-locked">🔒 未解锁</text>
-      </view>
-    </view>
-  </view>
-
   <view class="footer">
     <view class="footer-tagline">每个字母，都是一座西藏</view>
     <view>共 10 关 · 进度自动保存在本机</view>
   </view>
+
+  <!-- 左侧悬浮入口 -->
+  <view class="side-rail left">
+    <view class="side-btn" data-panel="journal" bindtap="openPanel">
+      <text class="side-ico">📖</text><text class="side-txt">雪域游记</text>
+    </view>
+    <view class="side-btn" data-panel="lamp" bindtap="openPanel">
+      <text class="side-ico">🪔</text><text class="side-txt">长明灯</text>
+      <text wx:if="{{canSignIn}}" class="side-dot">2</text>
+    </view>
+    <view class="side-btn" data-panel="market" bindtap="openPanel">
+      <text class="side-ico">🏮</text><text class="side-txt">八廓集市</text>
+    </view>
+    <view class="side-btn" data-panel="daily" bindtap="openPanel">
+      <text class="side-ico">📜</text><text class="side-txt">雪域日签</text>
+    </view>
+  </view>
+
+  <!-- 右侧悬浮入口 -->
+  <view class="side-rail right">
+    <view class="side-btn" data-panel="thangka" bindtap="openPanel">
+      <text class="side-ico">🖼</text><text class="side-txt">唐卡拼图</text>
+    </view>
+    <view class="side-btn" data-panel="box" bindtap="openPanel">
+      <text class="side-ico">🎁</text><text class="side-txt">非遗盲盒</text>
+    </view>
+  </view>
+
+  <!-- 底部大平层 -->
+  <view class="dock">
+    <view class="dock-btn" data-panel="shop" bindtap="openPanel"><text class="dock-ico">🧰</text><text class="dock-txt">道具铺</text></view>
+    <view class="dock-btn" data-panel="rank" bindtap="openPanel"><text class="dock-ico">🏔</text><text class="dock-txt">排行榜</text></view>
+    <view class="dock-btn" data-panel="tree" bindtap="openPanel"><text class="dock-ico">🌳</text><text class="dock-txt">菩提树</text></view>
+    <view class="dock-btn" data-panel="winter" bindtap="openPanel"><text class="dock-ico">❄</text><text class="dock-txt">冬游西藏</text></view>
+  </view>
+
+  <!-- 入口面板（统一底部滑出容器，非阻塞） -->
+  <view class="entry-panel {{panelShow ? 'show' : ''}}">
+    <view class="entry-head">
+      <text class="entry-title">{{panelTitle}}</text>
+      <text class="entry-x" bindtap="closePanel">✕</text>
+    </view>
+    <scroll-view class="entry-body" scroll-y>
+
+      <!-- 雪域游记 -->
+      <block wx:if="{{panel === 'journal'}}">
+        <view class="entry-grid">
+          <view class="entry-metric"><text class="em-v">{{journal.letters}}</text><text class="em-k">已认识字母</text></view>
+          <view class="entry-metric"><text class="em-v">{{journal.cards}}</text><text class="em-k">看过的文化卡</text></view>
+          <view class="entry-metric"><text class="em-v">{{journal.done}}</text><text class="em-k">已通关</text></view>
+          <view class="entry-metric"><text class="em-v">{{journal.stars}}</text><text class="em-k">累计星星</text></view>
+        </view>
+        <view class="entry-note">今天也可继续：每消一对，就多认识一个字。</view>
+      </block>
+
+      <!-- 祈福长明灯（7 天循环签到） -->
+      <block wx:elif="{{panel === 'lamp'}}">
+        <view class="lamp-row">
+          <view class="lamp-ring" wx:for="{{lampDays}}" wx:key="day">
+            <view class="lamp-dot {{item.on ? 'on' : ''}}"><text>{{item.day}}</text></view>
+            <text class="lamp-label">{{item.label}}</text>
+          </view>
+        </view>
+        <view class="entry-note">连续签到 {{signIn.streak}} 天 · 灯油 {{signIn.oil}} · 累计 {{signIn.totalDays}} 天</view>
+        <view class="entry-btn {{canSignIn ? '' : 'off'}}" bindtap="doSignIn">{{canSignIn ? '点亮今日酥油灯' : '今日已点亮 · 明天再来'}}</view>
+        <view class="entry-note">签到奖励全部为本地积分与道具，不含任何金额，也不需要登录。</view>
+      </block>
+
+      <!-- 雪域日签 -->
+      <block wx:elif="{{panel === 'daily'}}">
+        <view class="daily-tib tibetan">{{daily.tibetan}}</view>
+        <view class="daily-roman">{{daily.roman}}</view>
+        <view class="daily-cn">{{daily.cn}}</view>
+        <view class="entry-note">{{daily.tip}}</view>
+      </block>
+
+      <!-- 唐卡拼图（9 片收集） -->
+      <block wx:elif="{{panel === 'thangka'}}">
+        <view class="tk-grid">
+          <view wx:for="{{thangkaCells}}" wx:key="i" class="tk-cell {{item.on ? 'on' : ''}}">
+            <text wx:if="{{item.on}}" class="tk-mark">✦</text>
+            <text wx:else class="tk-mark dim">{{item.i}}</text>
+          </view>
+        </view>
+        <view class="entry-note">{{fragCount}}/9 片 · {{fragCount >= 9 ? '唐卡已拼成，完整图收入文化护照' : '还差 ' + (9 - fragCount) + ' 片就能看全图了'}}</view>
+      </block>
+
+      <!-- 非遗盲盒（只抽文化小知识） -->
+      <block wx:elif="{{panel === 'box'}}">
+        <view class="box-open" bindtap="openBox">🎁 抽取今日非遗小知识</view>
+        <view wx:if="{{boxText}}" class="box-text">{{boxText}}</view>
+        <view class="entry-note">盲盒只装文化小知识：不发放优惠券、不涉及任何金额与交易。</view>
+      </block>
+
+      <!-- 藏式道具铺（积分兑换，不涉及支付） -->
+      <block wx:elif="{{panel === 'shop'}}">
+        <view class="shop-row" wx:for="{{shopItems}}" wx:key="id">
+          <view class="shop-ico">{{item.icon}}</view>
+          <view class="shop-main">
+            <view class="shop-name">{{item.name}} <text class="shop-count">持有 {{item.have}}</text></view>
+            <view class="shop-desc">{{item.desc}}</view>
+          </view>
+          <view class="shop-btn" data-id="{{item.id}}" bindtap="buyItem">{{item.cost}} 积分</view>
+        </view>
+        <view class="entry-note">道具用游戏积分兑换：全程不涉及支付，也不含广告。</view>
+      </block>
+
+      <!-- 雪域排行榜（本地记录） -->
+      <block wx:elif="{{panel === 'rank'}}">
+        <view class="rank-row"><text class="rank-k">累计积分</text><text class="rank-v">{{points}}</text></view>
+        <view class="rank-row"><text class="rank-k">最高连击</text><text class="rank-v">×{{bestCombo}}</text></view>
+        <view class="rank-row"><text class="rank-k">累计星星</text><text class="rank-v">{{journal.stars}}</text></view>
+        <view class="rank-row"><text class="rank-k">已认识字母</text><text class="rank-v">{{journal.letters}}</text></view>
+        <view class="entry-note">这是你自己的雪域成绩单：全部数据保存在本机，不上传、不做全服排名。</view>
+      </block>
+
+      <!-- 菩提树 -->
+      <block wx:elif="{{panel === 'tree'}}">
+        <view class="tree-art">🌳</view>
+        <view class="entry-note">已浇水 {{pot}} 次 · 每次收获 12 积分</view>
+        <view class="entry-btn" bindtap="waterTree">给菩提树浇一次水</view>
+        <view class="entry-note">浇树只用游戏积分循环，不依赖广告，也不售卖任何东西。</view>
+      </block>
+
+      <!-- 冬游西藏 -->
+      <block wx:elif="{{panel === 'winter'}}">
+        <view class="winter-card" wx:for="{{winterItems}}" wx:key="title">
+          <view class="wc-title">{{item.title}}</view>
+          <view class="wc-text">{{item.text}}</view>
+        </view>
+      </block>
+
+      <!-- 八廓街集市 → 藏文权益中心（双轨制到店权益，已有页面） -->
+      <block wx:elif="{{panel === 'market'}}">
+        <view class="entry-note">八廓街集市即「藏文权益中心」：用通关进度领取由商家提供并兑现的到店体验，平台不参与交易、不经手资金。</view>
+        <view class="entry-btn" bindtap="openBenefits">进入藏文权益中心</view>
+      </block>
+
+    </scroll-view>
+    <view class="entry-foot">{{panelFoot}}</view>
+  </view>
+
 </view>

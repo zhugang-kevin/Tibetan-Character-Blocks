@@ -6,6 +6,7 @@ var tracker = require('../../utils/tracker');
 var tibText = require('../../utils/tibetan-text');
 var certificate = require('../../utils/certificate');
 var audio = require('../../utils/audio');
+var collect = require('../../utils/collect');
 
 Page({
   data: {
@@ -31,7 +32,15 @@ Page({
     certUpgraded: false,
     certTitle: '',       // 证书横幅文案（新得 / 升级 / 本阶段证书）
     ownedCerts: 0,       // 已获得证书总数
-    skillHint: ''        // 距更高等级证书还差什么
+    skillHint: '',       // 距更高等级证书还差什么
+    // ---- PRD v4 留存系统：星级 / 积分 / 唐卡碎片 ----
+    stars: 0,            // 本关星级（1-3）
+    starList: [],        // 三颗星的亮/灭（供 wxml 渲染）
+    starsImproved: false,// 是否刷新了该关的最优星数
+    pointsGained: 0,     // 本关积分
+    fragmentNew: 0,      // 本关新得的唐卡碎片编号（1-9，0 = 无）
+    fragmentCount: 0,    // 已收集碎片总数
+    fragmentDone: false  // 是否已拼成一幅完整唐卡
   },
 
   onLoad: function (query) {
@@ -60,6 +69,14 @@ Page({
       newStamp = true;
       tracker.track('first_stamp');
     }
+
+    // PRD v4 留存：星级（按正确率与连击，只增不减）+ 积分 + 唐卡碎片掉落
+    var stars = collect.rateStars(att > 0 ? att : pairs, miss, combo);
+    var starRes = storage.recordStars(level, stars);
+    storage.addPoints(score);
+    var fragRes = storage.addFragment(collect.nextFragment(storage.getFragments()));
+    var fragList = storage.getFragments();
+    if (fragRes.added) tracker.track('first_fragment');
 
     var ids = (query.cards || '').split(',').filter(Boolean);
     if (ids.length) tracker.track('first_card');
@@ -99,7 +116,15 @@ Page({
         ? (certRes.isNew ? '获得藏文成长证书' : (certRes.upgraded ? '证书升级' : '本阶段证书'))
         : '',
       ownedCerts: certificate.ownedCount(),
-      skillHint: certRes.skill ? certRes.skill.text : ''
+      skillHint: certRes.skill ? certRes.skill.text : '',
+      // PRD v4：星级 / 积分 / 唐卡碎片
+      stars: starRes.stars,
+      starList: [1, 2, 3].map(function (i) { return starRes.stars >= i ? 'on' : 'off'; }),
+      starsImproved: starRes.improved,
+      pointsGained: score,
+      fragmentNew: fragRes.added ? storage.getFragments().slice(-1)[0] + 1 : 0,
+      fragmentCount: fragList.length,
+      fragmentDone: collect.fragmentComplete(fragList)
     });
 
     // 舒缓祝福语（PRD 4.1）：画卷展开时读一句藏语祝福，缺失录音静默回退
