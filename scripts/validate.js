@@ -737,6 +737,76 @@ section('17. 留存系统与首页重构（PRD v4）');
     });
 })();
 
+// ---------- 18. 全局视觉底盘（暗金光晕底图 + 金色棋盘底盘） ----------
+(function () {
+  section('18. 全局视觉底盘');
+
+  const PAGES = ['index', 'game', 'result', 'cert', 'passport', 'benefits'];
+
+  // 18.1 底图资产存在（小程序全尺寸 + H5 压缩版）
+  ['images/bg-global.jpg', 'images/bg-global-h5.jpg'].forEach(f => {
+    if (exists(f)) ok('底图资产存在：' + f);
+    else err('缺少底图资产：' + f);
+  });
+
+  // 18.2 六个页面统一六层背景（底图/纹样/颗粒/地面/天空/夜色罩）
+  const LAYERS = ['sc-bg', 'sc-pattern', 'grain', 'sc-ground', 'sc-sky', 'sc-night'];
+  PAGES.forEach(p => {
+    const wxml = read('pages/' + p + '/' + p + '.wxml');
+    const missing = LAYERS.filter(k => wxml.indexOf('class="' + k + '"') === -1);
+    if (missing.length === 0) ok('页面 ' + p + ' 背景六层齐全');
+    else err('页面 ' + p + ' 背景层缺失：' + missing.join('/'));
+  });
+
+  // 18.3 底图引用必须走 images/bg-global.jpg（禁止回退纯色）
+  PAGES.forEach(p => {
+    const wxml = read('pages/' + p + '/' + p + '.wxml');
+    if (wxml.indexOf('src="/images/bg-global.jpg"') > -1) ok('页面 ' + p + ' 已挂载全局底图');
+    else err('页面 ' + p + ' 未挂载 /images/bg-global.jpg');
+  });
+
+  // 18.4 禁止纯白页面底：page 背景不得为 #FFFFFF / #FFF
+  const appWxss = read('app.wxss');
+  if (/page\s*\{[^}]*background:\s*#(FFF|FFFFFF)/i.test(appWxss)) err('app.wxss 的 page 背景是纯白（违反底线）');
+  else ok('app.wxss 的 page 背景非纯白');
+
+  // 18.5 棋盘底盘 = 金色渐变 + 厚重外阴影（multiplier 检查关键 token）
+  const gameWxss = read('pages/game/game.wxss');
+  const panelM = gameWxss.match(/\.board-panel\s*\{([^}]*)\}/);
+  if (!panelM) err('未找到 .board-panel 规则');
+  else {
+    const body = panelM[1];
+    if (/linear-gradient\(\s*15[0-9]deg/.test(body)) ok('棋盘底盘为金色斜向渐变');
+    else err('棋盘底盘缺少金色渐变');
+    const shadows = (body.match(/rgba\(0,\s*0,\s*0/g) || []).length;
+    if (shadows >= 2) ok('棋盘底盘有多层厚重外阴影（' + shadows + ' 层暗影）');
+    else err('棋盘底盘外阴影层数不足（' + shadows + '）');
+    if (/inset/.test(body)) ok('棋盘底盘含内阴影（浮雕高光）');
+    else err('棋盘底盘缺少内阴影');
+  }
+
+  // 18.6 底盘与格子之间有明确分隔：内圈凹槽必须有内阴影
+  const outlineM = gameWxss.match(/\.board-outline\s*\{([^}]*)\}/);
+  if (outlineM && /inset/.test(outlineM[1])) ok('底盘内圈为下沉凹槽（inset 阴影，形成分隔）');
+  else err('底盘内圈缺少下沉内阴影');
+
+  // 18.7 体验版必须镜像底图与金色底盘
+  const tpl = read('preview/template.html');
+  ['sc-bg', 'sc-night', 'bgGlobal'].forEach(k => {
+    if (tpl.indexOf(k) > -1) ok('体验版已镜像 ' + k);
+    else err('preview/template.html 未镜像 ' + k);
+  });
+  if (/#screen-game \.board-panel[\s\S]{0,320}linear-gradient\(158deg/.test(tpl))
+    ok('体验版棋盘底盘已同步金色渐变');
+  else err('体验版棋盘底盘未同步金色渐变');
+
+  // 18.8 镜像构建脚本必须内联全局底图
+  const buildSrc = read('scripts/build-h5.js');
+  if (buildSrc.indexOf('bg-global-h5.jpg') > -1 && buildSrc.indexOf('bgGlobal') > -1)
+    ok('build-h5.js 已内联全局底图（bg-global-h5.jpg）');
+  else err('build-h5.js 未内联全局底图');
+})();
+
 // ---------- 汇总 ----------
 console.log('\n========== 汇总 ==========');
 console.log('通过: ' + passed + ' | 错误: ' + errors.length + ' | 警告: ' + warnings.length);

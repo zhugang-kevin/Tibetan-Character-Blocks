@@ -1,6 +1,6 @@
 <view class="page">
 
-  <!-- 藏文化背景层（三层：纹样 / 经幡 / 雪山布达拉宫）+ 夜间色调罩 -->
+  <!-- 藏文化背景层（六层：全局底图 / 纹样 / 藏纸颗粒 / 雪山布达拉宫 / 经幡 / 夜色罩） -->
   <view class="scenery" aria-hidden="true">
     <image class="sc-bg" src="/images/bg-global.jpg" mode="aspectFill" />
     <view class="sc-pattern"></view>

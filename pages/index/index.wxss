@@ -493,14 +493,14 @@ page,
 /* 左右悬浮入口 */
 .side-rail {
   position: fixed;
-  top: 34%;
+  top: 56%;
   z-index: 6;
   display: flex;
   flex-direction: column;
   gap: 16rpx;
 }
 .side-rail.left { left: 10rpx; }
-.side-rail.right { right: 10rpx; top: 42%; }
+.side-rail.right { right: 10rpx; top: 60%; }
 .side-btn {
   position: relative;
   width: 96rpx;

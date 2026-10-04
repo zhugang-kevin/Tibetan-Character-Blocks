@@ -1,9 +1,10 @@
 <view class="page">
 
-  <!-- 藏文化背景层（与首页/游戏页/结算页统一） -->
+  <!-- 藏文化背景层（六层：全局底图 / 纹样 / 藏纸颗粒 / 雪山布达拉宫 / 经幡 / 夜色罩） -->
   <view class="scenery" aria-hidden="true">
     <image class="sc-bg" src="/images/bg-global.jpg" mode="aspectFill" />
     <view class="sc-pattern"></view>
+    <view class="grain"></view>
     <image class="sc-ground" src="/images/bg-ground.png" mode="widthFix" />
     <image class="sc-sky" src="/images/bg-sky.png" mode="widthFix" />
     <view class="sc-night"></view>
