@@ -17,6 +17,13 @@ App({
     var TIBETAN_FONT_URL = 'https://your-server.com/fonts/NotoSerifTibetan-Regular.ttf'; // TODO: 替换
     var that = this;
     if (!wx.loadFontFace) return;
+    // 尚未配置真实字体地址时直接跳过，避免本地体验时控制台报错。
+    // 此时藏文回退到系统字体：Windows / Android 自带藏文字体可正常显示；
+    // 部分 iOS 机型可能显示为方块，配置 HTTPS 字体地址后即解决。
+    if (TIBETAN_FONT_URL.indexOf('your-server.com') > -1) {
+      console.info('[字体] 未配置 TIBETAN_FONT_URL，藏文使用系统字体渲染');
+      return;
+    }
     wx.loadFontFace({
       global: true,
       family: 'Noto Serif Tibetan',

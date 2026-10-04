@@ -32,6 +32,7 @@ Page({
     score: 0,            // 本局积分（金色×2，连击加成）
     combo: 0,            // 当前连击数
     comboFx: '',         // 连击浮层文案（×2 起显示）
+    tileH: 0,            // 格子高度（rpx，显式指定以兼容不支持 aspect-ratio 的旧机型）
     guideStep: 0,        // 新手引导步骤 0=关闭 1-3
     guide: GUIDE[0]
   },
@@ -61,7 +62,9 @@ Page({
       tiles: tiles,
       totalPairs: tiles.length / 2,
       // 盘面宽约 686rpx，字号约为格子宽的 60%
-      glyphSize: Math.round(686 / cfg.cols * 0.6)
+      glyphSize: Math.round(686 / cfg.cols * 0.6),
+      // 格子高度显式计算（宽 : 高 = 5 : 6），兼容 iOS 旧 WebView 不支持 aspect-ratio 的情况
+      tileH: Math.round((686 - (cfg.cols - 1) * 10) / cfg.cols * 6 / 5)
     });
     tracker.track('first_letter_seen');
     if (!storage.isOnboardDone()) {

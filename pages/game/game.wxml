@@ -16,7 +16,7 @@
       wx:for="{{tiles}}"
       wx:key="uid"
       class="tile {{item.state}} {{item.golden ? 'golden' : ''}}"
-      style="color: {{item.color}}; border-color: {{item.state === 'selected' ? item.color : '#E4DCC8'}}; font-size: {{glyphSize}}rpx;"
+      style="color: {{item.color}}; border-color: {{item.state === 'selected' ? item.color : '#E4DCC8'}}; height: {{tileH}}rpx; font-size: {{glyphSize}}rpx;"
       data-index="{{index}}"
       bindtap="onTapTile"
     >
