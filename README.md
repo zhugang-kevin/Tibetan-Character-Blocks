@@ -76,7 +76,8 @@ node scripts/build-h5.js        # 重新生成（改了 data/ 或 images/ 之后
 | [`docs/run-local.md`](docs/run-local.md) | 本地体验指南（两种方式 + 常见问题） |
 | [`docs/certificate-system.md`](docs/certificate-system.md) | 藏文成长阶梯 · 证书体系（阶梯 / 等级门槛 / 编号 / 与护照关系） |
 | [`docs/tibetan-typography.md`](docs/tibetan-typography.md) | 藏文排版规范（tsheg / shad 断行规则） |
-| [`docs/release-and-monetization.md`](docs/release-and-monetization.md) | 上线与支付开通指南 |
+| [`docs/business-model-v2.md`](docs/business-model-v2.md) | **商业化方案 v2**（无广告 · 商家核销 · 公益；含政策核验与合规资金流） |
+| [`docs/release-and-monetization.md`](docs/release-and-monetization.md) | 上线开通指南（主体 / 认证 / 备案 / 商户号材料与流程） |
 | [`docs/plan-4.1-review.md`](docs/plan-4.1-review.md) | 4.1 方案专家评审与执行路线 |
 
 ## 发布前待办
