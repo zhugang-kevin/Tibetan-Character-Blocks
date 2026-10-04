@@ -1,0 +1,299 @@
+/* pages/passport/passport.wxss — 我的西藏文化护照 */
+.page {
+  min-height: 100vh;
+  padding: 40rpx 32rpx 80rpx;
+  box-sizing: border-box;
+  position: relative;
+  background: linear-gradient(180deg, #FDF6E3 0%, #FAF0DA 52%, #F2E4C6 100%);
+  color: #2C3E50;
+}
+
+/* ============ 藏文化背景层（与首页/游戏页/结算页统一） ============ */
+.scenery {
+  position: fixed;
+  left: 0; right: 0; top: 0; bottom: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.sc-pattern {
+  position: absolute;
+  left: 0; top: 0; right: 0; bottom: 0;
+  background-image: url('data:image/png;base64,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');
+  background-repeat: repeat;
+  background-size: 60rpx 60rpx;
+  opacity: 0.10;
+}
+.sc-ground {
+  position: absolute;
+  left: 0; bottom: 0; width: 100%;
+  opacity: 0.88;
+}
+.sc-sky {
+  position: absolute;
+  left: 0; top: 0; width: 100%;
+  opacity: 0.95;
+}
+
+.content {
+  position: relative;
+  z-index: 1;
+}
+
+/* ============ 护照封面 ============ */
+.passport-cover {
+  text-align: center;
+  padding: 40rpx 30rpx 44rpx;
+  border-radius: 28rpx;
+  border: 4rpx solid #1E8449;
+  background: linear-gradient(180deg, #FFFFFF 0%, #F3F8F2 100%);
+  box-shadow: 0 12rpx 34rpx rgba(96, 78, 44, 0.18);
+  margin-bottom: 30rpx;
+}
+
+.cover-logo {
+  width: 132rpx;
+  height: 132rpx;
+  border-radius: 30rpx;
+}
+
+.cover-title {
+  margin-top: 20rpx;
+  font-size: 42rpx;
+  font-weight: 700;
+  letter-spacing: 4rpx;
+  color: #1E8449;
+}
+
+.cover-holder {
+  margin-top: 10rpx;
+  font-size: 26rpx;
+  color: #6B6455;
+}
+
+.cover-slogan {
+  margin-top: 18rpx;
+  font-size: 24rpx;
+  color: #B7950B;
+  letter-spacing: 2rpx;
+}
+
+/* ============ 分区 ============ */
+.section {
+  background: rgba(255, 255, 255, 0.9);
+  border: 2rpx solid rgba(214, 202, 176, 0.95);
+  border-radius: 22rpx;
+  padding: 28rpx 26rpx;
+  margin-bottom: 26rpx;
+  box-shadow: 0 8rpx 22rpx rgba(96, 78, 44, 0.1);
+}
+
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.section-title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #2C3E50;
+}
+
+.section-count {
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #C0392B;
+}
+
+.section-sub {
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  color: #8A8375;
+  line-height: 1.7;
+}
+
+/* ============ 证书 12 格 ============ */
+.cert-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  margin-top: 22rpx;
+}
+
+.cert-slot {
+  width: 31.5%;
+  margin-bottom: 18rpx;
+  border-radius: 16rpx;
+  padding: 18rpx 8rpx 14rpx;
+  text-align: center;
+  box-sizing: border-box;
+  border: 2rpx solid #E4DCC8;
+  background: #FDF6E3;
+}
+
+.cert-slot.got {
+  border-color: #B7950B;
+  background: linear-gradient(180deg, #FFFDF3 0%, #FBF1D8 100%);
+  box-shadow: 0 6rpx 16rpx rgba(183, 149, 11, 0.22);
+}
+
+.cert-slot.locked {
+  opacity: 0.72;
+  background: #F3EFE3;
+  border-color: #DDD5C2;
+}
+
+.slot-top {
+  font-size: 20rpx;
+  color: #8A8375;
+}
+
+.slot-name {
+  margin-top: 6rpx;
+  font-size: 24rpx;
+  font-weight: 700;
+  color: #2C3E50;
+  line-height: 1.35;
+  min-height: 64rpx;
+}
+
+.cert-slot.locked .slot-name {
+  color: #A79F8D;
+}
+
+.slot-tier {
+  display: inline-block;
+  margin-top: 8rpx;
+  padding: 4rpx 14rpx;
+  border-radius: 20rpx;
+  color: #FFFFFF;
+  font-size: 20rpx;
+  font-weight: 700;
+}
+
+.slot-no {
+  margin-top: 8rpx;
+  font-size: 16rpx;
+  color: #8A8375;
+  transform: scale(0.92);
+}
+
+.slot-lock {
+  margin-top: 6rpx;
+  font-size: 26rpx;
+}
+
+.slot-progress {
+  margin-top: 4rpx;
+  font-size: 20rpx;
+  color: #A79F8D;
+}
+
+.next-hint {
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  color: #1E8449;
+  display: flex;
+  justify-content: space-between;
+}
+
+.next-need {
+  font-weight: 700;
+  color: #C0392B;
+}
+
+/* ============ 进度条 ============ */
+.bar {
+  margin-top: 20rpx;
+  height: 16rpx;
+  border-radius: 8rpx;
+  background: #EFE7D4;
+  overflow: hidden;
+}
+
+.bar-in {
+  height: 100%;
+  border-radius: 8rpx;
+  background: linear-gradient(90deg, #C0392B 0%, #B7950B 100%);
+}
+
+/* ============ 印章 ============ */
+.stamp-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20rpx;
+  margin-top: 20rpx;
+}
+
+.stamp-item {
+  text-align: center;
+}
+
+.stamp-seal {
+  width: 108rpx;
+  height: 108rpx;
+  line-height: 108rpx;
+  text-align: center;
+  border: 4rpx solid #C0392B;
+  border-radius: 18rpx;
+  color: #C0392B;
+  font-size: 34rpx;
+  font-weight: 700;
+  background: #FDF6E3;
+  transform: rotate(-5deg);
+}
+
+.stamp-desc {
+  margin-top: 10rpx;
+  font-size: 20rpx;
+  color: #8A8375;
+}
+
+.stamp-empty {
+  flex: 1;
+  font-size: 22rpx;
+  color: #A79F8D;
+  line-height: 1.6;
+}
+
+/* ============ 图谱 ============ */
+.graph-row {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 22rpx;
+}
+
+.graph-item {
+  flex: 1;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+}
+
+.graph-v {
+  font-size: 40rpx;
+  font-weight: 700;
+  color: #C0392B;
+}
+
+.graph-k {
+  margin-top: 6rpx;
+  font-size: 20rpx;
+  color: #8A8375;
+}
+
+/* ============ 底部 ============ */
+.home-btn {
+  margin-top: 10rpx;
+  height: 92rpx;
+  line-height: 92rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+  border-radius: 46rpx;
+  background: #FFFFFF;
+  color: #C0392B;
+  border: 2rpx solid #C0392B;
+  box-sizing: border-box;
+}

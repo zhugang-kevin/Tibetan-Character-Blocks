@@ -84,6 +84,10 @@ Page({
   toastTimer: null,
   barTimer: null,
   voiceTimer: null,
+  // 正确率统计（证书质量门槛用）：attempts = 配对尝试次数，misses = 失败次数
+  attempts: 0,
+  matches: 0,
+  misses: 0,
 
   onLoad: function (query) {
     var level = parseInt(query.level, 10) || 1;
@@ -95,6 +99,11 @@ Page({
     var goldenId = cfg.elements[Math.floor(Math.random() * cfg.elements.length)][0];
     var tiles = this.buildBoard(cfg, goldenId);
     wx.setNavigationBarTitle({ title: '第 ' + level + ' 关' });
+
+    // 正确率统计清零（本关重新计数）
+    this.attempts = 0;
+    this.matches = 0;
+    this.misses = 0;
 
     // 统一牌面尺寸：tile 由 8 列基准算出，各关只变列数与行数
     // 间距取固定值（不随列数变化），保证每一关的牌大小完全一致
@@ -193,9 +202,14 @@ Page({
     var a = this.data.tiles[first];
     var b = this.data.tiles[second];
 
+    // 一次配对尝试（成功或失败都算）——正确率 = matches / attempts
+    this.attempts++;
+
     if (a.id === b.id) {
+      this.matches++;
       this.handleMatch(first, second);
     } else {
+      this.misses++;
       this.handleMismatch(first, second);
     }
   },
@@ -274,7 +288,10 @@ Page({
             '&pairs=' + that.data.totalPairs +
             '&cards=' + that.collectedIds().join(',') +
             '&score=' + that.data.score +
-            '&combo=' + that.comboVal
+            '&combo=' + that.comboVal +
+            // 正确率（证书质量门槛）：attempts = 尝试次数，misses = 失败次数
+            '&att=' + that.attempts +
+            '&miss=' + that.misses
         });
       }, 900);
     }

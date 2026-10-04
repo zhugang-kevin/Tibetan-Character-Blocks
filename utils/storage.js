@@ -2,8 +2,8 @@
 //
 // 4.1 方案对应：
 // - Gate 1 测试期仅本地存储；云同步（L1）在 Gate 3 合规路线明确后接入
-// - stamps（文化护照印记）/ bestCombo 等为展示型数据，客户端主导；
-//   未来涉及权益/付费的数据一律迁移到服务器权威（见 plan-4.1-review.md）
+// - stamps（文化护照印记）/ bestCombo / levelStats / certs 等为展示与成就型数据，
+//   客户端主导；未来涉及权益/付费的数据一律迁移到服务器权威（见 plan-4.1-review.md）
 var KEY = 'progress';
 var MAX_LEVEL = 10;
 
@@ -15,7 +15,12 @@ function getProgress() {
     stamps: (p && p.stamps) || [],
     bestCombo: (p && p.bestCombo) || 0,
     seenCards: (p && p.seenCards) || [],
-    onboardDone: !!(p && p.onboardDone)
+    onboardDone: !!(p && p.onboardDone),
+    // 证书体系（藏文成长阶梯）：最佳正确率 / 证书 / 编号流水 / 持有人
+    levelStats: (p && p.levelStats) || {},
+    certs: (p && p.certs) || [],
+    certSeq: (p && p.certSeq) || 0,
+    holderName: (p && p.holderName) || ''
   };
 }
 
@@ -77,7 +82,83 @@ function setOnboardDone() {
   save(p);
 }
 
+// ---------- 证书体系：单关最佳正确率（只增不减，鼓励重玩提升） ----------
+// r: { matches, attempts, misses }
+function recordLevelResult(level, r) {
+  var p = getProgress();
+  var attempts = r && r.attempts ? r.attempts : 0;
+  var matches = r && r.matches ? r.matches : 0;
+  var misses = r && r.misses ? r.misses : 0;
+  // 一关之内全部一次配对成功 = 100%；没有失败配对 = 无失误通关
+  var acc = attempts > 0 ? matches / attempts : 1;
+  if (acc > 1) acc = 1;
+  if (acc < 0) acc = 0;
+
+  var s = p.levelStats[level] || { bestAcc: 0, clean: false, plays: 0, lastAcc: 0 };
+  s.plays = (s.plays || 0) + 1;
+  s.lastAcc = acc;
+  if (acc > s.bestAcc) s.bestAcc = acc;
+  if (misses === 0) s.clean = true;   // 至少达成过一次零失误
+  p.levelStats[level] = s;
+  save(p);
+  return s;
+}
+
+function getLevelStats() {
+  return getProgress().levelStats;
+}
+
+// ---------- 证书体系：颁发 / 查询 ----------
+// 写入一张证书（或覆盖升级）。返回落库后的证书对象。
+function saveCert(cert) {
+  var p = getProgress();
+  var found = false;
+  for (var i = 0; i < p.certs.length; i++) {
+    if (p.certs[i].stage === cert.stage) { p.certs[i] = cert; found = true; break; }
+  }
+  if (!found) p.certs.push(cert);
+  save(p);
+  return cert;
+}
+
+function getCerts() {
+  return getProgress().certs;
+}
+
+function findCert(stage) {
+  var list = getProgress().certs;
+  for (var i = 0; i < list.length; i++) {
+    if (list[i].stage === stage) return list[i];
+  }
+  return null;
+}
+
+// 取下一个证书编号流水号（ZWFK-YYYY-0001 的最后一段）
+function nextCertSeq() {
+  var p = getProgress();
+  p.certSeq = (p.certSeq || 0) + 1;
+  save(p);
+  return p.certSeq;
+}
+
+function getCertSeq() {
+  return getProgress().certSeq || 0;
+}
+
+// 证书持有人（与祝福卡昵称共用，避免让用户填两次）
+function setHolderName(name) {
+  var p = getProgress();
+  p.holderName = (name || '').slice(0, 10);
+  save(p);
+  return p.holderName;
+}
+
+function getHolderName() {
+  return getProgress().holderName || '';
+}
+
 module.exports = {
+  MAX_LEVEL: MAX_LEVEL,
   getProgress: getProgress,
   completeLevel: completeLevel,
   recordCombo: recordCombo,
@@ -85,5 +166,14 @@ module.exports = {
   isCardSeen: isCardSeen,
   markCardSeen: markCardSeen,
   isOnboardDone: isOnboardDone,
-  setOnboardDone: setOnboardDone
+  setOnboardDone: setOnboardDone,
+  recordLevelResult: recordLevelResult,
+  getLevelStats: getLevelStats,
+  saveCert: saveCert,
+  getCerts: getCerts,
+  findCert: findCert,
+  nextCertSeq: nextCertSeq,
+  getCertSeq: getCertSeq,
+  setHolderName: setHolderName,
+  getHolderName: getHolderName
 };

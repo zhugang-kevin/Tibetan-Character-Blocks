@@ -21,6 +21,29 @@
     <view wx:if="{{bestCombo > 1}}" class="profile-combo">最高连击 ×{{bestCombo}}</view>
   </view>
 
+  <!-- 文化护照入口（总档案：12 张藏文成长证书 + 印章 + 收藏） -->
+  <view class="passport-card" bindtap="openPassport">
+    <view class="pc-left">
+      <view class="pc-title">我的西藏文化护照</view>
+      <view wx:if="{{stage}}" class="pc-sub">
+        第 {{stage.stage}} 阶段 · {{stage.name}} · 进度 {{stage.progress}}/{{stage.total}} 关
+      </view>
+      <view wx:elif="{{lastCert}}" class="pc-sub">
+        最近获得：第 {{lastCert.stage}} 阶段 · {{lastCert.tierLabel}}
+      </view>
+      <view wx:else class="pc-sub">通关第 10 关，获得第一张藏文成长证书</view>
+    </view>
+    <view class="pc-right">
+      <view class="pc-count">{{certCount}}<text class="pc-total">/{{certTotal}}</text></view>
+      <view class="pc-label">成长证书</view>
+    </view>
+  </view>
+
+  <view class="stage-head">
+    <text class="stage-name">第一阶段 · 简单基字</text>
+    <text class="stage-range">第 1-10 关 · 通关可得证书</text>
+  </view>
+
   <view class="level-grid">
     <view
       wx:for="{{levels}}"

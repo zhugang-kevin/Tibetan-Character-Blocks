@@ -13,6 +13,25 @@
     <view class="result-check">✓</view>
     <view class="result-title">第 {{level}} 关完成！</view>
     <view class="result-sub">共消除 {{pairs}} 对 · 积分 {{score}} · 连击 ×{{combo}}</view>
+    <view class="result-acc {{clean ? 'ok' : ''}}">
+      本关正确率 {{accuracy}}% {{clean ? '· 全程无失误 ✦' : ''}}
+    </view>
+  </view>
+
+  <!-- 成长阶梯 · 证书（通关某阶段最后一关时颁发 / 升级） -->
+  <view wx:if="{{cert}}" class="cert-banner" style="border-color: {{cert.tierColor}};">
+    <view class="cert-seal" style="background: {{cert.tierColor}};">{{cert.tierSeal}}</view>
+    <view class="cert-info">
+      <view class="cert-line">{{certTitle}} · {{cert.tierLabel}}</view>
+      <view class="cert-line2">第 {{cert.stage}} 阶段 · {{cert.stageName}} · 正确率 {{cert.acc}}%</view>
+    </view>
+    <view class="cert-go" bindtap="openCert">查看 ›</view>
+  </view>
+
+  <!-- 尚未拿到证书时，显示阶段进度与「还差什么」的牵引 -->
+  <view wx:if="{{!cert && stageNo}}" class="cert-hint">
+    <text>第 {{stageNo}} 阶段 · {{stageName}}</text>
+    <text wx:if="{{skillHint}}" class="cert-hint-skill">{{skillHint}}</text>
   </view>
 
   <!-- 文化护照印记 v0 -->
@@ -55,6 +74,7 @@
   </block>
 
   <button wx:if="{{!isFinal}}" class="next-btn" bindtap="goNext">下一关 →</button>
+  <button class="passport-btn" bindtap="openPassport">文化护照 · 已获 {{ownedCerts}} 张证书</button>
   <button class="home-btn" bindtap="goHome">返回首页</button>
 
   <!-- 昵称输入弹窗 -->

@@ -23,7 +23,8 @@ function exists(p) { return fs.existsSync(path.join(ROOT, p)); }
 // ---------- 1. JSON 语法 ----------
 section('1. JSON 配置文件语法');
 const jsonFiles = ['app.json', 'sitemap.json', 'project.config.json',
-  'pages/index/index.json', 'pages/game/game.json', 'pages/result/result.json'];
+  'pages/index/index.json', 'pages/game/game.json', 'pages/result/result.json',
+  'pages/cert/cert.json', 'pages/passport/passport.json'];
 jsonFiles.forEach(f => {
   if (!exists(f)) { err(f + ' 不存在'); return; }
   try { JSON.parse(read(f)); ok(f + ' 语法正确'); }
@@ -41,8 +42,8 @@ try {
       else err(f + ' 缺失（app.json 已注册）');
     });
   });
-  if (appJson.pages.length === 3) ok('页面数量 = 3（符合 MVP 规格）');
-  else err('页面数量应为 3，实际 ' + appJson.pages.length);
+  if (appJson.pages.length === 5) ok('页面数量 = 5（关卡 / 结算 / 证书 / 护照）');
+  else err('页面数量应为 5，实际 ' + appJson.pages.length);
 } catch (e) { err('app.json 无法解析，跳过'); }
 
 // ---------- 3. 关卡数据 ----------
@@ -111,9 +112,11 @@ if (!bannedFound) ok('未使用任何禁用 API（登录/支付/订阅/云初始
 
 // ---------- 7. WXML 事件绑定 ----------
 section('7. WXML 事件绑定与 JS 方法对应');
-[['pages/index/index', ['onTapLevel']],
+[['pages/index/index', ['onTapLevel', 'openPassport']],
  ['pages/game/game', ['onTapTile', 'dismissCard', 'guideNext']],
- ['pages/result/result', ['goHome', 'openNameModal', 'closeNameModal', 'onNameInput', 'confirmGenerate', 'saveToAlbum', 'previewShare']]
+ ['pages/result/result', ['goHome', 'openNameModal', 'closeNameModal', 'onNameInput', 'confirmGenerate', 'saveToAlbum', 'previewShare', 'openCert', 'openPassport']],
+ ['pages/cert/cert', ['openNameModal', 'closeNameModal', 'onNameInput', 'confirmName', 'generate', 'saveToAlbum', 'previewShare', 'goPassport', 'goHome']],
+ ['pages/passport/passport', ['openCert', 'goHome']]
 ].forEach(([page, handlers]) => {
   const wxml = read(page + '.wxml');
   const js = read(page + '.js');
@@ -251,7 +254,8 @@ else warn('文化卡未实现自动收起');
 // 12.2 藏文化背景层（首页/游戏/结算三页一致）
 // 纹样层为 WXSS 平铺背景（base64）；经幡天空层与雪山地面层为 <image>
 var sceneryImgs = ['bg-ground.png', 'bg-sky.png'];
-[['pages/index/index', '首页'], ['pages/game/game', '游戏页'], ['pages/result/result', '结算页']].forEach(function (p) {
+[['pages/index/index', '首页'], ['pages/game/game', '游戏页'], ['pages/result/result', '结算页'],
+ ['pages/cert/cert', '证书页'], ['pages/passport/passport', '护照页']].forEach(function (p) {
   var wxml = read(p[0] + '.wxml');
   var wxss = read(p[0] + '.wxss');
   var missImg = sceneryImgs.filter(function (s) { return wxml.indexOf(s) === -1; });
@@ -351,6 +355,121 @@ else err('缺少 scripts/test-tibetan.js，排版规则无法复现验证');
 if (tpl.indexOf('pronounce') > -1 && tpl.indexOf('pronounceCount') > -1)
   ok('体验版镜像了配对朗读逻辑（含可测计数）');
 else err('体验版未镜像配对朗读逻辑');
+
+// ---------- 14. 成长阶梯与证书体系 ----------
+section('14. 成长阶梯与证书体系（12 阶段 · 每 10 关一张证书）');
+
+// 14.1 阶梯数据完整性
+var stagesSrc = read('data/stages.js');
+var stagesArr = eval('(' + stagesSrc.replace(/^module\.exports\s*=\s*/, '').replace(/;\s*$/, '') + ')');
+if (stagesArr.length === 12) ok('成长阶梯 12 个阶段');
+else err('成长阶梯应为 12 个阶段，实际 ' + stagesArr.length);
+var stageBad = 0;
+stagesArr.forEach(function (s, i) {
+  if (s.to - s.from + 1 !== 10) { err('第 ' + s.stage + ' 阶段跨度不是 10 关'); stageBad++; }
+  if (i > 0 && s.from !== stagesArr[i - 1].to + 1) { err('第 ' + s.stage + ' 阶段与上一阶段区间不连续'); stageBad++; }
+  if (!s.name || !s.goal) { err('第 ' + s.stage + ' 阶段缺少 name / goal'); stageBad++; }
+});
+if (!stageBad) ok('每阶段 10 关、区间连续不重叠、名称与目标完整');
+if (stagesArr[0].from === 1 && stagesArr[11].to === 120) ok('阶梯覆盖第 1-120 关');
+else err('阶梯应覆盖第 1-120 关（实际 ' + stagesArr[0].from + '-' + stagesArr[11].to + '）');
+var openStages = stagesArr.filter(function (s) { return s.open; });
+if (openStages.length === 1 && openStages[0].stage === 1)
+  ok('MVP 仅开放第一阶段（其余为「敬请期待」占位）');
+else warn('已开放阶段数量 = ' + openStages.length + '（MVP 预期为 1）');
+if (stagesArr[0].certLines && stagesArr[0].certLines.length)
+  ok('第一阶段证书成就行已定义（占位符按真实数据替换）');
+else err('第一阶段缺少 certLines 证书文案');
+openStages.forEach(function (s) {
+  var covered = levels.filter(function (l) { return l.level >= s.from && l.level <= s.to; }).length;
+  if (covered === s.to - s.from + 1) ok('「' + s.name + '」在 data/levels.js 中有对应 ' + covered + ' 关数据');
+  else err('「' + s.name + '」缺少关卡数据（应 10 关，实际 ' + covered + '）');
+});
+
+// 14.2 证书模块
+if (exists('utils/certificate.js')) ok('证书模块 utils/certificate.js 存在');
+else err('缺少 utils/certificate.js');
+var certSrc = exists('utils/certificate.js') ? read('utils/certificate.js') : '';
+['onLevelComplete', 'tierOf', 'certNo', 'list', 'stageContent', 'aggregate'].forEach(function (f) {
+  if (certSrc.indexOf(f) > -1) ok('certificate.js 提供 ' + f + '()');
+  else err('certificate.js 缺少 ' + f + '()');
+});
+if (certSrc.indexOf("'ZWFK'") > -1) ok('证书编号前缀 ZWFK（藏字方块拼音首字母）');
+else err('证书编号前缀缺失');
+if (certSrc.indexOf('minAccuracy: 0.95') > -1 && certSrc.indexOf('minAccuracy: 0.80') > -1)
+  ok('等级门槛：金 ≥95% / 银 ≥80% / 普通（完成 10 关）');
+else err('等级门槛不符合设计（应为金 95% / 银 80%）');
+if (certSrc.indexOf('requireClean') > -1) ok('金质证书额外要求「全程无失误」');
+else warn('金质证书缺少零失误条件');
+if (certSrc.indexOf('stageContent') > -1 && certSrc.indexOf('elementsData') > -1)
+  ok('证书成就行按真实关卡数据统计（内容扩充后自动跟随）');
+else warn('证书成就行为硬编码，内容扩充后不会自动更新');
+
+// 14.3 存储层
+var stSrc = read('utils/storage.js');
+['levelStats', 'certs', 'certSeq', 'holderName', 'recordLevelResult', 'saveCert', 'findCert', 'nextCertSeq']
+  .forEach(function (k) {
+    if (stSrc.indexOf(k) > -1) ok('存储层支持 ' + k);
+    else err('存储层缺少 ' + k);
+  });
+
+// 14.4 正确率采集与颁发接入
+if (/this\.attempts\+\+/.test(gameJs) && /this\.misses\+\+/.test(gameJs))
+  ok('game.js 采集配对尝试/失败次数（正确率来源）');
+else err('game.js 未采集正确率数据');
+if (gameJs.indexOf("'&att=' + that.attempts") > -1 && gameJs.indexOf("'&miss=' + that.misses") > -1)
+  ok('结算参数携带 att / miss（正确率随关卡传递）');
+else err('结算未传递正确率参数');
+if (resultJs2.indexOf('onLevelComplete') > -1) ok('结算页调用证书颁发 onLevelComplete');
+else err('结算页未接入证书颁发');
+if (resultJs2.indexOf('openCert') > -1 && resultJs2.indexOf('pages/cert/cert') > -1)
+  ok('结算页提供「查看证书」入口');
+else err('结算页缺少证书入口');
+if (read('pages/result/result.wxml').indexOf('cert-banner') > -1)
+  ok('结算页展示证书横幅（新得 / 升级）');
+else warn('结算页未展示证书横幅');
+
+// 14.5 证书页
+var certWxml = read('pages/cert/cert.wxml');
+var certPageJs = read('pages/cert/cert.js');
+['cert.no', 'cert.holder', 'cert.date', 'cert.lines', 'cert.tierLabel'].forEach(function (k) {
+  if (certWxml.indexOf(k) > -1) ok('证书页展示 ' + k);
+  else err('证书页缺少 ' + k);
+});
+if (certWxml.indexOf('藏文成长证书') > -1) ok('证书页标题 = 藏文成长证书');
+else err('证书页标题缺失');
+if (certPageJs.indexOf('canvasToTempFilePath') > -1) ok('证书页可导出图片（保存 / 分享）');
+else err('证书页未导出图片，无法保存分享');
+if (certPageJs.indexOf('saveImageToPhotosAlbum') > -1) ok('证书页支持保存到相册');
+else warn('证书页不支持保存到相册');
+if (certWxml.indexOf('locked-box') > -1 && certWxml.indexOf('tier-box') > -1)
+  ok('未获得时展示锁定说明 + 三级门槛规则');
+else warn('证书页缺少未获得状态说明');
+
+// 14.6 文化护照
+var ppWxml = read('pages/passport/passport.wxml');
+['cert-grid', '文化收藏册', '地区印章', '现实足迹', '个人文化图谱'].forEach(function (k) {
+  if (ppWxml.indexOf(k) > -1) ok('文化护照含「' + k + '」');
+  else err('文化护照缺少「' + k + '」');
+});
+if (ppWxml.indexOf('wx:for="{{certs}}"') > -1) ok('护照按 12 个证书位渲染（已得高亮 / 未得灰色）');
+else err('护照未渲染 12 个证书位');
+if (read('pages/index/index.wxml').indexOf('openPassport') > -1)
+  ok('首页提供文化护照入口（含证书数 / 阶段进度）');
+else warn('首页缺少护照入口');
+
+// 14.7 体验版镜像
+if (tpl.indexOf('STAGES') > -1 && tpl.indexOf('certList') > -1 && tpl.indexOf('onLevelComplete') > -1)
+  ok('体验版镜像了成长阶梯与证书体系');
+else err('体验版未镜像证书体系');
+if (tpl.indexOf('screen-passport') > -1 && tpl.indexOf('screen-cert') > -1)
+  ok('体验版含文化护照页与证书页');
+else err('体验版缺少护照页 / 证书页');
+if (tpl.indexOf('ZWFK') > -1) ok('体验版证书编号规则与源一致');
+else err('体验版证书编号规则缺失');
+if (tpl.indexOf('this.attempts') === -1 && tpl.indexOf('state.attempts++') > -1)
+  ok('体验版同样采集正确率（state.attempts）');
+else err('体验版未采集正确率');
 
 // ---------- 汇总 ----------
 console.log('\n========== 汇总 ==========');

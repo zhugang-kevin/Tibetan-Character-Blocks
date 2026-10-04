@@ -1,0 +1,118 @@
+<view class="page">
+
+  <!-- 藏文化背景层（与其余页面统一） -->
+  <view class="scenery" aria-hidden="true">
+    <view class="sc-pattern"></view>
+    <image class="sc-ground" src="/images/bg-ground.png" mode="widthFix" />
+    <image class="sc-sky" src="/images/bg-sky.png" mode="widthFix" />
+  </view>
+
+  <view class="content">
+
+    <!-- 护照封面 -->
+    <view class="passport-cover">
+      <image class="cover-logo" src="/images/logo-144.png" mode="aspectFit" />
+      <view class="cover-title">我的西藏文化护照</view>
+      <view class="cover-holder">{{holder ? '持有人 · ' + holder : '持有人 · 未填写'}}</view>
+      <view class="cover-slogan">每一个字母，都是一座西藏</view>
+    </view>
+
+    <!-- 1. 藏文成长证书（学习线） -->
+    <view class="section">
+      <view class="section-head">
+        <text class="section-title">藏文成长证书</text>
+        <text class="section-count">{{owned}} / {{certTotal}}</text>
+      </view>
+      <view class="section-sub">每 10 关一个阶段，通关即颁发一张证书。集齐 12 张，就是一套完整的藏文入门档案。</view>
+
+      <view class="cert-grid">
+        <view
+          wx:for="{{certs}}"
+          wx:key="stage"
+          class="cert-slot {{item.unlocked ? 'got' : 'locked'}}"
+          data-stage="{{item.stage}}"
+          bindtap="openCert"
+        >
+          <view class="slot-top">第 {{item.stage}} 阶段</view>
+          <view class="slot-name">{{item.name}}</view>
+          <block wx:if="{{item.unlocked}}">
+            <view class="slot-tier" style="background: {{item.tierColor}};">{{item.tierLabel}}</view>
+            <view class="slot-no">{{item.cert.no}}</view>
+          </block>
+          <block wx:else>
+            <view class="slot-lock">🔒</view>
+            <view class="slot-progress">{{item.progress}}/{{item.total}} 关</view>
+          </block>
+        </view>
+      </view>
+
+      <view wx:if="{{nextStage}}" class="next-hint">
+        下一张：第 {{nextStage.stage}} 阶段 · {{nextStage.name}}
+        <text class="next-need">还差 {{nextStage.total - nextStage.progress}} 关</text>
+      </view>
+    </view>
+
+    <!-- 2. 文化收藏册 -->
+    <view class="section">
+      <view class="section-head">
+        <text class="section-title">文化收藏册</text>
+        <text class="section-count">{{cardsSeen}} / {{cardsTotal}}</text>
+      </view>
+      <view class="section-sub">每第一次消除一种藏文字母或文化元素，就会收藏一张文化卡。</view>
+      <view class="bar"><view class="bar-in" style="width: {{cardsTotal ? (cardsSeen * 100 / cardsTotal) : 0}}%;"></view></view>
+    </view>
+
+    <!-- 3. 地区印章 -->
+    <view class="section">
+      <view class="section-head">
+        <text class="section-title">地区印章</text>
+        <text class="section-count">{{stampOwned}} / {{stampTotal}}</text>
+      </view>
+      <view class="stamp-row">
+        <view wx:for="{{stamps}}" wx:key="id" class="stamp-item">
+          <view class="stamp-seal">{{item.name}}</view>
+          <view class="stamp-desc">{{item.desc}}</view>
+        </view>
+        <view class="stamp-empty">更多印章陆续开放（规划七地市）</view>
+      </view>
+    </view>
+
+    <!-- 4. 现实足迹 -->
+    <view class="section">
+      <view class="section-head">
+        <text class="section-title">现实足迹</text>
+        <text class="section-count">敬请期待</text>
+      </view>
+      <view class="section-sub">记录你在现实中去过的藏文化地点。完成打卡后会在这里留下一枚足迹。</view>
+    </view>
+
+    <!-- 5. 个人文化图谱 -->
+    <view class="section">
+      <view class="section-head">
+        <text class="section-title">个人文化图谱</text>
+        <text class="section-count">成长中</text>
+      </view>
+      <view class="graph-row">
+        <view class="graph-item">
+          <text class="graph-v">{{levelsDone}}</text>
+          <text class="graph-k">通关关卡</text>
+        </view>
+        <view class="graph-item">
+          <text class="graph-v">{{owned}}</text>
+          <text class="graph-k">成长证书</text>
+        </view>
+        <view class="graph-item">
+          <text class="graph-v">{{cardsSeen}}</text>
+          <text class="graph-k">文化卡</text>
+        </view>
+        <view class="graph-item">
+          <text class="graph-v">×{{bestCombo}}</text>
+          <text class="graph-k">最高连击</text>
+        </view>
+      </view>
+    </view>
+
+    <button class="home-btn" bindtap="goHome">返回首页</button>
+
+  </view>
+</view>

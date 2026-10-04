@@ -4,6 +4,7 @@ var elements = require('../../data/elements');
 var storage = require('../../utils/storage');
 var tracker = require('../../utils/tracker');
 var tibText = require('../../utils/tibetan-text');
+var certificate = require('../../utils/certificate');
 
 Page({
   data: {
@@ -17,7 +18,19 @@ Page({
     showNameModal: false,
     nameInput: '',
     generating: false,
-    imagePath: ''        // 祝福卡临时图片路径
+    imagePath: '',       // 祝福卡临时图片路径
+    // ---- 成长阶梯 · 证书 ----
+    accuracy: 100,       // 本关正确率（%）
+    clean: true,         // 本关是否全程无失误
+    stageName: '',       // 当前所属阶段名
+    stageNo: 0,          // 当前阶段序号
+    stageTo: 0,          // 本阶段最后一关
+    cert: null,          // 本关新颁发 / 升级的证书
+    certNew: false,
+    certUpgraded: false,
+    certTitle: '',       // 证书横幅文案（新得 / 升级 / 本阶段证书）
+    ownedCerts: 0,       // 已获得证书总数
+    skillHint: ''        // 距更高等级证书还差什么
   },
 
   onLoad: function (query) {
@@ -25,8 +38,20 @@ Page({
     var pairs = parseInt(query.pairs, 10) || 0;
     var score = parseInt(query.score, 10) || 0;
     var combo = parseInt(query.combo, 10) || 0;
+    var att = parseInt(query.att, 10) || 0;      // 配对尝试次数
+    var miss = parseInt(query.miss, 10) || 0;    // 配对失败次数
     // 记录通关 + 解锁下一关
     storage.completeLevel(level);
+
+    // 成长阶梯 · 证书：先记录本关成绩，再判断该阶段是否通关并（升级）颁发证书
+    var certRes = certificate.onLevelComplete(level, {
+      matches: pairs,
+      attempts: att > 0 ? att : pairs,   // 兼容缺参：无失败配对视为满正确率
+      misses: miss
+    });
+    if (certRes.isNew || certRes.upgraded) {
+      tracker.track(certRes.isNew ? 'first_certificate' : 'certificate_upgraded');
+    }
 
     // 文化护照印记 v0：首次通过第 1 关授予「拉萨印章」（Day1 形成习惯）
     var newStamp = false;
@@ -60,12 +85,39 @@ Page({
       combo: combo,
       collected: collected,
       isFinal: level === 10,
-      newStamp: newStamp
+      newStamp: newStamp,
+      accuracy: certRes.accuracy,
+      clean: miss === 0,
+      stageNo: certRes.stage ? certRes.stage.stage : 0,
+      stageName: certRes.stage ? certRes.stage.name : '',
+      stageTo: certRes.stage ? certRes.stage.to : 0,
+      cert: certRes.cert,
+      certNew: certRes.isNew,
+      certUpgraded: certRes.upgraded,
+      certTitle: certRes.cert
+        ? (certRes.isNew ? '获得藏文成长证书' : (certRes.upgraded ? '证书升级' : '本阶段证书'))
+        : '',
+      ownedCerts: certificate.ownedCount(),
+      skillHint: certRes.skill ? certRes.skill.text : ''
     });
   },
 
   goHome: function () {
     wx.redirectTo({ url: '/pages/index/index' });
+  },
+
+  // 查看本阶段证书（证书页支持保存 / 分享）
+  openCert: function () {
+    var n = (this.data.cert && this.data.cert.stage) || this.data.stageNo;
+    if (!n) return;
+    tracker.track('cert_view');
+    wx.navigateTo({ url: '/pages/cert/cert?stage=' + n });
+  },
+
+  // 打开文化护照（总档案：12 张证书 + 印章 + 收藏）
+  openPassport: function () {
+    tracker.track('passport_view');
+    wx.navigateTo({ url: '/pages/passport/passport' });
   },
 
   // 阻止冒泡占位（弹窗内容区 catchtap 用）
@@ -79,8 +131,9 @@ Page({
   },
 
   // ===== 祝福卡 =====
+  // 昵称与证书持有人共用（storage.holderName），只让用户填一次
   openNameModal: function () {
-    this.setData({ showNameModal: true, nameInput: '' });
+    this.setData({ showNameModal: true, nameInput: storage.getHolderName() || '' });
   },
 
   closeNameModal: function () {
@@ -93,6 +146,7 @@ Page({
 
   confirmGenerate: function () {
     var name = (this.data.nameInput || '').trim().slice(0, 10) || '朋友';
+    storage.setHolderName(name);   // 同步为证书持有人
     this.setData({ showNameModal: false, generating: true });
     var that = this;
     // 等待弹窗关闭动画后再绘制

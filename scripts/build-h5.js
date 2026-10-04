@@ -34,7 +34,8 @@ function dataUrl(rel) {
 const DATA = {
   elements: require(path.join(ROOT, 'data', 'elements')),
   cards: require(path.join(ROOT, 'data', 'cards')),
-  levels: require(path.join(ROOT, 'data', 'levels'))
+  levels: require(path.join(ROOT, 'data', 'levels')),
+  stages: require(path.join(ROOT, 'data', 'stages'))
 };
 
 // ---------- 2. 注入品牌与背景资产 ----------
@@ -84,6 +85,28 @@ DATA.levels.forEach(function (cfg) {
 });
 if (bad) process.exit(1);
 
+// ---------- 5. 成长阶梯一致性抽查（每阶段 10 关、区间连续、不重叠） ----------
+const stages = DATA.stages;
+let stageBad = 0;
+if (stages.length !== 12) {
+  console.error('✗ 成长阶梯应为 12 个阶段，实际 ' + stages.length);
+  stageBad++;
+}
+stages.forEach(function (s, i) {
+  const span = s.to - s.from + 1;
+  if (span !== 10) { console.error('✗ 第 ' + s.stage + ' 阶段跨度应为 10 关，实际 ' + span); stageBad++; }
+  if (i > 0 && s.from !== stages[i - 1].to + 1) {
+    console.error('✗ 第 ' + s.stage + ' 阶段与上一阶段区间不连续（' + s.from + ' ≠ ' + (stages[i - 1].to + 1) + '）');
+    stageBad++;
+  }
+  const levelsInRange = DATA.levels.filter(function (l) { return l.level >= s.from && l.level <= s.to; }).length;
+  if (s.open && levelsInRange !== 10) {
+    console.error('✗ 已开放阶段「' + s.name + '」应有 10 关数据，实际 ' + levelsInRange);
+    stageBad++;
+  }
+});
+if (stageBad) process.exit(1);
+
 fs.mkdirSync(path.dirname(OUT), { recursive: true });
 fs.writeFileSync(OUT, html, 'utf8');
 
@@ -91,6 +114,8 @@ const size = fs.statSync(OUT).size;
 console.log('✓ 已生成 preview/play.html  (' + Math.round(size / 1024) + ' KB)');
 console.log('  数据：' + Object.keys(DATA.elements).length + ' 个元素 / ' +
   DATA.cards.length + ' 张文化卡 / ' + DATA.levels.length + ' 关');
+console.log('  阶梯：' + stages.length + ' 个阶段（已开放 ' +
+  stages.filter(function (s) { return s.open; }).length + ' 个，每阶段 10 关一张证书）');
 console.log('  资产：4 个 Logo + 3 个背景（经幡/布达拉宫/纹样，已内联 base64）');
 console.log('  牌数一致性：10 关全部通过');
 console.log('\n  双击 preview/play.html 即可在浏览器试玩。');

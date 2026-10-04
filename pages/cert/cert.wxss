@@ -1,13 +1,14 @@
-/* pages/result/result.wxss */
+/* pages/cert/cert.wxss — 藏文成长证书 */
 .page {
   min-height: 100vh;
-  padding: 50rpx 40rpx 80rpx;
+  padding: 40rpx 36rpx 80rpx;
   box-sizing: border-box;
   position: relative;
   background: linear-gradient(180deg, #FDF6E3 0%, #FAF0DA 52%, #F2E4C6 100%);
+  color: #2C3E50;
 }
 
-/* ============ 藏文化背景层（与首页/游戏页统一） ============ */
+/* ============ 藏文化背景层（与首页/游戏页/结算页统一） ============ */
 .scenery {
   position: fixed;
   left: 0; right: 0; top: 0; bottom: 0;
@@ -26,176 +27,168 @@
 .sc-ground {
   position: absolute;
   left: 0; bottom: 0; width: 100%;
-  opacity: 0.85;
+  opacity: 0.88;
 }
 .sc-sky {
   position: absolute;
   left: 0; top: 0; width: 100%;
-  opacity: 0.92;
+  opacity: 0.95;
 }
+
 .content {
   position: relative;
   z-index: 1;
 }
 
-.result-hero {
+/* ============ 证书纸张 ============ */
+.sheet {
+  background: linear-gradient(180deg, #FFFDF6 0%, #FDF6E3 100%);
+  border: 6rpx solid #C0392B;
+  border-radius: 28rpx;
+  padding: 10rpx;
+  box-shadow: 0 14rpx 40rpx rgba(96, 78, 44, 0.22);
+  margin-bottom: 30rpx;
+}
+
+.sheet-inner {
+  border: 2rpx solid rgba(183, 149, 11, 0.55);
+  border-radius: 20rpx;
+  padding: 34rpx 30rpx 26rpx;
+  position: relative;
   text-align: center;
-  padding: 20rpx 0 40rpx;
 }
 
-.result-check {
-  width: 120rpx;
-  height: 120rpx;
-  line-height: 120rpx;
-  margin: 0 auto;
-  border-radius: 50%;
-  background: #1E8449;
-  color: #FFFFFF;
-  font-size: 64rpx;
-  font-weight: 700;
+.sheet-orn-l,
+.sheet-orn-r {
+  position: absolute;
+  top: 18rpx;
+  color: rgba(192, 57, 43, 0.65);
+  font-size: 26rpx;
 }
 
-.result-title {
-  margin-top: 24rpx;
-  font-size: 44rpx;
+.sheet-orn-l { left: 20rpx; }
+.sheet-orn-r { right: 20rpx; }
+
+.sheet-tib {
+  font-size: 40rpx;
+  color: rgba(192, 57, 43, 0.78);
+  letter-spacing: 2rpx;
+}
+
+.sheet-title {
+  margin-top: 12rpx;
+  font-size: 42rpx;
   font-weight: 700;
+  letter-spacing: 8rpx;
   color: #2C3E50;
 }
 
-.result-sub {
-  margin-top: 12rpx;
-  font-size: 28rpx;
+.sheet-rule {
+  width: 300rpx;
+  height: 2rpx;
+  margin: 20rpx auto 24rpx;
+  background: linear-gradient(90deg, rgba(183, 149, 11, 0) 0%, rgba(183, 149, 11, 0.8) 50%, rgba(183, 149, 11, 0) 100%);
+}
+
+.sheet-stage {
+  font-size: 26rpx;
   color: #8A8375;
+  letter-spacing: 4rpx;
 }
 
-/* 文化护照印记 v0 */
-.stamp-banner {
-  display: flex;
-  align-items: center;
-  background: rgba(255, 255, 255, 0.88);
-  border: 2rpx solid rgba(214, 202, 176, 0.95);
-  border-radius: 20rpx;
-  padding: 24rpx 28rpx;
-  margin-bottom: 28rpx;
-  box-shadow: 0 8rpx 24rpx rgba(96, 78, 44, 0.12);
-}
-
-.stamp-seal {
-  width: 96rpx;
-  height: 96rpx;
-  line-height: 96rpx;
-  text-align: center;
-  border: 4rpx solid #C0392B;
-  border-radius: 16rpx;
-  color: #C0392B;
-  font-size: 34rpx;
+.sheet-name {
+  margin-top: 10rpx;
+  font-size: 60rpx;
   font-weight: 700;
-  transform: rotate(-6deg);
-  background: #FDF6E3;
+  letter-spacing: 4rpx;
+}
+
+.sheet-tier {
+  display: inline-block;
+  margin-top: 18rpx;
+  padding: 8rpx 34rpx;
+  border-radius: 30rpx;
+  color: #FFFFFF;
+  font-size: 26rpx;
+  font-weight: 700;
+  letter-spacing: 2rpx;
+}
+
+.sheet-lines {
+  margin: 34rpx 0 8rpx;
+}
+
+.sheet-line {
+  font-size: 28rpx;
+  color: #2C3E50;
+  line-height: 1.9;
+}
+
+.sheet-meta {
+  margin-top: 24rpx;
+  text-align: left;
+}
+
+.meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 12rpx 4rpx;
+  border-bottom: 2rpx dashed rgba(214, 202, 176, 0.95);
+}
+
+.meta-k {
+  font-size: 24rpx;
+  color: #8A8375;
   flex-shrink: 0;
 }
 
-.stamp-text {
-  margin-left: 26rpx;
-  display: flex;
-  flex-direction: column;
-}
-
-.stamp-title {
-  font-size: 30rpx;
-  font-weight: 700;
+.meta-v {
+  font-size: 26rpx;
   color: #2C3E50;
-}
-
-.stamp-sub {
-  margin-top: 6rpx;
-  font-size: 24rpx;
-  color: #8A8375;
-}
-
-/* 下一关 */
-.next-btn {
-  width: 100%;
-  height: 96rpx;
-  line-height: 96rpx;
-  background: #C0392B;
-  color: #FFFFFF;
-  font-size: 34rpx;
   font-weight: 600;
-  border-radius: 48rpx;
-  margin-bottom: 20rpx;
+  text-align: right;
 }
 
-.section {
-  background: rgba(255, 255, 255, 0.88);
-  border-radius: 20rpx;
-  padding: 30rpx;
-  margin-bottom: 30rpx;
-  border: 2rpx solid rgba(214, 202, 176, 0.95);
-  box-shadow: 0 8rpx 24rpx rgba(96, 78, 44, 0.12);
-}
-
-.section-title {
-  font-size: 28rpx;
-  font-weight: 600;
-  color: #6B6455;
-  margin-bottom: 20rpx;
-}
-
-.chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16rpx;
-}
-
-.chip {
-  display: flex;
-  align-items: center;
-  gap: 10rpx;
-  padding: 10rpx 20rpx;
-  border-radius: 32rpx;
-  border: 2rpx solid #E4DCC8;
-  background: #FDF6E3;
-}
-
-.chip-glyph {
-  font-size: 36rpx;
-  font-weight: 600;
-}
-
-.chip-name {
-  font-size: 24rpx;
-  color: #6B6455;
-}
-
-/* 祝福卡区块 */
-.bless-section {
-  background: #FFFFFF;
-  border-radius: 20rpx;
-  padding: 40rpx 30rpx;
-  margin-bottom: 30rpx;
-  text-align: center;
-  border: 2rpx solid #E4DCC8;
-}
-
-.bless-title {
-  font-size: 36rpx;
-  font-weight: 700;
+.meta-edit {
+  font-size: 22rpx;
   color: #C0392B;
 }
 
-.bless-sub {
-  margin: 16rpx 0 30rpx;
+.sheet-foot {
+  margin-top: 30rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.foot-logo {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 20rpx;
+}
+
+.foot-code {
+  width: 104rpx;
+  height: 104rpx;
+  line-height: 104rpx;
+  text-align: center;
+  border: 2rpx solid rgba(183, 149, 11, 0.6);
+  border-radius: 14rpx;
+  font-size: 22rpx;
+  color: #C0392B;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.sheet-slogan {
+  margin-top: 16rpx;
   font-size: 26rpx;
-  color: #8A8375;
+  font-weight: 700;
+  color: #B7950B;
+  letter-spacing: 4rpx;
 }
 
-.bless-img {
-  width: 100%;
-  border-radius: 16rpx;
-  box-shadow: 0 8rpx 30rpx rgba(62, 58, 51, 0.2);
-}
-
+/* ============ 操作区 ============ */
 .primary-btn {
   background: #C0392B;
   color: #FFFFFF;
@@ -206,10 +199,17 @@
   border-radius: 46rpx;
 }
 
+.cert-img {
+  width: 100%;
+  margin-top: 26rpx;
+  border-radius: 16rpx;
+  box-shadow: 0 10rpx 30rpx rgba(96, 78, 44, 0.22);
+}
+
 .btn-row {
   display: flex;
   gap: 20rpx;
-  margin-top: 30rpx;
+  margin-top: 24rpx;
 }
 
 .half-btn {
@@ -242,11 +242,116 @@
   color: #FFFFFF;
 }
 
-.home-btn {
+.cert-tip {
+  margin-top: 22rpx;
+  font-size: 24rpx;
+  color: #8A8375;
+  text-align: center;
+  line-height: 1.7;
+}
+
+/* ============ 未获得状态 ============ */
+.locked-box {
+  background: rgba(255, 255, 255, 0.9);
+  border: 3rpx dashed #D6CAB0;
+  border-radius: 24rpx;
+  padding: 50rpx 34rpx;
+  text-align: center;
+  margin-bottom: 26rpx;
+}
+
+.locked-icon {
+  font-size: 68rpx;
+}
+
+.locked-title {
+  margin-top: 18rpx;
+  font-size: 40rpx;
+  font-weight: 700;
+  color: #2C3E50;
+}
+
+.locked-sub {
   margin-top: 10rpx;
+  font-size: 26rpx;
+  color: #8A8375;
+}
+
+.locked-progress {
+  margin-top: 22rpx;
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #C0392B;
+}
+
+.locked-rule {
+  margin-top: 16rpx;
+  font-size: 25rpx;
+  color: #6B6455;
+  line-height: 1.7;
+}
+
+.tier-box {
+  background: rgba(255, 255, 255, 0.9);
+  border: 2rpx solid rgba(214, 202, 176, 0.95);
+  border-radius: 20rpx;
+  padding: 26rpx 28rpx;
+  margin-bottom: 26rpx;
+}
+
+.tier-title {
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #6B6455;
+  margin-bottom: 16rpx;
+}
+
+.tier-row {
+  display: flex;
+  align-items: center;
+  padding: 10rpx 0;
+}
+
+.tier-dot {
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.tier-name {
+  margin-left: 14rpx;
+  font-size: 26rpx;
+  font-weight: 700;
+  width: 150rpx;
+  flex-shrink: 0;
+}
+
+.tier-rule {
+  font-size: 22rpx;
+  color: #8A8375;
+  line-height: 1.5;
+}
+
+/* ============ 底部按钮 ============ */
+.passport-btn {
+  margin-top: 6rpx;
   height: 92rpx;
   line-height: 92rpx;
-  font-size: 32rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+  border-radius: 46rpx;
+  background: #FFFFFF;
+  color: #1E8449;
+  border: 2rpx solid #1E8449;
+  box-sizing: border-box;
+}
+
+.home-btn {
+  margin-top: 14rpx;
+  height: 92rpx;
+  line-height: 92rpx;
+  font-size: 30rpx;
   font-weight: 600;
   border-radius: 46rpx;
   background: #FFFFFF;
@@ -255,7 +360,7 @@
   box-sizing: border-box;
 }
 
-/* 弹窗 */
+/* ============ 弹窗 ============ */
 .mask {
   position: fixed;
   inset: 0;
@@ -286,6 +391,7 @@
   margin-top: 10rpx;
   font-size: 24rpx;
   color: #8A8375;
+  line-height: 1.6;
 }
 
 .name-input {
@@ -326,95 +432,4 @@
 .modal-btn.solid {
   background: #C0392B;
   color: #FFFFFF;
-}
-
-/* ============ 成长阶梯 · 证书 ============ */
-.result-acc {
-  margin-top: 14rpx;
-  font-size: 26rpx;
-  color: #8A8375;
-}
-
-.result-acc.ok {
-  color: #B7950B;
-  font-weight: 600;
-}
-
-.cert-banner {
-  display: flex;
-  align-items: center;
-  background: linear-gradient(135deg, #FFFBF0 0%, #FFFFFF 100%);
-  border: 3rpx solid #C0392B;
-  border-radius: 20rpx;
-  padding: 26rpx 28rpx;
-  margin-bottom: 28rpx;
-  box-shadow: 0 10rpx 26rpx rgba(96, 78, 44, 0.16);
-}
-
-.cert-seal {
-  width: 92rpx;
-  height: 92rpx;
-  line-height: 92rpx;
-  text-align: center;
-  border-radius: 50%;
-  color: #FFFFFF;
-  font-size: 36rpx;
-  font-weight: 700;
-  flex-shrink: 0;
-  box-shadow: 0 6rpx 16rpx rgba(96, 78, 44, 0.22);
-}
-
-.cert-info {
-  flex: 1;
-  margin-left: 24rpx;
-}
-
-.cert-line {
-  font-size: 30rpx;
-  font-weight: 700;
-  color: #2C3E50;
-}
-
-.cert-line2 {
-  margin-top: 8rpx;
-  font-size: 24rpx;
-  color: #8A8375;
-}
-
-.cert-go {
-  font-size: 28rpx;
-  font-weight: 700;
-  color: #C0392B;
-  flex-shrink: 0;
-}
-
-.cert-hint {
-  display: flex;
-  flex-direction: column;
-  background: rgba(255, 255, 255, 0.88);
-  border: 2rpx solid rgba(214, 202, 176, 0.95);
-  border-radius: 20rpx;
-  padding: 22rpx 28rpx;
-  margin-bottom: 28rpx;
-  font-size: 26rpx;
-  color: #6B6455;
-}
-
-.cert-hint-skill {
-  margin-top: 8rpx;
-  font-size: 24rpx;
-  color: #B7950B;
-}
-
-.passport-btn {
-  margin-top: 10rpx;
-  height: 92rpx;
-  line-height: 92rpx;
-  font-size: 30rpx;
-  font-weight: 600;
-  border-radius: 46rpx;
-  background: #FFFFFF;
-  color: #1E8449;
-  border: 2rpx solid #1E8449;
-  box-sizing: border-box;
 }

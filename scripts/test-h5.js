@@ -5,11 +5,14 @@
  * 用 jsdom 真实执行 preview/play.html 的内联脚本，并模拟真人点击，
  * 逐项验证「配对消除 → 文化卡 → 结算 → 下一关」整条链路。
  *
- * 本轮重点验证 4 项体验修复：
+ * 覆盖范围：
  *   1) 弹窗不打扰：文化卡仅首次发现出现，非阻塞、自动收起；重复匹配只出轻提示
- *   2) 背景不单调：首页/游戏页均有藏文化三层背景（纹样/经幡/雪山布达拉宫）
+ *   2) 背景不单调：各页均有藏文化三层背景（纹样/经幡/雪山布达拉宫）
  *   3) 弹窗不简陋：文化卡为渐变头图 + 徽章 + 文化小知识 + 倒计时条
  *   4) 牌面统一：所有关卡牌面尺寸一致，盘面居中
+ *   5) 配对朗读：每成功配对朗读一次，失败不朗读
+ *   6) 成长阶梯 · 证书：正确率统计、等级门槛（金/银/普通）、编号 ZWFK-YYYY-NNNN、
+ *      阶段通关颁发与升级（只升不降）、文化护照 12 格、证书页导出 PNG、持久化
  *
  * 需要：jsdom（安装在与本脚本同级 script 的 node_modules 或 NODE_PATH 中）
  * 用法：node scripts/test-h5.js
@@ -364,6 +367,192 @@ function mockCtx() {
   check('藏文排序正确（ཀ ཁ ག ང ཅ ཆ ཇ ཉ）',
     ev('["letter_01","letter_02","letter_03","letter_04","letter_05","letter_06","letter_07","letter_08"].map(function(k){return ELEMENTS[k].tibetan}).join("")')
     === 'ཀཁགངཅཆཇཉ');
+
+  /* ================================================================
+     成长阶梯 · 证书体系
+     ================================================================ */
+
+  /* ---------- 14. 成长阶梯数据 ---------- */
+  section('14. 成长阶梯（12 阶段 × 10 关）');
+  const stages = ev('STAGES');
+  check('成长阶梯共 12 个阶段', stages.length === 12, '实际 ' + stages.length);
+  check('每阶段跨度 10 关', stages.every(function (s) { return s.to - s.from + 1 === 10; }),
+    JSON.stringify(stages.map(function (s) { return s.to - s.from + 1; })));
+  check('阶段区间连续且不重叠',
+    stages.every(function (s, i) { return i === 0 || s.from === stages[i - 1].to + 1; }));
+  check('MVP 仅开放第一阶段', stages.filter(function (s) { return s.open; }).length === 1 && stages[0].open === true);
+  check('第一阶段 = 第 1-10 关 · 简单基字',
+    stages[0].from === 1 && stages[0].to === 10 && stages[0].name === '简单基字');
+  check('阶梯覆盖到第 120 关（12 × 10）', stages[11].to === 120, 'to=' + stages[11].to);
+  check('证书等级门槛齐全（金/银/普通）',
+    ev('Object.keys(TIERS).sort().join(",")') === 'bronze,gold,silver');
+  check('金质门槛最严（≥95% 且零失误）',
+    ev('TIERS.gold.minAccuracy') === 0.95 && ev('TIERS.gold.requireClean') === true);
+  check('银质门槛 ≥80%', ev('TIERS.silver.minAccuracy') === 0.80);
+
+  /* ---------- 15. 正确率统计 ---------- */
+  section('15. 正确率统计（证书质量门槛的基础）');
+  ev('clearProgress(); renderHome();');
+  await sleep(40);
+  ev('startLevel(1)');
+  await sleep(60);
+  check('开新关时尝试次数归零', ev('state.attempts') === 0 && ev('state.matches') === 0 && ev('state.misses') === 0);
+
+  const p1 = findPair();
+  await clickTile(p1[0]);
+  await clickTile(p1[1]);
+  await sleep(120);
+  check('成功配对计 1 次尝试 / 1 次成功',
+    ev('state.attempts') === 1 && ev('state.matches') === 1 && ev('state.misses') === 0,
+    'att=' + ev('state.attempts') + ' ok=' + ev('state.matches'));
+  const mm1 = findMismatch();
+  await clickTile(mm1[0]);
+  await clickTile(mm1[1]);
+  await sleep(60);
+  check('失败配对同样计入尝试且记为失误',
+    ev('state.attempts') === 2 && ev('state.misses') === 1,
+    'att=' + ev('state.attempts') + ' miss=' + ev('state.misses'));
+
+  /* ---------- 16. 阶段证书的颁发与等级 ---------- */
+  section('16. 证书颁发与等级（普通 → 升级金质）');
+
+  // 用可复现的方式依次通关：attempts / misses 可控
+  const passLevel = function (n, attempts, misses) {
+    const pairs = ev('LEVELS[' + (n - 1) + '].cols * LEVELS[' + (n - 1) + '].rows / 2');
+    ev('(function () { startLevel(' + n + ');' +
+      ' state.matchedCount = ' + pairs + ';' +
+      ' state.attempts = ' + (attempts || pairs) + ';' +
+      ' state.misses = ' + (misses || 0) + ';' +
+      ' state.score = 120; state.maxCombo = 4; state.collected = [];' +
+      ' finishLevel(); })()');
+  };
+
+  // 前半程（1-5 关）用一半正确率通完，此时阶段未结束 → 不发证书
+  for (let n = 1; n <= 5; n++) {
+    passLevel(n, ev('LEVELS[' + (n - 1) + '].cols * LEVELS[' + (n - 1) + '].rows / 2') * 2,
+      ev('LEVELS[' + (n - 1) + '].cols * LEVELS[' + (n - 1) + '].rows / 2'));
+    await sleep(20);
+  }
+  check('阶段未通关时暂不颁发证书', ev('getProgress().certs.length') === 0,
+    'certs=' + ev('getProgress().certs.length'));
+  check('未通关时结算页给出阶段进度提示',
+    $('#res-cert').textContent.indexOf('第 1 阶段') > -1 && $('#res-cert').textContent.indexOf('简单基字') > -1,
+    $('#res-cert').textContent);
+  check('未通关时结算页给出提升建议', $('#res-cert').textContent.indexOf('正确率提升') > -1,
+    $('#res-cert').textContent);
+  check('结算页显示本关正确率', $('#res-acc').textContent.indexOf('正确率') > -1,
+    $('#res-acc').textContent);
+
+  // 通完剩余 5 关（同样一半正确率）→ 阶段完成，按门槛只应得「普通证书」
+  for (let n = 6; n <= 10; n++) {
+    passLevel(n, ev('LEVELS[' + (n - 1) + '].cols * LEVELS[' + (n - 1) + '].rows / 2') * 2,
+      ev('LEVELS[' + (n - 1) + '].cols * LEVELS[' + (n - 1) + '].rows / 2'));
+    await sleep(20);
+  }
+  const cert1 = ev('findCert(1)');
+  check('通关第 10 关颁发第一阶段证书', !!cert1);
+  check('证书阶段名 = 简单基字', cert1 && cert1.stageName === '简单基字', cert1 && cert1.stageName);
+  check('正确率不足时只发普通证书', cert1 && cert1.tier === 'bronze',
+    cert1 && (cert1.tier + ' acc=' + cert1.acc));
+  check('证书编号符合 ZWFK-YYYY-NNNN', cert1 && /^ZWFK-\d{4}-\d{4}$/.test(cert1.no), cert1 && cert1.no);
+  check('首张证书流水号为 0001', cert1 && cert1.no.slice(-4) === '0001', cert1 && cert1.no);
+  check('证书成就行按真实数据生成（8 个藏文字母）',
+    cert1 && cert1.lines.join('|').indexOf('已认识 8 个藏文字母') > -1,
+    cert1 && cert1.lines.join(' | '));
+  check('证书默认持有人', cert1 && cert1.holder === '藏文学习者', cert1 && cert1.holder);
+  check('结算页出现证书横幅', $('#res-cert').textContent.indexOf('获得藏文成长证书') > -1,
+    $('#res-cert').textContent);
+  check('横幅等级徽章 = 普', ($('#res-cert .cert-seal') || {}).textContent === '普',
+    ($('#res-cert .cert-seal') || {}).textContent);
+
+  // 重玩全部 10 关且零失误 → 应升级为金质证书，编号不变
+  for (let n = 1; n <= 10; n++) {
+    passLevel(n, 0, 0);
+    await sleep(20);
+  }
+  const cert2 = ev('findCert(1)');
+  check('零失误通关后升级为金质证书', cert2 && cert2.tier === 'gold',
+    cert2 && (cert2.tier + ' acc=' + cert2.acc + ' clean=' + cert2.clean));
+  check('升级后正确率 100%', cert2 && cert2.acc === 100, cert2 && cert2.acc);
+  check('升级不新增证书（同一阶段只保留一张）', ev('getProgress().certs.length') === 1,
+    'certs=' + ev('getProgress().certs.length'));
+  check('升级沿用原证书编号', cert2 && cert2.no === cert1.no, cert2 && cert2.no);
+  check('结算页提示「证书升级」', $('#res-cert').textContent.indexOf('证书升级') > -1,
+    $('#res-cert').textContent);
+
+  // 之后再出现失误不应降级（只升不降）
+  passLevel(10, ev('LEVELS[9].cols * LEVELS[9].rows / 2') * 2, ev('LEVELS[9].cols * LEVELS[9].rows / 2'));
+  await sleep(30);
+  check('已有更高等级证书不会被降级', ev('findCert(1).tier') === 'gold', ev('findCert(1).tier'));
+
+  /* ---------- 17. 文化护照（12 张证书的位置） ---------- */
+  section('17. 文化护照');
+  ev('showPassport()');
+  await sleep(50);
+  check('切换到文化护照页', activeScreen() === 'screen-passport', activeScreen());
+  const slots = $$('#pp-cert-grid .cert-slot');
+  check('护照列出 12 个证书位置', slots.length === 12, '实际 ' + slots.length);
+  check('已获得的证书高亮', $$('#pp-cert-grid .cert-slot.got').length === 1,
+    'got=' + $$('#pp-cert-grid .cert-slot.got').length);
+  check('未获得的证书为灰色锁定', $$('#pp-cert-grid .cert-slot.locked').length === 11,
+    'locked=' + $$('#pp-cert-grid .cert-slot.locked').length);
+  check('护照显示证书总数 1 / 12', $('#pp-cert-count').textContent === '1 / 12', $('#pp-cert-count').textContent);
+  check('已得位置显示等级徽章', ($('#pp-cert-grid .cert-slot.got .slot-tier') || {}).textContent === '金质证书',
+    ($('#pp-cert-grid .cert-slot.got .slot-tier') || {}).textContent);
+  check('护照含文化收藏册分区', doc.body.textContent.indexOf('文化收藏册') > -1);
+  check('护照含地区印章分区', doc.body.textContent.indexOf('地区印章') > -1);
+  check('护照含现实足迹（二期占位）', doc.body.textContent.indexOf('现实足迹') > -1);
+  check('护照含个人文化图谱', doc.body.textContent.indexOf('个人文化图谱') > -1);
+
+  /* ---------- 18. 证书页 ---------- */
+  section('18. 证书页（查看 / 保存 / 分享）');
+  ev('showCert(1)');
+  await sleep(50);
+  check('切换到证书页', activeScreen() === 'screen-cert', activeScreen());
+  const sheet = $('#cert-body .cert-sheet');
+  check('渲染证书纸张', !!sheet);
+  check('证书标题 = 藏文成长证书', doc.body.textContent.indexOf('藏文成长证书') > -1);
+  check('证书显示阶段名', doc.body.textContent.indexOf('简单基字') > -1);
+  check('证书显示编号', doc.body.textContent.indexOf(cert2.no) > -1);
+  check('证书显示颁发日期', doc.body.textContent.indexOf(ev('formatDate()')) > -1);
+  check('证书含藏文装饰语（tsheg 连写）', doc.body.textContent.indexOf(ev('CERT_TIB')) > -1);
+
+  $('#cert-gen').click();
+  await sleep(120);
+  const certDl = $('#cert-out a.cert-dl');
+  check('生成证书图片（PNG 下载链接）', !!certDl, '未生成');
+  if (certDl) {
+    check('证书图片文件名含阶段名', certDl.getAttribute('download').indexOf('简单基字') > -1,
+      certDl.getAttribute('download'));
+    check('证书图片为 data URL', certDl.getAttribute('href').indexOf('data:image/png') === 0);
+  }
+
+  // 持有人可在证书页修改（编号不变）
+  ev('setHolderName("小藏"); updateCertHolder("小藏"); showCert(1)');
+  await sleep(40);
+  check('证书持有人可修改', doc.body.textContent.indexOf('小藏') > -1);
+  check('修改持有人不影响证书编号', ev('findCert(1).no') === cert2.no, ev('findCert(1).no'));
+
+  // 未开放 / 未获得阶段 → 锁定说明 + 等级规则
+  ev('showCert(3)');
+  await sleep(40);
+  check('未获得阶段显示锁定说明', !!$('#cert-body .locked-box'));
+  check('锁定页列出三级证书门槛', $$('#cert-body .tier-row').length === 3,
+    '实际 ' + $$('#cert-body .tier-row').length);
+  check('锁定页给出解锁条件', $('#cert-body .locked-box .r').textContent.indexOf('21-30') > -1,
+    $('#cert-body .locked-box .r').textContent);
+
+  /* ---------- 19. 证书数据持久化 ---------- */
+  section('19. 证书持久化');
+  const savedCert = JSON.parse(win.localStorage.getItem('zangzi_progress') || 'null');
+  check('certs 已写入 localStorage', !!(savedCert && savedCert.certs && savedCert.certs.length === 1),
+    JSON.stringify(savedCert && savedCert.certs && savedCert.certs.length));
+  check('certSeq 已记录（编号不重复）', savedCert && savedCert.certSeq >= 1, 'certSeq=' + (savedCert && savedCert.certSeq));
+  check('levelStats 已记录各关最佳正确率',
+    !!(savedCert && savedCert.levelStats && savedCert.levelStats['10'] &&
+      savedCert.levelStats['10'].bestAcc === 1),
+    JSON.stringify(savedCert && savedCert.levelStats && savedCert.levelStats['10']));
+  check('holderName 已持久化', savedCert && savedCert.holderName === '小藏', savedCert && savedCert.holderName);
 
   /* ---------- 汇总 ---------- */
   check('全程无脚本运行时错误', errors.length === 0, errors[0]);

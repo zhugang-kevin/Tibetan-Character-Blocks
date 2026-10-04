@@ -2,7 +2,9 @@
   "pages": [
     "pages/index/index",
     "pages/game/game",
-    "pages/result/result"
+    "pages/result/result",
+    "pages/cert/cert",
+    "pages/passport/passport"
   ],
   "window": {
     "navigationBarTitleText": "藏字方块",

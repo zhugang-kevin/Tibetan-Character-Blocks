@@ -297,6 +297,126 @@
     font-size: 16px; font-weight: 700;
   }
   .hint { margin-top: 12px; font-size: 12px; color: var(--muted); text-align: center; line-height: 1.6; }
+
+  /* ============ 成长阶梯 · 证书 ============ */
+  .result-acc { margin-top: 8px; font-size: 13px; color: var(--muted); }
+  .result-acc.ok { color: var(--gold, #B7950B); font-weight: 700; }
+
+  .cert-banner {
+    display: flex; align-items: center; background: linear-gradient(135deg, #FFFBF0, #FFFFFF);
+    border: 2px solid var(--red); border-radius: 14px; padding: 13px 14px; margin-bottom: 14px;
+  }
+  .cert-seal { width: 46px; height: 46px; line-height: 46px; text-align: center; border-radius: 50%; color: #fff; font-size: 18px; font-weight: 700; flex-shrink: 0; }
+  .cert-info { flex: 1; margin-left: 12px; }
+  .cert-line { font-size: 15px; font-weight: 700; }
+  .cert-line2 { margin-top: 4px; font-size: 12px; color: var(--muted); }
+  .cert-go { font-size: 14px; font-weight: 700; color: var(--red); cursor: pointer; }
+  .cert-hint {
+    display: flex; flex-direction: column; background: rgba(255,255,255,.88);
+    border: 1.5px solid var(--line); border-radius: 14px; padding: 11px 14px; margin-bottom: 14px;
+    font-size: 13px;
+  }
+  .cert-hint-skill { margin-top: 4px; font-size: 12px; color: var(--gold, #B7950B); }
+
+  /* 文化护照 */
+  .pp-cover { text-align: center; padding: 20px 16px 22px; border-radius: 18px; border: 2px solid var(--green); background: linear-gradient(180deg, #fff, #F3F8F2); margin-bottom: 16px; }
+  .pp-logo { width: 66px; height: 66px; border-radius: 15px; }
+  .pp-title { margin-top: 10px; font-size: 21px; font-weight: 700; letter-spacing: 2px; color: var(--green); }
+  .pp-holder { margin-top: 5px; font-size: 13px; color: #6B6455; }
+  .pp-slogan { margin-top: 9px; font-size: 12px; color: var(--gold, #B7950B); letter-spacing: 1px; }
+  .pp-section { background: rgba(255,255,255,.9); border: 1.5px solid var(--line); border-radius: 16px; padding: 14px 13px; margin-bottom: 13px; }
+  .pp-head { display: flex; justify-content: space-between; align-items: baseline; }
+  .pp-h-title { font-size: 16px; font-weight: 700; }
+  .pp-h-count { font-size: 13px; font-weight: 700; color: var(--red); }
+  .pp-sub { margin-top: 6px; font-size: 12px; color: var(--muted); line-height: 1.7; }
+  .pp-next { margin-top: 6px; font-size: 12px; color: var(--green); display: flex; justify-content: space-between; }
+  .pp-next b { color: var(--red); }
+  .pp-bar { margin-top: 10px; height: 8px; border-radius: 4px; background: #EFE7D4; overflow: hidden; }
+  .pp-bar i { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--red), var(--gold, #B7950B)); }
+  .pp-stamps { display: flex; align-items: center; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+  .pp-stamp { text-align: center; }
+  .pp-stamp .seal { width: 54px; height: 54px; line-height: 54px; border: 2px solid var(--red); border-radius: 9px; color: var(--red); font-size: 17px; font-weight: 700; background: var(--bg, #FDF6E3); transform: rotate(-5deg); }
+  .pp-stamp .desc { margin-top: 5px; font-size: 10px; color: var(--muted); }
+  .pp-stamps .empty { flex: 1; font-size: 11px; color: #A79F8D; line-height: 1.6; }
+  .pp-graph { display: flex; justify-content: space-between; margin-top: 11px; }
+  .pp-graph .g { flex: 1; text-align: center; }
+  .pp-graph .g .v { font-size: 20px; font-weight: 700; color: var(--red); }
+  .pp-graph .g .k { margin-top: 3px; font-size: 10px; color: var(--muted); }
+
+  /* 证书 12 格 */
+  .cert-grid { display: flex; flex-wrap: wrap; justify-content: space-between; margin-top: 11px; }
+  .cert-slot { width: 31.5%; margin-bottom: 9px; border-radius: 10px; padding: 9px 4px 7px; text-align: center; box-sizing: border-box; border: 1px solid #E4DCC8; background: var(--bg, #FDF6E3); cursor: pointer; }
+  .cert-slot.got { border-color: var(--gold, #B7950B); background: linear-gradient(180deg, #FFFDF3, #FBF1D8); }
+  .cert-slot.locked { opacity: .72; background: #F3EFE3; border-color: #DDD5C2; }
+  .slot-top { font-size: 10px; color: var(--muted); }
+  .slot-name { margin-top: 3px; font-size: 12px; font-weight: 700; line-height: 1.35; min-height: 32px; }
+  .cert-slot.locked .slot-name { color: #A79F8D; }
+  .slot-tier { display: inline-block; margin-top: 4px; padding: 2px 7px; border-radius: 10px; color: #fff; font-size: 10px; font-weight: 700; }
+  .slot-no { margin-top: 4px; font-size: 9px; color: var(--muted); }
+  .slot-lock { margin-top: 3px; font-size: 13px; }
+  .slot-progress { margin-top: 2px; font-size: 10px; color: #A79F8D; }
+
+  /* 证书纸（证书页） */
+  .cert-sheet { background: linear-gradient(180deg, #FFFDF6, var(--bg, #FDF6E3)); border: 3px solid var(--red); border-radius: 16px; padding: 5px; margin-bottom: 16px; box-shadow: 0 7px 20px rgba(96,78,44,.22); }
+  .cert-sheet-inner { border: 1px solid rgba(183,149,11,.55); border-radius: 11px; padding: 17px 15px 13px; text-align: center; position: relative; }
+  .cert-orn { position: absolute; top: 8px; color: rgba(192,57,43,.65); font-size: 12px; }
+  .cert-orn.l { left: 10px; }
+  .cert-orn.r { right: 10px; }
+  .cs-tib { font-size: 20px; color: rgba(192,57,43,.78); }
+  .cs-title { margin-top: 6px; font-size: 21px; font-weight: 700; letter-spacing: 4px; }
+  .cs-rule { width: 150px; height: 1px; margin: 10px auto 12px; background: linear-gradient(90deg, rgba(183,149,11,0), rgba(183,149,11,.8), rgba(183,149,11,0)); }
+  .cs-stage { font-size: 13px; color: var(--muted); letter-spacing: 2px; }
+  .cs-name { margin-top: 5px; font-size: 30px; font-weight: 700; letter-spacing: 2px; }
+  .cs-tier { display: inline-block; margin-top: 9px; padding: 4px 17px; border-radius: 15px; color: #fff; font-size: 13px; font-weight: 700; }
+  .cs-lines { margin: 17px 0 4px; }
+  .cs-line { font-size: 14px; line-height: 1.9; }
+  .cs-meta { margin-top: 12px; text-align: left; }
+  .cs-row { display: flex; justify-content: space-between; padding: 6px 2px; border-bottom: 1px dashed rgba(214,202,176,.95); }
+  .cs-k { font-size: 12px; color: var(--muted); }
+  .cs-v { font-size: 13px; font-weight: 600; }
+  .cs-v .edit { font-size: 11px; color: var(--red); cursor: pointer; }
+  .cs-foot { margin-top: 15px; display: flex; align-items: center; justify-content: space-between; }
+  .cs-foot img { width: 44px; height: 44px; border-radius: 10px; }
+  .cs-code { width: 52px; height: 52px; line-height: 52px; text-align: center; border: 1px solid rgba(183,149,11,.6); border-radius: 7px; font-size: 11px; color: var(--red); background: rgba(255,255,255,.9); }
+  .cs-slogan { margin-top: 8px; font-size: 13px; font-weight: 700; color: var(--gold, #B7950B); letter-spacing: 2px; }
+
+  .locked-box { background: rgba(255,255,255,.9); border: 2px dashed #D6CAB0; border-radius: 14px; padding: 25px 17px; text-align: center; margin-bottom: 13px; }
+  .locked-box .ic { font-size: 34px; }
+  .locked-box .t { margin-top: 9px; font-size: 20px; font-weight: 700; }
+  .locked-box .s { margin-top: 5px; font-size: 13px; color: var(--muted); }
+  .locked-box .p { margin-top: 11px; font-size: 14px; font-weight: 700; color: var(--red); }
+  .locked-box .r { margin-top: 8px; font-size: 12.5px; color: #6B6455; line-height: 1.7; }
+  .tier-box { background: rgba(255,255,255,.9); border: 1.5px solid var(--line); border-radius: 14px; padding: 13px 14px; margin-bottom: 13px; }
+  .tier-box .tt { font-size: 13px; font-weight: 700; color: #6B6455; margin-bottom: 8px; }
+  .tier-row { display: flex; align-items: center; padding: 5px 0; }
+  .tier-row .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .tier-row .nm { margin-left: 7px; font-size: 13px; font-weight: 700; width: 75px; flex-shrink: 0; }
+  .tier-row .rl { font-size: 11px; color: var(--muted); line-height: 1.5; }
+
+  .cert-actions { display: flex; gap: 8px; margin-top: 10px; }
+  .cert-actions button { flex: 1; border: 0; border-radius: 14px; padding: 13px 0; font-size: 15px; font-weight: 700; cursor: pointer; }
+  .cert-actions .solid { background: var(--red); color: #fff; }
+  .cert-actions .ghost { background: #fff; color: var(--red); border: 1.5px solid var(--red); }
+  .cert-preview { margin-top: 12px; }
+  .cert-preview img { width: 100%; border-radius: 12px; box-shadow: 0 6px 18px rgba(96,78,44,.22); }
+  .cert-dl { display: block; margin-top: 12px; text-align: center; text-decoration: none; background: var(--green); color: #fff; border-radius: 14px; padding: 13px 0; font-size: 15px; font-weight: 700; }
+  .cert-tip { margin-top: 10px; font-size: 12px; color: var(--muted); text-align: center; line-height: 1.7; }
+
+  /* 首页护照入口 */
+  .passport-card {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 13px 14px; margin-bottom: 13px; border-radius: 14px;
+    border: 2px solid var(--green); background: linear-gradient(135deg, #fff, #F1F8F1);
+    cursor: pointer;
+  }
+  .pc-left { flex: 1; min-width: 0; }
+  .pc-title { font-size: 16px; font-weight: 700; color: var(--green); }
+  .pc-sub { margin-top: 4px; font-size: 12px; color: #6B6455; }
+  .pc-right { text-align: center; flex-shrink: 0; margin-left: 10px; }
+  .pc-count { font-size: 22px; font-weight: 700; color: var(--red); line-height: 1; }
+  .pc-total { font-size: 12px; color: #A79F8D; font-weight: 600; }
+  .pc-label { margin-top: 3px; font-size: 10px; color: var(--muted); }
+  .stage-head { font-size: 14px; font-weight: 700; color: var(--red); margin-bottom: 9px; padding: 0 2px; }
 </style>
 </head>
 <body>
@@ -322,6 +442,10 @@
       <div class="profile-stamps" id="profile-stamps"></div>
       <div class="profile-combo" id="profile-combo">最高连击 ×0</div>
     </div>
+
+    <!-- 文化护照入口（总档案：12 张藏文成长证书 + 印章 + 收藏） -->
+    <div id="home-passport"></div>
+    <div class="stage-head" id="home-stage-head">第一阶段 · 简单基字 · 第 1-10 关</div>
 
     <div class="level-grid" id="level-grid"></div>
 
@@ -358,6 +482,7 @@
       <div class="result-check">✓</div>
       <div class="result-title" id="res-title">第 1 关完成！</div>
       <div class="result-sub" id="res-sub">共消除 0 对</div>
+      <div class="result-acc" id="res-acc"></div>
     </div>
 
     <div class="stat-row">
@@ -366,6 +491,7 @@
       <div class="stat-box"><div class="v" id="res-cards">0</div><div class="k">文化卡</div></div>
     </div>
 
+    <div id="res-cert"></div>
     <div id="res-stamp"></div>
 
     <div class="section-title">本关收集到的文化卡</div>
@@ -374,6 +500,67 @@
     <div id="res-bless"></div>
 
     <div id="res-actions" style="margin-top: 26px;"></div>
+  </section>
+
+  <!-- ============ 文化护照（总档案） ============ -->
+  <section id="screen-passport" class="screen">
+    <div class="pp-cover">
+      <img class="pp-logo" id="pp-logo" alt="藏字方块">
+      <div class="pp-title">我的西藏文化护照</div>
+      <div class="pp-holder" id="pp-holder"></div>
+      <div class="pp-slogan">每一个字母，都是一座西藏</div>
+    </div>
+
+    <div class="pp-section">
+      <div class="pp-head">
+        <span class="pp-h-title">藏文成长证书</span>
+        <span class="pp-h-count" id="pp-cert-count">0 / 12</span>
+      </div>
+      <div class="pp-sub">每 10 关一个阶段，通关即颁发一张证书。集齐 12 张，就是一套完整的藏文入门档案。</div>
+      <div class="cert-grid" id="pp-cert-grid"></div>
+      <div class="pp-next" id="pp-next"></div>
+    </div>
+
+    <div class="pp-section">
+      <div class="pp-head">
+        <span class="pp-h-title">文化收藏册</span>
+        <span class="pp-h-count" id="pp-cards-count">0 / 12</span>
+      </div>
+      <div class="pp-sub">每第一次消除一种藏文字母或文化元素，就会收藏一张文化卡。</div>
+      <div class="pp-bar"><i id="pp-cards-bar"></i></div>
+    </div>
+
+    <div class="pp-section">
+      <div class="pp-head">
+        <span class="pp-h-title">地区印章</span>
+        <span class="pp-h-count" id="pp-stamp-count">0 / 7</span>
+      </div>
+      <div class="pp-stamps" id="pp-stamps"></div>
+    </div>
+
+    <div class="pp-section">
+      <div class="pp-head">
+        <span class="pp-h-title">现实足迹</span>
+        <span class="pp-h-count">敬请期待</span>
+      </div>
+      <div class="pp-sub">记录你在现实中去过的藏文化地点。完成打卡后会在这里留下一枚足迹。</div>
+    </div>
+
+    <div class="pp-section">
+      <div class="pp-head">
+        <span class="pp-h-title">个人文化图谱</span>
+        <span class="pp-h-count">成长中</span>
+      </div>
+      <div class="pp-graph" id="pp-graph"></div>
+    </div>
+
+    <button class="pp-home" id="pp-home" style="border:1.5px solid var(--red); border-radius:14px; padding:13px 0; width:100%; font-size:15px; font-weight:700; color:var(--red); background:rgba(255,255,255,.92); cursor:pointer;">返回首页</button>
+  </section>
+
+  <!-- ============ 藏文成长证书 ============ -->
+  <section id="screen-cert" class="screen">
+    <div id="cert-body"></div>
+    <button class="pp-home" id="cert-home" style="margin-top:14px; border:1.5px solid var(--red); border-radius:14px; padding:13px 0; width:100%; font-size:15px; font-weight:700; color:var(--red); background:rgba(255,255,255,.92); cursor:pointer;">返回首页</button>
   </section>
 
 </div>
@@ -429,6 +616,7 @@ const IMAGES = /*__IMAGES__*/;
 const ELEMENTS = DATA.elements;
 const CARDS = DATA.cards;
 const LEVELS = DATA.levels;
+const STAGES = DATA.stages;
 const CARD_BY_ID = {};
 CARDS.forEach(function (c) { CARD_BY_ID[c.id] = c; });
 
@@ -456,7 +644,12 @@ function getProgress() {
     stamps: (p && p.stamps) || [],
     bestCombo: (p && p.bestCombo) || 0,
     seenCards: (p && p.seenCards) || [],
-    onboardDone: !!(p && p.onboardDone)
+    onboardDone: !!(p && p.onboardDone),
+    // 证书体系（藏文成长阶梯）：最佳正确率 / 证书 / 编号流水 / 持有人
+    levelStats: (p && p.levelStats) || {},
+    certs: (p && p.certs) || [],
+    certSeq: (p && p.certSeq) || 0,
+    holderName: (p && p.holderName) || ''
   };
 }
 function saveProgress(p) { writeRaw(p); }
@@ -485,6 +678,215 @@ function markCardSeen(id) {
 function isOnboardDone() { return getProgress().onboardDone; }
 function setOnboardDone() { const p = getProgress(); p.onboardDone = true; saveProgress(p); }
 function clearProgress() { try { localStorage.removeItem(SKEY); } catch (e) {} memoryStore = null; }
+
+/* ---------------- 成长阶梯 · 证书（对应 utils/certificate.js） ----------------
+   证书是「学习证明」：每 10 关一个阶段，通关该阶段最后一关颁发一张证书。
+   等级是质量门槛（金 > 银 > 普通），编号 ZWFK-YYYY-NNNN，可保存 / 分享。 */
+const CERT_PREFIX = 'ZWFK';
+const TIERS = {
+  gold: { key: 'gold', label: '金质证书', seal: '金', color: '#B7950B', minAccuracy: 0.95, requireClean: true, rule: '完成 10 关 · 正确率 ≥ 95% · 全程无失误' },
+  silver: { key: 'silver', label: '银质证书', seal: '银', color: '#7F8C8D', minAccuracy: 0.80, requireClean: false, rule: '完成 10 关 · 正确率 ≥ 80%' },
+  bronze: { key: 'bronze', label: '普通证书', seal: '普', color: '#C0392B', minAccuracy: 0, requireClean: false, rule: '完成 10 关' }
+};
+const TIER_RANK = { bronze: 1, silver: 2, gold: 3 };
+
+function recordLevelResult(level, r) {
+  const p = getProgress();
+  const attempts = (r && r.attempts) || 0;
+  const matches = (r && r.matches) || 0;
+  const misses = (r && r.misses) || 0;
+  let acc = attempts > 0 ? matches / attempts : 1;
+  acc = Math.max(0, Math.min(1, acc));
+  const s = p.levelStats[level] || { bestAcc: 0, clean: false, plays: 0, lastAcc: 0 };
+  s.plays = (s.plays || 0) + 1;
+  s.lastAcc = acc;
+  if (acc > s.bestAcc) s.bestAcc = acc;
+  if (misses === 0) s.clean = true;
+  p.levelStats[level] = s;
+  saveProgress(p);
+  return s;
+}
+
+function stageOf(level) {
+  for (let i = 0; i < STAGES.length; i++) {
+    if (level >= STAGES[i].from && level <= STAGES[i].to) return STAGES[i];
+  }
+  return null;
+}
+function stageByNo(n) {
+  for (let i = 0; i < STAGES.length; i++) { if (STAGES[i].stage === n) return STAGES[i]; }
+  return null;
+}
+
+function stageContent(stage) {
+  const seen = {};
+  let letters = 0, icons = 0, pairs = 0;
+  for (let n = stage.from; n <= stage.to; n++) {
+    const cfg = LEVELS[n - 1];
+    if (!cfg) continue;
+    cfg.elements.forEach(function (pair) {
+      pairs += pair[1] / 2;
+      if (seen[pair[0]]) return;
+      seen[pair[0]] = true;
+      const el = ELEMENTS[pair[0]];
+      if (el && el.type === 'letter') letters++; else icons++;
+    });
+  }
+  return { letters: letters, icons: icons, elements: letters + icons, pairs: pairs };
+}
+
+function aggregateStage(stage) {
+  const ls = getProgress().levelStats;
+  let sum = 0, played = 0, clean = true;
+  for (let n = stage.from; n <= stage.to; n++) {
+    const s = ls[n];
+    if (!s) continue;
+    played++;
+    sum += s.bestAcc || 0;
+    if (!s.clean) clean = false;
+  }
+  return { levels: played, avgAcc: played ? sum / played : 0, clean: clean, hints: 0 };
+}
+
+function tierOf(agg) {
+  if (agg.avgAcc >= TIERS.gold.minAccuracy && agg.clean) return TIERS.gold;
+  if (agg.avgAcc >= TIERS.silver.minAccuracy) return TIERS.silver;
+  return TIERS.bronze;
+}
+
+function isStageComplete(stage) {
+  const done = getProgress().completedLevels;
+  for (let n = stage.from; n <= stage.to; n++) { if (done.indexOf(n) === -1) return false; }
+  return true;
+}
+
+function pad4(n) { let s = String(n); while (s.length < 4) s = '0' + s; return s; }
+function formatDate(d) {
+  const dt = d || new Date();
+  return dt.getFullYear() + '年' + (dt.getMonth() + 1) + '月' + dt.getDate() + '日';
+}
+function certNo(seq, d) {
+  const y = (d || new Date()).getFullYear();
+  return CERT_PREFIX + '-' + y + '-' + pad4(seq);
+}
+
+function buildLines(stage, content) {
+  const tpl = (stage.certLines && stage.certLines.length) ? stage.certLines : ['完成 {levels} 个关卡'];
+  const levels = stage.to - stage.from + 1;
+  return tpl.map(function (t) {
+    return t.replace(/\{letters\}/g, content.letters)
+      .replace(/\{icons\}/g, content.icons)
+      .replace(/\{elements\}/g, content.elements)
+      .replace(/\{pairs\}/g, content.pairs)
+      .replace(/\{levels\}/g, levels)
+      .replace(/\{stage\}/g, stage.stage)
+      .replace(/\{name\}/g, stage.name);
+  });
+}
+
+function nextCertSeq() {
+  const p = getProgress();
+  p.certSeq = (p.certSeq || 0) + 1;
+  saveProgress(p);
+  return p.certSeq;
+}
+
+function findCert(stage) {
+  const list = getProgress().certs;
+  for (let i = 0; i < list.length; i++) { if (list[i].stage === stage) return list[i]; }
+  return null;
+}
+
+function saveCert(cert) {
+  const p = getProgress();
+  let found = false;
+  for (let i = 0; i < p.certs.length; i++) {
+    if (p.certs[i].stage === cert.stage) { p.certs[i] = cert; found = true; break; }
+  }
+  if (!found) p.certs.push(cert);
+  saveProgress(p);
+  return cert;
+}
+
+function buildCert(stage, tier, agg, content, prev) {
+  const date = new Date();
+  const seq = (prev && prev.seq) || nextCertSeq();
+  return {
+    stage: stage.stage, stageName: stage.name, stageGoal: stage.goal,
+    from: stage.from, to: stage.to,
+    tier: tier.key, tierLabel: tier.label, tierSeal: tier.seal,
+    tierColor: tier.color, tierRule: tier.rule,
+    acc: Math.round(agg.avgAcc * 100), clean: agg.clean,
+    levels: stage.to - stage.from + 1,
+    lines: buildLines(stage, content),
+    seq: seq, no: certNo(seq, date),
+    holder: getHolderName() || '藏文学习者',
+    date: formatDate(date)
+  };
+}
+
+function nextTierHint(agg) {
+  if (agg.levels === 0) return { text: '完成本阶段关卡即可获得证书', tier: 'bronze' };
+  if (agg.avgAcc >= TIERS.gold.minAccuracy && agg.clean) return null;
+  if (agg.avgAcc >= TIERS.silver.minAccuracy) return { text: '保持零失误即可升为金质证书', tier: 'gold' };
+  return { text: '正确率提升到 80% 即可升为银质证书', tier: 'silver' };
+}
+
+/* 通关一关后调用：记录成绩 → 若该阶段已通关则（升级）颁发证书 */
+function onLevelComplete(level, r) {
+  const stat = recordLevelResult(level, r || {});
+  const stage = stageOf(level);
+  const out = {
+    stage: stage, stat: stat, cert: null, isNew: false, upgraded: false,
+    complete: false,
+    accuracy: Math.round(((r && r.attempts) ? r.matches / r.attempts : 1) * 100),
+    skill: null
+  };
+  if (!stage || !stage.open) return out;
+  out.complete = isStageComplete(stage);
+  if (!out.complete) { out.skill = nextTierHint(aggregateStage(stage)); return out; }
+  const agg = aggregateStage(stage);
+  const tier = tierOf(agg);
+  const prev = findCert(stage.stage);
+  if (prev && TIER_RANK[tier.key] <= TIER_RANK[prev.tier]) { out.cert = prev; return out; }
+  const cert = buildCert(stage, tier, agg, stageContent(stage), prev);
+  saveCert(cert);
+  out.cert = cert;
+  out.isNew = !prev;
+  out.upgraded = !!prev;
+  return out;
+}
+
+function certList() {
+  const certs = getProgress().certs;
+  return STAGES.map(function (s) {
+    let got = null;
+    for (let i = 0; i < certs.length; i++) { if (certs[i].stage === s.stage) { got = certs[i]; break; } }
+    const agg = s.open ? aggregateStage(s) : null;
+    return {
+      stage: s.stage, name: s.name, goal: s.goal, from: s.from, to: s.to, open: s.open,
+      unlocked: !!got, cert: got,
+      tier: got ? got.tier : null, tierLabel: got ? got.tierLabel : '', tierColor: got ? got.tierColor : '',
+      progress: agg ? agg.levels : 0, total: s.to - s.from + 1,
+      accuracy: agg ? Math.round(agg.avgAcc * 100) : 0
+    };
+  });
+}
+
+function ownedCertCount() { return getProgress().certs.length; }
+function getHolderName() { return getProgress().holderName || ''; }
+function setHolderName(name) {
+  const p = getProgress();
+  p.holderName = (name || '').slice(0, 10);
+  saveProgress(p);
+  return p.holderName;
+}
+/* 修改持有人：证书编号不变，只更新持有人后重新落库 */
+function updateCertHolder(name) {
+  const p = getProgress();
+  p.certs.forEach(function (c) { c.holder = name; });
+  saveProgress(p);
+}
 
 /* ---------------- 音效（Web Audio 合成，对应 utils/audio.js） ---------------- */
 let AC = null;
@@ -670,14 +1072,15 @@ const state = {
   firstIndex: -1, matchedCount: 0, score: 0, combo: 0,
   pendingRemove: [], locked: false, goldenId: null, guideStep: 0,
   collected: [], maxCombo: 0,
-  pronounceCount: 0, lastPronounced: null   // 朗读次数/最近朗读元素（供自动化测试断言）
+  pronounceCount: 0, lastPronounced: null,  // 朗读次数/最近朗读元素（供自动化测试断言）
+  attempts: 0, matches: 0, misses: 0        // 正确率统计（证书质量门槛）
 };
 
 const $ = function (id) { return document.getElementById(id); };
 
 /* ---------------- 屏幕切换 ---------------- */
 function showScreen(name) {
-  ['home', 'game', 'result'].forEach(function (n) {
+  ['home', 'game', 'result', 'cert', 'passport'].forEach(function (n) {
     $('screen-' + n).classList.toggle('active', n === name);
   });
   window.scrollTo(0, 0);
@@ -711,6 +1114,30 @@ function renderHome() {
   }
   $('profile-combo').textContent = '最高连击 ×' + p.bestCombo;
 
+  // 文化护照入口：证书数 + 当前阶段进度（形成「还差几关」的牵引）
+  const slots = certList();
+  const owned = slots.filter(function (c) { return c.unlocked; }).length;
+  let stage = null;
+  slots.forEach(function (it) { if (!stage && it.open && !it.unlocked) stage = it; });
+  const lastCert = p.certs.length ? p.certs[p.certs.length - 1] : null;
+  const sub = stage
+    ? ('第 ' + stage.stage + ' 阶段 · ' + stage.name + ' · 进度 ' + stage.progress + '/' + stage.total + ' 关')
+    : (lastCert ? ('最近获得：第 ' + lastCert.stage + ' 阶段 · ' + lastCert.tierLabel)
+      : '通关第 10 关，获得第一张藏文成长证书');
+  const hp = $('home-passport');
+  hp.innerHTML =
+    '<div class="passport-card">' +
+    '<div class="pc-left">' +
+    '<div class="pc-title">我的西藏文化护照</div>' +
+    '<div class="pc-sub">' + sub + '</div>' +
+    '</div>' +
+    '<div class="pc-right">' +
+    '<div class="pc-count">' + owned + '<span class="pc-total">/12</span></div>' +
+    '<div class="pc-label">成长证书</div>' +
+    '</div>' +
+    '</div>';
+  hp.querySelector('.passport-card').addEventListener('click', showPassport);
+
   const grid = $('level-grid');
   grid.innerHTML = '';
   for (let n = 1; n <= MAX_LEVEL; n++) {
@@ -743,6 +1170,9 @@ function startLevel(level) {
   state.pendingRemove = [];
   state.locked = false;
   state.collected = [];
+  state.attempts = 0;
+  state.matches = 0;
+  state.misses = 0;
   state.goldenId = cfg.elements[Math.floor(Math.random() * cfg.elements.length)][0];
 
   // 牌池 + Fisher-Yates 洗牌
@@ -861,9 +1291,14 @@ function onTapTile(idx) {
   const second = idx;
   state.firstIndex = -1;
 
+  // 一次配对尝试（成功或失败都算）——正确率 = matches / attempts
+  state.attempts++;
+
   if (state.tiles[first].id === state.tiles[second].id) {
+    state.matches++;
     handleMatch(first, second);
   } else {
+    state.misses++;
     handleMismatch(first, second);
   }
 }
@@ -1044,10 +1479,48 @@ function finishLevel() {
   const hadStamp = getProgress().stamps.indexOf('lhasa') > -1;
   completeLevel(level);
   const stampNew = !hadStamp && grantStamp('lhasa');
+
+  // 成长阶梯 · 证书：先记录本关成绩，再判断该阶段是否通关并（升级）颁发证书
+  const certRes = onLevelComplete(level, {
+    matches: state.matchedCount,
+    attempts: state.attempts > 0 ? state.attempts : state.matchedCount,
+    misses: state.misses
+  });
   const p = getProgress();
 
   $('res-title').textContent = '第 ' + level + ' 关完成！';
   $('res-sub').textContent = '共消除 ' + state.matchedCount + ' 对 · 最高连击 ×' + state.maxCombo;
+  $('res-acc').textContent = '本关正确率 ' + certRes.accuracy + '%' +
+    (state.misses === 0 ? ' · 全程无失误 ✦' : '');
+  $('res-acc').className = 'result-acc' + (state.misses === 0 ? ' ok' : '');
+
+  // 证书横幅（新得 / 升级），否则展示阶段进度与「还差什么」
+  const certEl = $('res-cert');
+  if (certRes.cert) {
+    certEl.innerHTML =
+      '<div class="cert-banner" style="border-color:' + certRes.cert.tierColor + ';">' +
+      '<div class="cert-seal" style="background:' + certRes.cert.tierColor + ';">' + certRes.cert.tierSeal + '</div>' +
+      '<div class="cert-info">' +
+      '<div class="cert-line">' +
+      (certRes.isNew ? '获得藏文成长证书' : (certRes.upgraded ? '证书升级' : '本阶段证书')) +
+      ' · ' + certRes.cert.tierLabel + '</div>' +
+      '<div class="cert-line2">第 ' + certRes.cert.stage + ' 阶段 · ' + certRes.cert.stageName +
+      ' · 正确率 ' + certRes.cert.acc + '%</div>' +
+      '</div>' +
+      '<div class="cert-go" data-stage="' + certRes.cert.stage + '">查看 ›</div>' +
+      '</div>';
+    certEl.querySelector('.cert-go').addEventListener('click', function () {
+      showCert(certRes.cert.stage);
+    });
+  } else if (certRes.stage) {
+    certEl.innerHTML =
+      '<div class="cert-hint">第 ' + certRes.stage.stage + ' 阶段 · ' + certRes.stage.name +
+      (certRes.skill ? '<span class="cert-hint-skill">' + certRes.skill.text + '</span>' : '') +
+      '</div>';
+  } else {
+    certEl.innerHTML = '';
+  }
+
   $('res-score').textContent = state.score;
   $('res-combo').textContent = '×' + state.maxCombo;
   $('res-cards').textContent = state.collected.length;
@@ -1104,6 +1577,13 @@ function finishLevel() {
     next.addEventListener('click', function () { startLevel(level + 1); });
     actions.appendChild(next);
   }
+  const passport = document.createElement('button');
+  passport.className = 'passport-btn';
+  passport.textContent = '文化护照 · 已获 ' + ownedCertCount() + ' 张证书';
+  passport.setAttribute('style', 'margin-top:12px; border:1.5px solid #1E8449; border-radius:14px; padding:13px 0; width:100%; font-size:15px; font-weight:700; color:#1E8449; background:rgba(255,255,255,.9); cursor:pointer;');
+  passport.addEventListener('click', showPassport);
+  actions.appendChild(passport);
+
   const back = document.createElement('button');
   back.className = 'ghost-btn';
   back.textContent = '返回首页';
@@ -1214,6 +1694,232 @@ function renderBlessOut(cv, name) {
     '<div class="hint">手机上长按图片即可保存到相册；小程序版会用 canvasToTempFilePath 导出并支持转发给朋友。</div>';
 }
 
+/* ---------------- 文化护照（总档案） ---------------- */
+function showPassport() {
+  const p = getProgress();
+  const list = certList();
+  const owned = list.filter(function (c) { return c.unlocked; }).length;
+
+  $('pp-logo').src = IMAGES.logo144;
+  $('pp-holder').textContent = p.holderName ? ('持有人 · ' + p.holderName) : '持有人 · 未填写';
+  $('pp-cert-count').textContent = owned + ' / 12';
+
+  const grid = $('pp-cert-grid');
+  grid.innerHTML = list.map(function (it) {
+    const inner = it.unlocked
+      ? '<div class="slot-tier" style="background:' + it.tierColor + ';">' + it.tierLabel + '</div>' +
+        '<div class="slot-no">' + it.cert.no + '</div>'
+      : '<div class="slot-lock">🔒</div>' +
+        '<div class="slot-progress">' + it.progress + '/' + it.total + ' 关</div>';
+    return '<div class="cert-slot ' + (it.unlocked ? 'got' : 'locked') + '" data-stage="' + it.stage + '">' +
+      '<div class="slot-top">第 ' + it.stage + ' 阶段</div>' +
+      '<div class="slot-name">' + it.name + '</div>' + inner + '</div>';
+  }).join('');
+  Array.prototype.forEach.call(grid.querySelectorAll('.cert-slot'), function (el) {
+    el.addEventListener('click', function () { showCert(parseInt(el.dataset.stage, 10)); });
+  });
+
+  let next = null;
+  list.forEach(function (it) { if (!next && it.open && !it.unlocked) next = it; });
+  $('pp-next').innerHTML = next
+    ? ('下一张：第 ' + next.stage + ' 阶段 · ' + next.name +
+      '<b>还差 ' + (next.total - next.progress) + ' 关</b>')
+    : (owned ? '已集齐当前已开放阶段的全部证书' : '');
+
+  $('pp-cards-count').textContent = p.seenCards.length + ' / ' + CARDS.length;
+  $('pp-cards-bar').style.width = Math.round(p.seenCards.length / CARDS.length * 100) + '%';
+
+  $('pp-stamp-count').textContent = p.stamps.length + ' / 7';
+  $('pp-stamps').innerHTML = p.stamps.length
+    ? p.stamps.map(function () {
+      return '<div class="pp-stamp"><div class="seal">拉萨</div><div class="desc">通关第 1 关获得</div></div>';
+    }).join('') + '<div class="empty">更多印章陆续开放（规划七地市）</div>'
+    : '<div class="empty">还没有印章 · 通关第 1 关获得「拉萨」印章</div>';
+
+  $('pp-graph').innerHTML =
+    '<div class="g"><div class="v">' + p.completedLevels.length + '</div><div class="k">通关关卡</div></div>' +
+    '<div class="g"><div class="v">' + owned + '</div><div class="k">成长证书</div></div>' +
+    '<div class="g"><div class="v">' + p.seenCards.length + '</div><div class="k">文化卡</div></div>' +
+    '<div class="g"><div class="v">×' + p.bestCombo + '</div><div class="k">最高连击</div></div>';
+
+  showScreen('passport');
+}
+
+/* ---------------- 藏文成长证书 ---------------- */
+const CERT_TIB = 'བོད་ཡིག་སློབ་སྦྱོང';
+
+function showCert(stage) {
+  const info = stageByNo(stage);
+  const cert = findCert(stage);
+  const body = $('cert-body');
+
+  if (cert) {
+    body.innerHTML =
+      '<div class="cert-sheet" style="border-color:' + cert.tierColor + ';">' +
+      '<div class="cert-sheet-inner">' +
+      '<div class="cert-orn l">✦</div><div class="cert-orn r">✦</div>' +
+      '<div class="cs-tib tib">' + CERT_TIB + '</div>' +
+      '<div class="cs-title">藏文成长证书</div>' +
+      '<div class="cs-rule"></div>' +
+      '<div class="cs-stage">第 ' + cert.stage + ' 阶段</div>' +
+      '<div class="cs-name" style="color:' + cert.tierColor + ';">' + cert.stageName + '</div>' +
+      '<div class="cs-tier" style="background:' + cert.tierColor + ';">' + cert.tierLabel + '</div>' +
+      '<div class="cs-lines">' +
+      cert.lines.map(function (l) { return '<div class="cs-line">✦  ' + l + '</div>'; }).join('') +
+      '</div>' +
+      '<div class="cs-meta">' +
+      '<div class="cs-row"><span class="cs-k">证书编号</span><span class="cs-v">' + cert.no + '</span></div>' +
+      '<div class="cs-row"><span class="cs-k">持 有 人</span><span class="cs-v">' + cert.holder +
+      ' <span class="edit" id="cs-edit">✎</span></span></div>' +
+      '<div class="cs-row"><span class="cs-k">颁发日期</span><span class="cs-v">' + cert.date + '</span></div>' +
+      '<div class="cs-row"><span class="cs-k">学习表现</span><span class="cs-v">正确率 ' + cert.acc + '%' +
+      (cert.clean ? ' · 零失误' : '') + '</span></div>' +
+      '</div>' +
+      '<div class="cs-foot"><img src="' + IMAGES.logo80 + '" alt=""><div class="cs-code">小程序码</div></div>' +
+      '<div class="cs-slogan">玩方块，认藏文</div>' +
+      '</div></div>' +
+      '<div class="cert-actions"><button class="solid" id="cert-gen">生成证书图片</button></div>' +
+      '<div id="cert-out"></div>' +
+      '<div class="cert-tip">证书是学习证明，不是积分。正确率越高，等级越高：金质 &gt; 银质 &gt; 普通。</div>';
+
+    $('cert-gen').addEventListener('click', function () { generateCertImage(cert); });
+    $('cs-edit').addEventListener('click', function () {
+      let name = null;
+      try {
+        name = window.prompt('证书持有人（最多 10 个字）', cert.holder === '藏文学习者' ? '' : cert.holder);
+      } catch (e) { name = null; }
+      if (name === null) return;
+      const n = (String(name).trim() || '藏文学习者').slice(0, 10);
+      setHolderName(n);
+      updateCertHolder(n);
+      showCert(stage);
+    });
+  } else {
+    let slot = null;
+    certList().forEach(function (it) { if (it.stage === stage) slot = it; });
+    body.innerHTML =
+      '<div class="locked-box">' +
+      '<div class="ic">🔒</div>' +
+      '<div class="t">第 ' + info.stage + ' 阶段 · ' + info.name + '</div>' +
+      '<div class="s">' + info.goal + '</div>' +
+      '<div class="p">当前进度 ' + (slot ? slot.progress : 0) + ' / ' + (slot ? slot.total : 10) + ' 关</div>' +
+      '<div class="r">通关第 ' + info.from + '-' + info.to + ' 关，即可获得「' + info.name + '」证书</div>' +
+      '</div>' +
+      '<div class="tier-box"><div class="tt">证书等级（质量门槛）</div>' +
+      ['gold', 'silver', 'bronze'].map(function (k) {
+        const t = TIERS[k];
+        return '<div class="tier-row"><div class="dot" style="background:' + t.color + ';"></div>' +
+          '<div class="nm" style="color:' + t.color + ';">' + t.label + '</div>' +
+          '<div class="rl">' + t.rule + '</div></div>';
+      }).join('') +
+      '</div>';
+  }
+
+  showScreen('cert');
+}
+
+/* 证书图片导出（对应 pages/cert 的 Canvas 绘制） */
+function generateCertImage(cert) {
+  const W = 750, H = 1120;
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+  const accent = cert.tierColor || '#C0392B';
+
+  ctx.fillStyle = '#FDF6E3';
+  ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = accent;
+  ctx.lineWidth = 6;
+  ctx.strokeRect(24, 24, W - 48, H - 48);
+  ctx.strokeStyle = 'rgba(183,149,11,.55)';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(46, 46, W - 92, H - 92);
+
+  ctx.textAlign = 'center';
+
+  // 藏文装饰语（tsheg 断行，shad 类符号不落行首）
+  const measure = function (s) { ctx.font = '500 54px ' + TIB_FONT; return ctx.measureText(s).width; };
+  const tibLines = wrapTibetan(measure, CERT_TIB, W - 260);
+  ctx.fillStyle = 'rgba(192,57,43,.78)';
+  tibLines.forEach(function (ln, i) {
+    ctx.font = '500 54px ' + TIB_FONT;
+    ctx.fillText(ln, W / 2, 148 + i * 62);
+  });
+
+  ctx.fillStyle = '#2C3E50';
+  ctx.font = '700 46px "PingFang SC","Microsoft YaHei",sans-serif';
+  ctx.fillText('藏文成长证书', W / 2, 268);
+  ctx.strokeStyle = 'rgba(183,149,11,.6)';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(W / 2 - 150, 300); ctx.lineTo(W / 2 + 150, 300); ctx.stroke();
+
+  ctx.fillStyle = '#8A8375';
+  ctx.font = '400 28px "PingFang SC","Microsoft YaHei",sans-serif';
+  ctx.fillText('第 ' + cert.stage + ' 阶段', W / 2, 352);
+
+  ctx.fillStyle = accent;
+  ctx.font = '700 76px "PingFang SC","Microsoft YaHei",sans-serif';
+  ctx.fillText(cert.stageName, W / 2, 442);
+
+  ctx.fillStyle = accent;
+  ctx.fillRect((W - 250) / 2, 470, 250, 60);
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = '700 30px "PingFang SC","Microsoft YaHei",sans-serif';
+  ctx.fillText(cert.tierLabel, W / 2, 510);
+
+  ctx.fillStyle = '#2C3E50';
+  ctx.font = '500 30px "PingFang SC","Microsoft YaHei",sans-serif';
+  cert.lines.forEach(function (l, i) { ctx.fillText('✦  ' + l, W / 2, 606 + i * 54); });
+
+  const rows = [
+    ['证书编号', cert.no],
+    ['持 有 人', cert.holder],
+    ['颁发日期', cert.date],
+    ['学习表现', '正确率 ' + cert.acc + '%' + (cert.clean ? ' · 零失误' : '')]
+  ];
+  ctx.font = '400 26px "PingFang SC","Microsoft YaHei",sans-serif';
+  rows.forEach(function (r, i) {
+    const y = 806 + i * 46;
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#8A8375';
+    ctx.fillText(r[0], 120, y);
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#2C3E50';
+    ctx.fillText(r[1], W - 120, y);
+    ctx.strokeStyle = 'rgba(214,202,176,.9)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(120, y + 14); ctx.lineTo(W - 120, y + 14); ctx.stroke();
+  });
+
+  ctx.fillStyle = 'rgba(255,255,255,.95)';
+  ctx.fillRect(W - 212, H - 196, 116, 116);
+  ctx.strokeStyle = 'rgba(183,149,11,.6)';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(W - 212, H - 196, 116, 116);
+  ctx.fillStyle = '#C0392B';
+  ctx.font = '22px "PingFang SC","Microsoft YaHei",sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('小程序码', W - 154, H - 132);
+
+  ctx.fillStyle = '#B7950B';
+  ctx.font = '700 28px "PingFang SC","Microsoft YaHei",sans-serif';
+  ctx.fillText('玩方块，认藏文', W / 2, H - 62);
+
+  const out = function () {
+    const url = cv.toDataURL('image/png');
+    $('cert-out').innerHTML =
+      '<div class="cert-preview"><img src="' + url + '" alt="藏文成长证书"></div>' +
+      '<a class="cert-dl" download="藏字方块-成长证书-' + cert.stageName + '-' + cert.no + '.png" href="' + url + '">保存到本地（PNG）</a>' +
+      '<div class="hint">手机上长按图片即可保存到相册；小程序版会用 canvasToTempFilePath 导出并支持转发给朋友。</div>';
+  };
+  out();
+
+  const logo = new Image();
+  logo.onload = function () { ctx.drawImage(logo, 96, H - 186, 96, 96); out(); };
+  logo.onerror = function () { /* 保持无 Logo 版本 */ };
+  logo.src = IMAGES.logo80;
+}
+
 /* ---------------- 事件绑定 ---------------- */
 $('game-back').addEventListener('click', function () {
   if (state.matchedCount > 0 && state.matchedCount < state.tiles.length / 2) {
@@ -1226,6 +1932,8 @@ $('reset-link').addEventListener('click', function () {
   clearProgress();
   renderHome();
 });
+$('pp-home').addEventListener('click', renderHome);
+$('cert-home').addEventListener('click', renderHome);
 $('card-x').addEventListener('click', hideCard);
 // 点击卡片外任意处收起（不阻止牌面点击，游戏不中断）
 document.addEventListener('click', function (e) {
