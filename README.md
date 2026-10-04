@@ -9,13 +9,27 @@
 
 - 配对消除玩法：6×4 到 6×8 共 10 关，难度递进
 - 8 个藏文字母（ཀ ཁ ག ང ཅ ཆ ཇ ཉ）+ 4 个藏文化图标（吉祥结 / 莲花 / 雪山 / 经幡）
-- 12 张文化知识卡，边玩边认藏文
+- 12 张文化知识卡，仅首次发现时滑出（非阻塞、自动收起）
+- **每次配对成功朗读该字发音**（单声部，连击不叠音）
 - 连击系统 + 金色特殊方块（双倍积分）
 - 文化护照印记（首通第 1 关得「拉萨」印章）
 - Canvas 2D 生成可分享的扎西德勒祝福卡
+- 藏文化背景（平铺菱格纹 / 经幡 / 雪山布达拉宫）
 - 本地进度存储，无需登录
 - 4 个程序合成音效，免费可商用、无版权风险
 - 藏文排版规范：断行只在 tsheg( ་ ) 之后，shad( ། ) 永不居行首
+
+## 自检
+
+```bash
+node scripts/validate.js         # 小程序静态自检：13 大类 120 项
+node scripts/test-tibetan.js     # 藏文排版规则：1392 项断言（无需依赖）
+```
+
+```bash
+# 浏览器体验版端到端测试（需 jsdom）
+NODE_PATH="<node_modules 路径>" node scripts/test-h5.js   # 96 项断言
+```
 
 ## 两种本地体验方式
 
@@ -39,17 +53,6 @@ node scripts/build-h5.js        # 重新生成（改了 data/ 或 images/ 之后
 
 详见 [`docs/run-local.md`](docs/run-local.md)。
 
-## 自检
-
-```bash
-node scripts/validate.js        # 小程序静态自检：11 大类 86 项
-```
-
-```bash
-# 浏览器体验版端到端测试（需 jsdom）
-NODE_PATH="<node_modules 路径>" node scripts/test-h5.js   # 61 项断言
-```
-
 ## 目录结构
 
 ```
@@ -57,10 +60,10 @@ NODE_PATH="<node_modules 路径>" node scripts/test-h5.js   # 61 项断言
 ├── data/                          # 元素库、文化卡（12 张）、关卡配置（10 关）
 ├── pages/index|game|result/       # 首页 / 游戏页 / 结算页
 ├── utils/                         # 音效、存储、图标绘制、藏文断行、埋点
-├── audio/ images/                 # 音效与品牌 Logo 资产
+├── audio/ images/                 # 音效与品牌 Logo / 背景资产
 ├── preview/                       # 浏览器体验版（template + 生成物）
 ├── docs/                          # 运行指南 / 排版规范 / 上线与商业化
-└── scripts/                       # validate.js / build-h5.js / test-h5.js
+└── scripts/                       # validate / test-tibetan / build-h5 / test-h5
 ```
 
 ## 文档
@@ -76,5 +79,5 @@ NODE_PATH="<node_modules 路径>" node scripts/test-h5.js   # 61 项断言
 
 - [ ] 在微信公众平台把小程序名改为「藏字方块」，上传 `images/logo-144.png` 作为头像
 - [ ] 配置 `app.js` 中 `TIBETAN_FONT_URL`（Noto Serif Tibetan 的 HTTPS 地址，未配置时静默跳过）
-- [ ] 录制 8 条藏文发音放入 `audio/voice/`（命名 `letter_01.mp3` ~ `letter_08.mp3`）
+- [ ] 录制 12 条发音放入 `audio/voice/`（`letter_01.mp3` ~ `letter_08.mp3` + `icon_01.mp3` ~ `icon_04.mp3`）
 - [ ] 替换祝福卡右下角的小程序码占位框

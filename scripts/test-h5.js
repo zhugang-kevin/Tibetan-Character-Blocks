@@ -75,6 +75,10 @@ function mockCtx() {
       window.HTMLCanvasElement.prototype.toDataURL = function () { return 'data:image/png;base64,STUB'; };
       window.confirm = function () { return true; };
       window.scrollTo = function () {};
+      // 体验版不带真人录音；用静音桩替代 Audio，避免 jsdom「未实现」噪音
+      window.Audio = function () {
+        return { play: function () { return { catch: function () {} }; }, pause: function () {} };
+      };
       // jsdom 不进行布局，clientWidth 恒为 0；给出稳定的手机视口宽度，
       // 以便验证「各关牌面尺寸一致」的布局计算。
       Object.defineProperty(window.Element.prototype, 'clientWidth', {
@@ -197,9 +201,16 @@ function mockCtx() {
   check('已消除对数 = 1', ev('state.matchedCount') === 1);
   check('积分已累加（≥10）', ev('state.score') >= 10, 'score=' + ev('state.score'));
 
+  /* ---------- 4b. 配对成功朗读发音（新增要求） ---------- */
+  section('4b. 配对成功朗读藏文发音');
+  check('成功配对后朗读了 1 次', ev('state.pronounceCount') === 1, 'count=' + ev('state.pronounceCount'));
+  check('朗读的是本次消除的元素', ev('state.lastPronounced') === tiles()[pair[0]].id,
+    'last=' + ev('state.lastPronounced') + ' 应为 ' + tiles()[pair[0]].id);
+
   /* ---------- 5. 配对失败：无惩罚 ---------- */
   section('5. 配对失败不扣分');
   const scoreBefore = ev('state.score');
+  const pronBefore = ev('state.pronounceCount');
   const mm = findMismatch();
   await clickTile(mm[0]);
   await clickTile(mm[1]);
@@ -210,15 +221,22 @@ function mockCtx() {
   check('解除锁定可继续点', ev('state.locked') === false);
   check('不扣分', ev('state.score') === scoreBefore, scoreBefore + ' → ' + ev('state.score'));
   check('连击清零', ev('state.combo') === 0, 'combo=' + ev('state.combo'));
+  check('配对失败不朗读发音', ev('state.pronounceCount') === pronBefore,
+    pronBefore + ' → ' + ev('state.pronounceCount'));
 
   /* ---------- 6. 连击 + 重复匹配轻提示（修复①） ---------- */
   section('6. 连击与重复匹配轻提示');
   // 把 12 张文化卡全部标记为「已看过」，之后的匹配应只出轻提示
   ev('Object.keys(ELEMENTS).forEach(function (k) { markCardSeen(k); });');
   const pr1 = findPair();
+  const pronAtMatch = ev('state.pronounceCount');
   await clickTile(pr1[0]);
   await clickTile(pr1[1]);
+  check('朗读延后于配对音效（配对后瞬时尚未朗读）', ev('state.pronounceCount') === pronAtMatch,
+    'count=' + ev('state.pronounceCount'));
   await sleep(380);
+  check('延时结束后完成朗读', ev('state.pronounceCount') === pronAtMatch + 1,
+    'count=' + ev('state.pronounceCount'));
   check('重复匹配不再弹完整卡片', !$('#card-panel').classList.contains('show'));
   check('重复匹配改为轻提示 toast', $('#toast').classList.contains('show'));
   check('轻提示含「已收藏」', $('#toast').textContent.indexOf('已收藏') > -1, $('#toast').textContent);
@@ -227,6 +245,8 @@ function mockCtx() {
   await clickTile(pr2[0]);
   await clickTile(pr2[1]);
   await sleep(380);
+  check('第 3 次配对也朗读（累计 3 次）', ev('state.pronounceCount') === pronAtMatch + 2,
+    'count=' + ev('state.pronounceCount'));
   check('连击累加（≥2）', ev('state.combo') >= 2, 'combo=' + ev('state.combo'));
   check('最高连击已记录', ev('getProgress().bestCombo') >= 2, 'bestCombo=' + ev('getProgress().bestCombo'));
 
@@ -265,6 +285,7 @@ function mockCtx() {
 
   /* ---------- 9. 通关 → 结算页 ---------- */
   section('9. 通关与结算');
+  const pronOnEnter = ev('state.pronounceCount');
   let guard = 0;
   while (ev('state.matchedCount') < 12 && guard++ < 40) {
     const pr = findPair();
@@ -274,6 +295,8 @@ function mockCtx() {
     await sleep(340);
   }
   check('全部 12 对已消除', ev('state.matchedCount') === 12, 'matched=' + ev('state.matchedCount'));
+  check('本关 12 次配对 = 12 次朗读', ev('state.pronounceCount') - pronOnEnter === 12,
+    '增加 ' + (ev('state.pronounceCount') - pronOnEnter) + ' 次');
   check('通关瞬间不再弹出重复提示', !$('#toast').classList.contains('show'));
   await sleep(1100);
   check('自动进入结算页', activeScreen() === 'screen-result', activeScreen());

@@ -15,8 +15,9 @@ C:\Users\zhuga\WorkBuddy\2026-10-04-00-41-14\tibetan-match\preview\play.html
 
 **操作**：双击它（或右键 → 用 Chrome / Edge 打开）即可开始玩。无需安装任何东西。
 
-**它能验什么**：10 关解锁/通关流程、配对消除、文化卡弹窗、连击与金色方块、积分、
-拉萨印记、下一关、第 10 关祝福卡生成与保存、进度持久化（浏览器 localStorage）。
+**它能验什么**：10 关解锁/通关流程、配对消除、文化卡弹窗（仅首次/非阻塞/自动收起）、
+连击与金色方块、积分、配对后朗读判定、牌面尺寸统一、拉萨印记、下一关、
+第 10 关祝福卡生成与保存、进度持久化（浏览器 localStorage）。
 
 **它不能验什么**：真机触摸手感、微信原生音效播放（这里用 Web Audio 合成等效音色）、
 `wx.loadFontFace` 字体加载、`canvasToTempFilePath` 相册保存、转发能力。
@@ -28,7 +29,7 @@ cd tibetan-match
 node scripts/build-h5.js
 ```
 
-**自动验收**（模拟真人点击，61 项断言）：
+**自动验收**（模拟真人点击，96 项断言）：
 
 ```bash
 NODE_PATH="C:/Users/zhuga/.workbuddy/binaries/node/workspace/node_modules" \

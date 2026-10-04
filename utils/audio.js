@@ -22,11 +22,15 @@ function play(name) {
   }
 }
 
-// ---- 藏文发音（Gate 1 P0：第一次听到藏文发音）----
-// 真人录音放置于 audio/voice/{元素id}.mp3（如 letter_01.mp3）。
+// ---- 藏文发音（Gate 1 P0：每次配对成功都朗读该元素）----
+// 真人录音放置于 audio/voice/{元素id}.mp3（letter_01..08 / icon_01..04）。
 // 文件缺失时静默回退（onError 忽略），不阻塞游戏流程。
-// 录音规格：单声道、128kbps、每条 0.5-1.5s，8 个字母各一条。
+// 录音规格：单声道、128kbps、每条 0.5-1.5s。
+//
+// 单声部策略：同一时刻只允许一条发音在响。配对很快时（连击），
+// 新发音会打断上一条，而不是叠在一起变成噪音。
 var voiceCtx = {};
+var activeVoice = null;
 
 function pronounce(id) {
   try {
@@ -38,6 +42,10 @@ function pronounce(id) {
       voiceCtx[id] = c;
     }
     var v = voiceCtx[id];
+    if (activeVoice && activeVoice !== v) {
+      try { activeVoice.stop(); } catch (e) { /* 忽略 */ }
+    }
+    activeVoice = v;
     v.stop();
     v.play();
     return true;

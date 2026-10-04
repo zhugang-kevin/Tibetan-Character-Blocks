@@ -12,7 +12,7 @@ var tracker = require('../../utils/tracker');
 
 var GUIDE = [
   { title: '如何消除', text: '点击两张相同的藏文字母或文化图标，它们就会一起消失。' },
-  { title: '连击', text: '连续不断错地消除可以触发连击 ×N，分数更高，声音更亮。' },
+  { title: '听发音', text: '每消除成功一次，都会读出这个字的藏文发音——边玩边听，记得更牢。连击不断，声音还会越清亮。' },
   { title: '文化卡', text: '第一次消除某种字母或图标时，底部会滑出它的文化卡，不打断游戏；之后只出现小提示。金色 ✦ 是特殊方块，双倍积分。' }
 ];
 
@@ -83,6 +83,7 @@ Page({
   cardTimer: null,
   toastTimer: null,
   barTimer: null,
+  voiceTimer: null,
 
   onLoad: function (query) {
     var level = parseInt(query.level, 10) || 1;
@@ -179,9 +180,6 @@ Page({
       this.goldenSeen = true;
       tracker.track('first_special');
     }
-    if (tile.type === 'letter' && this.firstIndex === -1) {
-      if (audio.pronounce(tile.id)) tracker.track('first_pronunciation');
-    }
 
     if (this.firstIndex === -1) {
       this.firstIndex = idx;
@@ -239,6 +237,13 @@ Page({
     var id = this.data.tiles[i].id;
     var firstTime = !storage.isCardSeen(id);
     if (firstTime) storage.markCardSeen(id);
+
+    // 每次配对成功都朗读该元素发音（学习闭环：看得见 → 听得见）
+    // 延后 300ms 让配对音效先响，避免人声与铃声糊在一起；连击时新发音打断旧发音
+    if (this.voiceTimer) clearTimeout(this.voiceTimer);
+    this.voiceTimer = setTimeout(function () {
+      if (audio.pronounce(id)) tracker.track('first_pronunciation');
+    }, 300);
 
     setTimeout(function () { that.finalizeMatch(); }, 240);
     setTimeout(function () {
@@ -367,5 +372,6 @@ Page({
     if (this.toastTimer) clearTimeout(this.toastTimer);
     if (this.comboTimer) clearTimeout(this.comboTimer);
     if (this.barTimer) clearTimeout(this.barTimer);
+    if (this.voiceTimer) clearTimeout(this.voiceTimer);
   }
 });

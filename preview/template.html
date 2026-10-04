@@ -528,6 +528,25 @@ const audio = {
   combo: function (n) { playSound('match', Math.min(2, 1 + 0.1 * Math.max(0, n - 1))); }
 };
 
+/* ---------------- 藏文发音（对应 utils/audio.js pronounce） ----------------
+   每次配对成功后朗读该元素的藏文发音。
+   浏览器体验版不带真人录音（音频资产只在小程序包内），这里保持与小程序
+   一致的调用时机与「单声部」策略，并统计次数供自动化测试断言。
+   无录音文件时静默回退，不阻塞游戏。 */
+let activeVoice = null;
+function pronounce(id) {
+  state.pronounceCount++;
+  state.lastPronounced = id;
+  try {
+    if (activeVoice) { activeVoice.pause(); activeVoice = null; }
+    const a = new window.Audio('audio/voice/' + id + '.mp3');
+    activeVoice = a;
+    const p = a.play();
+    if (p && p.catch) p.catch(function () { /* 无录音文件：静默 */ });
+  } catch (e) { /* 静默 */ }
+  return true;
+}
+
 /* ---------------- 文化图标绘制（对应 utils/icons.js） ---------------- */
 function roundRectPath(ctx, x, y, w, h, r) {
   ctx.beginPath();
@@ -642,7 +661,7 @@ function wrapTibetan(measure, text, maxWidth) {
 /* ---------------- 游戏状态 ---------------- */
 const GUIDE = [
   { title: '如何消除', text: '点击两张相同的藏文字母或文化图标，它们就会一起消失。' },
-  { title: '连击', text: '连续不断错地消除可以触发连击 ×N，分数更高，声音更亮。' },
+  { title: '听发音', text: '每消除成功一次，都会读出这个字的藏文发音——边玩边听，记得更牢。连击不断，声音还会越清亮。' },
   { title: '文化卡', text: '第一次消除某种字母或图标时，底部会滑出它的文化卡，不会打断游戏；之后只出现小提示。金色 ✦ 是特殊方块，双倍积分。' }
 ];
 
@@ -650,7 +669,8 @@ const state = {
   level: 1, cols: 6, rows: 4, tiles: [],
   firstIndex: -1, matchedCount: 0, score: 0, combo: 0,
   pendingRemove: [], locked: false, goldenId: null, guideStep: 0,
-  collected: [], maxCombo: 0
+  collected: [], maxCombo: 0,
+  pronounceCount: 0, lastPronounced: null   // 朗读次数/最近朗读元素（供自动化测试断言）
 };
 
 const $ = function (id) { return document.getElementById(id); };
@@ -887,6 +907,11 @@ function handleMatch(i, j) {
 
   const firstTime = !isCardSeen(id);
   if (firstTime) markCardSeen(id);
+
+  // 每次配对成功都朗读该元素发音（学习闭环：看得见 → 听得见）
+  // 延后 300ms 让配对音效先响，避免人声与铃声糊在一起
+  clearTimeout(state._voiceTimer);
+  state._voiceTimer = setTimeout(function () { pronounce(id); }, 300);
 
   setTimeout(function () { finalizeMatch(); }, 230);
   setTimeout(function () {

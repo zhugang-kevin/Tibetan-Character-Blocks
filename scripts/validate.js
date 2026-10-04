@@ -302,6 +302,56 @@ else warn('体验版牌面尺寸计算与源不一致');
 if (tpl.indexOf('id="board-wrap"') > -1) ok('体验版盘面容器 id 正确（布局生效）');
 else err('体验版缺少 id="board-wrap"，盘面布局不会生效');
 
+// ---------- 13. 朗读与藏文排版规则 ----------
+section('13. 配对朗读与藏文排版规则');
+
+// 13.1 每次配对成功朗读发音
+var matchBody = (gameJs.split('handleMatch: function')[1] || '').split('finalizeMatch: function')[0];
+if (matchBody.indexOf('audio.pronounce(') > -1) ok('配对成功路径（handleMatch）中调用了发音朗读');
+else err('handleMatch 未调用 audio.pronounce —— 配对后不朗读发音');
+if (matchBody.indexOf("track('first_pronunciation')") > -1) ok('首次发音已接入埋点（first_pronunciation）');
+else warn('首次发音埋点缺失');
+if (read('utils/audio.js').indexOf('activeVoice') > -1) ok('发音为单声部（新发音打断旧发音，避免连击叠音）');
+else err('发音未做单声部处理，连击时会叠音');
+if (gameJs.indexOf('voiceTimer') > -1 && gameJs.indexOf('clearTimeout(this.voiceTimer)') > -1)
+  ok('发音定时器已管理（避免离页后朗读）');
+else warn('发音定时器未管理');
+// 旧行为：点击即预览发音 —— 已移除，发音只与「成功配对」绑定
+if (gameJs.indexOf('tile.type === \'letter\' && this.firstIndex === -1') === -1)
+  ok('已移除「点击预览发音」，发音只发生在配对成功时');
+else err('仍保留点击预览发音，会与配对朗读重复');
+
+// 13.2 录音清单覆盖
+if (exists('audio/voice/README.txt')) {
+  var voiceDoc = read('audio/voice/README.txt');
+  if (voiceDoc.indexOf('letter_01') > -1 && voiceDoc.indexOf('icon_') > -1)
+    ok('录音清单说明覆盖 8 个字母 + 4 个图标（letter_/icon_ 命名与元素 ID 一致）');
+  else warn('录音清单未说明图标发音命名（icon_01.mp3 ~ icon_04.mp3）');
+} else warn('缺少 audio/voice/README.txt');
+
+// 13.3 藏文排版规范：tsheg 断行 / shad 不居行首，且符号正确
+var tibSrc = read('utils/tibetan-text.js');
+if (tibSrc.indexOf('U+0F0F') > -1 && tibSrc.indexOf('\u0F08') === -1)
+  ok('四垂符标注正确（U+0F0F ༏，非 U+0F08 ༈）');
+else err('四垂符字符标注错误（应写 U+0F0F ༏，而不是 U+0F08 ༈）');
+if (tibSrc.indexOf('tsheg') > -1 && /分隔符/.test(tibSrc))
+  ok('文档已说明 tsheg 是「分隔符」而非标点');
+else warn('tsheg 的「分隔符」性质未在代码注释中说明');
+var typoDoc = exists('docs/tibetan-typography.md') ? read('docs/tibetan-typography.md') : '';
+if (typoDoc.indexOf('\u0F08') === -1 && typoDoc.indexOf('U+0F0F') > -1)
+  ok('排版规范文档符号正确（含 U+0F0F ༏，无错误字符 ༈）');
+else err('docs/tibetan-typography.md 符号有误（不应出现 ༈ U+0F08）');
+if (typoDoc.indexOf('tsheg 切分「字」') > -1 || typoDoc.indexOf('tsheg 切分字') > -1)
+  ok('排版规范文档含「tsheg 切分字，shad 切分句」结论');
+else warn('排版规范文档缺少一句话结论');
+if (exists('scripts/test-tibetan.js')) ok('藏文排版测试脚本 scripts/test-tibetan.js 存在（可复现）');
+else err('缺少 scripts/test-tibetan.js，排版规则无法复现验证');
+
+// 13.4 体验版需镜像朗读调用（保持源与体验版一致）
+if (tpl.indexOf('pronounce') > -1 && tpl.indexOf('pronounceCount') > -1)
+  ok('体验版镜像了配对朗读逻辑（含可测计数）');
+else err('体验版未镜像配对朗读逻辑');
+
 // ---------- 汇总 ----------
 console.log('\n========== 汇总 ==========');
 console.log('通过: ' + passed + ' | 错误: ' + errors.length + ' | 警告: ' + warnings.length);
