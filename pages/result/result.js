@@ -55,6 +55,12 @@ Page({
     certTitle: '',       // 证书横幅文案（新得 / 升级 / 本阶段证书）
     ownedCerts: 0,       // 已获得证书总数
     skillHint: '',       // 距更高等级证书还差什么
+    // ---- 阶段完结后的「下一步」预告（D27：12 阶段路线图的下一站） ----
+    nextStageNo: 0,      // 下一阶段序号（0 = 没有下一阶段）
+    nextStageName: '',   // 下一阶段名（取自 data/stages.js）
+    nextStageGoal: '',   // 下一阶段学习目标（取自 data/stages.js）
+    nextStageRange: '',  // 下一阶段关卡区间，如 "11-30"
+    nextStageOpen: false,// 是否已开放（false = 内容制作中）
     // ---- PRD v4 留存系统：星级 / 积分 / 唐卡碎片 ----
     stars: 0,            // 本关星级（1-3）
     starList: [],        // 三颗星的亮/灭（供 wxml 渲染）
@@ -108,6 +114,11 @@ Page({
     var cp = collect.cardProgress(CARD_ORDER, storage.getSeenCards());
     var openLog = storage.getOpenLog();
 
+    // D27：本阶段完结（有证书）时，把 12 阶段路线图的下一站摆到同一个决策点上。
+    // 文案全部来自 data/stages.js，页面不写死阶段名——内容库扩充后自动生效。
+    var stageNo = certRes.stage ? certRes.stage.stage : 0;
+    var ns = certificate.nextStage(stageNo);
+
     var collected = ids.map(function (id) {
       var el = elements[id] || {};
       var card = null;
@@ -133,7 +144,7 @@ Page({
       newStamp: newStamp,
       accuracy: certRes.accuracy,
       clean: miss === 0,
-      stageNo: certRes.stage ? certRes.stage.stage : 0,
+      stageNo: stageNo,
       stageName: certRes.stage ? certRes.stage.name : '',
       stageTo: certRes.stage ? certRes.stage.to : 0,
       cert: certRes.cert,
@@ -144,6 +155,12 @@ Page({
         : '',
       ownedCerts: certificate.ownedCount(),
       skillHint: certRes.skill ? certRes.skill.text : '',
+      // D27：下一阶段预告（仅在 cert 存在时上屏，见 result.wxml）
+      nextStageNo: ns ? ns.stage : 0,
+      nextStageName: ns ? ns.name : '',
+      nextStageGoal: ns ? ns.goal : '',
+      nextStageRange: ns ? (ns.from + '-' + ns.to) : '',
+      nextStageOpen: ns ? !!ns.open : false,
       // PRD v4：星级 / 积分 / 唐卡碎片
       stars: starRes.stars,
       starList: [1, 2, 3].map(function (i) { return starRes.stars >= i ? 'on' : 'off'; }),

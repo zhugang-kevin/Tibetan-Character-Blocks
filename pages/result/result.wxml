@@ -78,6 +78,18 @@
     <text wx:if="{{skillHint}}" class="cert-hint-skill">{{skillHint}}</text>
   </view>
 
+  <!-- 阶段完结时的「下一步」预告（D27）。
+       12 阶段路线图此前只在证书页可见，而「要不要继续」的决定发生在这里。
+       阶段名与目标全部取自 data/stages.js，页面不写死。 -->
+  <view wx:if="{{cert && nextStageNo}}" class="next-stage">
+    <view class="ns-head">
+      <text class="ns-tag">下一阶段</text>
+      <text class="ns-name">第 {{nextStageNo}} 阶段 · {{nextStageName}}</text>
+    </view>
+    <text class="ns-goal">下一步：{{nextStageGoal}}</text>
+    <text class="ns-note">{{nextStageOpen ? ('已开放 · 第 ' + nextStageRange + ' 关') : ('内容制作中 · 规划第 ' + nextStageRange + ' 关')}}</text>
+  </view>
+
   <!-- 文化护照印记 v0 -->
   <view wx:if="{{newStamp}}" class="stamp-banner">
     <view class="stamp-seal">拉萨</view>

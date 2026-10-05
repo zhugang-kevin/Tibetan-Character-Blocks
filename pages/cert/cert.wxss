@@ -95,7 +95,7 @@
   font-weight: 700;
   letter-spacing: 8rpx;
   color: #2C3E50;
-}}
+}
 
 .sheet-rule {
   width: 300rpx;
@@ -136,7 +136,7 @@
   font-size: 28rpx;
   line-height: 1.9;
   color: #2C3E50;
-}}
+}
 
 .sheet-meta {
   margin-top: 24rpx;
@@ -162,7 +162,7 @@
   font-weight: 600;
   text-align: right;
   color: #2C3E50;
-}}
+}
 
 .meta-edit {
   font-size: 22rpx;
@@ -283,7 +283,7 @@
   font-size: 40rpx;
   font-weight: 700;
   color: #2C3E50;
-}}
+}
 
 .locked-sub {
   margin-top: 10rpx;
@@ -398,7 +398,7 @@
   font-size: 34rpx;
   font-weight: 700;
   color: #2C3E50;
-}}
+}
 
 .modal-sub {
   text-align: center;

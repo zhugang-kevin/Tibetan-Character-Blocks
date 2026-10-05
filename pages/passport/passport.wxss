@@ -112,7 +112,7 @@
   font-size: 32rpx;
   font-weight: 700;
   color: #2C3E50;
-}}
+}
 
 .section-count {
   font-size: 26rpx;
@@ -170,7 +170,7 @@
   line-height: 1.35;
   min-height: 64rpx;
   color: #2C3E50;
-}}
+}
 
 .cert-slot.locked .slot-name {
   color: #A79F8D;

@@ -1157,6 +1157,43 @@ function mockCtx() {
   check('反向：第 1 关仍无冰霜（前 60 秒不打扰新手）',
     ev('state.frostTotal') === 0 && $$('#board .frost').length === 0, String(ev('state.frostTotal')));
 
+  /* ---------- 25. D27：阶段完结后的「下一阶段」预告 ---------- */
+  // 12 阶段路线图此前只在证书页可见，而「要不要继续」的决定发生在结算页。
+  section('25. 阶段路线图定位与「下一阶段」预告（D27）');
+
+  // 25.1 反向：阶段未完结时不应出现预告（是预告，不是提前开放）
+  ev('startLevel(1)'); await sleep(80);
+  ev('state.matchedCount = 12; state.collected = []; state.score = 100;' +
+    ' state.maxCombo = 3; state.misses = 0; finishLevel()');
+  await sleep(80);
+  check('反向：阶段未完结（第 1 关结算）时不出现「下一阶段」预告',
+    $$('#res-cert .next-stage').length === 0,
+    '实际 ' + $$('#res-cert .next-stage').length + ' 个');
+
+  // 25.2 通关阶段 1（第 10 关）后出现，且文案全部来自 STAGES 数据
+  ev('(function () { const p = getProgress();' +
+    ' p.completedLevels = [1,2,3,4,5,6,7,8,9]; saveProgress(p); })()');
+  ev('startLevel(10)'); await sleep(80);
+  ev('state.matchedCount = 24; state.collected = []; state.score = 300;' +
+    ' state.maxCombo = 6; state.misses = 0; finishLevel()');
+  await sleep(80);
+  const nsEl = $('#res-cert .next-stage');
+  check('阶段 1 通关后，结算页出现「下一阶段」预告', !!nsEl);
+  if (nsEl) {
+    const txt = nsEl.textContent;
+    check('预告阶段名取自 STAGES 数据（非页面写死）',
+      txt.indexOf(ev('STAGES[1].name')) > -1, txt);
+    check('预告学习目标取自 STAGES 数据（非页面写死）',
+      txt.indexOf(ev('STAGES[1].goal')) > -1, txt);
+    check('预告含阶段序号与关卡区间（来自 stage / from / to）',
+      txt.indexOf('第 ' + ev('STAGES[1].stage') + ' 阶段') > -1 &&
+      txt.indexOf(ev('STAGES[1].from') + '-' + ev('STAGES[1].to')) > -1, txt);
+    check('未开放的下一阶段标注为「内容制作中」（不承诺可玩）',
+      txt.indexOf('内容制作中') > -1, txt);
+    check('预告不出现金额 / 权益类字眼（文化内容，不是商品）',
+      !/[¥￥]|元|优惠|券|折扣/.test(txt), txt);
+  }
+
   /* ---------- 汇总 ---------- */
   check('全程无脚本运行时错误', errors.length === 0, errors[0]);
 

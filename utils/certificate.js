@@ -51,6 +51,17 @@ function stageByNo(n) {
   return null;
 }
 
+// 下一阶段（结算页「下一步」预告用）。
+// 为什么需要它：12 阶段路线图一直只在证书页（pages/cert）可见，
+// 而「要不要继续」的决策发生在结算页——多一层跳转就少一次钩子。
+// 文案一律取自 data/stages.js（name / goal / from / to / open），
+// 页面不写死任何阶段名，内容库扩充后自动生效。
+function nextStage(stageNo) {
+  var n = parseInt(stageNo, 10);
+  if (!n || n < 1) return null;
+  return stageByNo(n + 1);
+}
+
 function tierInfo(key) {
   return TIERS[key] || TIERS.bronze;
 }
@@ -259,6 +270,7 @@ module.exports = {
   ownedCount: ownedCount,
   stageOf: stageOf,
   stageByNo: stageByNo,
+  nextStage: nextStage,
   stageContent: stageContent,
   aggregate: aggregate,
   tierOf: tierOf,

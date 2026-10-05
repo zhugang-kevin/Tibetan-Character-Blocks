@@ -336,6 +336,20 @@
   }
   .cert-hint-skill { margin-top: 4px; font-size: 12px; color: var(--gold, #B7950B); }
 
+  .next-stage {
+    display: flex; flex-direction: column; margin-bottom: 14px; padding: 11px 14px;
+    border-radius: 14px; background: rgba(255,255,255,.88);
+    border: 1.5px dashed rgba(183,149,11,.75);
+  }
+  .ns-head { display: flex; align-items: baseline; }
+  .ns-tag {
+    flex-shrink: 0; margin-right: 6px; padding: 1px 6px; border-radius: 999px;
+    font-size: 10px; color: #FFFBF0; background: #B7950B;
+  }
+  .ns-name { font-size: 13px; font-weight: 700; color: #2C3E50; }
+  .ns-goal { margin-top: 5px; font-size: 12px; line-height: 1.6; color: #2C3E50; }
+  .ns-note { margin-top: 4px; font-size: 10px; color: #8A8375; }
+
   /* 文化护照 */
   .pp-cover { text-align: center; padding: 20px 16px 22px; border-radius: 18px; border: 2px solid var(--green); background: linear-gradient(180deg, #fff, #F3F8F2); margin-bottom: 16px; }
   .pp-logo { width: 66px; height: 66px; border-radius: 15px; }
@@ -1394,6 +1408,11 @@ function stageOf(level) {
 function stageByNo(n) {
   for (let i = 0; i < STAGES.length; i++) { if (STAGES[i].stage === n) return STAGES[i]; }
   return null;
+}
+function nextStage(n) {
+  const k = parseInt(n, 10);
+  if (!k || k < 1) return null;
+  return stageByNo(k + 1);
 }
 
 function stageContent(stage) {
@@ -2887,6 +2906,21 @@ function finishLevel() {
       '</div>';
   } else {
     certEl.innerHTML = '';
+  }
+
+  // D27：本阶段完结（有证书）时，把 12 阶段路线图的下一站摆到同一个决策点上。
+  // 文案全部来自 DATA.stages，页面不写死阶段名。
+  const ns = certRes.cert ? nextStage(certRes.cert.stage) : null;
+  if (ns) {
+    certEl.insertAdjacentHTML('beforeend',
+      '<div class="next-stage">' +
+      '<div class="ns-head"><span class="ns-tag">下一阶段</span>' +
+      '<span class="ns-name">第 ' + ns.stage + ' 阶段 · ' + ns.name + '</span></div>' +
+      '<div class="ns-goal">下一步：' + ns.goal + '</div>' +
+      '<div class="ns-note">' +
+      (ns.open ? ('已开放 · 第 ' + ns.from + '-' + ns.to + ' 关')
+               : ('内容制作中 · 规划第 ' + ns.from + '-' + ns.to + ' 关')) +
+      '</div></div>');
   }
 
   $('res-score').textContent = state.score;

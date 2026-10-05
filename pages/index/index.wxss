@@ -154,7 +154,7 @@
   text-align: center;
   font-size: 24rpx;
   color: #C9BFA8;
-}}
+}
 
 .footer-tagline {
   font-size: 26rpx;
@@ -162,7 +162,7 @@
   margin-bottom: 8rpx;
   letter-spacing: 2rpx;
   color: #E8C86B;
-}}
+}
 
 /* 品牌规范：文字主色用深灰 #2C3E50，不用纯黑 */
 page,
@@ -282,12 +282,12 @@ page,
   font-size: 30rpx;
   font-weight: 700;
   color: #FFD98A;
-}}
+}
 
 .stage-range {
   font-size: 22rpx;
   color: #B9AE94;
-}}
+}
 
 /* 权益中心入口（双轨制到店权益） */
 .benefit-card {

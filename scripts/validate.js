@@ -1091,6 +1091,120 @@ section('21. 前 60 秒钩子（结算页进度锚 / 印章计数 / 第2关差�
   });
 })();
 
+// ---------- 22. 阶段路线图定位与「下一阶段」预告（D27） ----------
+// 背景：外部报告主张把「拼合消除 / 连锁消除」——即 12 阶段路线图的第 3~9 阶段
+// （元音 / 上加字 / 下加字 / 组词 / 造句）——提前进第 1 关的盘面。
+// 拍板结论：采纳其命名与定位（配对入门 · 拼合进阶 · 成句高阶），不采纳其排期。
+// 这一节把该边界变成机械断言：阶段 1 之外不得开放；结算页只做「预告」不做「开放」；
+// 预告文案一律取自 data/stages.js，页面不得内联阶段名。
+section('22. 阶段路线图定位与「下一阶段」预告（D27）');
+(() => {
+  const cert = require(path.join(ROOT, 'utils', 'certificate'));
+  const stages = require(path.join(ROOT, 'data', 'stages'));
+
+  // 22.1 路线图数据完整性（预告文案的唯一数据源）
+  if (stages.length === 12) ok('成长阶梯 12 个阶段');
+  else err('成长阶梯应为 12 个阶段，实际 ' + stages.length);
+
+  const seqBad = stages.filter((s, i) => s.stage !== i + 1).map(s => s.stage);
+  if (!seqBad.length) ok('阶段序号与声明顺序一致（1-12）');
+  else err('阶段序号错位：' + seqBad.join(','));
+
+  const spanBad = stages.filter(s => s.to - s.from !== 9).map(s => s.stage);
+  if (!spanBad.length) ok('每阶段 10 关（from..to 闭区间）');
+  else err('阶段关卡跨度不是 10：' + spanBad.join(','));
+
+  const gapBad = stages.filter((s, i) => i > 0 && s.from !== stages[i - 1].to + 1).map(s => s.stage);
+  if (!gapBad.length) ok('阶段区间无缝衔接（无空洞、无重叠）');
+  else err('阶段区间不连续：' + gapBad.join(','));
+
+  const noDesc = stages.filter(s => !s.name || !s.goal).map(s => s.stage);
+  if (!noDesc.length) ok('每个阶段都有 name 与 goal（预告文案数据源完整）');
+  else err('阶段缺少 name/goal：' + noDesc.join(','));
+
+  // 22.2 MVP 边界：阶段 1 之外一律不得开放
+  // 这是 D27 的硬约束——开放阶段 3/5/7 等于把元音/上加/下加做成可消除牌面，
+  // 会同时打破「配对同质判定」「偶数配比」「可解性保证」三条不变式。
+  const openList = stages.filter(s => s.open).map(s => s.stage);
+  if (openList.length === 1 && openList[0] === 1)
+    ok('只有阶段 1 开放（拼合 / 组词机制不得提前进 MVP 盘面 · D27）');
+  else err('已开放阶段应为 [1]，实际 [' + openList.join(',') +
+    '] —— 开放前须先解决 D27 列出的机制风险（同质判定 / 偶数配比 / 可解性 / 藏文审校）');
+
+  // 22.3 nextStage 纯函数真跑
+  const n1 = cert.nextStage(1);
+  if (n1 && n1.stage === 2 && n1.name === stages[1].name && n1.goal === stages[1].goal)
+    ok('nextStage(1) 返回数据里的第 2 阶段（name/goal 来自 data/stages.js）');
+  else err('nextStage(1) 结果不正确：' + JSON.stringify(n1));
+  if (cert.nextStage(12) === null) ok('nextStage(12) 为 null（路线图尽头不再预告）');
+  else err('nextStage(12) 应为 null');
+  if (cert.nextStage(0) === null && cert.nextStage(null) === null &&
+    cert.nextStage(undefined) === null && cert.nextStage('abc') === null)
+    ok('nextStage 对空 / 非法输入安全回落为 null');
+  else err('nextStage 对空 / 非法输入未安全回落');
+  if (cert.nextStage('2') && cert.nextStage('2').stage === 3)
+    ok('nextStage 容忍字符串入参（页面 query 传参场景）');
+  else err('nextStage 未容忍字符串入参');
+
+  const certSrc = read('utils/certificate.js');
+  if (!/wx\.(setStorage|getStorage|request|showToast|navigateTo)|document\.|window\.|https?:\/\//.test(certSrc))
+    ok('certificate.js 仍为纯函数模块（无 wx / DOM / 网络调用）');
+  else err('certificate.js 出现 wx / DOM / 网络调用，不再是纯函数模块');
+
+  // 22.4 文案不写死：结算页不得内联任何阶段名
+  const rwxml = read('pages/result/result.wxml');
+  const rjs = read('pages/result/result.js');
+  ['nextStageNo', 'nextStageName', 'nextStageGoal'].forEach(k => {
+    if (rwxml.indexOf(k) > -1) ok('result.wxml 绑定了 ' + k);
+    else err('result.wxml 未绑定 ' + k);
+  });
+  ['nextStageName', 'nextStageGoal', 'certificate.nextStage'].forEach(k => {
+    if (rjs.indexOf(k) > -1) ok('result.js 含 ' + k);
+    else err('result.js 缺少 ' + k);
+  });
+  const hardLocal = stages.filter(s => rwxml.indexOf(s.name) > -1 || rjs.indexOf(s.name) > -1)
+    .map(s => s.name);
+  if (!hardLocal.length) ok('结算页未内联任何阶段名（文案全部取自 data/stages.js）');
+  else err('结算页写死了阶段名：' + hardLocal.join(' / ') + '（内容库扩充后不会自动更新）');
+
+  // 22.5 上屏时机：只在阶段完结（有证书）时出现——是「预告」，不是「开放」
+  const cond = rwxml.match(/wx:if="\{\{([^}]*)\}\}"\s+class="next-stage"/);
+  if (cond && cond[1].indexOf('cert') > -1 && cond[1].indexOf('nextStageNo') > -1)
+    ok('「下一阶段」预告仅在阶段完结（cert）时上屏');
+  else err('「下一阶段」预告的上屏条件不正确：' + (cond ? cond[1] : '未匹配到 next-stage 区块'));
+
+  // 22.6 双向镜像：体验版同源同口径
+  const tpl = read('preview/template.html');
+  ['nextStage(', '.next-stage', 'ns-goal', 'ns-note'].forEach(k => {
+    if (tpl.indexOf(k) > -1) ok('体验版已镜像 ' + k);
+    else err('preview/template.html 未镜像 ' + k);
+  });
+  const hardTpl = stages.filter(s => tpl.indexOf(s.name) > -1).map(s => s.name);
+  if (!hardTpl.length) ok('体验版未内联任何阶段名（与小程序同一份数据源）');
+  else err('体验版写死了阶段名：' + hardTpl.join(' / '));
+
+  // 22.7 定位已登记（定位是产品决策，必须有台账可查）
+  const dec = read('docs/DECISIONS.md');
+  if (dec.indexOf('**D27**') > -1 && dec.indexOf('配对入门 · 拼合进阶 · 成句高阶') > -1)
+    ok('D27 定位「配对入门 · 拼合进阶 · 成句高阶」已登记在决策台账');
+  else err('docs/DECISIONS.md 缺少 D27 定位登记');
+
+  // 22.8 全站 WXSS 花括号配平
+  // 背景：本轮发现 5 个样式文件共 20 处「规则被关两次」的游离右花括号
+  // （形如单独一行 `}}`）。项目无 @media，这些是解析器直接丢弃的游离字符，
+  // 不改变渲染，但会掩盖真正的括号错误——配平后把它锁成硬约束。
+  ['app.wxss', 'pages/index/index.wxss', 'pages/game/game.wxss',
+    'pages/result/result.wxss', 'pages/cert/cert.wxss',
+    'pages/passport/passport.wxss', 'pages/benefits/benefits.wxss'].forEach(f => {
+    if (!exists(f)) { err(f + ' 不存在'); return; }
+    const src = read(f);
+    const open = (src.match(/\{/g) || []).length;
+    const close = (src.match(/\}/g) || []).length;
+    if (open === close) ok(f + ' 花括号配平（' + open + ' 对）');
+    else err(f + ' 花括号不配平：{ ' + open + ' 个，} ' + close + ' 个（差 ' + (close - open) + '）');
+  });
+})();
+
 // ---------- 汇总 ----------
 console.log('\n========== 汇总 ==========');
 console.log('通过: ' + passed + ' | 错误: ' + errors.length + ' | 警告: ' + warnings.length);
