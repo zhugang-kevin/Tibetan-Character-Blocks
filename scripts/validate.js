@@ -1598,8 +1598,80 @@ section('26. 唐卡合成闭环（补齐「合成」动作 + 兑现护照承诺�
     });
 }
 
-// ---------- 汇总 ----------
-console.log('\n========== 汇总 ==========');
+// ---------- 27. 祝福签卡片（雪域日签 → 可保存的藏纸卡，纯本地零资产） ----------
+// 背景：数字权益提案六项中唯一本轮落地的「祝福签卡片化」。三条红线必须机械锁死：
+//   ① 抽取仍走 pickDaily（确定性，同一天同一签）——改成随机 = 可"刷"，且与日签面板口径分裂；
+//   ② 卡片不承载奖励 / 金额 / 让利数字，明确「不设分享奖励」（微信《滥用分享行为》▶2）；
+//   ③ 两端同源：视图模型 collect.blessingCard 一份，镜像逐字复刻，绘制布局同一套坐标。
+section('27. 祝福签卡片（确定性抽取 + 零金额 + 两端同源）');
+{
+  const col27 = read('utils/collect.js');
+  const ij27 = read('pages/index/index.js');
+  const iw27 = read('pages/index/index.wxml');
+  const tpl27 = read('preview/template.html');
+
+  // 27.1 纯函数层：blessingCard 存在、导出、且自身不持池子不做随机
+  if (col27.indexOf('function blessingCard') > -1)
+    ok('collect.blessingCard 纯函数存在（视图模型单源）');
+  else err('utils/collect.js 缺 blessingCard');
+  if (col27.indexOf('blessingCard: blessingCard') > -1) ok('collect.js 导出 blessingCard');
+  else err('utils/collect.js 未导出 blessingCard');
+  const cardBody = col27.slice(col27.indexOf('function blessingCard'), col27.indexOf('function cardProgress') > -1 ? col27.indexOf('function cardProgress') : undefined);
+  if (cardBody.indexOf('Math.random') === -1)
+    ok('blessingCard 自身无随机（抽取权在调用方的 pickDaily）');
+  else err('blessingCard 内出现 Math.random —— 抽取必须走 pickDaily，防"刷"');
+
+  // 27.2 首页：输入来自 this.data.daily（它由 pickDaily 产出），链路确定性
+  if (ij27.indexOf('collect.blessingCard(this.data.daily') > -1)
+    ok('首页祝福签输入 = this.data.daily（pickDaily 确定性抽取的当日签）');
+  else err('首页未走 collect.blessingCard(this.data.daily, ...) —— 可能另起随机源');
+  if (ij27.indexOf('makeBlessingCard: function') > -1 && ij27.indexOf('saveBlessingCard: function') > -1)
+    ok('首页提供 makeBlessingCard（Canvas 绘制）与 saveBlessingCard（存相册）');
+  else err('首页缺 makeBlessingCard / saveBlessingCard');
+  if (ij27.indexOf("require('../../utils/tibetan-text')") > -1)
+    ok('首页绘制走 tibetan-text（tsheg 断行 / shad 不落行首）');
+  else err('首页未引入 tibetan-text —— 藏文断行规范失守');
+
+  // 27.3 页面层：生成按钮 + 预览 + 保存 + 定性文案
+  ['bindtap="makeBlessingCard"', 'bindtap="saveBlessingCard"', '{{blessingImage}}',
+   '生成今日祝福签卡片', '保存到相册'].forEach(k => {
+    if (iw27.indexOf(k) > -1) ok('index.wxml 含 ' + k);
+    else err('index.wxml 缺 ' + k);
+  });
+  const BLESS_NOTE = '不设分享奖励、不含任何金额';
+  if (iw27.indexOf(BLESS_NOTE) > -1) ok('小程序端定性文案在场：' + BLESS_NOTE);
+  else err('index.wxml 缺定性文案「' + BLESS_NOTE + '」');
+
+  // 27.4 卡片承载的全部文案无金额 / 让利数字（逐条量尺）
+  ['生成今日祝福签卡片', '保存到相册', '雪域日签 · 第 ' + 'n 签', '小程序码', '玩方块，认藏文']
+    .forEach(t => {
+      const bad = OFFER_DIGIT_PAT.test(t) || MONEY_UNIT_PAT.test(t);
+      if (!bad) ok('祝福签文案「' + t + '」无金额 / 让利数字');
+      else err('祝福签文案「' + t + '」出现金额 / 让利字样');
+    });
+
+  // 27.5 体验版镜像同源：纯函数 + 绘制 + 面板按钮 + 定性文案逐字一致
+  ['function blessingCard', 'function drawBlessingCard', "id=\"bless-btn\"",
+   '生成今日祝福签卡片', BLESS_NOTE].forEach(k => {
+    if (tpl27.indexOf(k) > -1) ok('体验版镜像含 ' + k);
+    else err('体验版镜像缺 ' + k);
+  });
+  if (tpl27.indexOf('blessingCard(g, colToday())') > -1)
+    ok('体验版祝福签输入 = 当日签（pickDaily 产出，与小程序同源）');
+  else err('体验版祝福签输入与小程序口径不一致');
+
+  // 27.6 反例自测：第 27 节的尺子必须真的拦得住
+  const BLESS_NEG = ['分享得 9 折卡', '卡片满100减20', '送 ¥5 优惠券'];
+  const blessSlipped = BLESS_NEG.filter(s => !OFFER_DIGIT_PAT.test(s) && !MONEY_UNIT_PAT.test(s));
+  if (!blessSlipped.length) ok('反例自测通过：' + BLESS_NEG.length + ' 种卡片写法全部被拦');
+  else err('祝福签守卫有缺口，以下写法能溜进来：' + blessSlipped.join(' | '));
+
+  // 27.7 无网络：卡片生成全程不触网（D3 纯本地 / D13 无后端）
+  if (ij27.indexOf('wx.request') === -1) ok('index.js 无 wx.request（卡片纯本地绘制）');
+  else err('index.js 出现 wx.request —— 违反纯本地红线');
+}
+
+
 console.log('通过: ' + passed + ' | 错误: ' + errors.length + ' | 警告: ' + warnings.length);
 if (errors.length) { console.log('\x1b[31m存在错误，需修复后重试\x1b[0m'); process.exit(1); }
 console.log('\x1b[32m全部自检通过 ✓\x1b[0m');

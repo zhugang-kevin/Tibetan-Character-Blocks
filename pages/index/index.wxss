@@ -828,6 +828,9 @@ page,
 .daily-roman { margin-top: 8rpx; text-align: center; font-size: 24rpx; color: #8A8375; }
 .daily-cn { margin-top: 12rpx; text-align: center; font-size: 32rpx; font-weight: 700; color: #2C3E50; }
 
+/* 祝福签卡片预览（生成后内嵌展示，宽随面板） */
+.bless-img { width: 100%; margin: 18rpx 0 6rpx; border-radius: 16rpx; box-shadow: 0 6rpx 20rpx rgba(44, 62, 80, 0.18); }
+
 /* 唐卡拼图样式已上移 app.wxss（首页面板与文化护照「唐卡收藏」板块共用，2026-10-05） */
 
 /* 非遗盲盒 */

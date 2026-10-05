@@ -80,6 +80,25 @@ function pickDaily(pool, seed) {
   return pool[n % pool.length];
 }
 
+// ---------- 雪域日签 · 祝福签卡片（视图模型，两端 Canvas 绘制共用同一份口径） ----------
+// 输入：greeting = data/daily.js greetings 的一条；today = 'YYYY-MM-DD'。
+// 输出：卡片要印的全部文字。三条铁律：
+//   ① 抽取仍由调用方走 pickDaily（确定性，同一天同一签）——本函数不做随机、不持池子；
+//   ② 只印 greeting 里真实存在的字段，没有就不印（与 shareIdentity 同一铁律）；
+//   ③ 签号 = 当日序号对 7 取模（与签到同一循环），只是卡片角标，不承载任何奖励。
+function blessingCard(greeting, today) {
+  if (!greeting) return null;
+  var n = dayNumber(today || '');
+  return {
+    tibetan: greeting.tibetan || '',
+    roman: greeting.roman || '',
+    cn: greeting.cn || '',
+    tip: greeting.tip || '',
+    dateText: today || '',
+    no: (n % CYCLE_DAYS) + 1
+  };
+}
+
 // 菩提树浇水：每次浇水给固定积分（无广告，仅靠游戏积分循环）
 function waterReward() { return 12; }
 
@@ -206,6 +225,7 @@ module.exports = {
   fragmentCell: fragmentCell,
   thangkaGrid: thangkaGrid,
   pickDaily: pickDaily,
+  blessingCard: blessingCard,
   waterReward: waterReward,
   cardProgress: cardProgress,
   markOpen: markOpen,

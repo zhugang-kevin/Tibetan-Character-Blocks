@@ -4,6 +4,7 @@
 var storage = require('../../utils/storage');
 var certificate = require('../../utils/certificate');
 var collect = require('../../utils/collect');
+var tibText = require('../../utils/tibetan-text');
 var ladder = require('../../utils/ladder');
 var lamp = require('../../utils/lamp');
 var regionsData = require('../../data/regions');
@@ -43,6 +44,17 @@ function todayStr() {
   return d.getFullYear() + '-' + (m < 10 ? '0' + m : m) + '-' + (day < 10 ? '0' + day : day);
 }
 
+// 圆角矩形路径（证书同款画法：外粗内细双框）
+function roundRectPath(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
 Page({
   data: {
     levels: [],
@@ -68,6 +80,7 @@ Page({
     signIn: { streak: 0, lastDate: '', totalDays: 0, oil: 0 },
     lampDays: [],
     daily: null,
+    blessingImage: '',
     thangkaCells: [],
     thangkaDone: false,
     boxText: '',
@@ -391,6 +404,129 @@ Page({
   openBox: function () {
     var text = collect.pickDaily(dailyData.trivia, collect.dayNumber(todayStr()) + 7);
     this.setData({ boxText: text });
+  },
+
+  // ---------- 祝福签卡片：把今日日签画成一张藏纸卡（Canvas 2D 离屏导出，纯本地） ----------
+  // 内容只来自 data/daily.js 的当日签（collect.pickDaily 确定性抽取，不做随机）；
+  // 不承载任何奖励、不含金额、不设分享激励（微信《滥用分享行为》▶2 红线）。
+  makeBlessingCard: function () {
+    var card = collect.blessingCard(this.data.daily, todayStr());
+    if (!card) {
+      wx.showToast({ title: '日签还没准备好，稍后再试', icon: 'none' });
+      return;
+    }
+    var that = this;
+    var W = 750, H = 1000;
+    var canvas, ctx;
+    try {
+      canvas = wx.createOffscreenCanvas({ type: '2d', width: W, height: H });
+      ctx = canvas.getContext('2d');
+    } catch (e) {
+      wx.showToast({ title: '当前微信版本不支持生成图片', icon: 'none' });
+      return;
+    }
+
+    // 藏纸底 + 金色双框（与成长证书同一套视觉语言）
+    ctx.fillStyle = '#FDF6E3';
+    ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = '#B7950B';
+    ctx.lineWidth = 6;
+    roundRectPath(ctx, 24, 24, W - 48, H - 48, 28);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(183, 149, 11, 0.55)';
+    ctx.lineWidth = 2;
+    roundRectPath(ctx, 46, 46, W - 92, H - 92, 20);
+    ctx.stroke();
+
+    ctx.textAlign = 'center';
+
+    // 抬头：雪域日签 · 第 n 签 · 日期
+    ctx.fillStyle = '#8A8375';
+    ctx.font = '400 26px "PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.fillText('雪域日签 · 第 ' + card.no + ' 签 · ' + card.dateText, W / 2, 130);
+
+    // 藏文大字（tsheg 断行、shad 家族不落行首）；行数由绘制函数返回，供下方排版
+    ctx.fillStyle = '#C0392B';
+    ctx.font = '500 60px "Noto Serif Tibetan", "Microsoft Himalaya", serif';
+    var tibLines = tibText.drawTibetanWrapped(ctx, card.tibetan, W / 2, 226, W - 200, 84);
+    var y = 226 + Math.max(1, tibLines) * 84 + 26;
+
+    // 拉丁转写（有才印）+ 中文释义
+    if (card.roman) {
+      ctx.fillStyle = '#8A8375';
+      ctx.font = 'italic 30px Georgia, serif';
+      ctx.fillText(card.roman, W / 2, y);
+      y += 62;
+    }
+    ctx.fillStyle = '#2C3E50';
+    ctx.font = '700 44px "PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.fillText(card.cn, W / 2, y);
+    y += 54;
+
+    // 小知识（每行 20 字，最多 3 行）
+    if (card.tip) {
+      ctx.fillStyle = '#8A8375';
+      ctx.font = '400 28px "PingFang SC","Microsoft YaHei",sans-serif';
+      var tipMax = Math.min(3, Math.ceil(card.tip.length / 20));
+      for (var i = 0; i < tipMax; i++) {
+        ctx.fillText(card.tip.slice(i * 20, i * 20 + 20), W / 2, y + i * 42);
+      }
+      y += tipMax * 42 + 20;
+    }
+
+    // 分隔线（不越过下方小程序码区域）
+    var sepY = Math.max(y, 760);
+    ctx.strokeStyle = 'rgba(183, 149, 11, 0.6)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(W / 2 - 130, sepY);
+    ctx.lineTo(W / 2 + 130, sepY);
+    ctx.stroke();
+
+    // 小程序码占位（与证书同款：先占位，后续接 getWXACodeUnlimited 换真码）
+    var cs = 116, cx = W - 212, cy = H - 196;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+    roundRectPath(ctx, cx, cy, cs, cs, 14);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(183, 149, 11, 0.6)';
+    ctx.lineWidth = 2;
+    roundRectPath(ctx, cx, cy, cs, cs, 14);
+    ctx.stroke();
+    ctx.fillStyle = '#C0392B';
+    ctx.font = '22px "PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.fillText('小程序码', cx + cs / 2, cy + cs / 2 + 8);
+
+    // 品牌
+    ctx.fillStyle = '#B7950B';
+    ctx.font = '700 28px "PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.fillText('玩方块，认藏文', W / 2, H - 62);
+
+    wx.canvasToTempFilePath({
+      canvas: canvas,
+      x: 0, y: 0, width: W, height: H,
+      destWidth: W, destHeight: H,
+      success: function (res) {
+        that.setData({ blessingImage: res.tempFilePath });
+        wx.showToast({ title: '卡片已生成', icon: 'success' });
+      },
+      fail: function () { wx.showToast({ title: '生成失败，请再试一次', icon: 'none' }); }
+    });
+  },
+
+  // 保存祝福签卡片到相册（权限拒绝时只做 toast 指引：首页遵循「不打扰」约束，不弹阻塞式弹窗）
+  saveBlessingCard: function () {
+    if (!this.data.blessingImage) return;
+    wx.saveImageToPhotosAlbum({
+      filePath: this.data.blessingImage,
+      success: function () { wx.showToast({ title: '已保存到相册', icon: 'success' }); },
+      fail: function (e) {
+        if (e.errMsg && e.errMsg.indexOf('auth') > -1) {
+          wx.showToast({ title: '需要相册权限：请在右上角设置中允许', icon: 'none' });
+        } else {
+          wx.showToast({ title: '保存失败，请再试一次', icon: 'none' });
+        }
+      }
+    });
   },
 
   // 唐卡合成：集齐 9 片后的「合成」动作（此前只有一行文字提示，玩家集齐后无事可做）

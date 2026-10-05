@@ -1348,6 +1348,51 @@ function mockCtx(sink) {
   check('碎片不足时不出合成按钮', !$('#synth-btn'));
   check('碎片不足时未得槽位显示编号占位', $$('#entry-body .tk-cell.on').length === 3);
 
+  /* ---------- 29. 祝福签卡片（雪域日签 → Canvas 藏纸卡，确定性抽取 + 零金额） ---------- */
+  section('29. 祝福签卡片（雪域日签 → Canvas 藏纸卡，确定性抽取 + 零金额）');
+  ev('showScreen("home")');
+  ev('openPanel("daily")');
+  await sleep(40);
+  check('日签面板出现「生成今日祝福签卡片」按钮', !!$('#bless-btn'),
+    $('#bless-btn') ? $('#bless-btn').textContent : '按钮不存在');
+  check('面板带定性文案（不设分享奖励、不含任何金额）',
+    $('#entry-body').textContent.indexOf('不设分享奖励、不含任何金额') > -1);
+
+  // 确定性契约：blessingCard 自身无随机；同日同签号，跨日签号不同
+  check('blessingCard 同日两次调用结果逐字一致', (function () {
+    ev('window.__bc1 = JSON.stringify(blessingCard(DAILY.greetings[0], "2026-10-06"));' +
+       'window.__bc2 = JSON.stringify(blessingCard(DAILY.greetings[0], "2026-10-06"));');
+    return ev('__bc1') === ev('__bc2');
+  })());
+  check('签号随日期推进（对 7 取模，与签到同循环）',
+    ev('blessingCard(DAILY.greetings[0], "2026-10-06").no') === ev('blessingCard(DAILY.greetings[0], "2026-10-07").no') - 1);
+  check('日签面板展示的就是 pickDaily 抽到的当日签', (function () {
+    const expect = ev('pickDaily(DAILY.greetings, colDayNumber(colToday())).tibetan');
+    const shown = $('.daily-tib') ? $('.daily-tib').textContent : '';
+    return expect === shown;
+  })());
+
+  // 点击生成：mockCtx 记录了真正画上去的文字，可验证「画了什么」
+  const textsBefore = (win.__texts || []).length;
+  $('#bless-btn').click();
+  await sleep(60);
+  check('生成后出现卡片预览图', !!$('#bless-out img'), '缺 #bless-out img');
+  check('提供 PNG 下载（保存到本地）', !!$('#bless-out .cert-dl'));
+  check('画布上真的画了当日中文释义（不是空卡）', (function () {
+    const cn = ev('pickDaily(DAILY.greetings, colDayNumber(colToday())).cn');
+    return (win.__texts || []).slice(textsBefore).some(function (t) { return t.t === cn; });
+  })());
+  check('画布上画了品牌句「玩方块，认藏文」',
+    (win.__texts || []).slice(textsBefore).some(function (t) { return t.t === '玩方块，认藏文'; }));
+  check('画布上画了小程序码占位（品牌出口，非二维码内容）',
+    (win.__texts || []).slice(textsBefore).some(function (t) { return t.t === '小程序码'; }));
+
+  // 合规底线：卡片文案无金额（动态验证；静态红线由 validate §27 兜底）
+  check('卡片区块文案无货币符号 / 让利数字', (function () {
+    const s = $('#bless-out').textContent + $('#entry-body').textContent;
+    return !/[¥￥]|元(?!音|素)/.test(s) && !/\d\s*折|\d\s*%\s*off|满\s*\d+\s*减\s*\d+/.test(s);
+  })());
+
   /* ---------- 汇总 ---------- */
   check('全程无脚本运行时错误', errors.length === 0, errors[0]);
 

@@ -2076,6 +2076,20 @@ function pickDaily(pool, seed) {
   if (!pool || !pool.length) return null;
   return pool[Math.abs(Math.floor(seed || 0)) % pool.length];
 }
+/* 祝福签卡片视图模型（与 utils/collect.js 的 blessingCard 同契约）：
+   不做随机 —— 抽取仍由调用方走 pickDaily；签号 = 当日序号对 7 取模，只是角标，不承载奖励 */
+function blessingCard(greeting, today) {
+  if (!greeting) return null;
+  const n = colDayNumber(today || '');
+  return {
+    tibetan: greeting.tibetan || '',
+    roman: greeting.roman || '',
+    cn: greeting.cn || '',
+    tip: greeting.tip || '',
+    dateText: today || '',
+    no: (n % 7) + 1
+  };
+}
 /* 唐卡拼图（与 utils/collect.js 的 fragmentCell / thangkaGrid 同规则） */
 function fragmentCell(index) {
   return { row: Math.floor(index / 3), col: index % 3 };
@@ -2260,7 +2274,19 @@ function openPanel(key) {
     body.innerHTML = '<div class="daily-tib tib">' + g.tibetan + '</div>' +
       '<div class="daily-roman">' + (g.roman || '') + '</div>' +
       '<div class="daily-cn">' + g.cn + '</div>' +
-      '<div class="entry-note">' + g.tip + '</div>';
+      '<div class="entry-note">' + g.tip + '</div>' +
+      '<div class="entry-btn" id="bless-btn">生成今日祝福签卡片</div>' +
+      '<div id="bless-out"></div>' +
+      '<div class="entry-note">卡片内容只来自本地日签：不设分享奖励、不含任何金额，可自由保存。</div>';
+    $('bless-btn').addEventListener('click', function () {
+      const card = blessingCard(g, colToday());
+      drawBlessingCard(card, function (url) {
+        $('bless-out').innerHTML =
+          '<div class="cert-preview"><img src="' + url + '" alt="雪域日签祝福卡"></div>' +
+          '<a class="cert-dl" download="藏字方块-雪域日签-' + card.dateText + '.png" href="' + url + '">保存到本地（PNG）</a>' +
+          '<div class="hint">手机上长按图片即可保存到相册。</div>';
+      });
+    });
   } else if (key === 'thangka') {
     const tk = thangkaGrid(p.fragments);
     const done = !!getThangkaDone() && tk.done;
@@ -3482,6 +3508,88 @@ function generateCertImage(cert) {
   logo.onload = function () { ctx.drawImage(logo, 96, H - 186, 96, 96); out(); };
   logo.onerror = function () { /* 保持无 Logo 版本 */ };
   logo.src = IMAGES.logo80;
+}
+
+/* 雪域日签祝福卡导出（对应 pages/index 的 makeBlessingCard，与证书同一套视觉语言） */
+function drawBlessingCard(card, done) {
+  const W = 750, H = 1000;
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+
+  ctx.fillStyle = '#FDF6E3';
+  ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = '#B7950B';
+  ctx.lineWidth = 6;
+  ctx.strokeRect(24, 24, W - 48, H - 48);
+  ctx.strokeStyle = 'rgba(183,149,11,.55)';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(46, 46, W - 92, H - 92);
+
+  ctx.textAlign = 'center';
+
+  // 抬头：雪域日签 · 第 n 签 · 日期
+  ctx.fillStyle = '#8A8375';
+  ctx.font = '400 26px "PingFang SC","Microsoft YaHei",sans-serif';
+  ctx.fillText('雪域日签 · 第 ' + card.no + ' 签 · ' + card.dateText, W / 2, 130);
+
+  // 藏文大字（tsheg 断行，shad 类符号不落行首）；行数决定下方排版起点
+  const measure = function (s) { ctx.font = '500 60px ' + TIB_FONT; return ctx.measureText(s).width; };
+  const tibLines = wrapTibetan(measure, card.tibetan, W - 200);
+  ctx.fillStyle = '#C0392B';
+  let y = 226;
+  tibLines.forEach(function (ln) {
+    ctx.font = '500 60px ' + TIB_FONT;
+    ctx.fillText(ln, W / 2, y);
+    y += 84;
+  });
+  y += 26;
+
+  // 拉丁转写（有才印）+ 中文释义
+  if (card.roman) {
+    ctx.fillStyle = '#8A8375';
+    ctx.font = 'italic 30px Georgia, serif';
+    ctx.fillText(card.roman, W / 2, y);
+    y += 62;
+  }
+  ctx.fillStyle = '#2C3E50';
+  ctx.font = '700 44px "PingFang SC","Microsoft YaHei",sans-serif';
+  ctx.fillText(card.cn, W / 2, y);
+  y += 54;
+
+  // 小知识（每行 20 字，最多 3 行）
+  if (card.tip) {
+    ctx.fillStyle = '#8A8375';
+    ctx.font = '400 28px "PingFang SC","Microsoft YaHei",sans-serif';
+    const tipMax = Math.min(3, Math.ceil(card.tip.length / 20));
+    for (let i = 0; i < tipMax; i++) {
+      ctx.fillText(card.tip.slice(i * 20, i * 20 + 20), W / 2, y + i * 42);
+    }
+    y += tipMax * 42 + 20;
+  }
+
+  // 分隔线（不越过下方小程序码区域）
+  const sepY = Math.max(y, 760);
+  ctx.strokeStyle = 'rgba(183,149,11,.6)';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(W / 2 - 130, sepY); ctx.lineTo(W / 2 + 130, sepY); ctx.stroke();
+
+  // 小程序码占位
+  ctx.fillStyle = 'rgba(255,255,255,.95)';
+  ctx.fillRect(W - 212, H - 196, 116, 116);
+  ctx.strokeStyle = 'rgba(183,149,11,.6)';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(W - 212, H - 196, 116, 116);
+  ctx.fillStyle = '#C0392B';
+  ctx.font = '22px "PingFang SC","Microsoft YaHei",sans-serif';
+  ctx.fillText('小程序码', W - 154, H - 132);
+
+  // 品牌
+  ctx.fillStyle = '#B7950B';
+  ctx.font = '700 28px "PingFang SC","Microsoft YaHei",sans-serif';
+  ctx.fillText('玩方块，认藏文', W / 2, H - 62);
+
+  done(cv.toDataURL('image/png'));
 }
 
 /* ---------------- 藏文权益中心（双轨制，对应 pages/benefits） ---------------- */
