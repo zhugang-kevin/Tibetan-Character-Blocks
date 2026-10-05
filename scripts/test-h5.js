@@ -50,14 +50,16 @@ function check(name, cond, extra) {
 function section(t) { console.log('\n[' + t + ']'); }
 
 /* 无头环境下的最小 canvas 2D 桩：只做逻辑验证，不校验像素 */
-function mockCtx() {
+/* sink：可选，用来记录 fillText 文本，便于断言「海报上真的画了什么」 */
+function mockCtx(sink) {
   const noop = function () {};
   return {
     font: '', fillStyle: '', strokeStyle: '', lineWidth: 1, lineCap: '', lineJoin: '',
     textAlign: '', textBaseline: '', globalAlpha: 1,
     beginPath: noop, moveTo: noop, lineTo: noop, arcTo: noop, arc: noop, closePath: noop,
     stroke: noop, fill: noop, fillRect: noop, strokeRect: noop, clearRect: noop,
-    fillText: noop, strokeText: noop, save: noop, restore: noop, translate: noop,
+    fillText: function (t, x, y) { if (sink) sink.push({ t: String(t), x: x, y: y }); },
+    strokeText: noop, save: noop, restore: noop, translate: noop,
     rotate: noop, scale: noop, quadraticCurveTo: noop, bezierCurveTo: noop,
     setLineDash: noop, drawImage: noop, putImageData: noop,
     measureText: function (s) { return { width: String(s).length * 10 }; },
@@ -74,7 +76,9 @@ function mockCtx() {
     pretendToBeVisual: true,
     url: 'http://localhost/play.html',
     beforeParse: function (window) {
-      window.HTMLCanvasElement.prototype.getContext = function () { return mockCtx(); };
+      // 记录海报上真正画出的文本（用于验证「文化身份行不是写死的」）
+      window.__texts = [];
+      window.HTMLCanvasElement.prototype.getContext = function () { return mockCtx(window.__texts); };
       window.HTMLCanvasElement.prototype.toDataURL = function () { return 'data:image/png;base64,STUB'; };
       window.confirm = function () { return true; };
       // 记录滚动调用：天梯动效只会滚动页面（不碰数据），这里作为可验证的痕迹
@@ -1243,6 +1247,61 @@ function mockCtx() {
     ev('comboTease(3, DATA.combo)') === null);
   check('comboTease 缺配置时安全返回 null',
     ev('comboTease(2, null)') === null);
+
+  /* ---------- 27. 分享海报「文化身份」行（真实数据，不得写死） ---------- */
+  // 海报是产品唯一的对外出口，也是最容易把数字写死的地方
+  // （上一版写死「8 个藏文字母」，且与小程序端文案、坐标都不一致）。
+  section('27. 分享海报「文化身份」行（真实数据，不得写死）');
+
+  const idFull = { letters: 3, letterTotal: 8, cards: 5, cardTotal: 12, stamps: 2, stampTotal: 7 };
+
+  // 27.1 纯函数边界（与 utils/collect.js#shareIdentity 同契约）
+  check('shareIdentity 用真实数字生成两行',
+    ev('shareIdentity(' + JSON.stringify(idFull) + ').line1') === '已认识 3 / 8 个藏文字母' &&
+    ev('shareIdentity(' + JSON.stringify(idFull) + ').line2') === '文化卡 5 / 12 · 护照印章 2 / 7');
+  check('反向：一个字母都没认时不印 0',
+    ev('shareIdentity({"letters":0,"letterTotal":8,"cards":0,"cardTotal":12,"stamps":0,"stampTotal":7}).line1') ===
+      '在「藏字方块」里学认藏文字母');
+  check('反向：没有文化卡与印章时第二行为空（不印 0 / 7）',
+    ev('shareIdentity({"letters":2,"letterTotal":8,"cards":0,"cardTotal":12,"stamps":0,"stampTotal":7}).line2') === '');
+  check('只有印章时第二行只剩印章',
+    ev('shareIdentity({"letters":2,"letterTotal":8,"cards":0,"cardTotal":12,"stamps":1,"stampTotal":7}).line2') ===
+      '护照印章 1 / 7');
+  check('分母不小于分子（脏数据也印不出 5 / 3）',
+    ev('shareIdentity({"letters":9,"letterTotal":8,"cards":20,"cardTotal":12,"stamps":9,"stampTotal":7}).line1') ===
+      '已认识 9 / 9 个藏文字母');
+
+  // 27.2 海报真的把真实进度画上去了（不是写死的）
+  // 祝福卡只在第 10 关结算页出现（#bless-out 容器在那一屏才渲染），先到那一屏再改进度。
+  ev('(function () { const p = getProgress();' +
+    ' p.completedLevels = [1,2,3,4,5,6,7,8,9]; p.unlockedLevel = 10; saveProgress(p); })()');
+  ev('startLevel(10)'); await sleep(80);
+  ev('state.matchedCount = 24; state.collected = []; state.score = 300;' +
+    ' state.maxCombo = 6; state.misses = 0; finishLevel()');
+  await sleep(120);
+  ev('(function () { const p = getProgress();' +
+    ' p.seenCards = ["letter_01","letter_02","letter_03","icon_01"];' +
+    ' p.stamps = ["lhasa"]; saveProgress(p); })()');
+  ev('window.__texts.length = 0');
+  ev('(function () { const n = $("bless-name"); if (n) n.value = "测试"; })()');
+  ev('generateBlessing()');
+  const posterTexts = win.__texts.map(function (x) { return x.t; });
+  check('海报按真实进度印出字母行',
+    posterTexts.indexOf('已认识 3 / 8 个藏文字母') > -1, posterTexts.join(' | '));
+  check('海报按真实进度印出文化卡与印章行（3 字母 + 1 图标 = 4 张卡 · 1 枚印章）',
+    posterTexts.indexOf('文化卡 4 / 12 · 护照印章 1 / 7') > -1, posterTexts.join(' | '));
+  check('反向：海报不再出现写死的字母数',
+    !posterTexts.some(function (t) { return /认了\s*8|学会了\s*8|认识\s*8\s*个/.test(t); }),
+    posterTexts.join(' | '));
+
+  // 27.3 身份行不得落进底部 Logo / 小程序码所在的横带（H5 海报高 1000，底部带从 y=800 起）
+  const idTexts = win.__texts.filter(function (x) {
+    return /个藏文字母|文化卡 |护照印章 |学认藏文字母/.test(x.t);
+  });
+  check('身份行确实画了', idTexts.length > 0, String(idTexts.length));
+  check('身份行位置在底部图形带之上（y < 780）',
+    idTexts.every(function (x) { return x.y < 780; }),
+    JSON.stringify(idTexts.map(function (x) { return x.y; })));
 
   /* ---------- 汇总 ---------- */
   check('全程无脚本运行时错误', errors.length === 0, errors[0]);

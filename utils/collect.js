@@ -140,6 +140,34 @@ function retainedOn(state, n) {
   return (st.days || []).indexOf(dayToDate(dayNumber(st.first) + (n || 1))) > -1;
 }
 
+// 分享海报的「文化身份」两行文案（纯函数：输入是调用方算好的数字，本模块不认识 elements/cards）。
+//
+// 为什么要有这个函数：分享海报是这个产品唯一的对外出口，而它最容易出的错就是
+// **把数字写死**（上一版写死「8 个藏文字母」，H5 镜像甚至写成「学会了 8 个」，文案与坐标都不同）。
+// 铁律两条：
+//   ① 只印真实数字，绝不为了好看编造未达成的进度；
+//   ② 没有的东西就不印 —— 一枚印章都没有时，第二行直接是空串（而不是「0 / 7」）。
+function shareIdentity(input) {
+  var o = input || {};
+  var n = function (v) { return Math.max(0, Math.floor(Number(v) || 0)); };
+  var letters = n(o.letters);
+  var letterTotal = Math.max(letters, n(o.letterTotal));
+  var cards = n(o.cards);
+  var cardTotal = Math.max(cards, n(o.cardTotal));
+  var stamps = n(o.stamps);
+  var stampTotal = Math.max(stamps, n(o.stampTotal));
+
+  var line1 = letters > 0
+    ? ('已认识 ' + letters + ' / ' + letterTotal + ' 个藏文字母')
+    : '在「藏字方块」里学认藏文字母';
+
+  var parts = [];
+  if (cards > 0) parts.push('文化卡 ' + cards + ' / ' + cardTotal);
+  if (stamps > 0) parts.push('护照印章 ' + stamps + ' / ' + stampTotal);
+
+  return { line1: line1, line2: parts.join(' · ') };
+}
+
 // 「藏文可以组合」预告：只在配置指定的那一关出现（当前 = 第 2 关，认全 ཀ ཁ ག ང 那一刻）。
 // 纯判据函数——配置由调用方注入（本模块保持零依赖，便于被体验版镜像逐字复用），
 // 页面不必自己内联「哪一关该讲解拼合」这条规则（将来挪关卡只改 data/combo.js）。
@@ -166,5 +194,6 @@ module.exports = {
   cardProgress: cardProgress,
   markOpen: markOpen,
   retainedOn: retainedOn,
-  comboTease: comboTease
+  comboTease: comboTease,
+  shareIdentity: shareIdentity
 };

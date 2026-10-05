@@ -12,6 +12,14 @@ var collect = require('../../utils/collect');
 // 这样「哪一关讲解拼合」只写在数据文件里，页面不内联关卡号）
 var comboData = require('../../data/combo');
 
+// 祝福卡（750×1050）中段文案的基线位置。
+// ⚠️ 必须留在底部「Logo（y=855）」与「小程序码（y=850）」之**上**：
+//    中文按 1em/字估算，一长行会横跨到两侧的 Logo / 小程序码上（上一版就是这样重叠的）。
+//    H5 镜像（preview/template.html）用同一组数值，validate 第 24 节机械校验「不得落进底部区」。
+var POSTER_IDENTITY_Y1 = 660;
+var POSTER_IDENTITY_Y2 = 702;
+var POSTER_SLOGAN_Y = 780;
+
 // 收藏进度槽位的固定顺序（字母在前、文化元素在后），与 data/elements.js 的声明顺序一致。
 // 结算页与体验版镜像共用同一份构造口径。
 var CARD_ORDER = Object.keys(elements).map(function (id) {
@@ -264,6 +272,25 @@ Page({
 
     var blessImgs = { logo: null, watermark: null, tashi: null };
 
+    // 文化身份两行文案：全部来自真实进度（绝不写死数字，见 utils/collect.js#shareIdentity）
+    var seenAll = storage.getSeenCards();
+    var letterTotal = 0;
+    Object.keys(elements).forEach(function (id) {
+      if (elements[id] && elements[id].type === 'letter') letterTotal++;
+    });
+    var gotLetters = 0;
+    seenAll.forEach(function (id) {
+      if (elements[id] && elements[id].type === 'letter') gotLetters++;
+    });
+    var identity = collect.shareIdentity({
+      letters: gotLetters,
+      letterTotal: letterTotal,
+      cards: seenAll.length,
+      cardTotal: cardsData.length,
+      stamps: storage.getStampCount(),
+      stampTotal: this.data.stampTotal
+    });
+
     var finish = function () {
       wx.canvasToTempFilePath({
         canvas: canvas,
@@ -336,12 +363,20 @@ Page({
       ctx.font = '40px sans-serif';
       ctx.fillText('—— 致 ' + name + ' ——', W / 2, 530);
 
-      // 底部小字
-      ctx.font = '28px sans-serif';
-      ctx.fillStyle = 'rgba(255,255,255,0.92)';
-      ctx.fillText('我在「藏字方块」中认了8个藏文字母', W / 2, 870);
-      ctx.font = '600 34px sans-serif';
-      ctx.fillText('玩方块，认藏文', W / 2, 930);
+      // 文化身份：分享出去的不是优惠券，是真实进度（数字全部来自 storage）
+      ctx.font = '600 30px sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.95)';
+      ctx.fillText(identity.line1, W / 2, POSTER_IDENTITY_Y1);
+      if (identity.line2) {
+        ctx.font = '400 26px sans-serif';
+        ctx.fillStyle = 'rgba(255,255,255,0.85)';
+        ctx.fillText(identity.line2, W / 2, POSTER_IDENTITY_Y2);
+      }
+
+      // 品牌 slogan
+      ctx.font = '700 34px sans-serif';
+      ctx.fillStyle = '#FFF3D6';
+      ctx.fillText('玩方块，认藏文', W / 2, POSTER_SLOGAN_Y);
 
       // 底部左侧：藏字方块 Logo
       if (blessImgs.logo) {

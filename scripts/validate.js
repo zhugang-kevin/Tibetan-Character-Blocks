@@ -1299,6 +1299,79 @@ section('23. 拼合预告（第 2 关 · 只讲概念，不提前开放机制）
   else err('build-h5 未注入 data/combo.js');
 }
 
+// ---------- 24. 分享海报「文化身份」行（真实数据，不得写死） ----------
+section('24. 分享海报「文化身份」行（真实数据，不得写死）');
+{
+  // 24.1 纯函数真跑（含边界）
+  const collect24 = require(path.join(ROOT, 'utils', 'collect'));
+  const full = collect24.shareIdentity({ letters: 3, letterTotal: 8, cards: 5, cardTotal: 12, stamps: 2, stampTotal: 7 });
+  if (full.line1 === '已认识 3 / 8 个藏文字母' && full.line2 === '文化卡 5 / 12 · 护照印章 2 / 7')
+    ok('shareIdentity 用真实数字生成两行');
+  else err('shareIdentity 结果不正确：' + JSON.stringify(full));
+
+  const zero = collect24.shareIdentity({ letters: 0, letterTotal: 8, cards: 0, cardTotal: 12, stamps: 0, stampTotal: 7 });
+  if (zero.line1.indexOf('0') === -1 && zero.line2 === '')
+    ok('零进度时不印任何 0（字母行不含数字，第二行为空）');
+  else err('零进度时印出了假数字：' + JSON.stringify(zero));
+
+  const dirty = collect24.shareIdentity({ letters: 9, letterTotal: 8, cards: 20, cardTotal: 12, stamps: 9, stampTotal: 7 });
+  if (dirty.line1 === '已认识 9 / 9 个藏文字母')
+    ok('分母自动抬到不小于分子（脏数据也印不出 5 / 3）');
+  else err('脏数据下分母未抬升：' + dirty.line1);
+
+  const noArgs = collect24.shareIdentity();
+  if (noArgs.line2 === '' && String(noArgs.line1).length > 0) ok('缺参数时安全降级（不抛错、不印 0）');
+  else err('shareIdentity 缺参数时行为异常：' + JSON.stringify(noArgs));
+
+  // 24.2 小程序端：文案来自纯函数，且不再有写死的身份行
+  const res24 = read('pages/result/result.js');
+  if (/collect\.shareIdentity\(/.test(res24)) ok('结算页调用 collect.shareIdentity 取文案');
+  else err('结算页未调用 collect.shareIdentity');
+  const hardA = res24.match(/认了\s*\d+\s*个藏文字母|学会了\s*\d+\s*个藏文字母/);
+  if (!hardA) ok('结算页不再出现写死的身份行');
+  else err('结算页仍有写死的身份行：' + hardA[0]);
+
+  // 24.3 位置守卫：身份行必须留在底部 Logo / 小程序码之上
+  //     中文按 1em/字估算，长行会横跨到两侧图形上（上一版就是重叠的）。
+  const pickY = (src, key) => {
+    const m = src.match(new RegExp('POSTER_' + key + '\\s*=\\s*(\\d+)'));
+    return m ? Number(m[1]) : NaN;
+  };
+  const tpl24 = read('preview/template.html');
+  const y1 = pickY(res24, 'IDENTITY_Y1'), y2 = pickY(res24, 'IDENTITY_Y2');
+  const h1 = pickY(tpl24, 'IDENTITY_Y1'), h2 = pickY(tpl24, 'IDENTITY_Y2');
+  if (y1 >= 600 && y2 > y1 && y2 < 855)
+    ok('结算页海报身份行留在底部 Logo（y=855）之上：' + y1 + ' / ' + y2);
+  else err('结算页海报身份行位置越界（应在 600 与底部 Logo 之间）：' + y1 + ' / ' + y2);
+  if (h1 >= 600 && h2 > h1 && h2 < 810)
+    ok('体验版海报身份行留在底部 Logo（y=810）之上：' + h1 + ' / ' + h2);
+  else err('体验版海报身份行位置越界：' + h1 + ' / ' + h2);
+  if (h1 === y1 && h2 === y2) ok('两端海报身份行基线一致（' + y1 + ' / ' + y2 + '）');
+  else err('两端海报身份行基线不一致：小程序 ' + y1 + '/' + y2 + '，体验版 ' + h1 + '/' + h2);
+
+  // 24.4 体验版镜像：同契约的纯函数 + 真实进度输入 + 无写死文案
+  ['function shareIdentity', 'function posterIdentityInput', 'POSTER_IDENTITY_Y1', 'POSTER_IDENTITY_Y2']
+    .forEach(k => {
+      if (tpl24.indexOf(k) > -1) ok('体验版镜像含 ' + k);
+      else err('体验版镜像缺 ' + k);
+    });
+  if (tpl24.indexOf('shareIdentity(posterIdentityInput())') > -1)
+    ok('体验版海报用真实进度生成身份行');
+  else err('体验版海报未接入 shareIdentity(posterIdentityInput())');
+  const hardB = tpl24.match(/认了\s*\d+\s*个藏文字母|学会了\s*\d+\s*个藏文字母/);
+  if (!hardB) ok('体验版海报不再出现写死的身份行');
+  else err('体验版海报仍有写死的身份行：' + hardB[0]);
+
+  // 24.5 两端文案口径一致（模板分别住在 utils/collect.js 与体验版镜像里）
+  const col24 = read('utils/collect.js');
+  if (col24.indexOf('个藏文字母') > -1 && col24.indexOf('护照印章') > -1)
+    ok('小程序端身份行文案模板在 utils/collect.js');
+  else err('utils/collect.js 缺身份行文案模板');
+  if (tpl24.indexOf('个藏文字母') > -1 && tpl24.indexOf('护照印章') > -1)
+    ok('体验版身份行文案与小程序同一口径（个藏文字母 / 护照印章）');
+  else err('体验版身份行文案口径与小程序不一致');
+}
+
 // ---------- 汇总 ----------
 console.log('\n========== 汇总 ==========');
 console.log('通过: ' + passed + ' | 错误: ' + errors.length + ' | 警告: ' + warnings.length);

@@ -1445,6 +1445,53 @@ function comboTease(level, cfg) {
   return cfg;
 }
 
+// 分享海报的「文化身份」两行文案 —— 与 utils/collect.js#shareIdentity 同契约。
+// 铁律：只印真实数字；没有的东西不印（第二行可为空串），绝不写死。
+function shareIdentity(input) {
+  const o = input || {};
+  const n = function (v) { return Math.max(0, Math.floor(Number(v) || 0)); };
+  const letters = n(o.letters);
+  const letterTotal = Math.max(letters, n(o.letterTotal));
+  const cards = n(o.cards);
+  const cardTotal = Math.max(cards, n(o.cardTotal));
+  const stamps = n(o.stamps);
+  const stampTotal = Math.max(stamps, n(o.stampTotal));
+
+  const line1 = letters > 0
+    ? ('已认识 ' + letters + ' / ' + letterTotal + ' 个藏文字母')
+    : '在「藏字方块」里学认藏文字母';
+
+  const parts = [];
+  if (cards > 0) parts.push('文化卡 ' + cards + ' / ' + cardTotal);
+  if (stamps > 0) parts.push('护照印章 ' + stamps + ' / ' + stampTotal);
+
+  return { line1: line1, line2: parts.join(' · ') };
+}
+
+// 把真实进度折算成 shareIdentity 的输入（字母数只数 letter 类型）
+function posterIdentityInput() {
+  const p = getProgress();
+  const seen = p.seenCards || [];
+  const letterTotal = Object.keys(ELEMENTS).filter(function (id) {
+    return ELEMENTS[id] && ELEMENTS[id].type === 'letter';
+  }).length;
+  return {
+    letters: seen.filter(function (id) { return ELEMENTS[id] && ELEMENTS[id].type === 'letter'; }).length,
+    letterTotal: letterTotal,
+    cards: seen.length,
+    cardTotal: CARDS.length,
+    stamps: (p.stamps || []).length,
+    stampTotal: STAMP_TOTAL
+  };
+}
+
+// 祝福卡（750×1000）中段文案的基线位置。
+// ⚠️ 必须留在底部「Logo（y=810）」与「小程序码（y=800）」之上，否则长行会横跨到两侧图形上。
+//    与小程序端 pages/result/result.js 的 POSTER_* 常量同值，validate 第 24 节机械校验。
+const POSTER_IDENTITY_Y1 = 660;
+const POSTER_IDENTITY_Y2 = 702;
+const POSTER_SLOGAN_Y = 780;
+
 function stageContent(stage) {
   const seen = {};
   let letters = 0, icons = 0, pairs = 0;
@@ -3096,15 +3143,21 @@ function generateBlessing() {
   ctx.lineWidth = 2;
   ctx.beginPath(); ctx.moveTo(W * 0.3, 600); ctx.lineTo(W * 0.7, 600); ctx.stroke();
 
-  // 底部说明
-  ctx.font = '400 28px "PingFang SC","Microsoft YaHei",sans-serif';
-  ctx.fillStyle = 'rgba(255,255,255,0.92)';
-  ctx.fillText('我在藏字方块中学会了 8 个藏文字母', W / 2, 668);
+  // 底部说明（文化身份）：只印真实进度，绝不写死数字
+  const identity = shareIdentity(posterIdentityInput());
+  ctx.font = '600 30px "PingFang SC","Microsoft YaHei",sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.95)';
+  ctx.fillText(identity.line1, W / 2, POSTER_IDENTITY_Y1);
+  if (identity.line2) {
+    ctx.font = '400 26px "PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.fillText(identity.line2, W / 2, POSTER_IDENTITY_Y2);
+  }
 
   // slogan
   ctx.font = '700 30px "PingFang SC","Microsoft YaHei",sans-serif';
   ctx.fillStyle = '#FFF3D6';
-  ctx.fillText('玩方块，认藏文', W / 2, 716);
+  ctx.fillText('玩方块，认藏文', W / 2, POSTER_SLOGAN_Y);
 
   // Logo（左下）+ 小程序码占位（右下）
   // 先输出一版（Logo 未加载也能拿到图），Logo 就绪后再重绘刷新
