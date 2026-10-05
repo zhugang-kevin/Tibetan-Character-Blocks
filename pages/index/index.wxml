@@ -38,7 +38,7 @@
     <text class="stage-range">第 1-10 关 · 山脚到山腰 · 通关可得证书</text>
   </view>
 
-  <view class="vine-map">
+  <view class="vine-map {{ladderIn ? 'in' : ''}}">
     <!-- 天堂层：金色佛光 + 祥云 + 布达拉宫金顶剪影 + 坛城光环（纯装饰，不可点） -->
     <view class="ladder-heaven" aria-hidden="true">
       <view class="h-glow"></view>
@@ -76,16 +76,19 @@
     <!-- 石阶中轴：金色描边的藏式石阶引路 -->
     <view class="vine-stem"></view>
 
-    <!-- 关卡节点：每关是一级石阶，节点下显示星级 -->
+    <!-- 关卡节点：每关是一级石阶，节点下显示星级；按住有下沉回弹 -->
     <view
       wx:for="{{levels}}"
       wx:key="n"
       class="level-item node {{item.unlocked ? (item.done ? 'done' : 'open') : 'locked'}}"
-      style="top: {{item.top}}%; left: {{item.left}}%;"
+      style="top: {{item.top}}%; left: {{item.left}}%; animation-delay: {{item.delay}}ms;"
+      hover-class="node-press"
+      hover-stay-time="140"
       data-n="{{item.n}}"
       bindtap="onTapLevel"
     >
-      <view wx:if="{{item.done}}" class="node-deco">🪷</view>
+      <view wx:if="{{item.bloom}}" class="node-bloom"></view>
+      <view wx:if="{{item.done || item.bloom}}" class="node-deco {{item.bloom ? 'pop' : ''}}">🪷</view>
       <view class="node-badge">
         <text wx:if="{{item.unlocked}}">{{item.n}}</text>
         <text wx:else>🔒</text>

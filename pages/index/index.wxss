@@ -586,6 +586,58 @@ page,
 .node-stars .star { font-size: 22rpx; line-height: 1; color: #DDD3BC; }
 .node-stars .star.on { color: #F1C40F; text-shadow: 0 1rpx 2rpx rgba(120, 90, 0, 0.4); }
 
+/* ============ 天梯动效（入场升起 / 台阶错峰 / 莲花绽放 / 点击回弹） ============ */
+
+/* 入场：整条天梯自山脚升起（位移 + 轻微放大，模拟「向上攀爬」的第一眼） */
+.vine-map.in {
+  animation: ladderRise 1.05s cubic-bezier(0.2, 0.82, 0.24, 1) both;
+}
+@keyframes ladderRise {
+  0% { opacity: 0; transform: translateY(80rpx) scale(0.986); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* 台阶依次浮现（延迟由 WXML 内联 animation-delay 给出，形成自下而上的节奏） */
+.vine-map.in .level-item.node {
+  animation: nodeRise 0.66s cubic-bezier(0.24, 0.86, 0.28, 1) both;
+}
+@keyframes nodeRise {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.66); }
+  100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+/* 点击回弹：按住时台阶轻微下沉（消消乐式手感，与 hover-class 配合） */
+.level-item.node { transition: transform 0.14s ease-out; }
+.level-item.node.node-press { transform: translate(-50%, -50%) scale(0.92); }
+
+/* 通关瞬间：台阶上莲花绽放 + 金色光环保开 */
+.node-bloom {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 46rpx;
+  height: 46rpx;
+  margin: -23rpx 0 0 -23rpx;
+  border-radius: 50%;
+  border: 3rpx solid rgba(241, 196, 15, 0.9);
+  box-shadow: 0 0 20rpx rgba(241, 196, 15, 0.55);
+  pointer-events: none;
+  animation: bloomRing 1.15s cubic-bezier(0.16, 0.84, 0.3, 1) both;
+}
+@keyframes bloomRing {
+  0% { transform: scale(0.34); opacity: 0.95; }
+  100% { transform: scale(3.8); opacity: 0; }
+}
+.node-deco.pop {
+  animation: lotusBloom 1.2s cubic-bezier(0.2, 0.9, 0.28, 1) both;
+}
+@keyframes lotusBloom {
+  0% { transform: scale(0.2) translateY(12rpx); opacity: 0; filter: drop-shadow(0 0 0 rgba(241, 196, 15, 0)); }
+  46% { transform: scale(1.5) translateY(-6rpx); opacity: 1; }
+  72% { transform: scale(0.94) translateY(0); }
+  100% { transform: scale(1) translateY(0); opacity: 1; filter: drop-shadow(0 0 14rpx rgba(241, 196, 15, 0.9)); }
+}
+
 /* 地区剪影：未解锁灰色，解锁后点亮 */
 .region {
   position: absolute;

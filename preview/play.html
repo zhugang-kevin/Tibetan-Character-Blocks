@@ -718,6 +718,32 @@
   .node-stars { display: flex; gap: 1px; }
   .node-stars .star { font-size: 12px; line-height: 1; color: #DDD3BC; }
   .node-stars .star.on { color: #F1C40F; }
+
+  /* ============ 天梯动效（与小程序 WXSS 同规则，体验版镜像） ============ */
+  .vine-map.in { animation: ladderRise 1.05s cubic-bezier(.2,.82,.24,1) both; }
+  @keyframes ladderRise {
+    0% { opacity: 0; transform: translateY(40px) scale(.986); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .vine-map.in .level-item.node { animation: nodeRise .66s cubic-bezier(.24,.86,.28,1) both; }
+  @keyframes nodeRise {
+    0% { opacity: 0; transform: translate(-50%,-50%) scale(.66); }
+    100% { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+  }
+  .level-item.node { transition: transform .14s ease-out; }
+  .level-item.node.node-press { transform: translate(-50%,-50%) scale(.92); }
+  .node-bloom { position: absolute; left: 50%; top: 50%; width: 23px; height: 23px; margin: -12px 0 0 -12px; border-radius: 50%; border: 2px solid rgba(241,196,15,.9); box-shadow: 0 0 10px rgba(241,196,15,.55); pointer-events: none; animation: bloomRing 1.15s cubic-bezier(.16,.84,.3,1) both; }
+  @keyframes bloomRing {
+    0% { transform: scale(.34); opacity: .95; }
+    100% { transform: scale(3.8); opacity: 0; }
+  }
+  .node-deco.pop { animation: lotusBloom 1.2s cubic-bezier(.2,.9,.28,1) both; }
+  @keyframes lotusBloom {
+    0% { transform: scale(.2) translateY(6px); opacity: 0; filter: drop-shadow(0 0 0 rgba(241,196,15,0)); }
+    46% { transform: scale(1.5) translateY(-3px); opacity: 1; }
+    72% { transform: scale(.94) translateY(0); }
+    100% { transform: scale(1) translateY(0); opacity: 1; filter: drop-shadow(0 0 7px rgba(241,196,15,.9)); }
+  }
   .region { position: absolute; left: 0; right: 0; height: 78px; display: flex; align-items: center; padding-left: 10px; transform: translateY(-50%); pointer-events: none; }
   .region-shape { width: 92px; height: 56px; opacity: .5; }
   .region.dim .region-shape { filter: grayscale(1) brightness(1.16); opacity: .34; }
@@ -1931,8 +1957,9 @@ function refreshHomeV4() {
   const canSign = !p.signIn || p.signIn.lastDate !== today;
   $('side-dot').classList.toggle('show', canSign);
 }
-function renderVine() {
+function renderVine(bloomN) {
   const p = getProgress();
+  const bloom = bloomN || 0;
   const grid = $('level-grid');
   grid.innerHTML = '';
   // 地区剪影（未解锁灰色，解锁点亮）
@@ -1955,9 +1982,13 @@ function renderVine() {
     btn.className = 'level-btn level-item node ' + (done ? 'done' : (unlocked ? 'open' : 'locked'));
     btn.style.top = pos.top + '%';
     btn.style.left = pos.left + '%';
+    // 台阶依次浮现的错峰延迟（与小程序 WXML 内联 animation-delay 同规则）
+    // 直接追加到 style 属性文本，避免依赖 CSSOM 对 animation-* 的支持差异
+    btn.setAttribute('style', (btn.getAttribute('style') || '') + 'animation-delay:' + (n * 55) + 'ms;');
     btn.dataset.n = n;
     btn.innerHTML =
-      (done ? '<div class="node-deco">🪷</div>' : '') +
+      (n === bloom ? '<div class="node-bloom"></div>' : '') +
+      (done || n === bloom ? '<div class="node-deco' + (n === bloom ? ' pop' : '') + '">🪷</div>' : '') +
       '<div class="node-badge">' + (unlocked ? n : '🔒') + '</div>' +
       '<div class="node-stars">' +
       '<span class="star ' + (stars >= 1 ? 'on' : '') + '">★</span>' +
@@ -1998,9 +2029,11 @@ function openPanel(key) {
           '<div class="lamp-label">' + r.label + '</div></div>';
       }).join('') + '</div>' +
       '<div class="entry-note">连续签到 ' + (s.streak || 0) + ' 天 · 灯油 ' + (s.oil || 0) + ' · 累计 ' + (s.totalDays || 0) + ' 天</div>' +
-      '<div class="entry-btn' + (canSign ? '' : ' off') + '" id="lamp-btn">' + (canSign ? '点亮今日酥油灯' : '今日已点亮 · 明天再来') + '</div>' +
+      '<div class="entry-btn' + (canSign ? '' : ' off') + '" id="signin-btn">' + (canSign ? '点亮今日酥油灯' : '今日已点亮 · 明天再来') + '</div>' +
       '<div class="entry-note">签到奖励全部为本地积分与道具，不含任何金额，也不需要登录。</div>';
-    $('lamp-btn').addEventListener('click', doSignIn);
+    // 注意：这里必须用唯一 id。此前误与跳窗的 #lamp-btn 撞名，
+    // 导致面板的签到按钮取到的是跳窗按钮、真实按钮没有监听。
+    $('signin-btn').addEventListener('click', doSignIn);
   } else if (key === 'daily') {
     const g = pickDaily(DAILY.greetings, colDayNumber(colToday()));
     body.innerHTML = '<div class="daily-tib tib">' + g.tibetan + '</div>' +
@@ -2109,6 +2142,86 @@ function waterTree() {
 }
 
 /* ---------------- 首页 ---------------- */
+/* ---------------- 朝圣天梯动效（与 utils/ladder.js 同规则，体验版镜像） ----------------
+   纯视觉：只读布局几何并滚动页面，不涉及任何数据、网络或云能力。
+   foot = 山脚位置（入场第一帧）→ settle = 当前台阶位置。foot 恒 ≥ settle，
+   所以入场方向永远是「从山脚向山顶上行」。 */
+const LADDER_RISE_PX = 200;
+function ladderPlan(input) {
+  const o = input || {};
+  const numv = function (v, d) {
+    const n = typeof v === 'number' ? v : parseFloat(v);
+    return (typeof n === 'number' && !isNaN(n) && isFinite(n)) ? n : d;
+  };
+  const clamp = function (v) { const n = Math.round(v); return n < 0 ? 0 : n; };
+  const mapTop = numv(o.mapTop, 0);
+  const mapH = numv(o.mapHeight, 0);
+  const vh = numv(o.viewportHeight, 667);
+  const pct = numv(o.nodeTopPct, 88);
+  const nodeAbs = mapTop + mapH * (pct / 100);
+  const settle = clamp(nodeAbs - vh * 0.58);
+  const foot = clamp(settle + LADDER_RISE_PX);
+  return { foot: foot, settle: settle, rise: foot - settle };
+}
+function ladderNodeTop(n) { return Math.round((88 - (n - 1) * 9.1) * 10) / 10; }
+
+let LADDER_SEEN = null;   // 上一次渲染时的通关列表（仅内存记忆，用于识别「刚通关」）
+let LADDER_FIRST = true;  // 本次启动第一眼 → 播入场
+let LADDER_PENDING = null; // 被灯火跳窗挡住时暂存，跳窗关闭后再播
+function ladderCleared(nowList) {
+  const list = (nowList || []).slice();
+  const prev = LADDER_SEEN;
+  LADDER_SEEN = list;
+  if (prev === null) return 0;
+  const added = list.filter(function (n) { return prev.indexOf(n) === -1; });
+  return added.length ? added[added.length - 1] : 0;
+}
+function ladderMotion(to, fromFoot) {
+  const map = document.querySelector('#vine-map');
+  if (!map || typeof map.getBoundingClientRect !== 'function') return;
+  const r = map.getBoundingClientRect();
+  const plan = ladderPlan({
+    mapTop: r.top + (window.scrollY || window.pageYOffset || 0),
+    mapHeight: r.height,
+    viewportHeight: window.innerHeight || 667,
+    nodeTopPct: ladderNodeTop(to)
+  });
+  map.classList.add('in');
+  if (fromFoot && plan.rise > 0) {
+    window.scrollTo(0, plan.foot);
+    setTimeout(function () { window.scrollTo({ top: plan.settle, behavior: 'smooth' }); }, 320);
+  } else {
+    window.scrollTo({ top: plan.settle, behavior: 'smooth' });
+  }
+  setTimeout(function () { map.classList.remove('in'); }, 2000);
+}
+function ladderEnter(to, fromFoot) {
+  if ($('lamp-mask').classList.contains('show')) { LADDER_PENDING = [to, fromFoot]; return; }
+  ladderMotion(to, fromFoot);
+}
+function ladderFlushPending() {
+  if (!LADDER_PENDING) return;
+  const p = LADDER_PENDING;
+  LADDER_PENDING = null;
+  setTimeout(function () { ladderMotion(p[0], p[1]); }, 120);
+}
+// 点击回弹：按住时台阶轻微下沉（对应小程序 hover-class="node-press"）
+function ladderPressBind() {
+  const grid = $('level-grid');
+  if (!grid || grid.dataset.press === '1') return;
+  grid.dataset.press = '1';
+  const find = function (e) {
+    return e.target && e.target.closest ? e.target.closest('.level-item.node') : null;
+  };
+  const press = function (e) { const t = find(e); if (t) t.classList.add('node-press'); };
+  const release = function (e) { const t = find(e); if (t) t.classList.remove('node-press'); };
+  grid.addEventListener('mousedown', press);
+  grid.addEventListener('touchstart', press);
+  grid.addEventListener('mouseup', release);
+  grid.addEventListener('mouseleave', release);
+  grid.addEventListener('touchend', release);
+}
+
 function renderHome() {
   const p = getProgress();
   $('hero-logo').src = IMAGES.logo200;
@@ -2162,9 +2275,20 @@ function renderHome() {
   // 藤蔓地图：五地剪影 + 蜿蜒向上的关卡节点（结构化，含星级）
   const grid = $('level-grid');
   grid.classList.add('vine');
-  renderVine();
+  const clearedN = ladderCleared(p.completedLevels);
+  renderVine(clearedN);
   refreshHomeV4();
+  ladderPressBind();
   showScreen('home');
+  // 天梯动效：启动首进 = 从山脚升起；通关返回 = 台阶莲花绽放 + 自动升到下一级
+  setTimeout(function () {
+    if (LADDER_FIRST) {
+      LADDER_FIRST = false;
+      ladderEnter(p.unlockedLevel, true);
+    } else if (clearedN) {
+      ladderEnter(Math.min(clearedN + 1, MAX_LEVEL), false);
+    }
+  }, 90);
 }
 
 /* ---------------- 开始关卡 ---------------- */
@@ -3294,6 +3418,7 @@ function showLampWindow() {
 function hideLampWindow() {
   $('lamp-mask').classList.remove('show');
   lamp.shown = false;
+  ladderFlushPending();   // 跳窗让位：补播被挡住的入场动效
 }
 function lightLamp() {
   if (lamp.lit) return;

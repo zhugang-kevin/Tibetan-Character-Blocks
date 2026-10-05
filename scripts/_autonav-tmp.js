@@ -14,6 +14,28 @@ const s = '<script>/*__AUTONAV__*/(function(){var q=location.search;' +
   'else if(q.indexOf("vt=lampLit")>-1){showLampWindow();' +
   'setTimeout(function(){try{document.getElementById("lamp-btn").click();}catch(e){}},120);}' +
   'else if(q.indexOf("vt=lamp")>-1){showLampWindow();}' +
+  // 天梯入场：定格在「台阶依次浮现」的中段（截图用）
+  'else if(q.indexOf("vt=enter")>-1){' +
+  'LADDER_FIRST=true;renderHome();' +
+  'setTimeout(function(){try{' +
+  'var m=document.getElementById("vine-map");m.classList.add("in");' +
+  'var nd=document.querySelectorAll(".level-item.node");' +
+  'for(var i=0;i<nd.length;i++){nd[i].style.animationPlayState="paused";nd[i].style.animationDelay=(i<3?"-0.6s":i*0.055+"s");}' +
+  'm.style.animationDelay="-1.02s";m.style.animationPlayState="paused";' +
+  '}catch(e){}},420);}' +
+  // 通关返回：新台阶莲花绽放（定格在爆发中段）
+  'else if(q.indexOf("vt=bloom")>-1){' +
+  'renderHome();' +
+  'var p=getProgress();var max=0;p.completedLevels.forEach(function(n){if(n>max)max=n;});' +
+  'var nx=max+1>10?10:max+1;if(p.completedLevels.indexOf(nx)===-1)p.completedLevels.push(nx);' +
+  'p.unlockedLevel=nx;saveProgress(p);renderHome();' +
+  'setTimeout(function(){try{' +
+  'var r=document.querySelector(".node-bloom");if(r){r.style.animationPlayState="paused";r.style.animationDelay="-0.52s";}' +
+  'var d=document.querySelector(".node-deco.pop");if(d){d.style.animationPlayState="paused";d.style.animationDelay="-0.5s";}' +
+  'var m2=document.getElementById("vine-map");m2.style.animation="none";' +
+  'var nd2=document.querySelectorAll(".level-item.node");' +
+  'for(var j=0;j<nd2.length;j++){nd2[j].style.animation="none";}' +
+  '}catch(e){}},420);}' +
   '}catch(e){document.title="ERR:"+e.message;}},150);})();</' + 'script>';
 h = h.replace('</body>', s + '</body>');
 fs.writeFileSync('preview/play.html', h);

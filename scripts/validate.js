@@ -910,6 +910,76 @@ section('17. 留存系统与首页重构（PRD v4）');
   else err('build-h5.js 未注入 data/lamp.js');
 })();
 
+// ---------- 20. 朝圣天梯动效（入场升起 / 台阶错峰 / 莲花绽放 / 点击回弹） ----------
+(function () {
+  section('20. 朝圣天梯动效');
+
+  // 20.1 纯几何模块：只做坐标换算，不碰 wx / DOM / 网络
+  const ladSrc = exists('utils/ladder.js') ? read('utils/ladder.js') : '';
+  if (ladSrc) ok('utils/ladder.js 存在');
+  else err('缺少 utils/ladder.js（天梯动效几何应集中在纯函数模块）');
+  if (ladSrc && ladSrc.indexOf('require(') === -1) ok('utils/ladder.js 为纯函数模块（不依赖其他模块）');
+  else err('utils/ladder.js 不应 require 任何模块');
+  ['wx.request', 'wx.cloud', 'callFunction', 'wx.login', 'getUserInfo', 'getLocation'].forEach(api => {
+    if (ladSrc.indexOf(api) === -1) ok('天梯动效未使用 ' + api);
+    else err('utils/ladder.js 出现 ' + api + '（动效必须纯本地）');
+  });
+
+  if (ladSrc) {
+    const lad = require(path.join(ROOT, 'utils', 'ladder'));
+    // 第 1 关在山脚：仍要先多露一段山脚，再升上去（方向恒为上行）
+    const p1 = lad.buildPlan({ mapTop: 300, mapHeight: 660, viewportHeight: 667, nodeTopPct: 88 });
+    if (p1.settle > 0 && p1.foot > p1.settle && p1.rise > 0) ok('山脚台阶：山脚 → 停靠 两段目标齐备');
+    else err('山脚台阶动效计划异常：' + JSON.stringify(p1));
+    // 第 10 关在山顶：停靠点必须更靠上
+    const p10 = lad.buildPlan({ mapTop: 300, mapHeight: 660, viewportHeight: 667, nodeTopPct: 6.1 });
+    if (p10.settle < p1.settle) ok('越靠山顶停靠点越靠上（第 10 关 settle < 第 1 关）');
+    else err('停靠点未随关卡上升：' + JSON.stringify(p10));
+    // 越界保护：不给负数滚动值
+    const pNeg = lad.buildPlan({ mapTop: -500, mapHeight: 100, viewportHeight: 900, nodeTopPct: 0 });
+    if (pNeg.settle === 0 && pNeg.foot === 200) ok('越界时滚动目标归零（不出现负值）');
+    else err('越界保护失效：' + JSON.stringify(pNeg));
+    // 异常输入不抛错
+    let badOk = true;
+    try {
+      const b = lad.buildPlan({});
+      badOk = b.settle === 0 && typeof b.foot === 'number';
+    } catch (e) { badOk = false; }
+    if (badOk) ok('异常/空输入安全回落默认值（不抛错）');
+    else err('异常输入导致 buildPlan 抛错或返回非法值');
+  }
+
+  // 20.2 首页结构：入场类名 / 错峰延迟 / 点击回弹 / 莲花绽放
+  const iw3 = read('pages/index/index.wxml');
+  ['ladderIn', 'hover-class="node-press"', 'animation-delay', 'node-bloom', 'onTapLevel'].forEach(k => {
+    if (iw3.indexOf(k) > -1) ok('index.wxml 含 ' + k);
+    else err('index.wxml 缺少 ' + k);
+  });
+  const is3 = read('pages/index/index.wxss');
+  ['@keyframes ladderRise', '@keyframes nodeRise', '@keyframes bloomRing', '@keyframes lotusBloom', '.node-press']
+    .forEach(k => {
+      if (is3.indexOf(k) > -1) ok('index.wxss 含 ' + k);
+      else err('index.wxss 缺少 ' + k);
+    });
+  const ij3 = read('pages/index/index.js');
+  ['runLadderMotion:', 'bloomAndClimb:', 'releaseLadderIn:', 'ladder.buildPlan', 'pageScrollTo']
+    .forEach(k => {
+      if (ij3.indexOf(k) > -1) ok('index.js 含 ' + k);
+      else err('index.js 缺少 ' + k);
+    });
+  if (ij3.indexOf('_booted') > -1 && ij3.indexOf('_doneList') > -1)
+    ok('通关识别走本机内存记忆（不落盘、不联网）');
+  else err('index.js 未实现「刚通关」识别');
+
+  // 20.3 体验版镜像
+  const tpl3 = read('preview/template.html');
+  ['ladderPlan', 'ladderMotion', 'ladderEnter', 'ladderPressBind',
+    '@keyframes ladderRise', '@keyframes nodeRise', '@keyframes lotusBloom', 'node-press'].forEach(k => {
+    if (tpl3.indexOf(k) > -1) ok('体验版已镜像 ' + k);
+    else err('preview/template.html 未镜像 ' + k);
+  });
+})();
+
 // ---------- 汇总 ----------
 console.log('\n========== 汇总 ==========');
 console.log('通过: ' + passed + ' | 错误: ' + errors.length + ' | 警告: ' + warnings.length);

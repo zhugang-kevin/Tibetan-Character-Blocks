@@ -4,6 +4,7 @@
 var storage = require('../../utils/storage');
 var certificate = require('../../utils/certificate');
 var collect = require('../../utils/collect');
+var ladder = require('../../utils/ladder');
 var lamp = require('../../utils/lamp');
 var regionsData = require('../../data/regions');
 var dailyData = require('../../data/daily');
@@ -85,7 +86,9 @@ Page({
     lampHomeText: '',
     lampOnceNote: lampData.onceNote,
     lampButtonText: lampData.buttonText,
-    lampTip: lampData.tip
+    lampTip: lampData.tip,
+    // 朝圣天梯入场动效（纯视觉类名，不含任何数据）
+    ladderIn: false
   },
 
   onShow: function () {
@@ -95,6 +98,21 @@ Page({
   refresh: function () {
     var p = storage.getProgress();
     var starsMap = storage.getStarsMap();
+
+    // 天梯动效的调度依据（全部为本机记忆，不落盘、不联网）：
+    //   firstBoot —— 本次启动第一次进首页 → 播「从山脚升上来」的入场
+    //   bloomN    —— 刚从关卡页通关返回，识别出最新通关的那一关 → 台阶莲花绽放 + 自动升到下一级
+    var doneList = (p.completedLevels || []).slice();
+    var firstBoot = this._booted !== true;
+    this._booted = true;
+    var cleared = [];
+    if (!firstBoot) {
+      var prevDone = this._doneList || [];
+      cleared = doneList.filter(function (n) { return prevDone.indexOf(n) === -1; });
+    }
+    this._doneList = doneList;
+    var bloomN = cleared.length ? cleared[cleared.length - 1] : 0;
+
     var levels = [];
     var totalStars = 0;
     for (var n = 1; n <= 10; n++) {
@@ -107,6 +125,8 @@ Page({
         done: p.completedLevels.indexOf(n) > -1,
         top: pos.top,
         left: pos.left,
+        delay: n * 55,          // 台阶依次浮现的错峰延迟（ms）
+        bloom: n === bloomN,    // 本关刚通关：绽放莲花 + 金色光环
         s1: st >= 1 ? 'on' : 'off',
         s2: st >= 2 ? 'on' : 'off',
         s3: st >= 3 ? 'on' : 'off'
@@ -140,6 +160,10 @@ Page({
     var today = todayStr();
     var frags = storage.getFragments();
 
+    // 灯火跳窗会盖住天梯 —— 若今天首次打开，入场动效推迟到关闭跳窗之后再播
+    var lampFirst = lamp.isFirstOpenToday(storage.getLampDay(), today);
+    var intro = firstBoot && !lampFirst;
+
     // 灯油 / 积分 / 唐卡碎片
     var today_daily = collect.pickDaily(dailyData.greetings, collect.dayNumber(today));
 
@@ -166,13 +190,74 @@ Page({
       },
       thangkaCells: this.buildThangka(frags),
       pot: storage.getPot(),
-      winterItems: dailyData.winter.items
+      winterItems: dailyData.winter.items,
+      ladderIn: intro
     });
 
     // 万家灯火：每天首次打开时，先与远方的灯火同明一次（纯本地判断）
-    if (lamp.isFirstOpenToday(storage.getLampDay(), today)) {
+    if (lampFirst) {
       this.setData(this.buildLampView());
+      // 跳窗盖住天梯：入场/绽放推迟到 closeLampWindow（见下）
+      this._pendingIntro = firstBoot ? p.unlockedLevel : 0;
+      this._pendingBloom = bloomN;
+    } else if (intro) {
+      // 本次启动第一眼：天梯从山脚升起，缓缓停到当前台阶
+      this.runLadderMotion({ to: p.unlockedLevel, fromFoot: true });
+      this.releaseLadderIn();
+    } else if (bloomN) {
+      // 通关返回：台阶莲花绽放，画面自动升到下一级
+      this.bloomAndClimb(bloomN);
     }
+  },
+
+  // 天梯入场 / 上行动效：先落在山脚（人间），再缓缓升到目标台阶。
+  // 纯视觉：只读布局几何并调用 scrollTo，不涉及任何数据、网络或云能力。
+  runLadderMotion: function (opts) {
+    var o = opts || {};
+    var node = this.data.levels[(o.to || 1) - 1];
+    if (!node || !wx.createSelectorQuery) return;
+    wx.createSelectorQuery()
+      .select('.vine-map').boundingClientRect()
+      .selectViewport().scrollOffset()
+      .exec(function (res) {
+        var rect = res && res[0];
+        var off = res && res[1];
+        if (!rect || !rect.height) return;
+        var vh = 667;
+        try { vh = wx.getSystemInfoSync().windowHeight || 667; } catch (e) { /* 取不到时用默认视口高 */ }
+        var plan = ladder.buildPlan({
+          mapTop: rect.top + ((off && off.scrollTop) || 0),
+          mapHeight: rect.height,
+          viewportHeight: vh,
+          nodeTopPct: node.top
+        });
+        if (o.fromFoot && plan.rise > 0) {
+          wx.pageScrollTo({ scrollTop: plan.foot, duration: 0 });
+          setTimeout(function () {
+            wx.pageScrollTo({ scrollTop: plan.settle, duration: 760 });
+          }, 320);
+        } else {
+          wx.pageScrollTo({ scrollTop: plan.settle, duration: 700 });
+        }
+      });
+  },
+
+  // 入场动画播完后撤掉动画类：animation-fill 会让 transform 常驻，挡住后面的点击缩放反馈
+  releaseLadderIn: function () {
+    var self = this;
+    setTimeout(function () { self.setData({ ladderIn: false }); }, 2000);
+  },
+
+  // 通关返回：当前台阶绽放莲花（.bloom）+ 自动升到下一级台阶
+  bloomAndClimb: function (doneN) {
+    var self = this;
+    this.setData({ ladderIn: true });
+    this.runLadderMotion({ to: Math.min(doneN + 1, 10) });
+    setTimeout(function () {
+      var patch = { ladderIn: false };
+      patch['levels[' + (doneN - 1) + '].bloom'] = false;
+      self.setData(patch);
+    }, 2400);
   },
 
   // 万家灯火祈福跳窗：文案里的数字全部来自 data/lamp.js 的固定数据（含千分位）
@@ -218,6 +303,18 @@ Page({
   closeLampWindow: function () {
     this.setData({ lampShow: false });
     storage.markLampDay(todayStr());
+    // 跳窗让位：补播天梯动效（入场升起 或 通关绽放）
+    var intro = this._pendingIntro || 0;
+    var bloom = this._pendingBloom || 0;
+    this._pendingIntro = 0;
+    this._pendingBloom = 0;
+    if (intro) {
+      this.setData({ ladderIn: true });
+      this.runLadderMotion({ to: intro, fromFoot: true });
+      this.releaseLadderIn();
+    } else if (bloom) {
+      this.bloomAndClimb(bloom);
+    }
   },
 
   // 7 天循环灯阵（第几天已点亮）

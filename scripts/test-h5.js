@@ -77,7 +77,9 @@ function mockCtx() {
       window.HTMLCanvasElement.prototype.getContext = function () { return mockCtx(); };
       window.HTMLCanvasElement.prototype.toDataURL = function () { return 'data:image/png;base64,STUB'; };
       window.confirm = function () { return true; };
-      window.scrollTo = function () {};
+      // 记录滚动调用：天梯动效只会滚动页面（不碰数据），这里作为可验证的痕迹
+      window.__scrolls = [];
+      window.scrollTo = function (a) { window.__scrolls.push(a); };
       // 体验版不带真人录音；用静音桩替代 Audio，避免 jsdom「未实现」噪音
       window.Audio = function () {
         return { play: function () { return { catch: function () {} }; }, pause: function () {} };
@@ -906,7 +908,8 @@ function mockCtx() {
   check('长明灯面板渲染 7 天签到环', $$('#entry-body .lamp-ring').length === 7,
     '实际 ' + $$('#entry-body .lamp-ring').length);
   const oilBeforeSign = ev('getProgress().signIn.oil');
-  $('#lamp-btn').click();
+  // 注意用面板自己的 id：跳窗的 #lamp-btn 与面板签到按钮曾撞名，导致面板按钮无监听
+  $('#signin-btn').click();
   await sleep(60);
   const progAfterSign = JSON.parse(win.localStorage.getItem('zangzi_progress') || 'null');
   check('签到写入 lastDate', !!progAfterSign.signIn && String(progAfterSign.signIn.lastDate).length === 10,
@@ -1010,6 +1013,53 @@ function mockCtx() {
   await sleep(60);
   check('重玩后首页节点显示星级', $$('#screen-home #level-grid .level-item .star.on').length === 3,
     '实际 ' + $$('#screen-home #level-grid .level-item .star.on').length);
+
+  /* ---------- 23. 朝圣天梯动效（入场升起 / 莲花绽放 / 点击回弹） ---------- */
+  section('23. 朝圣天梯动效');
+
+  // 纯几何（与 utils/ladder.js 同规则）：foot 恒 ≥ settle，入场方向永远是「上行」
+  const plan1 = ev('ladderPlan({mapTop:300,mapHeight:660,viewportHeight:667,nodeTopPct:88})');
+  check('山脚台阶有「山脚 → 停靠」两个滚动目标', plan1.settle > 0 && plan1.foot > plan1.settle, JSON.stringify(plan1));
+  const plan10 = ev('ladderPlan({mapTop:300,mapHeight:660,viewportHeight:667,nodeTopPct:6.1})');
+  check('越靠山顶停靠点越靠上（第 10 关 settle < 第 1 关）', plan10.settle < plan1.settle, JSON.stringify(plan10));
+  const planBad = ev('ladderPlan({})');
+  check('异常输入安全归零（不抛错）', planBad.settle === 0 && planBad.foot === 200, JSON.stringify(planBad));
+  check('反向：入场不会出现反向滚动（rise 恒 ≥ 0）', plan1.rise > 0 && plan10.rise > 0, plan1.rise + '|' + plan10.rise);
+
+  // 入场：给天梯挂升起类 + 真的滚动了页面
+  ev('window.__scrolls = []; LADDER_FIRST = true; renderHome();');
+  await sleep(600);
+  check('入场给天梯挂上升起动画类（.vine-map.in）', $('#vine-map').classList.contains('in'));
+  const scrolls = ev('JSON.stringify(window.__scrolls)');
+  check('入场真的滚动了页面（山脚 → 台阶）', scrolls.length > 6 && scrolls.indexOf('"top"') > -1, scrolls);
+  check('每个台阶都有错峰浮现延迟（内联 animation-delay）',
+    $$('#level-grid .level-item.node').every(function (n) {
+      return (n.getAttribute('style') || '').indexOf('animation-delay') > -1;
+    }));
+
+  // 点击回弹：按下下沉、松手恢复
+  const pressNode = $('#level-grid .level-item.node');
+  pressNode.dispatchEvent(new win.MouseEvent('mousedown', { bubbles: true }));
+  check('按住台阶出现下沉反馈（node-press）', pressNode.classList.contains('node-press'));
+  pressNode.dispatchEvent(new win.MouseEvent('mouseup', { bubbles: true }));
+  check('松手后台阶恢复', !pressNode.classList.contains('node-press'));
+
+  // 通关返回：新台阶莲花绽放 + 自动升到下一级
+  ev('(function () { var p = getProgress(); var max = 0;' +
+    'p.completedLevels.forEach(function (n) { if (n > max) max = n; });' +
+    'var next = max + 1 > 10 ? 10 : max + 1;' +
+    'if (p.completedLevels.indexOf(next) === -1) p.completedLevels.push(next);' +
+    'p.unlockedLevel = next + 1 > 10 ? 10 : next + 1; saveProgress(p); })()');
+  ev('renderHome();');
+  await sleep(200);
+  check('通关返回时新台阶绽放莲花（.node-bloom）', $$('#level-grid .level-item.node .node-bloom').length === 1,
+    '实际 ' + $$('#level-grid .level-item.node .node-bloom').length);
+  check('绽放的莲花带放大动效（.node-deco.pop）', $$('#level-grid .level-item.node .node-deco.pop').length === 1,
+    '实际 ' + $$('#level-grid .level-item.node .node-deco.pop').length);
+  check('反向：无新通关时不会重复绽放', (function () {
+    ev('renderHome();');
+    return $$('#level-grid .level-item.node .node-bloom').length === 0;
+  })());
 
   /* ---------- 汇总 ---------- */
   check('全程无脚本运行时错误', errors.length === 0, errors[0]);
