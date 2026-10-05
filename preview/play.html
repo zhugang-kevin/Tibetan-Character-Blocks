@@ -71,15 +71,16 @@
   }
 
   /* ---------- 首页 ---------- */
-  .hero { text-align: center; padding: 14px 0 22px; }
-  .hero-logo { width: 112px; height: 112px; margin: 0 auto; display: block; filter: drop-shadow(0 6px 14px rgba(150, 40, 24, .22)); }
-  .hero-title { margin-top: 14px; font-size: 30px; font-weight: 800; letter-spacing: 2px; color: #F5E9CF; text-shadow: 0 2px 10px rgba(0,0,0,.55); }
+  /* Hero：紧凑品牌行（首页视觉重心是藤蔓地图，品牌只占顶部一行） */
+  .hero { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 4px 0 14px; }
+  .hero-logo { width: 40px; height: 40px; border-radius: 9px; filter: drop-shadow(0 3px 8px rgba(150, 40, 24, .22)); }
+  .hero-txt { text-align: left; }
+  .hero-title { font-size: 18px; font-weight: 800; letter-spacing: 2px; color: #F5E9CF; text-shadow: 0 2px 10px rgba(0,0,0,.55); }
   .hero-slogan {
-    margin: 10px auto 0; display: inline-block; font-size: 14px; color: var(--red);
-    border: 1px solid rgba(192,57,43,.35); border-radius: 999px; padding: 5px 14px;
+    margin-top: 2px; display: inline-block; font-size: 12px; color: var(--red);
+    border: 1px solid rgba(192,57,43,.35); border-radius: 999px; padding: 2px 9px;
     background: rgba(255,255,255,.55);
   }
-  .hero-greet { margin-top: 12px; font-size: 26px; letter-spacing: 3px; color: #FFC96B; }
 
   .profile-row { display: flex; justify-content: space-between; align-items: center; margin: 6px 0 18px; padding: 0 2px; }
   .profile-stamps { display: flex; gap: 8px; align-items: center; }
@@ -798,9 +799,10 @@
 
     <div class="hero">
       <img id="hero-logo" class="hero-logo" alt="藏字方块">
-      <div class="hero-title">藏字方块</div>
-      <div><span class="hero-slogan">玩方块，认藏文</span></div>
-      <div class="hero-greet tib">བཀྲ་ཤིས་བདེ་ལེགས</div>
+      <div class="hero-txt">
+        <div class="hero-title">藏字方块</div>
+        <div><span class="hero-slogan">玩方块，认藏文</span></div>
+      </div>
     </div>
 
     <div class="profile-row">

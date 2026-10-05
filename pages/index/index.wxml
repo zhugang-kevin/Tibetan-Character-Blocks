@@ -18,9 +18,10 @@
 
   <view class="hero">
     <image class="hero-logo" src="/images/logo-200.png" mode="aspectFit" />
-    <view class="hero-title">藏字方块</view>
-    <view class="hero-slogan">玩方块，认藏文</view>
-    <view class="hero-sub">点击两张相同的藏文字母或文化图标进行配对消除，边玩边认藏文</view>
+    <view class="hero-txt">
+      <view class="hero-title">藏字方块</view>
+      <view class="hero-slogan">玩方块，认藏文</view>
+    </view>
   </view>
 
   <!-- 我的档案：护照印记 + 最高连击 -->
