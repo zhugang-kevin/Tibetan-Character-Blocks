@@ -350,6 +350,25 @@
   .ns-goal { margin-top: 5px; font-size: 12px; line-height: 1.6; color: #2C3E50; }
   .ns-note { margin-top: 4px; font-size: 10px; color: #8A8375; }
 
+  /* 「藏文可以组合」拼合预告（仅第 2 关结算页） */
+  .combo-tease {
+    display: flex; flex-direction: column; margin-bottom: 14px; padding: 11px 14px;
+    border-radius: 14px; background: rgba(255,255,255,.88);
+    border: 1.5px solid rgba(36,113,163,.5);
+  }
+  .ct-head { display: flex; align-items: baseline; }
+  .ct-tag {
+    padding: 1px 6px; border-radius: 999px;
+    font-size: 10px; color: #FFFBF0; background: #2471A3;
+  }
+  .ct-demo { display: flex; align-items: baseline; margin-top: 7px; }
+  .ct-glyph { font-size: 26px; font-weight: 700; color: #2C3E50; }
+  .ct-on { color: #1F4E79; }
+  .ct-arrow { margin: 0 8px; font-size: 14px; color: #8A8375; }
+  .ct-roman { margin-left: 8px; font-size: 12px; color: #8A8375; }
+  .ct-hint { margin-top: 6px; font-size: 12px; line-height: 1.6; color: #2C3E50; }
+  .ct-note { margin-top: 3px; font-size: 10px; line-height: 1.6; color: #8A8375; }
+
   /* 文化护照 */
   .pp-cover { text-align: center; padding: 20px 16px 22px; border-radius: 18px; border: 2px solid var(--green); background: linear-gradient(180deg, #fff, #F3F8F2); margin-bottom: 16px; }
   .pp-logo { width: 66px; height: 66px; border-radius: 15px; }
@@ -1105,6 +1124,9 @@
     <!-- 前 60 秒钩子：结算决策点上的进度锚（关卡 / 旅程天数 / 收藏槽位） -->
     <div id="res-journey" class="journey"></div>
 
+    <!-- 「藏文可以组合」拼合预告（仅第 2 关） -->
+    <div id="res-combo-tease"></div>
+
     <div class="stat-row">
       <div class="stat-box"><div class="v" id="res-score">0</div><div class="k">本关积分</div></div>
       <div class="stat-box"><div class="v" id="res-combo">0</div><div class="k">最高连击</div></div>
@@ -1413,6 +1435,14 @@ function nextStage(n) {
   const k = parseInt(n, 10);
   if (!k || k < 1) return null;
   return stageByNo(k + 1);
+}
+
+// 「藏文可以组合」预告：只在配置指定的那一关展示（当前 = 第 2 关）
+// 与 utils/collect.js 的 comboTease 同契约：配置由调用方注入，函数本身不认识关卡号。
+function comboTease(level, cfg) {
+  if (!cfg) return null;
+  if (parseInt(level, 10) !== parseInt(cfg.level, 10)) return null;
+  return cfg;
 }
 
 function stageContent(stage) {
@@ -2880,6 +2910,22 @@ function finishLevel() {
     '<div class="j-slots">' + jSlots + '</div>' +
     '<div class="j-note">' + jHead +
     (cp.left ? ('，还有 ' + cp.left + ' 个在前面等你遇见。') : '，已全部收藏。') + '</div>';
+
+  // 「藏文可以组合」预告：只在 DATA.combo 指定的那一关展示（当前 = 第 2 关，认全 ཀ ཁ ག ང 那一刻）。
+  // 用两个完整音节的对比讲拼合，元音不裸呈现（否则落成 ◌ི 虚圈）。
+  const ct = comboTease(level, DATA.combo);
+  $('res-combo-tease').innerHTML = ct ? (
+    '<div class="combo-tease">' +
+    '<div class="ct-head"><span class="ct-tag">' + ct.tag + '</span></div>' +
+    '<div class="ct-demo">' +
+    '<span class="ct-glyph tib">' + ct.base + '</span>' +
+    '<span class="ct-arrow">→</span>' +
+    '<span class="ct-glyph tib ct-on">' + ct.combined + '</span>' +
+    '<span class="ct-roman">' + ct.roman + '</span>' +
+    '</div>' +
+    '<div class="ct-hint">' + ct.hint + '</div>' +
+    '<div class="ct-note">' + ct.note + '</div>' +
+    '</div>') : '';
 
   // 证书横幅（新得 / 升级），否则展示阶段进度与「还差什么」
   const certEl = $('res-cert');

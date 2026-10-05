@@ -1151,8 +1151,12 @@ function mockCtx() {
   check('第 2 关有 2 块冰霜（与第 1 关拉开差异）', ev('state.frostTotal') === 2, String(ev('state.frostTotal')));
   check('第 2 关 DOM 冰霜罩层数量一致', $$('#board .frost').length === 2,
     '实际 ' + $$('#board .frost').length);
-  check('第 2 关引入了第 3 个字母', ev('LEVELS[1].elements.length') === 3,
+  check('第 2 关认全四个基础字母 ཀ ཁ ག ང', ev('LEVELS[1].elements.length') === 4 &&
+    ev('JSON.stringify(LEVELS[1].elements.map(function (e) { return e[0]; }))') ===
+      '["letter_01","letter_02","letter_03","letter_04"]',
     String(ev('LEVELS[1].elements.length')));
+  check('第 2 关字母配比全为偶数（保证两两配对）',
+    ev('LEVELS[1].elements.every(function (e) { return e[1] % 2 === 0; })') === true);
   ev('startLevel(1)'); await sleep(80);
   check('反向：第 1 关仍无冰霜（前 60 秒不打扰新手）',
     ev('state.frostTotal') === 0 && $$('#board .frost').length === 0, String(ev('state.frostTotal')));
@@ -1193,6 +1197,52 @@ function mockCtx() {
     check('预告不出现金额 / 权益类字眼（文化内容，不是商品）',
       !/[¥￥]|元|优惠|券|折扣/.test(txt), txt);
   }
+
+  /* ---------- 26. 「藏文可以组合」拼合预告（仅第 2 关） ---------- */
+  // 设计给了「元音拼合」的完整机制，但机制要等阶段 3 才开（D27）；
+  // 这里先落它真正有价值的部分：让玩家在第 2 关通关时「看见藏文可以组合」。
+  section('26. 「藏文可以组合」拼合预告（仅第 2 关）');
+
+  // 26.1 反向：别的关卡不出现（是预告，不是把机制提前）
+  ev('startLevel(1)'); await sleep(80);
+  ev('state.matchedCount = 12; state.collected = ["letter_01","letter_02"];' +
+    ' state.score = 100; state.maxCombo = 3; state.misses = 0; finishLevel()');
+  await sleep(80);
+  check('反向：第 1 关结算页不出现拼合预告',
+    $$('#res-combo-tease .combo-tease').length === 0,
+    '实际 ' + $$('#res-combo-tease .combo-tease').length + ' 个');
+
+  // 26.2 第 2 关出现，且文案 / 音节 / 关卡号全部来自数据层
+  ev('startLevel(2)'); await sleep(80);
+  ev('state.matchedCount = 15; state.collected = ["letter_01","letter_02","letter_03","letter_04"];' +
+    ' state.score = 220; state.maxCombo = 5; state.misses = 0; finishLevel()');
+  await sleep(80);
+  const ctEl = $('#res-combo-tease .combo-tease');
+  check('第 2 关（认全 ཀ ཁ ག ང）结算页出现拼合预告', !!ctEl);
+  if (ctEl) {
+    const ctTxt = ctEl.textContent;
+    check('预告标题来自 data/combo.js', ctTxt.indexOf(ev('DATA.combo.tag')) > -1, ctTxt);
+    check('预告对比的是数据层给的「组合前」音节', ctTxt.indexOf(ev('DATA.combo.base')) > -1, ctTxt);
+    check('预告对比的是数据层给的「组合后」音节', ctTxt.indexOf(ev('DATA.combo.combined')) > -1, ctTxt);
+    check('预告含拉丁转写', ctTxt.indexOf(ev('DATA.combo.roman')) > -1, ctTxt);
+    // 注意：先摘掉「元音」——藏文术语里的「元」不是货币单位，否则会误报
+    const ctMoney = ctTxt.split('元音').join('');
+    check('预告说明不出现金额 / 权益类字眼（文化内容，不是商品）',
+      !/[¥￥]|元|优惠|券|折扣/.test(ctMoney), ctTxt);
+    check('反向：预告里没有孤立的元音符号（必须与基字同簇）',
+      !/[\u0F71-\u0F84\u0F90-\u0FBC]/.test(
+        ctTxt.replace(new RegExp(ev('DATA.combo.combined'), 'g'), '')), ctTxt);
+  }
+
+  // 26.3 数据层判据：comboTease 是纯函数，只认配置里那一关
+  check('comboTease(2, DATA.combo) 返回数据层的预告对象',
+    ev('JSON.stringify(comboTease(2, DATA.combo))') === ev('JSON.stringify(DATA.combo)'));
+  check('comboTease(1, ...) 为 null（第 1 关只教配对）',
+    ev('comboTease(1, DATA.combo)') === null);
+  check('comboTease(3, ...) 为 null（机制仍不提前开放）',
+    ev('comboTease(3, DATA.combo)') === null);
+  check('comboTease 缺配置时安全返回 null',
+    ev('comboTease(2, null)') === null);
 
   /* ---------- 汇总 ---------- */
   check('全程无脚本运行时错误', errors.length === 0, errors[0]);

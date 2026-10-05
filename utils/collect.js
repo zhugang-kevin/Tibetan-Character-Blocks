@@ -140,6 +140,15 @@ function retainedOn(state, n) {
   return (st.days || []).indexOf(dayToDate(dayNumber(st.first) + (n || 1))) > -1;
 }
 
+// 「藏文可以组合」预告：只在配置指定的那一关出现（当前 = 第 2 关，认全 ཀ ཁ ག ང 那一刻）。
+// 纯判据函数——配置由调用方注入（本模块保持零依赖，便于被体验版镜像逐字复用），
+// 页面不必自己内联「哪一关该讲解拼合」这条规则（将来挪关卡只改 data/combo.js）。
+function comboTease(level, cfg) {
+  if (!cfg) return null;
+  if (Number(level) !== Number(cfg.level)) return null;
+  return cfg;
+}
+
 module.exports = {
   FRAGMENT_TOTAL: FRAGMENT_TOTAL,
   CYCLE_DAYS: CYCLE_DAYS,
@@ -156,5 +165,6 @@ module.exports = {
   waterReward: waterReward,
   cardProgress: cardProgress,
   markOpen: markOpen,
-  retainedOn: retainedOn
+  retainedOn: retainedOn,
+  comboTease: comboTease
 };

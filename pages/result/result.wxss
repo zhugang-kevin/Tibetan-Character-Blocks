@@ -582,3 +582,57 @@
   font-size: 20rpx;
   color: #8A8375;
 }
+
+/* ============ 「藏文可以组合」拼合预告（仅第 2 关结算页） ============ */
+/* 用「两个完整音节的对比」讲拼合：ཀ → ཀི。
+   元音只在「与基字同簇」的形态里出现，避免 ◌ི 虚圈。 */
+.combo-tease {
+  display: flex;
+  flex-direction: column;
+  margin: 18rpx 0 6rpx;
+  padding: 22rpx 28rpx;
+  border-radius: 20rpx;
+  background: rgba(255, 255, 255, 0.88);
+  border: 2rpx solid rgba(36, 113, 163, 0.5);
+}
+.ct-head { display: flex; align-items: baseline; }
+.ct-tag {
+  padding: 2rpx 12rpx;
+  border-radius: 999rpx;
+  font-size: 20rpx;
+  color: #FFFBF0;
+  background: #2471A3;
+}
+.ct-demo {
+  display: flex;
+  align-items: baseline;
+  margin-top: 14rpx;
+}
+.ct-glyph {
+  font-size: 52rpx;
+  font-weight: 700;
+  color: #2C3E50;
+}
+.ct-on { color: #1F4E79; }
+.ct-arrow {
+  margin: 0 16rpx;
+  font-size: 28rpx;
+  color: #8A8375;
+}
+.ct-roman {
+  margin-left: 16rpx;
+  font-size: 24rpx;
+  color: #8A8375;
+}
+.ct-hint {
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  line-height: 1.6;
+  color: #2C3E50;
+}
+.ct-note {
+  margin-top: 6rpx;
+  font-size: 20rpx;
+  line-height: 1.6;
+  color: #8A8375;
+}

@@ -42,7 +42,9 @@ const DATA = {
   regions: require(path.join(ROOT, 'data', 'regions')),
   daily: require(path.join(ROOT, 'data', 'daily')),
   // 万家灯火祈福跳窗（展示数据固定写死，不接任何后端）
-  lamp: require(path.join(ROOT, 'data', 'lamp'))
+  lamp: require(path.join(ROOT, 'data', 'lamp')),
+  // 「藏文可以组合」拼合预告（纯展示数据）
+  combo: require(path.join(ROOT, 'data', 'combo'))
 };
 
 // ---------- 2. 注入品牌与背景资产 ----------

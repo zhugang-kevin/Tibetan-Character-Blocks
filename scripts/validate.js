@@ -1205,6 +1205,100 @@ section('22. 阶段路线图定位与「下一阶段」预告（D27）');
   });
 })();
 
+// ---------- 23. 「藏文可以组合」拼合预告（仅第 2 关） ----------
+section('23. 拼合预告（第 2 关 · 只讲概念，不提前开放机制）');
+{
+  // 23.1 数据文件齐备
+  if (!exists('data/combo.js')) {
+    err('data/combo.js 不存在（拼合预告的数据源）');
+  } else {
+    const combo = require(path.join(ROOT, 'data', 'combo'));
+    const fields = ['level', 'tag', 'base', 'combined', 'roman', 'hint', 'note'];
+    const miss = fields.filter(f => combo[f] === undefined || combo[f] === '');
+    if (!miss.length) ok('data/combo.js 字段齐全（' + fields.join('/') + '）');
+    else err('data/combo.js 缺字段：' + miss.join(','));
+
+    // 23.2 只在第 2 关展示——该关通关即认全 ཀ ཁ ག ང
+    if (combo.level === 2) ok('拼合预告挂在第 2 关（认全四个基础字母那一刻）');
+    else err('拼合预告应在第 2 关展示，实际 level=' + combo.level);
+
+    // 23.3 排版铁律：绝不裸渲染元音符号
+    // 藏文元音（U+0F71..U+0F84）与下加字（U+0F90..U+0FBC）是组合符号，
+    // 单独出现会落成 ◌ི 虚圈，违反 docs/tibetan-typography.md 的「绝不拆音节」。
+    const VOWEL = /[\u0F71-\u0F84\u0F90-\u0FBC]/;
+    const strip = t => String(t).split(combo.combined).join('');
+    const naked = ['tag', 'base', 'roman', 'hint', 'note'].filter(f => VOWEL.test(strip(combo[f])));
+    if (!naked.length) ok('预告文案不含孤立元音符号（元音只以「与基字同簇」的形态出现）');
+    else err('预告文案出现裸元音符号（会渲染成 ◌ 虚圈）：' + naked.join(','));
+
+    // 23.4 组合后的音节确实比组合前多一个元音（真的在讲「组合」）
+    if (combo.combined.length > combo.base.length && VOWEL.test(combo.combined))
+      ok('组合后音节 = 基字 + 元音（' + combo.base + ' → ' + combo.combined + '）');
+    else err('combined 不是 base 加上元音符号：' + combo.base + ' / ' + combo.combined);
+
+    // 23.4b 合规：预告只是文化内容，不承载任何金额 / 权益
+    // 注意排除「元音」——藏文术语里的「元」不是货币单位。
+    const MONEY = /[¥￥]|优惠|券|折扣/;
+    const money = ['tag', 'base', 'combined', 'roman', 'hint', 'note']
+      .filter(f => MONEY.test(combo[f]) || /元(?!音)/.test(combo[f]));
+    if (!money.length) ok('预告文案无金额 / 权益类字眼（文化内容，不是商品）');
+    else err('预告文案出现金额 / 权益类字眼：' + money.join(','));
+
+    // 23.5 纯函数真跑（配置由调用方注入，collect 保持零依赖）
+    const collect = require(path.join(ROOT, 'utils', 'collect'));
+    if (collect.comboTease(2, combo) === combo) ok('collect.comboTease(2, combo) 返回数据层的对象');
+    else err('collect.comboTease(2, combo) 结果不正确');
+    if (collect.comboTease(1, combo) === null && collect.comboTease(3, combo) === null)
+      ok('comboTease 只认自己那一关（第 1/3 关返回 null，机制不提前开放）');
+    else err('comboTease 在非目标关卡也返回了对象');
+    if (collect.comboTease(2, null) === null)
+      ok('comboTease 缺配置时安全返回 null（不会误触发预告）');
+    else err('comboTease 在缺配置时应返回 null');
+
+    // 23.6 第 1 关不受影响：拼合预告不改前 60 秒的难度
+    const lv = require(path.join(ROOT, 'data', 'levels'));
+    const l1 = lv.filter(l => l.level === 1)[0];
+    if (l1.elements.length === 2 && (!l1.obstacles || !l1.obstacles.frost))
+      ok('第 1 关保持 2 个字母 + 无冰霜（前 60 秒不被动过）');
+    else err('第 1 关被改动了：elements=' + l1.elements.length);
+
+    // 23.7 第 2 关对齐设计：四个基础字母 + 配比全偶数
+    const l2 = lv.filter(l => l.level === 2)[0];
+    const ids2 = l2.elements.map(e => e[0]);
+    if (JSON.stringify(ids2) === JSON.stringify(['letter_01', 'letter_02', 'letter_03', 'letter_04']))
+      ok('第 2 关认全四个基础字母 ཀ ཁ ག ང');
+    else err('第 2 关元素应为 letter_01..04，实际 ' + ids2.join(','));
+    if (l2.elements.every(e => e[1] % 2 === 0)) ok('第 2 关字母配比全为偶数（两两配对不变式成立）');
+    else err('第 2 关出现奇数配比，配对不变式被打破');
+  }
+
+  // 23.8 小程序源码上屏位置正确
+  const resWxml = read('pages/result/result.wxml');
+  if (/<view wx:if="\{\{comboTease\}\}" class="combo-tease">/.test(resWxml))
+    ok('结算页 wxml 用 comboTease 做显示条件');
+  else err('结算页 wxml 未按 comboTease 条件渲染拼合预告');
+  if (read('pages/result/result.wxss').indexOf('.combo-tease') > -1)
+    ok('结算页 wxss 有 .combo-tease 样式');
+  else err('结算页 wxss 缺少 .combo-tease 样式');
+  if (/comboTease:\s*collect\.comboTease\(level,\s*comboData\)/.test(read('pages/result/result.js')))
+    ok('结算页 js 通过纯函数取预告（页面不内联关卡号）');
+  else err('结算页 js 未通过 collect.comboTease 取值');
+  if (read('pages/result/result.js').indexOf("require('../../data/combo')") > -1)
+    ok('结算页 js 从 data/combo.js 注入配置（关卡号只写在数据里）');
+  else err('结算页 js 未 require data/combo.js');
+
+  // 23.9 体验版镜像一致性（含数据注入）
+  const tpl23 = read('preview/template.html');
+  [['function comboTease', '镜像纯函数'], ['id="res-combo-tease"', '结算页容器'],
+    ['class="combo-tease"', '镜像结构与样式'], ['.ct-glyph', '镜像字形样式']].forEach(pair => {
+    if (tpl23.indexOf(pair[0]) > -1) ok('体验版镜像含 ' + pair[1] + '（' + pair[0] + '）');
+    else err('体验版镜像缺 ' + pair[1] + '（' + pair[0] + '）');
+  });
+  if (read('scripts/build-h5.js').indexOf("'data', 'combo'") > -1)
+    ok('build-h5 注入了 data/combo.js');
+  else err('build-h5 未注入 data/combo.js');
+}
+
 // ---------- 汇总 ----------
 console.log('\n========== 汇总 ==========');
 console.log('通过: ' + passed + ' | 错误: ' + errors.length + ' | 警告: ' + warnings.length);

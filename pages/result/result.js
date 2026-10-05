@@ -8,6 +8,10 @@ var certificate = require('../../utils/certificate');
 var audio = require('../../utils/audio');
 var collect = require('../../utils/collect');
 
+// 「藏文可以组合」预告的数据源（纯展示；由页面注入 utils/collect.js 的纯判据函数，
+// 这样「哪一关讲解拼合」只写在数据文件里，页面不内联关卡号）
+var comboData = require('../../data/combo');
+
 // 收藏进度槽位的固定顺序（字母在前、文化元素在后），与 data/elements.js 的声明顺序一致。
 // 结算页与体验版镜像共用同一份构造口径。
 var CARD_ORDER = Object.keys(elements).map(function (id) {
@@ -61,6 +65,10 @@ Page({
     nextStageGoal: '',   // 下一阶段学习目标（取自 data/stages.js）
     nextStageRange: '',  // 下一阶段关卡区间，如 "11-30"
     nextStageOpen: false,// 是否已开放（false = 内容制作中）
+    // ---- 「藏文可以组合」拼合预告 ----
+    // 只在第 2 关的结算页出现：该关通关即认全 ཀ ཁ ག ང，此刻讲拼合最有落点。
+    // 纯展示，不参与任何消除判定；文案与关卡号都取自 data/combo.js。
+    comboTease: null,
     // ---- PRD v4 留存系统：星级 / 积分 / 唐卡碎片 ----
     stars: 0,            // 本关星级（1-3）
     starList: [],        // 三颗星的亮/灭（供 wxml 渲染）
@@ -161,6 +169,8 @@ Page({
       nextStageGoal: ns ? ns.goal : '',
       nextStageRange: ns ? (ns.from + '-' + ns.to) : '',
       nextStageOpen: ns ? !!ns.open : false,
+      // 「藏文可以组合」预告：只在第 2 关（关卡号来自数据文件），页面不内联
+      comboTease: collect.comboTease(level, comboData),
       // PRD v4：星级 / 积分 / 唐卡碎片
       stars: starRes.stars,
       starList: [1, 2, 3].map(function (i) { return starRes.stars >= i ? 'on' : 'off'; }),

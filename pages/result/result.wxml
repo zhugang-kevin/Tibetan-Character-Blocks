@@ -62,6 +62,23 @@
     <view class="j-note">已认识 {{cardGot}} / {{cardTotal}} 个藏文字母与文化元素{{cardLeft ? ('，还有 ' + cardLeft + ' 个在前面等你遇见。') : '，已全部收藏。'}}</view>
   </view>
 
+  <!-- 「藏文可以组合」预告：只在第 2 关的结算页出现（该关通关即认全 ཀ ཁ ག ང）。
+       用「两个完整音节的对比」讲拼合，绝不裸渲染元音符号（否则会落成 ◌ི 虚圈，
+       违反 docs/tibetan-typography.md 的「绝不拆音节」）。文案取自 data/combo.js。 -->
+  <view wx:if="{{comboTease}}" class="combo-tease">
+    <view class="ct-head">
+      <text class="ct-tag">{{comboTease.tag}}</text>
+    </view>
+    <view class="ct-demo">
+      <text class="ct-glyph tibetan">{{comboTease.base}}</text>
+      <text class="ct-arrow">→</text>
+      <text class="ct-glyph tibetan ct-on">{{comboTease.combined}}</text>
+      <text class="ct-roman">{{comboTease.roman}}</text>
+    </view>
+    <text class="ct-hint">{{comboTease.hint}}</text>
+    <text class="ct-note">{{comboTease.note}}</text>
+  </view>
+
   <!-- 成长阶梯 · 证书（通关某阶段最后一关时颁发 / 升级） -->
   <view wx:if="{{cert}}" class="cert-banner" style="border-color: {{cert.tierColor}};">
     <view class="cert-seal" style="background: {{cert.tierColor}};">{{cert.tierSeal}}</view>

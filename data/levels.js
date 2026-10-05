@@ -6,10 +6,11 @@
 module.exports = [
   // 第1关：6×4 网格，24张牌，快速上手
   { level: 1, cols: 6, rows: 4, elements: [['letter_01', 12], ['letter_02', 12]] },
-  // 第2关：6×5 网格，30张牌，新增第 3 个字母 ག，并**首次出现冰霜**
+  // 第2关：6×5 网格，30张牌，**认全四个基础字母 ཀ ཁ ག ང**，并**首次出现冰霜**
   //   —— 第 1 关（2 种元素、无机制）与第 2 关之间必须有「新东西」，
   //   否则新手会认为「跟上一关一模一样」。2 块冰霜占 30 格的 6.7%，远低于 D23 的 25% 上限。
-  { level: 2, cols: 6, rows: 5, elements: [['letter_01', 10], ['letter_02', 10], ['letter_03', 10]], obstacles: { frost: 2 } },
+  //   字母配比 8/8/8/6：新出现的 ང 给最少，玩家不需要在一个新字母上烧太多注意力。
+  { level: 2, cols: 6, rows: 5, elements: [['letter_01', 8], ['letter_02', 8], ['letter_03', 8], ['letter_04', 6]], obstacles: { frost: 2 } },
   // 第3关：8×4 网格，32张牌，冰霜增至 3 块
   { level: 3, cols: 8, rows: 4, elements: [['letter_01', 8], ['letter_02', 8], ['letter_03', 8], ['letter_04', 8]], obstacles: { frost: 3 } },
   // 第4关：8×4 网格，32张牌，引入吉祥结图标
