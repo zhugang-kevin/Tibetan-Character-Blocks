@@ -20,6 +20,24 @@ function section(name) { console.log('\n[' + name + ']'); }
 function read(p) { return fs.readFileSync(path.join(ROOT, p), 'utf8'); }
 function exists(p) { return fs.existsSync(path.join(ROOT, p)); }
 
+// ---------- 金额 / 折扣 / 结算 字段守卫（第 16 与第 19 节共用） ----------
+// 用「词干 + 可选后缀」匹配，而不是精确字段名。
+// 背景：上一版写的是 /\bdiscount\s*:/ —— 它挡得住 `discount:`，
+// 却**挡不住 `discountRate: 0.9` 与 `maxDiscount: 50`**，
+// 而外部方案「所有优惠券统一用百分比折扣」要加的正是这两个字段（2026-10-05 查实并加固）。
+// ⚠️ 不要用 'off' 作词干：项目自有字段就叫 `offer`，会被误伤。
+const MONEY_STEMS = ['price', 'amount', 'fee', 'discount', 'settle', 'reward',
+  'coin', 'coupon', 'voucher', 'commission', 'rebate'];
+// ⚠️ data/daily.js 有合法的 `reward:` 字段（签到奖励），所以它用更窄的一组词干
+const SETTLE_STEMS = ['price', 'amount', 'discount', 'settle', 'rmb', 'cny'];
+function moneyFieldHit(src, stems) {
+  return (stems || MONEY_STEMS).filter(k =>
+    new RegExp(k + '[A-Za-z]*\\s*:', 'i').test(src));
+}
+// 具体让利数字：9折 / 8.5 折 / 满100减20 / 10% off
+// （平台不是发行方、不是兑付方，券面写出来就等于平台承诺）
+const OFFER_DIGIT_PAT = /\d\s*折|\d\s*%\s*off|满\s*\d+\s*减\s*\d+/i;
+
 // ---------- 1. JSON 语法 ----------
 section('1. JSON 配置文件语法');
 const jsonFiles = ['app.json', 'sitemap.json', 'project.config.json',
@@ -571,10 +589,34 @@ section('16. 权益中心（双轨制）');
   const moneyHit = ['¥', '元'].filter(sym => mchSrc.indexOf(sym) > -1);
   if (!moneyHit.length) ok('商家数据不含任何金额字样（¥/元）—— 券不承载金额');
   else err('data/merchants.js 出现金额字样：' + moneyHit.join('、') + '（券不得承载金额）');
-  const moneyField = ['price', 'amount', 'discount', 'settle'].filter(k =>
-    new RegExp('\\b' + k + '\\s*:').test(mchSrc));
-  if (!moneyField.length) ok('商家数据无 price/amount/discount/settle 字段（平台不经手结算）');
+  const moneyField = moneyFieldHit(mchSrc);
+  if (!moneyField.length) ok('商家数据无金额 / 折扣 / 结算字段（含 discountRate、maxDiscount 等变体）');
   else err('data/merchants.js 含金额或结算字段：' + moneyField.join('、'));
+
+  // 16.2b 券面不得出现具体让利数字（折扣率 / 满减 / % off）
+  // 平台不是发行方、不是兑付方：写出来就等于平台承诺，商家的店内促销由商家自己印。
+  const offerDigit = mchSrc.match(OFFER_DIGIT_PAT);
+  if (!offerDigit) ok('券面不含任何具体让利数字（折扣率 / 满减 / % off）');
+  else err('data/merchants.js 出现具体让利数字：' + offerDigit[0]);
+
+  // 16.2c 反例自测：上面的守卫必须真的拦得住这些写法
+  // （否则只是「碰巧现在干净」——尤其是 discountRate / maxDiscount 这两个漏网写法）
+  const MONEY_NEG = [
+    "id: 'x', discountRate: 0.9",
+    "id: 'x', maxDiscount: 50",
+    "id: 'x', price: 100",
+    "id: 'x', commission: 0.1",
+    "id: 'x', settle: 'monthly'",
+    "offer: '凭凭证享 9 折'",
+    "offer: '满100减20'",
+    "offer: '10% off'",
+    "offer: '立减 5 元'"
+  ];
+  const slipped = MONEY_NEG.filter(s =>
+    !moneyFieldHit(s).length && !OFFER_DIGIT_PAT.test(s) && !/元/.test(s) && s.indexOf('¥') === -1);
+  if (!slipped.length)
+    ok('反例自测通过：' + MONEY_NEG.length + ' 种写法全部被拦（含 discountRate / maxDiscount）');
+  else err('门禁有缺口，以下写法能溜进来：' + slipped.join(' | '));
 
   // 16.3 宗教场所与文物景区不得商业联动
   const sacred = ['布达拉宫', '大昭寺', '小昭寺', '扎什伦布寺', '哲蚌寺', '色拉寺', '甘丹寺', '寺庙', '寺院', '景区'];
@@ -653,8 +695,8 @@ section('17. 留存系统与首页重构（PRD v4）');
   const daily = dailySrc ? eval('(' + dailySrc.replace(/^module\.exports\s*=\s*/, '').replace(/;\s*$/, '') + ')') : {};
   if (/[¥￥元]/.test(dailySrc)) err('data/daily.js 含金额字样（¥/￥/元）—— 奖励须为本地积分/道具');
   else ok('data/daily.js 不含任何金额字样（签到/盲盒/道具不承载金额）');
-  const moneyKey = ['price', 'amount', 'discount', 'settle', 'rmb', 'cny'].filter(k => new RegExp('\\b' + k + '\\s*:').test(dailySrc));
-  if (!moneyKey.length) ok('data/daily.js 无 price/amount/discount/settle 字段（不经手结算）');
+  const moneyKey = moneyFieldHit(dailySrc, SETTLE_STEMS);
+  if (!moneyKey.length) ok('data/daily.js 无 price/amount/discount/settle 字段（不经手结算，含变体）');
   else err('data/daily.js 含结算字段：' + moneyKey.join('、'));
   if ((daily.signInRewards || []).length === 7) ok('祈福长明灯为 7 天循环签到');
   else err('签到奖励应为 7 天，实际 ' + (daily.signInRewards || []).length);
@@ -1370,6 +1412,96 @@ section('24. 分享海报「文化身份」行（真实数据，不得写死）'
   if (tpl24.indexOf('个藏文字母') > -1 && tpl24.indexOf('护照印章') > -1)
     ok('体验版身份行文案与小程序同一口径（个藏文字母 / 护照印章）');
   else err('体验版身份行文案口径与小程序不一致');
+}
+
+// ---------- 25. 权益中心「页面层」文案守卫（数据层之外的第二道锁） ----------
+// 背景：外部方案主张「所有优惠权益统一用百分比折扣」。本项目两条都不接受——
+//   · 不接受固定金额：平台不是发行方、不是兑付方（docs/privilege-system-v1.md §2.4）；
+//   · 也不接受折扣数字：平台一旦印出可计算的让利，就成了替商家承诺价格的一方，
+//     PROVIDER_NOTE 那句「不参与交易、不收取任何款项」立刻自相矛盾。
+// §16.2 只锁 data/merchants.js 一个文件；若页面自行拼券面文案，那道锁就被绕过。
+// 本节把同一把尺子量到页面层（小程序 4 文件 + 体验版权益中心区块），并加跨层同源断言。
+section('25. 权益中心页面层文案守卫（数据层之外的第二道锁）');
+{
+  // ⚠️ 与第 23.4b 同源教训：不能用裸 /元/，「元音」「元素」会误伤（藏文里「元音」是常用词）
+  const MONEY_UNIT_PAT = /[¥￥]|元(?!音|素)/;
+
+  // 体验版镜像：只取权益中心区块（注释锚点 → bn-home 绑定），避免扫到无关页面
+  const tpl25 = read('preview/template.html');
+  const bnA = tpl25.indexOf('藏文权益中心（双轨制，对应 pages/benefits）');
+  const bnB = tpl25.indexOf("$('bn-home')");
+  const bnBlock = (bnA > -1 && bnB > bnA) ? tpl25.slice(bnA, bnB) : '';
+  if (bnBlock) ok('体验版权益中心区块已定位（' + bnBlock.length + ' 字符）');
+  else err('体验版权益中心区块定位失败 —— 镜像结构被改动，本节断言会静默失效');
+
+  const bnSrcs = [
+    ['pages/benefits/benefits.wxml', read('pages/benefits/benefits.wxml')],
+    ['pages/benefits/benefits.js', read('pages/benefits/benefits.js')],
+    ['pages/benefits/benefits.wxss', read('pages/benefits/benefits.wxss')],
+    ['utils/benefits.js', read('utils/benefits.js')],
+    ['preview/template.html（权益中心区块）', bnBlock]
+  ];
+
+  // 25.1 页面层不得出现任何让利数字（折扣率 / 满减 / % off）
+  bnSrcs.forEach(pair => {
+    const hit = pair[1].match(OFFER_DIGIT_PAT);
+    if (!hit) ok(pair[0] + ' 无让利数字（折扣率 / 满减 / % off）');
+    else err(pair[0] + ' 出现让利数字：' + hit[0]);
+  });
+
+  // 25.2 页面层不得出现货币符号与金额单位
+  bnSrcs.forEach(pair => {
+    const hit = pair[1].match(MONEY_UNIT_PAT);
+    if (!hit) ok(pair[0] + ' 无货币符号与金额单位');
+    else err(pair[0] + ' 出现金额字样：' + hit[0]);
+  });
+
+  // 25.3 反例自测：上面两把尺子必须真的拦得住（否则只是「碰巧现在干净」）
+  const BN_NEG = ['券面 9 折', '满100减20', '立减 5 元', '只要 ¥9', '10% off 折扣'];
+  const bnSlipped = BN_NEG.filter(s => !OFFER_DIGIT_PAT.test(s) && !MONEY_UNIT_PAT.test(s));
+  if (!bnSlipped.length) ok('反例自测通过：' + BN_NEG.length + ' 种页面层写法全部被拦');
+  else err('页面层守卫有缺口，以下写法能溜进来：' + bnSlipped.join(' | '));
+
+  // 25.4 跨层同源：券面 offer 必须逐字来自 data/merchants.js
+  //      页面一旦自行拼文案（例如给 offer 追加「（9 折）」），§16.2 的数据层守卫就被绕过
+  const ubn25 = require(path.join(ROOT, 'utils', 'benefits'));
+  const mch25 = require(path.join(ROOT, 'data', 'merchants'));
+  const cards25 = ubn25.decorate(mch25, 99, {});
+  const rewritten = cards25.filter((c, i) => c.offer !== mch25[i].offer);
+  if (!rewritten.length)
+    ok('券面权益文案逐字来自 data/merchants.js（' + cards25.length + ' 家，页面不自行拼接）');
+  else err('券面文案被页面层改写过：' + rewritten.map(c => c.id).join('、'));
+
+  // 25.5 卡片视图模型不得新增金额 / 折扣字段（尤其 discountRate / maxDiscount）
+  const CARD_KEYS = Object.keys(cards25[0] || {});
+  const badKeys = CARD_KEYS.filter(k => moneyFieldHit(k + ': 1', SETTLE_STEMS).length);
+  if (!badKeys.length)
+    ok('卡片视图模型 ' + CARD_KEYS.length + ' 个字段无金额 / 折扣字段（' + CARD_KEYS.join('、') + '）');
+  else err('卡片视图模型含金额 / 折扣字段：' + badKeys.join('、'));
+
+  // 25.6 定性声明必须仍在（删掉它，前面那些措辞就只是文案而不是立场）
+  const bnWxml = read('pages/benefits/benefits.wxml');
+  const bnJs = read('pages/benefits/benefits.js');
+  const ubnSrc = read('utils/benefits.js');
+  [['不参与交易、不收取任何款项', 'PROVIDER_NOTE'],
+   ['不涉及任何支付与资金结算', 'PAGE_NOTE']].forEach(t => {
+    if (ubnSrc.indexOf(t[0]) > -1) ok('utils/benefits.js 的 ' + t[1] + ' 仍含「' + t[0] + '」');
+    else err('utils/benefits.js 的 ' + t[1] + ' 丢失定性声明「' + t[0] + '」');
+  });
+  if (bnWxml.indexOf('{{item.providerNote}}') > -1 && bnWxml.indexOf('{{disclaimer}}') > -1)
+    ok('券卡与页脚都渲染定性声明（providerNote / disclaimer）');
+  else err('权益中心未渲染定性声明（providerNote / disclaimer）');
+  if (bnJs.indexOf('benefits.PAGE_NOTE') > -1)
+    ok('页脚声明由 utils/benefits.js 统一提供（页面不各写一份）');
+  else err('页脚声明未走 utils/benefits.js');
+
+  // 25.7 体验版镜像同一口径 + 券面逐字使用 m.offer
+  if (bnBlock.indexOf(ubn25.PROVIDER_NOTE) > -1 && bnBlock.indexOf(ubn25.PAGE_NOTE) > -1)
+    ok('两端券面与页脚声明同一口径（镜像与 utils/benefits.js 逐字一致）');
+  else err('两端定性声明口径不一致');
+  if (bnBlock.indexOf("bc-offer\">' + m.offer") > -1)
+    ok('体验版券面逐字使用 m.offer（镜像不另拼文案）');
+  else err('体验版券面未逐字使用 m.offer —— 镜像可能自行拼文案');
 }
 
 // ---------- 汇总 ----------

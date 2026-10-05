@@ -635,7 +635,11 @@ function mockCtx(sink) {
   check('每张券卡都写明权益由商家提供',
     $$('#bn-body .bc-provider').length === mids.length &&
     $('#bn-body .bc-provider').textContent.indexOf('不参与交易') > -1);
-  check('券卡不含金额字样', !/[¥]|元/.test($('#bn-body').textContent));
+  // DOM 层（不是源码层）：渲染出来之后，用户真能看到的地方一个让利数字都不许有。
+  // ⚠️ 不能写裸 /元/ —— 「元音」是藏文常用词（第 23.4b 的教训）。
+  check('券卡不含金额字样（¥ / ￥ / 元）', !/[¥￥]|元(?!音|素)/.test($('#bn-body').textContent));
+  check('券卡不含让利数字（折扣率 / 满减 / % off）',
+    !/\d\s*折|\d\s*%\s*off|满\s*\d+\s*减\s*\d+/.test($('#bn-body').textContent));
 
   // 一键切到「游客专属」
   ev('setBenefitMode("tourist")');
