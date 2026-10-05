@@ -69,6 +69,7 @@ Page({
     lampDays: [],
     daily: null,
     thangkaCells: [],
+    thangkaDone: false,
     boxText: '',
     shopItems: [],
     pot: 0,
@@ -189,6 +190,7 @@ Page({
         stars: totalStars
       },
       thangkaCells: this.buildThangka(frags),
+      thangkaDone: storage.getThangkaDone(),
       pot: storage.getPot(),
       winterItems: dailyData.winter.items,
       ladderIn: intro
@@ -327,11 +329,8 @@ Page({
   },
 
   buildThangka: function (frags) {
-    var out = [];
-    for (var i = 0; i < collect.FRAGMENT_TOTAL; i++) {
-      out.push({ i: i + 1, on: frags.indexOf(i) > -1 });
-    }
-    return out;
+    // 九宫格数学统一走纯函数（此前两端各写一份，fragmentCell 一直是死代码）
+    return collect.thangkaGrid(frags).cells;
   },
 
   onTapLevel: function (e) {
@@ -392,6 +391,19 @@ Page({
   openBox: function () {
     var text = collect.pickDaily(dailyData.trivia, collect.dayNumber(todayStr()) + 7);
     this.setData({ boxText: text });
+  },
+
+  // 唐卡合成：集齐 9 片后的「合成」动作（此前只有一行文字提示，玩家集齐后无事可做）
+  // 幂等：重复点击不产生第二条记录；合成后完整图在文化护照页「唐卡收藏」板块展示
+  synthesizeThangka: function () {
+    var res = storage.markThangkaDone();
+    if (!res.done) {
+      wx.showToast({ title: '还差 ' + (9 - storage.getFragments().length) + ' 片，先集齐再合成', icon: 'none' });
+      return;
+    }
+    this.setData({ thangkaDone: true });
+    wx.vibrateShort({ type: 'medium' });
+    wx.showToast({ title: '唐卡已合成 · 收入文化护照', icon: 'none' });
   },
 
   // 藏式道具铺：积分兑换（不涉及支付）

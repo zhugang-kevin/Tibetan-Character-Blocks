@@ -31,6 +31,8 @@ function getProgress() {
     points: (p && p.points) || 0,
     signIn: (p && p.signIn) || { streak: 0, lastDate: '', totalDays: 0, oil: 0 },
     fragments: (p && p.fragments) || [],
+    // 唐卡合成标记：集齐 9 片后由玩家主动点「合成」落一次（幂等；只记状态，不承载金额）
+    thangkaDone: !!(p && p.thangkaDone),
     inventory: (p && p.inventory) || {},
     pot: (p && p.pot) || 0,
     // 万家灯火祈福跳窗：上次展示的日期（用于「每天首次打开只出现一次」）
@@ -299,6 +301,20 @@ function addFragment(index) {
 
 function getFragments() { return getProgress().fragments; }
 
+// 唐卡合成：9 片齐后由玩家主动点「合成」才落标记。
+// 此前 index 页承诺「完整图收入文化护照」，但合成动作与护照展示都不存在（空头承诺，2026-10-05 补齐）。
+// 片数上限与 collect.FRAGMENT_TOTAL 同为 9（这里用字面量避免与 utils/collect 相互依赖）。
+function markThangkaDone() {
+  var p = getProgress();
+  if ((p.fragments || []).length < 9) return { done: false, thangkaDone: !!p.thangkaDone };
+  if (p.thangkaDone) return { done: false, thangkaDone: true };   // 幂等：重复点击不产生第二条记录
+  p.thangkaDone = true;
+  save(p);
+  return { done: true, thangkaDone: true };
+}
+
+function getThangkaDone() { return !!getProgress().thangkaDone; }
+
 // 道具（提示 / 洗牌）
 function addItem(id, n) {
   var p = getProgress();
@@ -397,6 +413,8 @@ module.exports = {
   addOil: addOil,
   addFragment: addFragment,
   getFragments: getFragments,
+  markThangkaDone: markThangkaDone,
+  getThangkaDone: getThangkaDone,
   addItem: addItem,
   getInventory: getInventory,
   useItem: useItem,

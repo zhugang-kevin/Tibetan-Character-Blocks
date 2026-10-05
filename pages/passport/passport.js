@@ -4,6 +4,7 @@
 //   藏文成长证书（学习线） × 12 张 + 文化收藏册 + 地区印章 + 现实足迹 + 个人文化图谱
 var certificate = require('../../utils/certificate');
 var storage = require('../../utils/storage');
+var collect = require('../../utils/collect');
 var cardsData = require('../../data/cards');
 var tracker = require('../../utils/tracker');
 
@@ -26,7 +27,11 @@ Page({
     cardsTotal: 0,
     bestCombo: 0,
     holder: '',
-    levelsDone: 0
+    levelsDone: 0,
+    // 唐卡收藏（兑现 index 页「完整图收入文化护照」的承诺，2026-10-05 补齐）
+    thangkaCells: [],
+    fragCount: 0,
+    thangkaDone: false
   },
 
   onShow: function () {
@@ -46,6 +51,9 @@ Page({
       return { id: id, name: (STAMPS[id] || {}).name || id, desc: (STAMPS[id] || {}).desc || '' };
     });
 
+    // 唐卡收藏：九宫格视图模型走与首页同一个纯函数（两端/两页同源）
+    var tk = collect.thangkaGrid(p.fragments);
+
     this.setData({
       certs: list,
       owned: owned,
@@ -56,7 +64,10 @@ Page({
       cardsTotal: cardsData.length,
       bestCombo: p.bestCombo,
       holder: p.holderName,
-      levelsDone: p.completedLevels.length
+      levelsDone: p.completedLevels.length,
+      thangkaCells: tk.cells,
+      fragCount: tk.got,
+      thangkaDone: !!(p.thangkaDone && tk.done)
     });
   },
 

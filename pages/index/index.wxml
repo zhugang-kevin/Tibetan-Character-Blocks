@@ -197,15 +197,17 @@
         <view class="entry-note">{{daily.tip}}</view>
       </block>
 
-      <!-- 唐卡拼图（9 片收集） -->
+      <!-- 唐卡拼图（9 片收集 + 合成动作） -->
       <block wx:elif="{{panel === 'thangka'}}">
-        <view class="tk-grid">
+        <view class="tk-grid {{thangkaDone ? 'done' : ''}}">
           <view wx:for="{{thangkaCells}}" wx:key="i" class="tk-cell {{item.on ? 'on' : ''}}">
             <text wx:if="{{item.on}}" class="tk-mark">✦</text>
             <text wx:else class="tk-mark dim">{{item.i}}</text>
           </view>
         </view>
-        <view class="entry-note">{{fragCount}}/9 片 · {{fragCount >= 9 ? '唐卡已拼成，完整图收入文化护照' : '还差 ' + (9 - fragCount) + ' 片就能看全图了'}}</view>
+        <view wx:if="{{thangkaDone}}" class="tk-frame-note">已合成 · 完整图收入文化护照</view>
+        <view wx:elif="{{fragCount >= 9}}" class="entry-btn" bindtap="synthesizeThangka">合成唐卡 · 收入文化护照</view>
+        <view class="entry-note">{{fragCount}}/9 片 · {{thangkaDone ? '已成一幅，可到文化护照查看' : (fragCount >= 9 ? '碎片已集齐，点上方按钮合成' : '还差 ' + (9 - fragCount) + ' 片就能看全图了')}}</view>
       </block>
 
       <!-- 非遗盲盒（只抽文化小知识） -->

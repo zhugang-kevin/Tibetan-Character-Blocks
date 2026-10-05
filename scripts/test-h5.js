@@ -1307,6 +1307,47 @@ function mockCtx(sink) {
     idTexts.every(function (x) { return x.y < 780; }),
     JSON.stringify(idTexts.map(function (x) { return x.y; })));
 
+  /* ---------- 28. 唐卡合成闭环（合成动作 + 护照展示，双端同源） ---------- */
+  section('28. 唐卡合成闭环（合成动作 + 护照展示，双端同源）');
+  // 状态注入：给满 9 片碎片（走真实 saveProgress，不走测试捷径）
+  ev('var __p = getProgress(); __p.fragments = [0,1,2,3,4,5,6,7,8]; __p.thangkaDone = false; saveProgress(__p);');
+  ev('openPanel("thangka")');
+  await sleep(40);
+  check('集齐 9 片后九宫格仍为 3×3 九格', $$('#entry-body .tk-cell').length === 9,
+    '实际 ' + $$('#entry-body .tk-cell').length);
+  check('九格全部点亮', $$('#entry-body .tk-cell.on').length === 9);
+  check('集齐后出现「合成唐卡」动作（此前只有一行文字，玩家无事可做）',
+    !!$('#synth-btn') && $('#synth-btn').textContent.indexOf('合成唐卡') > -1,
+    $('#synth-btn') ? $('#synth-btn').textContent : '按钮不存在');
+
+  $('#synth-btn').click();
+  await sleep(40);
+  check('点击合成后 thangkaDone 落库', ev('getThangkaDone()') === true);
+  check('合成后九宫格收成一幅（加 done 框）',
+    $$('#entry-body .tk-grid.done').length === 1);
+  check('合成后出现完成提示',
+    $('#entry-body').textContent.indexOf('已合成 · 完整图收入文化护照') > -1);
+  check('合成按钮消失（幂等：不提供重复合成入口）', !$('#synth-btn'));
+  check('markThangkaDone 幂等（再调返回 done:false）', ev('markThangkaDone().done') === false);
+
+  ev('showPassport()');
+  await sleep(40);
+  check('护照页兑现「完整图收入文化护照」的承诺（唐卡收藏板块存在）',
+    !!$('#pp-frag-grid'), '缺 #pp-frag-grid');
+  check('护照页九格与首页同一纯函数（9 格全亮）',
+    $$('#pp-frag-grid .tk-cell').length === 9 && $$('#pp-frag-grid .tk-cell.on').length === 9);
+  check('护照页计数 9 / 9',
+    $('#pp-frag-count').textContent.indexOf('9 / 9') > -1, $('#pp-frag-count').textContent);
+  check('护照页显示已合成提示',
+    $('#pp-frag-note').textContent.indexOf('唐卡已合成') > -1);
+
+  // 反向断言：只有 3 片时不得出现合成按钮（机制不提前开放）
+  ev('var __p2 = getProgress(); __p2.fragments = [0,1,2]; __p2.thangkaDone = false; saveProgress(__p2);');
+  ev('openPanel("thangka")');
+  await sleep(40);
+  check('碎片不足时不出合成按钮', !$('#synth-btn'));
+  check('碎片不足时未得槽位显示编号占位', $$('#entry-body .tk-cell.on').length === 3);
+
   /* ---------- 汇总 ---------- */
   check('全程无脚本运行时错误', errors.length === 0, errors[0]);
 

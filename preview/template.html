@@ -902,6 +902,8 @@
   .tk-grid { display: flex; flex-wrap: wrap; gap: 6px; }
   .tk-cell { width: calc((100% - 12px)/3); height: 82px; border-radius: 9px; background: #F2EDE0; border: 1px dashed rgba(183,149,11,.5); display: flex; align-items: center; justify-content: center; }
   .tk-cell.on { background: linear-gradient(160deg,#FFF6D8,#F1C40F); border: 1px solid #B7950B; }
+  .tk-grid.done { padding: 8px; border-radius: 12px; border: 2px solid #B7950B; background: linear-gradient(160deg,#FDF6E3,#F5E9CF); box-shadow: 0 4px 10px rgba(96,78,44,.12); }
+  .tk-frame-note { margin-top: 10px; text-align: center; font-size: 12px; color: #8A6A12; }
   .tk-mark { font-size: 17px; color: #8A6A12; }
   .tk-mark.dim { color: #B9B1A0; }
   .box-open { padding: 15px; border-radius: 13px; text-align: center; font-size: 15px; font-weight: 800; color: #fff; background: linear-gradient(135deg,#2471A3,#1B4F72); cursor: pointer; box-shadow: 0 5px 13px rgba(36,113,163,.32); }
@@ -1176,6 +1178,16 @@
 
     <div class="pp-section">
       <div class="pp-head">
+        <span class="pp-h-title">唐卡收藏</span>
+        <span class="pp-h-count" id="pp-frag-count">0 / 9</span>
+      </div>
+      <div class="pp-sub">每通关一关掉落一片唐卡碎片；集齐 9 片回首页「唐卡拼图」面板点「合成唐卡」。</div>
+      <div class="tk-grid" id="pp-frag-grid"></div>
+      <div id="pp-frag-note"></div>
+    </div>
+
+    <div class="pp-section">
+      <div class="pp-head">
         <span class="pp-h-title">地区印章</span>
         <span class="pp-h-count" id="pp-stamp-count">0 / 7</span>
       </div>
@@ -1323,6 +1335,7 @@ function getProgress() {
     points: (p && p.points) || 0,
     signIn: (p && p.signIn) || { streak: 0, lastDate: '', totalDays: 0, oil: 0 },
     fragments: (p && p.fragments) || [],
+    thangkaDone: !!(p && p.thangkaDone),
     inventory: (p && p.inventory) || {},
     pot: (p && p.pot) || 0,
     // 万家灯火祈福跳窗：上次展示日期（每天首次打开只出现一次）
@@ -2063,6 +2076,32 @@ function pickDaily(pool, seed) {
   if (!pool || !pool.length) return null;
   return pool[Math.abs(Math.floor(seed || 0)) % pool.length];
 }
+/* 唐卡拼图（与 utils/collect.js 的 fragmentCell / thangkaGrid 同规则） */
+function fragmentCell(index) {
+  return { row: Math.floor(index / 3), col: index % 3 };
+}
+function thangkaGrid(owned) {
+  const have = owned || [];
+  const cells = [];
+  let got = 0;
+  for (let i = 0; i < FRAGMENT_TOTAL; i++) {
+    const on = have.indexOf(i) > -1;
+    if (on) got++;
+    const c = fragmentCell(i);
+    cells.push({ i: i + 1, row: c.row, col: c.col, on: on });
+  }
+  return { cells: cells, got: got, done: have.length >= FRAGMENT_TOTAL };
+}
+/* 唐卡合成（与 utils/storage.js 的 markThangkaDone 同契约：幂等，重复点击不产生第二条记录） */
+function markThangkaDone() {
+  const p = getProgress();
+  if ((p.fragments || []).length < FRAGMENT_TOTAL) return { done: false, thangkaDone: !!p.thangkaDone };
+  if (p.thangkaDone) return { done: false, thangkaDone: true };
+  p.thangkaDone = true;
+  saveProgress(p);
+  return { done: true, thangkaDone: true };
+}
+function getThangkaDone() { return !!getProgress().thangkaDone; }
 // 文化收藏槽位（与 utils/collect.js 的 cardProgress 同规则）：
 // 未收藏的槽位不带 label —— 体验版这里只回 '?'，不剧透名字。
 function cardProgress(order, seen) {
@@ -2223,14 +2262,23 @@ function openPanel(key) {
       '<div class="daily-cn">' + g.cn + '</div>' +
       '<div class="entry-note">' + g.tip + '</div>';
   } else if (key === 'thangka') {
-    let cells = '';
-    for (let i = 0; i < FRAGMENT_TOTAL; i++) {
-      const on = (p.fragments || []).indexOf(i) > -1;
-      cells += '<div class="tk-cell ' + (on ? 'on' : '') + '"><span class="tk-mark' + (on ? '' : ' dim') + '">' + (on ? '✦' : (i + 1)) + '</span></div>';
+    const tk = thangkaGrid(p.fragments);
+    const done = !!getThangkaDone() && tk.done;
+    const cells = tk.cells.map(function (c) {
+      return '<div class="tk-cell ' + (c.on ? 'on' : '') + '"><span class="tk-mark' + (c.on ? '' : ' dim') + '">' + (c.on ? '✦' : c.i) + '</span></div>';
+    }).join('');
+    body.innerHTML = '<div class="tk-grid' + (done ? ' done' : '') + '">' + cells + '</div>' +
+      (done ? '<div class="tk-frame-note">已合成 · 完整图收入文化护照</div>' : '') +
+      // 与小程序端一致：碎片不足时不渲染合成按钮（只靠下方 note 提示还差几片）
+      (!done && tk.got >= FRAGMENT_TOTAL ? '<div class="entry-btn" id="synth-btn">合成唐卡 · 收入文化护照</div>' : '') +
+      '<div class="entry-note">' + tk.got + '/9 片 · ' +
+      (done ? '已成一幅，可到文化护照查看' : (tk.got >= FRAGMENT_TOTAL ? '碎片已集齐，点上方按钮合成' : '还差 ' + (FRAGMENT_TOTAL - tk.got) + ' 片就能看全图了')) + '</div>';
+    if (!done && tk.got >= FRAGMENT_TOTAL) {
+      $('synth-btn').addEventListener('click', function () {
+        const r = markThangkaDone();
+        if (r.done) { refreshHomeV4(); openPanel('thangka'); }
+      });
     }
-    const got = (p.fragments || []).length;
-    body.innerHTML = '<div class="tk-grid">' + cells + '</div><div class="entry-note">' + got + '/9 片 · ' +
-      (got >= 9 ? '唐卡已拼成，完整图收入文化护照' : '还差 ' + (9 - got) + ' 片就能看全图了') + '</div>';
   } else if (key === 'box') {
     body.innerHTML = '<div class="box-open" id="box-btn">🎁 抽取今日非遗小知识</div>' +
       '<div id="box-out"></div>' +
@@ -3232,6 +3280,18 @@ function showPassport() {
 
   $('pp-cards-count').textContent = p.seenCards.length + ' / ' + CARDS.length;
   $('pp-cards-bar').style.width = Math.round(p.seenCards.length / CARDS.length * 100) + '%';
+
+  // 唐卡收藏（兑现首页「完整图收入文化护照」的承诺；与 utils/collect.js#thangkaGrid 同源）
+  const tk = thangkaGrid(p.fragments);
+  const tkDone = !!getThangkaDone() && tk.done;
+  $('pp-frag-count').textContent = tk.got + ' / ' + FRAGMENT_TOTAL;
+  $('pp-frag-grid').className = 'tk-grid' + (tkDone ? ' done' : '');
+  $('pp-frag-grid').innerHTML = tk.cells.map(function (c) {
+    return '<div class="tk-cell ' + (c.on ? 'on' : '') + '"><span class="tk-mark' + (c.on ? '' : ' dim') + '">' + (c.on ? '✦' : c.i) + '</span></div>';
+  }).join('');
+  $('pp-frag-note').innerHTML = tkDone
+    ? '<div class="tk-frame-note">唐卡已合成 · 你的第一幅完整唐卡</div>'
+    : '<div class="pp-bar"><i style="width:' + Math.round(tk.got / FRAGMENT_TOTAL * 100) + '%"></i></div>';
 
   $('pp-stamp-count').textContent = p.stamps.length + ' / ' + STAMP_TOTAL;
   $('pp-stamps').innerHTML = p.stamps.length

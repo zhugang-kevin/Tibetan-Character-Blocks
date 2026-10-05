@@ -37,6 +37,8 @@ function moneyFieldHit(src, stems) {
 // 具体让利数字：9折 / 8.5 折 / 满100减20 / 10% off
 // （平台不是发行方、不是兑付方，券面写出来就等于平台承诺）
 const OFFER_DIGIT_PAT = /\d\s*折|\d\s*%\s*off|满\s*\d+\s*减\s*\d+/i;
+// 货币符号 / 金额单位。⚠️ 不能用裸 /元/ —— 「元音」「元素」会误伤（23.4b 的教训）
+const MONEY_UNIT_PAT = /[¥￥]|元(?!音|素)/;
 
 // ---------- 1. JSON 语法 ----------
 section('1. JSON 配置文件语法');
@@ -1423,8 +1425,7 @@ section('24. 分享海报「文化身份」行（真实数据，不得写死）'
 // 本节把同一把尺子量到页面层（小程序 4 文件 + 体验版权益中心区块），并加跨层同源断言。
 section('25. 权益中心页面层文案守卫（数据层之外的第二道锁）');
 {
-  // ⚠️ 与第 23.4b 同源教训：不能用裸 /元/，「元音」「元素」会误伤（藏文里「元音」是常用词）
-  const MONEY_UNIT_PAT = /[¥￥]|元(?!音|素)/;
+  // 货币符号 / 金额单位守卫已上移为共用件 MONEY_UNIT_PAT（第 25 与第 26 节共用）
 
   // 体验版镜像：只取权益中心区块（注释锚点 → bn-home 绑定），避免扫到无关页面
   const tpl25 = read('preview/template.html');
@@ -1502,6 +1503,99 @@ section('25. 权益中心页面层文案守卫（数据层之外的第二道锁�
   if (bnBlock.indexOf("bc-offer\">' + m.offer") > -1)
     ok('体验版券面逐字使用 m.offer（镜像不另拼文案）');
   else err('体验版券面未逐字使用 m.offer —— 镜像可能自行拼文案');
+}
+
+// ---------- 26. 唐卡合成闭环（补齐「合成」动作 + 兑现护照承诺） ----------
+// 背景（2026-10-05 实测）：碎片掉落 / 3×3 拼图 / 非遗盲盒都已在线上跑，
+// 但 fragmentComplete() 只返回 true/false —— 集齐 9 片后**没有"合成"这个动作**；
+// 且 index.wxml 承诺「完整图收入文化护照」，护照页里「唐卡」出现 0 次（空头承诺）。
+// 同时 fragmentCell() 一直是死代码：两端各自内联九宫格数学。
+// 本节把这条已存在的链路补完，并锁住「承诺 → 兑现」这条跨文件契约。
+section('26. 唐卡合成闭环（补齐「合成」动作 + 兑现护照承诺）');
+{
+  const col26 = read('utils/collect.js');
+  const sto26 = read('utils/storage.js');
+  const iw26 = read('pages/index/index.wxml');
+  const ij26 = read('pages/index/index.js');
+  const pw26 = read('pages/passport/passport.wxml');
+  const pj26 = read('pages/passport/passport.js');
+  const tpl26 = read('preview/template.html');
+
+  // 26.1 纯函数层：thangkaGrid 统一九宫格口径（fragmentCell 不再是死代码）
+  if (col26.indexOf('function thangkaGrid') > -1 && col26.indexOf('fragmentCell(i)') > -1)
+    ok('collect.thangkaGrid 统一九宫格口径（内部走 fragmentCell，不再内联数学）');
+  else err('utils/collect.js 缺 thangkaGrid 或未复用 fragmentCell');
+  if (col26.indexOf('thangkaGrid: thangkaGrid') > -1) ok('collect.js 导出 thangkaGrid');
+  else err('utils/collect.js 未导出 thangkaGrid');
+
+  // 26.2 存储层：thangkaDone 字段 + 幂等的合成动作
+  if (sto26.indexOf('thangkaDone: !!(p && p.thangkaDone)') > -1)
+    ok('storage getProgress 白名单含 thangkaDone');
+  else err('storage getProgress 白名单缺 thangkaDone（H5 镜像也要同步，否则字段静默丢失）');
+  if (sto26.indexOf('function markThangkaDone') > -1 && sto26.indexOf('if (p.thangkaDone) return') > -1)
+    ok('markThangkaDone 幂等（重复点击不产生第二条记录）');
+  else err('storage 缺 markThangkaDone 或缺幂等分支');
+  if (sto26.indexOf('getThangkaDone: getThangkaDone') > -1 && sto26.indexOf('markThangkaDone: markThangkaDone') > -1)
+    ok('storage 导出 markThangkaDone / getThangkaDone');
+  else err('storage 未导出 markThangkaDone / getThangkaDone');
+
+  // 26.3 首页：合成动作真实存在（不再是纯文字提示）
+  if (ij26.indexOf('synthesizeThangka:') > -1 && ij26.indexOf('storage.markThangkaDone()') > -1)
+    ok('首页提供 synthesizeThangka 动作并落 storage.markThangkaDone');
+  else err('首页缺 synthesizeThangka 或未落 markThangkaDone');
+  if (ij26.indexOf('collect.thangkaGrid(') > -1)
+    ok('首页九宫格改走 collect.thangkaGrid（不再内联）');
+  else err('首页仍在内联九宫格数学');
+  ['bindtap="synthesizeThangka"', "tk-grid {{thangkaDone ? 'done' : ''}}", 'tk-frame-note']
+    .forEach(k => {
+      if (iw26.indexOf(k) > -1) ok('index.wxml 含 ' + k);
+      else err('index.wxml 缺 ' + k);
+    });
+
+  // 26.4 「承诺 → 兑现」跨文件契约：首页说了要去护照看，护照就必须真的有
+  const promised = iw26.indexOf('完整图收入文化护照') > -1;
+  const delivered = pw26.indexOf('唐卡收藏') > -1 && pw26.indexOf('tk-grid') > -1;
+  if (promised && delivered)
+    ok('跨文件契约成立：index.wxml 承诺「完整图收入文化护照」→ 护照页真有「唐卡收藏」板块');
+  else if (promised && !delivered)
+    err('空头承诺：index.wxml 承诺「完整图收入文化护照」，但 passport.wxml 无「唐卡收藏」板块（玩家集齐后会被引向死路）');
+  else if (!promised && delivered)
+    ok('护照页有唐卡收藏板块（首页已不再承诺，二者一致）');
+  else
+    ok('两端都未提唐卡护照展示（一致，闭环未承诺）');
+  if (pj26.indexOf("require('../../utils/collect')") > -1 && pj26.indexOf('collect.thangkaGrid(') > -1)
+    ok('护照页九宫格与首页同一纯函数（collect.thangkaGrid）');
+  else err('护照页未走 collect.thangkaGrid（又各写一份）');
+  if (pj26.indexOf('p.thangkaDone') > -1) ok('护照页读取 thangkaDone 状态');
+  else err('护照页未读取 thangkaDone');
+
+  // 26.5 样式单源：tk-* 上移 app.wxss，两页共用（不允许再各写一份）
+  const appWxss26 = read('app.wxss');
+  if (appWxss26.indexOf('.tk-grid') > -1 && appWxss26.indexOf('.tk-grid.done') > -1)
+    ok('tk-* 样式在 app.wxss（首页面板与护照板块共用）');
+  else err('app.wxss 缺 .tk-grid / .tk-grid.done');
+  if (read('pages/index/index.wxss').indexOf('.tk-cell {') > -1)
+    err('index.wxss 仍重复定义 .tk-cell（应上移 app.wxss 单源）');
+  else ok('index.wxss 不再重复定义 tk-* 样式');
+
+  // 26.6 体验版镜像同源
+  ['function fragmentCell', 'function thangkaGrid', 'function markThangkaDone',
+   'function getThangkaDone', 'thangkaDone: !!(p && p.thangkaDone)',
+   'pp-frag-grid', 'pp-frag-count'].forEach(k => {
+    if (tpl26.indexOf(k) > -1) ok('体验版镜像含 ' + k);
+    else err('体验版镜像缺 ' + k);
+  });
+  if (tpl26.indexOf('thangkaGrid(p.fragments)') > -1 && tpl26.indexOf('fragmentCell(i)') > -1)
+    ok('体验版护照页与首页共用 thangkaGrid / fragmentCell（同源）');
+  else err('体验版未走 thangkaGrid / fragmentCell');
+
+  // 26.7 新增文案不含金额 / 让利数字（合成按钮与完成提示）
+  ['合成唐卡 · 收入文化护照', '已合成 · 完整图收入文化护照', '唐卡已合成 · 你的第一幅完整唐卡']
+    .forEach(t => {
+      const bad = OFFER_DIGIT_PAT.test(t) || MONEY_UNIT_PAT.test(t);
+      if (!bad) ok('文案「' + t + '」无金额 / 让利数字');
+      else err('文案「' + t + '」出现金额 / 让利字样');
+    });
 }
 
 // ---------- 汇总 ----------

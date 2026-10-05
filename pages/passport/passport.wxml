@@ -65,6 +65,23 @@
       <view class="bar"><view class="bar-in" style="width: {{cardsTotal ? (cardsSeen * 100 / cardsTotal) : 0}}%;"></view></view>
     </view>
 
+    <!-- 2.5 唐卡收藏：首页承诺「完整图收入文化护照」，本节兑现它（2026-10-05） -->
+    <view class="section">
+      <view class="section-head">
+        <text class="section-title">唐卡收藏</text>
+        <text class="section-count">{{fragCount}} / 9</text>
+      </view>
+      <view class="section-sub">每通关一关掉落一片唐卡碎片；集齐 9 片回首页「唐卡拼图」面板点「合成唐卡」。</view>
+      <view class="tk-grid {{thangkaDone ? 'done' : ''}}">
+        <view wx:for="{{thangkaCells}}" wx:key="i" class="tk-cell {{item.on ? 'on' : ''}}">
+          <text wx:if="{{item.on}}" class="tk-mark">✦</text>
+          <text wx:else class="tk-mark dim">{{item.i}}</text>
+        </view>
+      </view>
+      <view wx:if="{{thangkaDone}}" class="tk-frame-note">唐卡已合成 · 你的第一幅完整唐卡</view>
+      <view wx:else class="bar"><view class="bar-in" style="width: {{fragCount * 100 / 9}}%;"></view></view>
+    </view>
+
     <!-- 3. 地区印章 -->
     <view class="section">
       <view class="section-head">

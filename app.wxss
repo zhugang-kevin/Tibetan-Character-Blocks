@@ -26,3 +26,33 @@ button::after {
   opacity: 0.3;
   pointer-events: none;
 }
+
+/* ============ 唐卡拼图（全局：首页「唐卡拼图」面板 + 文化护照「唐卡收藏」共用） ============ */
+/* 2026-10-05 从 index.wxss 上移：两个页面都要用，避免两端/两页各写一份样式 */
+.tk-grid { display: flex; flex-wrap: wrap; gap: 10rpx; }
+.tk-cell {
+  width: calc((100% - 20rpx) / 3);
+  height: 150rpx;
+  border-radius: 14rpx;
+  background: #F2EDE0;
+  border: 2rpx dashed rgba(183, 149, 11, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tk-cell.on {
+  background: linear-gradient(160deg, #FFF6D8, #F1C40F);
+  border: 2rpx solid #B7950B;
+  box-shadow: inset 0 3rpx 8rpx rgba(255, 255, 255, 0.6);
+}
+.tk-mark { font-size: 32rpx; color: #8A6A12; }
+.tk-mark.dim { color: #B9B1A0; }
+/* 已合成：九宫格外框收成一幅（金框 + 内衬），视觉上从「9 格」变「1 幅」 */
+.tk-grid.done {
+  padding: 12rpx;
+  border-radius: 18rpx;
+  border: 3rpx solid #B7950B;
+  background: linear-gradient(160deg, #FDF6E3, #F5E9CF);
+  box-shadow: 0 6rpx 16rpx rgba(96, 78, 44, 0.16);
+}
+.tk-frame-note { margin-top: 14rpx; text-align: center; font-size: 24rpx; color: #8A6A12; }

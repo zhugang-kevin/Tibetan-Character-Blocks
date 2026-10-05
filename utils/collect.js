@@ -58,6 +58,21 @@ function fragmentCell(index) {
   return { row: Math.floor(index / 3), col: index % 3 };
 }
 
+// 唐卡拼图视图模型：首页「唐卡拼图」面板与文化护照「唐卡收藏」板块共用同一份口径。
+// 此前两端各自内联九宫格数学，fragmentCell 一直无人调用（死代码）——现在统一走这里。
+function thangkaGrid(owned) {
+  var have = owned || [];
+  var cells = [];
+  var got = 0;
+  for (var i = 0; i < FRAGMENT_TOTAL; i++) {
+    var on = have.indexOf(i) > -1;
+    if (on) got++;
+    var c = fragmentCell(i);
+    cells.push({ i: i + 1, row: c.row, col: c.col, on: on });
+  }
+  return { cells: cells, got: got, done: fragmentComplete(have) };
+}
+
 // 非遗盲盒 / 日签：按日序确定性抽取（同一天抽到同一条，避免"刷"）
 function pickDaily(pool, seed) {
   if (!pool || !pool.length) return null;
@@ -189,6 +204,7 @@ module.exports = {
   nextFragment: nextFragment,
   fragmentComplete: fragmentComplete,
   fragmentCell: fragmentCell,
+  thangkaGrid: thangkaGrid,
   pickDaily: pickDaily,
   waterReward: waterReward,
   cardProgress: cardProgress,
