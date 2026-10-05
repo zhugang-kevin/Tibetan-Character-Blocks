@@ -980,6 +980,117 @@ section('17. 留存系统与首页重构（PRD v4）');
   });
 })();
 
+// ---------- 21. 前 60 秒钩子（结算页进度锚 / 印章计数 / 第2关差异化 / 每日打开） ----------
+// 背景：两份外部可行性评估都指向同一件事——「不懂藏文的人玩完第一关，
+// 会不会想再来一关」。这一节把该命题变成机械断言。
+section('21. 前 60 秒钩子（结算页进度锚 / 印章计数 / 第2关差异化 / 每日打开）');
+(() => {
+  const collect = require(path.join(ROOT, 'utils', 'collect'));
+
+  // 21.1 cardProgress 纯函数真跑
+  const ORDER = [
+    { id: 'letter_01', label: 'ཀ', isLetter: true, color: '#C0392B' },
+    { id: 'letter_02', label: 'ཁ', isLetter: true, color: '#1E8449' },
+    { id: 'icon_01', label: '吉', isLetter: false, color: '#C0392B' }
+  ];
+  const cp0 = collect.cardProgress(ORDER, []);
+  if (cp0.got === 0 && cp0.total === 3 && cp0.left === 3) ok('cardProgress 空收藏：0/3');
+  else err('cardProgress 空收藏计数错误 got=' + cp0.got + ' total=' + cp0.total + ' left=' + cp0.left);
+  if (cp0.slots.every(s => s.label === '')) ok('未收藏槽位不带 label（不剧透「下一张」，悬念才成立）');
+  else err('未收藏槽位泄漏了 label，「下一张是什么」的悬念失效');
+  const cp1 = collect.cardProgress(ORDER, ['letter_01', '不存在的id']);
+  if (cp1.got === 1 && cp1.slots[0].got && !cp1.slots[1].got) ok('cardProgress 只认库内 id，逐槽位标记正确');
+  else err('cardProgress 逐槽位标记错误');
+  if (cp1.slots[0].label === 'ཀ' && cp1.slots[1].label === '') ok('已收藏槽位带 label、未收藏槽位不带');
+  else err('cardProgress 的 label 归属错误');
+  if (collect.cardProgress(ORDER, ['letter_01', 'letter_02', 'icon_01']).left === 0)
+    ok('集齐后 left = 0（页面可切换为「已全部收藏」）');
+  else err('集齐后 left 应为 0');
+  if (collect.cardProgress(null, null).total === 0) ok('cardProgress 对空输入安全回落（不抛错）');
+  else err('cardProgress 空输入未安全回落');
+
+  // 21.2 markOpen 纯函数真跑：同天幂等 / 跨天 +1 / 断签重置 / first 只写一次 / 90 天上限
+  const m1 = collect.markOpen(null, '2026-01-01');
+  if (m1.isNewDay && m1.streak === 1 && m1.state.first === '2026-01-01' && m1.state.total === 1)
+    ok('首次打开：isNewDay + streak=1 + 记下首日');
+  else err('首次打开记录错误 ' + JSON.stringify(m1));
+  const m2 = collect.markOpen(m1.state, '2026-01-01');
+  if (!m2.isNewDay && m2.state.total === 1) ok('同一天再次打开：幂等，不重复计数');
+  else err('同一天重复打开被重复计数 total=' + m2.state.total);
+  const m3 = collect.markOpen(m1.state, '2026-01-02');
+  if (m3.streak === 2 && m3.state.first === '2026-01-01') ok('隔天打开：streak=2，首日基准不变');
+  else err('隔天打开 streak 错误 ' + m3.streak);
+  const m4 = collect.markOpen(m3.state, '2026-01-06');
+  if (m4.streak === 1) ok('断签：连续天数从 1 重新数（不做惩罚性清零展示）');
+  else err('断签后 streak 应为 1，实际 ' + m4.streak);
+  let ol = { days: [], lastDate: '', streak: 0, total: 0, first: '2026-01-01' };
+  for (let i = 0; i < 95; i++) ol = collect.markOpen(ol, collect.dayToDate(collect.dayNumber('2026-01-01') + i)).state;
+  if (ol.days.length === collect.OPEN_KEEP_DAYS) ok('打开记录只保留最近 ' + collect.OPEN_KEEP_DAYS + ' 天（本地存储不做无上限增长）');
+  else err('打开记录未裁剪，实际 ' + ol.days.length + ' 天');
+  if (collect.retainedOn(m3.state, 1)) ok('retainedOn 能识别「次日回来过」');
+  else err('retainedOn 判定错误');
+  if (!collect.retainedOn(m3.state, 7)) ok('反向：没回来的那天判定为未留存');
+  else err('retainedOn 误报留存');
+  if (collect.todayKey(new Date(2026, 0, 5)) === '2026-01-05') ok('todayKey 补零正确');
+  else err('todayKey 补零错误：' + collect.todayKey(new Date(2026, 0, 5)));
+
+  // 21.3 storage 接口齐备（漏了会静默丢字段——lampDay 踩过一次）
+  const ss = read('utils/storage.js');
+  ['getOpenLog', 'applyOpenLog', 'getSeenCards', 'getStampCount', 'openLog'].forEach(k => {
+    if (ss.indexOf(k) > -1) ok('storage.js 含 ' + k);
+    else err('storage.js 缺少 ' + k);
+  });
+
+  // 21.4 小程序端：结算页进度锚 + 印章计数不再写死
+  const rw = read('pages/result/result.wxml');
+  ['j-slots', 'cardSlots', 'cardGot', 'cardTotal', 'journeyDay', 'stampCount', 'stampTotal']
+    .forEach(k => {
+      if (rw.indexOf(k) > -1) ok('result.wxml 含 ' + k);
+      else err('result.wxml 缺少 ' + k);
+    });
+  if (rw.indexOf('已收集 1 枚印章') === -1) ok('result.wxml 印章数不再写死（改为 stamps 计数）');
+  else err('result.wxml 印章数仍是写死的「已收集 1 枚印章」');
+  const rj = read('pages/result/result.js');
+  ['collect.cardProgress', 'CARD_ORDER', 'storage.getStampCount', 'storage.getOpenLog'].forEach(k => {
+    if (rj.indexOf(k) > -1) ok('result.js 含 ' + k);
+    else err('result.js 缺少 ' + k);
+  });
+  const appSrc = read('app.js');
+  if (appSrc.indexOf('recordDailyOpen') > -1 && appSrc.indexOf('collect.markOpen') > -1)
+    ok('app.js 启动时记录每日打开');
+  else err('app.js 未记录每日打开');
+
+  // 21.5 第 2 关必须与第 1 关形成差异（否则新手认为「跟上一关一模一样」）
+  const l1 = levels.filter(l => l.level === 1)[0];
+  const l2 = levels.filter(l => l.level === 2)[0];
+  if (!l1.obstacles || (!l1.obstacles.frost && !l1.obstacles.crate))
+    ok('第 1 关仍无冰霜与木箱（前 60 秒不打扰新手）');
+  else err('第 1 关出现了障碍物，会打扰新手');
+  if (l2.obstacles && l2.obstacles.frost > 0)
+    ok('第 2 关已与第 1 关形成机制差异（首次出现冰霜 ' + l2.obstacles.frost + ' 块）');
+  else err('第 2 关与第 1 关没有任何机制差异（新手会觉得「一模一样」）');
+  if (l2.obstacles.frost <= l2.cols * l2.rows * 0.25) ok('第 2 关遮挡比例在 D23 的 25% 上限内');
+  else err('第 2 关遮挡比例超过 D23 的 25% 上限');
+
+  // 21.6 体验版镜像一致性
+  const tpl2 = read('preview/template.html');
+  ['function cardProgress', 'CARD_ORDER', 'function markOpen', 'res-journey',
+    'getSeenCards()', 'OPEN_KEEP_DAYS'].forEach(k => {
+      if (tpl2.indexOf(k) > -1) ok('体验版已镜像 ' + k);
+      else err('preview/template.html 未镜像 ' + k);
+    });
+  if (tpl2.indexOf('openLog: (p && p.openLog)') > -1)
+    ok('体验版 getProgress 白名单已含 openLog（漏了会静默丢字段）');
+  else err('体验版 getProgress 白名单缺 openLog');
+
+  // 21.7 纯本地：进度锚与每日打开不留任何网络与云能力
+  const hookSrc = read('utils/collect.js') + read('app.js') + read('pages/result/result.js');
+  ['wx.request', 'wx.cloud', 'callFunction', 'wx.login', 'getUserInfo', 'getLocation'].forEach(api => {
+    if (hookSrc.indexOf(api) === -1) ok('进度锚/每日打开相关代码未使用 ' + api);
+    else err('进度锚/每日打开相关代码出现 ' + api);
+  });
+})();
+
 // ---------- 汇总 ----------
 console.log('\n========== 汇总 ==========');
 console.log('通过: ' + passed + ' | 错误: ' + errors.length + ' | 警告: ' + warnings.length);

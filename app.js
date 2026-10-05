@@ -1,10 +1,24 @@
 // app.js — 藏字方块
+var collect = require('./utils/collect');
+var storage = require('./utils/storage');
+
 App({
   globalData: {
     fontLoaded: false
   },
   onLaunch: function () {
+    this.recordDailyOpen();
     this.loadTibetanFont();
+  },
+
+  // 记录「每天首次打开」：首日 / 打开天数 / 连续天数，只落本地。
+  // 用途：内测期与微信「小程序数据助手」的次日、7 日留存曲线对照，
+  // 判断「前 60 秒」到底有没有把人留下来。不上传、不请求任何网络接口。
+  recordDailyOpen: function () {
+    try {
+      var next = collect.markOpen(storage.getOpenLog(), collect.todayKey());
+      storage.applyOpenLog(next.state);
+    } catch (e) { /* 存储异常不影响启动 */ }
   },
 
   // 加载藏文字体 Noto Serif Tibetan

@@ -8,6 +8,18 @@ var certificate = require('../../utils/certificate');
 var audio = require('../../utils/audio');
 var collect = require('../../utils/collect');
 
+// 收藏进度槽位的固定顺序（字母在前、文化元素在后），与 data/elements.js 的声明顺序一致。
+// 结算页与体验版镜像共用同一份构造口径。
+var CARD_ORDER = Object.keys(elements).map(function (id) {
+  var el = elements[id];
+  return {
+    id: id,
+    label: el.type === 'letter' ? el.tibetan : (el.char || ''),
+    isLetter: el.type === 'letter',
+    color: el.color
+  };
+});
+
 Page({
   data: {
     level: 1,
@@ -21,6 +33,16 @@ Page({
     nameInput: '',
     generating: false,
     imagePath: '',       // 祝福卡临时图片路径
+    // ---- 前 60 秒钩子：结算决策点上的进度锚 ----
+    totalLevels: 10,     // 关卡总数
+    journeyDay: 1,       // 你是第几天打开它
+    cardSlots: [],       // 12 个收藏槽位（未收藏的只画「?」，不剧透名字）
+    cardGot: 0,
+    cardTotal: 0,
+    cardLeft: 0,
+    cardPercent: 0,
+    stampCount: 0,       // 已获印章数（此前写死为 1）
+    stampTotal: 7,       // 规划中的印章总数（七地市）
     // ---- 成长阶梯 · 证书 ----
     accuracy: 100,       // 本关正确率（%）
     clean: true,         // 本关是否全程无失误
@@ -81,6 +103,11 @@ Page({
     var ids = (query.cards || '').split(',').filter(Boolean);
     if (ids.length) tracker.track('first_card');
 
+    // 前 60 秒钩子：在「要不要再来一关」的决策点上，把收藏进度摆出来。
+    // 此前这份进度只在文化护照页可见，用户要先跳一层才看得到。
+    var cp = collect.cardProgress(CARD_ORDER, storage.getSeenCards());
+    var openLog = storage.getOpenLog();
+
     var collected = ids.map(function (id) {
       var el = elements[id] || {};
       var card = null;
@@ -124,7 +151,16 @@ Page({
       pointsGained: score,
       fragmentNew: fragRes.added ? storage.getFragments().slice(-1)[0] + 1 : 0,
       fragmentCount: fragList.length,
-      fragmentDone: collect.fragmentComplete(fragList)
+      fragmentDone: collect.fragmentComplete(fragList),
+      // 前 60 秒钩子：关卡锚 + 旅程天数 + 收藏进度
+      totalLevels: storage.MAX_LEVEL,
+      journeyDay: openLog.total || 1,
+      cardSlots: cp.slots,
+      cardGot: cp.got,
+      cardTotal: cp.total,
+      cardLeft: cp.left,
+      cardPercent: cp.total ? Math.round(cp.got * 100 / cp.total) : 0,
+      stampCount: storage.getStampCount()
     });
 
     // 舒缓祝福语（PRD 4.1）：画卷展开时读一句藏语祝福，缺失录音静默回退

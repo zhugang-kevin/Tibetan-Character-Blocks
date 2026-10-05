@@ -34,7 +34,9 @@ function getProgress() {
     inventory: (p && p.inventory) || {},
     pot: (p && p.pot) || 0,
     // 万家灯火祈福跳窗：上次展示的日期（用于「每天首次打开只出现一次」）
-    lampDay: (p && p.lampDay) || ''
+    lampDay: (p && p.lampDay) || '',
+    // 每日打开记录（本地留存粗指标）：{ days, lastDate, streak, total, first }
+    openLog: (p && p.openLog) || { days: [], lastDate: '', streak: 0, total: 0, first: '' }
   };
 }
 
@@ -336,6 +338,22 @@ function markLampDay(day) {
   return p.lampDay;
 }
 
+// ---------- 每日打开记录（本地留存粗指标） ----------
+// 跨天判定由 utils/collect.js 的纯函数算，这里只做持久化。不上传、不请求网络。
+function getOpenLog() { return getProgress().openLog; }
+
+function applyOpenLog(next) {
+  var p = getProgress();
+  p.openLog = next;
+  save(p);
+  return p.openLog;
+}
+
+// ---------- 收藏与印章计数（结算页的进度锚；此前只在护照页可见） ----------
+function getSeenCards() { return getProgress().seenCards; }
+
+function getStampCount() { return getProgress().stamps.length; }
+
 module.exports = {
   MAX_LEVEL: MAX_LEVEL,
   getProgress: getProgress,
@@ -344,6 +362,10 @@ module.exports = {
   grantStamp: grantStamp,
   isCardSeen: isCardSeen,
   markCardSeen: markCardSeen,
+  getSeenCards: getSeenCards,
+  getStampCount: getStampCount,
+  getOpenLog: getOpenLog,
+  applyOpenLog: applyOpenLog,
   isOnboardDone: isOnboardDone,
   setOnboardDone: setOnboardDone,
   recordLevelResult: recordLevelResult,

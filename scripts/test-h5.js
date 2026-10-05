@@ -108,6 +108,21 @@ function mockCtx() {
 
   await sleep(150);
 
+  /* ---------- 0. 每日打开记录（页面启动即写） ---------- */
+  // 必须放在最前面：后面的小节会用 clearProgress() 反复重置进度，会一并抹掉这份记录
+  section('0. 每日打开记录（启动即落盘）');
+  const openLog0 = JSON.parse(ev('JSON.stringify(getOpenLog())'));
+  check('启动时记录了「每日首次打开」', openLog0.total >= 1, JSON.stringify(openLog0));
+  check('首日已记下（次日留存对账的基准）',
+    /^\d{4}-\d{2}-\d{2}$/.test(String(openLog0.first)), String(openLog0.first));
+  check('打开记录已落盘到 localStorage',
+    String(win.localStorage.getItem('zangzi_progress') || '').indexOf('openLog') > -1);
+  check('反向：同一天重复打开不重复计数', (function () {
+    const before = ev('getOpenLog().total');
+    ev('applyOpenLog(markOpen(getOpenLog(), colToday()).state)');
+    return ev('getOpenLog().total') === before;
+  })());
+
   /* ---------- 1. 启动与首页 ---------- */
   section('1. 首页');
   check('无脚本运行时错误', errors.length === 0, errors[0]);
@@ -1060,6 +1075,87 @@ function mockCtx() {
     ev('renderHome();');
     return $$('#level-grid .level-item.node .node-bloom').length === 0;
   })());
+
+  /* ---------- 24. 前 60 秒钩子（结算进度锚 / 印章计数 / 第2关差异 / 每日打开） ---------- */
+  section('24. 前 60 秒钩子（结算进度锚 / 印章计数 / 第2关差异 / 每日打开）');
+
+  // 24.1 纯函数边界：跨天 +1 / 断签重置 / 首日基准不变 / 次日留存判定
+  //      （「启动即落盘」的断言在第 0 节——那里还没被 clearProgress() 抹掉）
+  ev('window.__oa = markOpen(null, "2026-01-01")');
+  ev('window.__ob = markOpen(window.__oa.state, "2026-01-02")');
+  ev('window.__oc = markOpen(window.__ob.state, "2026-01-06")');
+  const ob = JSON.parse(ev('JSON.stringify(window.__ob)'));
+  const oc = JSON.parse(ev('JSON.stringify(window.__oc)'));
+  check('隔天打开连续天数 +1', ob.streak === 2, String(ob.streak));
+  check('断签后连续天数从 1 重新数', oc.streak === 1, String(oc.streak));
+  check('首日只在第一次写入（后续跨天不改基准）', oc.state.first === '2026-01-01', String(oc.state.first));
+  check('retainedOn 判定「次日回来过」', ev('retainedOn(window.__ob.state, 1)') === true);
+  check('反向：没回来的那天判定为未留存', ev('retainedOn(window.__ob.state, 7)') === false);
+  check('打开记录只保留最近 90 天（本地存储不做无上限增长）', (function () {
+    ev('window.__ol = { days: [], lastDate: "", streak: 0, total: 0, first: "2026-01-01" };' +
+      'for (var i = 0; i < 95; i++) window.__ol = ' +
+      'markOpen(window.__ol, colDayToDate(colDayNumber("2026-01-01") + i)).state;');
+    return ev('window.__ol.days.length') === 90;
+  })());
+
+  // 24.3 结算页进度锚：把收藏进度前置到「要不要再来一关」的决策点
+  ev('clearProgress(); renderHome();');
+  ev('startLevel(1)'); await sleep(80);
+  ev('markCardSeen("letter_01"); markCardSeen("letter_02");');
+  ev('state.matchedCount = 12; state.collected = ["letter_01","letter_02"];' +
+    ' state.score = 260; state.maxCombo = 5; state.misses = 0; finishLevel()');
+  await sleep(60);
+
+  check('结算页出现进度锚区块（#res-journey）', !!$('#res-journey'));
+  check('进度锚有 12 个收藏槽位', $$('#res-journey .j-slot').length === 12,
+    '实际 ' + $$('#res-journey .j-slot').length);
+  check('已收藏槽位 = 2（本关认识的两个字母）', $$('#res-journey .j-slot.got').length === 2,
+    '实际 ' + $$('#res-journey .j-slot.got').length);
+  check('未收藏槽位 = 10', $$('#res-journey .j-unknown').length === 10,
+    '实际 ' + $$('#res-journey .j-unknown').length);
+  check('未收藏槽位只显示「?」，不剧透下一张的名字', $$('#res-journey .j-unknown').every(function (n) {
+    return n.textContent.trim() === '?';
+  }), $$('#res-journey .j-unknown').map(function (n) { return n.textContent; }).join('|'));
+  check('已收藏槽位显示真实字形', $$('#res-journey .j-slot.got').map(function (n) {
+    return n.textContent.trim();
+  }).join('') === 'ཀཁ', $$('#res-journey .j-slot.got').map(function (n) { return n.textContent; }).join('|'));
+  check('进度锚有关卡锚点（第 1 / 10 关）',
+    ($('#res-journey .j-step') || {}).textContent === '第 1 / 10 关',
+    ($('#res-journey .j-step') || {}).textContent);
+  check('进度锚有旅程天数', /旅行第 \d+ 天/.test($('#res-journey .j-day').textContent),
+    $('#res-journey .j-day').textContent);
+  check('进度条宽度 = 已收藏比例（2/12 ≈ 17%）',
+    ($('#res-journey .j-bar-in').getAttribute('style') || '').indexOf('17%') > -1,
+    $('#res-journey .j-bar-in').getAttribute('style'));
+  check('文案给出「还剩多少没遇见」（牵引下一关）',
+    $('#res-journey .j-note').textContent.indexOf('已认识 2 / 12') > -1 &&
+    $('#res-journey .j-note').textContent.indexOf('还有 10 个') > -1,
+    $('#res-journey .j-note').textContent);
+  check('反向：进度锚不出现「?」以外的未收藏字形泄漏',
+    $('#res-journey .j-note').textContent.indexOf('吉祥结') === -1 &&
+    $('#res-journey .j-note').textContent.indexOf('ཁ') === -1);
+
+  // 24.4 印章计数：必须跟着 stamps 数组走（此前写死为 1）
+  check('首次通关后结算页给出印章计数（1 / 7）',
+    $('#res-stamp').textContent.indexOf('已收集 1 / 7 枚印章') > -1, $('#res-stamp').textContent);
+  check('印章计数取自 stamps 数组', ev('getStampCount()') === ev('getProgress().stamps.length') &&
+    ev('getStampCount()') >= 1, String(ev('getStampCount()')));
+  ev('(function () { var p = getProgress(); if (p.stamps.indexOf("shigatse") === -1)' +
+    ' { p.stamps.push("shigatse"); saveProgress(p); } })()');
+  ev('finishLevel()');
+  check('反向：多一枚印章后结算页计数随之变化（证明未写死）',
+    $('#res-stamp').textContent.indexOf('已收集 2 / 7 枚印章') > -1, $('#res-stamp').textContent);
+
+  // 24.5 第 2 关必须与第 1 关形成机制差异
+  ev('startLevel(2)'); await sleep(80);
+  check('第 2 关有 2 块冰霜（与第 1 关拉开差异）', ev('state.frostTotal') === 2, String(ev('state.frostTotal')));
+  check('第 2 关 DOM 冰霜罩层数量一致', $$('#board .frost').length === 2,
+    '实际 ' + $$('#board .frost').length);
+  check('第 2 关引入了第 3 个字母', ev('LEVELS[1].elements.length') === 3,
+    String(ev('LEVELS[1].elements.length')));
+  ev('startLevel(1)'); await sleep(80);
+  check('反向：第 1 关仍无冰霜（前 60 秒不打扰新手）',
+    ev('state.frostTotal') === 0 && $$('#board .frost').length === 0, String(ev('state.frostTotal')));
 
   /* ---------- 汇总 ---------- */
   check('全程无脚本运行时错误', errors.length === 0, errors[0]);

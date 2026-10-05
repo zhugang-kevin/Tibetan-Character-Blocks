@@ -896,6 +896,19 @@
   .reward-box { flex: 1; padding: 11px; border-radius: 11px; background: rgba(255,255,255,.9); border: 1px solid rgba(214,202,176,.9); text-align: center; }
   .rw-v { font-size: 18px; font-weight: 800; color: #C0392B; }
   .rw-k { margin-top: 3px; font-size: 10px; color: #8A8375; }
+  /* 前 60 秒钩子：结算决策点上的进度锚（与 pages/result/result.wxss 同为 12 槽位） */
+  .journey { margin: 12px 0 4px; padding: 11px; border-radius: 11px; background: rgba(255,255,255,.9); border: 1px solid rgba(214,202,176,.9); }
+  .j-head { display: flex; align-items: baseline; justify-content: space-between; }
+  .j-step { font-size: 12px; font-weight: 700; color: #2C3E50; }
+  .j-day { font-size: 10px; color: #8A8375; }
+  .j-bar { margin-top: 7px; height: 5px; border-radius: 999px; background: rgba(214,202,176,.6); overflow: hidden; }
+  .j-bar-in { height: 100%; border-radius: 999px; background: #C0392B; }
+  .j-slots { display: flex; gap: 4px; margin-top: 8px; }
+  .j-slot { flex: 1; height: 24px; line-height: 24px; text-align: center; border-radius: 5px; border: 1px dashed rgba(178,166,140,.9); background: rgba(253,246,227,.7); }
+  .j-slot.got { border-style: solid; background: rgba(255,255,255,.98); }
+  .j-glyph { font-size: 13px; font-weight: 700; }
+  .j-unknown { color: #C4BCA6; font-weight: 400; }
+  .j-note { margin-top: 7px; font-size: 10px; line-height: 1.6; color: #8A8375; }
 </style>
 </head>
 <body>
@@ -1074,6 +1087,9 @@
 
     <!-- PRD v4：唐卡碎片掉落 + 积分入账 -->
     <div class="reward-row" id="res-rewards"></div>
+
+    <!-- 前 60 秒钩子：结算决策点上的进度锚（关卡 / 旅程天数 / 收藏槽位） -->
+    <div id="res-journey" class="journey"></div>
 
     <div class="stat-row">
       <div class="stat-box"><div class="v" id="res-score">0</div><div class="k">本关积分</div></div>
@@ -1274,10 +1290,21 @@ function getProgress() {
     inventory: (p && p.inventory) || {},
     pot: (p && p.pot) || 0,
     // 万家灯火祈福跳窗：上次展示日期（每天首次打开只出现一次）
-    lampDay: (p && p.lampDay) || ''
+    lampDay: (p && p.lampDay) || '',
+    // 每日打开记录（本地留存粗指标）
+    openLog: (p && p.openLog) || { days: [], lastDate: '', streak: 0, total: 0, first: '' }
   };
 }
 function saveProgress(p) { writeRaw(p); }
+function getSeenCards() { return getProgress().seenCards; }
+function getStampCount() { return getProgress().stamps.length; }
+function getOpenLog() { return getProgress().openLog; }
+function applyOpenLog(next) {
+  const p = getProgress();
+  p.openLog = next;
+  saveProgress(p);
+  return p.openLog;
+}
 function completeLevel(n) {
   const p = getProgress();
   if (p.completedLevels.indexOf(n) === -1) p.completedLevels.push(n);
@@ -1884,6 +1911,7 @@ const SPRITE_LETTERS = { letter_01: 'ka' };
 
 /* ---------------- PRD v4 收集与留存（与 utils/collect.js 同规则，体验版镜像） ---------------- */
 const FRAGMENT_TOTAL = 9;
+const STAMP_TOTAL = 7;   // 规划：七地市印章（与 pages/passport/passport.js 的 STAMP_TOTAL 同值）
 const REGIONS = DATA.regions || [];
 const DAILY = DATA.daily || { greetings: [], signInRewards: [], trivia: [], shop: [], tree: { water: 12 }, winter: { items: [] } };
 const PANEL_TITLES = {
@@ -1938,6 +1966,64 @@ function nextFragment(owned) {
 function pickDaily(pool, seed) {
   if (!pool || !pool.length) return null;
   return pool[Math.abs(Math.floor(seed || 0)) % pool.length];
+}
+// 文化收藏槽位（与 utils/collect.js 的 cardProgress 同规则）：
+// 未收藏的槽位不带 label —— 体验版这里只回 '?'，不剧透名字。
+function cardProgress(order, seen) {
+  const have = seen || [];
+  const list = order || [];
+  const slots = [];
+  let got = 0;
+  for (let i = 0; i < list.length; i++) {
+    const e = list[i];
+    const has = have.indexOf(e.id) > -1;
+    if (has) got++;
+    slots.push({
+      id: e.id, no: i + 1, label: has ? e.label : '',
+      isLetter: !!e.isLetter, color: e.color || '#C0392B', got: has
+    });
+  }
+  return { slots: slots, got: got, total: list.length, left: list.length - got };
+}
+// 收藏槽位顺序：与 data/elements.js 声明顺序一致（字母在前、文化元素在后）
+const CARD_ORDER = Object.keys(ELEMENTS).map(function (id) {
+  const el = ELEMENTS[id];
+  return {
+    id: id,
+    label: el.type === 'letter' ? el.tibetan : (el.char || ''),
+    isLetter: el.type === 'letter',
+    color: el.color
+  };
+});
+// 每日打开记录（与 utils/collect.js 的 markOpen 同契约）
+const OPEN_KEEP_DAYS = 90;
+function colDayToDate(n) {
+  return new Date(Number(n) * 86400000).toISOString().slice(0, 10);
+}
+function markOpen(state, today) {
+  const st = state && typeof state === 'object' ? state : {};
+  let days = st.days || [];
+  const lastDate = st.lastDate || '';
+  const streak = st.streak || 0;
+  const first = st.first || today;
+  if (lastDate === today) {
+    return {
+      isNewDay: false, streak: streak,
+      state: { days: days, lastDate: lastDate, streak: streak, total: days.length, first: first }
+    };
+  }
+  if (days.indexOf(today) === -1) days = days.concat([today]);
+  if (days.length > OPEN_KEEP_DAYS) days = days.slice(days.length - OPEN_KEEP_DAYS);
+  const nextStreak = lastDate ? (colDayNumber(today) - colDayNumber(lastDate) === 1 ? streak + 1 : 1) : 1;
+  return {
+    isNewDay: true, streak: nextStreak,
+    state: { days: days, lastDate: today, streak: nextStreak, total: days.length, first: first }
+  };
+}
+function retainedOn(state, n) {
+  const st = state && typeof state === 'object' ? state : {};
+  if (!st.first) return false;
+  return (st.days || []).indexOf(colDayToDate(colDayNumber(st.first) + (n || 1))) > -1;
 }
 // 藤蔓节点：第 1 关在底、第 10 关在顶，左右蜿蜒
 function vineNodePos(n) {
@@ -2176,6 +2262,7 @@ function ladderCleared(nowList) {
   const added = list.filter(function (n) { return prev.indexOf(n) === -1; });
   return added.length ? added[added.length - 1] : 0;
 }
+let ladderInTimer = null;
 function ladderMotion(to, fromFoot) {
   const map = document.querySelector('#vine-map');
   if (!map || typeof map.getBoundingClientRect !== 'function') return;
@@ -2187,13 +2274,16 @@ function ladderMotion(to, fromFoot) {
     nodeTopPct: ladderNodeTop(to)
   });
   map.classList.add('in');
+  // 连续两次入场（如刚通关返回又重渲染）时必须先撤销上一个撤类定时器，
+  // 否则前一次的 2s 计时会把新的入场动画提前掐掉——只有在快速连发时才会出现。
+  if (ladderInTimer) clearTimeout(ladderInTimer);
+  ladderInTimer = setTimeout(function () { map.classList.remove('in'); }, 2000);
   if (fromFoot && plan.rise > 0) {
     window.scrollTo(0, plan.foot);
     setTimeout(function () { window.scrollTo({ top: plan.settle, behavior: 'smooth' }); }, 320);
   } else {
     window.scrollTo({ top: plan.settle, behavior: 'smooth' });
   }
-  setTimeout(function () { map.classList.remove('in'); }, 2000);
 }
 function ladderEnter(to, fromFoot) {
   if ($('lamp-mask').classList.contains('show')) { LADDER_PENDING = [to, fromFoot]; return; }
@@ -2752,6 +2842,26 @@ function finishLevel() {
     '<div class="reward-box"><div class="rw-v">' + (fragRes.added ? ('第 ' + (fragRes.index + 1) + ' 片') : '已集齐') + '</div>' +
     '<div class="rw-k">' + (fragDone ? '唐卡已拼成' : ('唐卡碎片 ' + fragList.length + '/' + FRAGMENT_TOTAL)) + '</div></div>';
 
+  // 前 60 秒钩子：把收藏进度从护照页前置到结算决策点（「要不要再来一关」就在此刻决定）
+  const cp = cardProgress(CARD_ORDER, getSeenCards());
+  const openLog = getOpenLog();
+  const jSlots = cp.slots.map(function (s) {
+    const cls = 'j-glyph' + (s.isLetter ? ' tib' : '') + (s.got ? '' : ' j-unknown');
+    const inner = '<span class="' + cls + '"' + (s.got ? ' style="color:' + s.color + '"' : '') + '>' +
+      (s.got ? s.label : '?') + '</span>';
+    return '<div class="j-slot' + (s.got ? ' got' : '') + '"' +
+      (s.got ? ' style="border-color:' + s.color + '"' : '') + '>' + inner + '</div>';
+  }).join('');
+  const jHead = '已认识 ' + cp.got + ' / ' + cp.total + ' 个藏文字母与文化元素';
+  $('res-journey').innerHTML =
+    '<div class="j-head"><span class="j-step">第 ' + level + ' / ' + MAX_LEVEL + ' 关</span>' +
+    '<span class="j-day">旅行第 ' + (openLog.total || 1) + ' 天</span></div>' +
+    '<div class="j-bar"><div class="j-bar-in" style="width:' +
+    (cp.total ? Math.round(cp.got * 100 / cp.total) : 0) + '%"></div></div>' +
+    '<div class="j-slots">' + jSlots + '</div>' +
+    '<div class="j-note">' + jHead +
+    (cp.left ? ('，还有 ' + cp.left + ' 个在前面等你遇见。') : '，已全部收藏。') + '</div>';
+
   // 证书横幅（新得 / 升级），否则展示阶段进度与「还差什么」
   const certEl = $('res-cert');
   if (certRes.cert) {
@@ -2790,7 +2900,8 @@ function finishLevel() {
       '<div class="stamp-banner">' +
       '<div class="big-stamp">拉萨</div>' +
       '<div class="txt">' + (stampNew ? '<b>新印记解锁！</b><br>' : '') +
-      '你获得了「拉萨」文化印记，这是文化护照的第一枚印章。</div>' +
+      '你获得了「拉萨」文化印记，这是文化护照的第一枚印章。<br>' +
+      '已收集 ' + getStampCount() + ' / ' + STAMP_TOTAL + ' 枚印章</div>' +
       '</div>';
   } else {
     stampEl.innerHTML = '';
@@ -2989,7 +3100,7 @@ function showPassport() {
   $('pp-cards-count').textContent = p.seenCards.length + ' / ' + CARDS.length;
   $('pp-cards-bar').style.width = Math.round(p.seenCards.length / CARDS.length * 100) + '%';
 
-  $('pp-stamp-count').textContent = p.stamps.length + ' / 7';
+  $('pp-stamp-count').textContent = p.stamps.length + ' / ' + STAMP_TOTAL;
   $('pp-stamps').innerHTML = p.stamps.length
     ? p.stamps.map(function () {
       return '<div class="pp-stamp"><div class="seal">拉萨</div><div class="desc">通关第 1 关获得</div></div>';
@@ -3454,6 +3565,8 @@ $('sc-bg').src = IMAGES.bgGlobal;
 $('sc-sky').src = IMAGES.bgSky;
 $('sc-ground').src = IMAGES.bgGround;
 document.documentElement.style.setProperty('--pat', 'url("' + IMAGES.pattern + '")');
+// 记录「每天首次打开」（与 app.js 的 recordDailyOpen 同契约），供内测期留存对账
+applyOpenLog(markOpen(getOpenLog(), colToday()).state);
 renderHome();
 maybeShowLamp();
 </script>

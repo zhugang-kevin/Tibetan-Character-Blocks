@@ -40,6 +40,28 @@
     </view>
   </view>
 
+  <!-- 前 60 秒钩子：在「要不要再来一关」的决策点上摆出进度与悬念 -->
+  <view class="journey">
+    <view class="j-head">
+      <text class="j-step">第 {{level}} / {{totalLevels}} 关</text>
+      <text class="j-day">旅行第 {{journeyDay}} 天</text>
+    </view>
+    <view class="j-bar"><view class="j-bar-in" style="width: {{cardPercent}}%;"></view></view>
+    <view class="j-slots">
+      <view
+        wx:for="{{cardSlots}}"
+        wx:key="id"
+        class="j-slot {{item.got ? 'got' : ''}}"
+        style="{{item.got ? ('border-color:' + item.color + ';') : ''}}"
+      >
+        <text wx:if="{{item.got && item.isLetter}}" class="j-glyph tibetan" style="color: {{item.color}};">{{item.label}}</text>
+        <text wx:if="{{item.got && !item.isLetter}}" class="j-glyph" style="color: {{item.color}};">{{item.label}}</text>
+        <text wx:if="{{!item.got}}" class="j-glyph j-unknown">?</text>
+      </view>
+    </view>
+    <view class="j-note">已认识 {{cardGot}} / {{cardTotal}} 个藏文字母与文化元素{{cardLeft ? ('，还有 ' + cardLeft + ' 个在前面等你遇见。') : '，已全部收藏。'}}</view>
+  </view>
+
   <!-- 成长阶梯 · 证书（通关某阶段最后一关时颁发 / 升级） -->
   <view wx:if="{{cert}}" class="cert-banner" style="border-color: {{cert.tierColor}};">
     <view class="cert-seal" style="background: {{cert.tierColor}};">{{cert.tierSeal}}</view>
@@ -61,7 +83,7 @@
     <view class="stamp-seal">拉萨</view>
     <view class="stamp-text">
       <text class="stamp-title">获得文化护照印记</text>
-      <text class="stamp-sub">西藏文化护照 · 已收集 1 枚印章</text>
+      <text class="stamp-sub">西藏文化护照 · 已收集 {{stampCount}} / {{stampTotal}} 枚印章</text>
     </view>
   </view>
 
