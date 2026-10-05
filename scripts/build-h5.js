@@ -40,7 +40,9 @@ const DATA = {
   merchants: require(path.join(ROOT, 'data', 'merchants')),
   // PRD v4 首页：五地剪影 + 悬浮入口内容池（日签 / 盲盒 / 道具铺 / 菩提树 / 冬游）
   regions: require(path.join(ROOT, 'data', 'regions')),
-  daily: require(path.join(ROOT, 'data', 'daily'))
+  daily: require(path.join(ROOT, 'data', 'daily')),
+  // 万家灯火祈福跳窗（展示数据固定写死，不接任何后端）
+  lamp: require(path.join(ROOT, 'data', 'lamp'))
 };
 
 // ---------- 2. 注入品牌与背景资产 ----------
@@ -179,6 +181,26 @@ if (!daily.tree || !daily.winter || !daily.winter.items || !daily.winter.items.l
   console.error('✗ data/daily.js 缺少菩提树 / 冬游西藏内容'); homeBad++;
 }
 if (homeBad) process.exit(1);
+
+// ---------- 7. 万家灯火数据抽查（纯静态展示数据 + 文化红线） ----------
+const lampSrc = read('data/lamp.js');
+let lampBad = 0;
+if (!(DATA.lamp.total > 0)) { console.error('✗ 万家灯火缺少总数 total'); lampBad++; }
+if (!DATA.lamp.provinces || DATA.lamp.provinces.length !== 5) {
+  console.error('✗ 万家灯火应为 5 个地区灯火，实际 ' + ((DATA.lamp.provinces || []).length)); lampBad++;
+}
+(DATA.lamp.provinces || []).forEach(function (p) {
+  if (!p.name || !(p.count > 0)) { console.error('✗ 地区灯火数据非法：' + JSON.stringify(p)); lampBad++; }
+});
+if (!DATA.lamp.home || !DATA.lamp.home.name) { console.error('✗ 万家灯火缺少家乡行'); lampBad++; }
+if (!(DATA.lamp.lotus && DATA.lamp.lotus.gold > 0 && DATA.lamp.lotus.pink > 0)) {
+  console.error('✗ 万家灯火缺少两色莲花数据'); lampBad++;
+}
+// 文化红线：不出现竞争性 / 营销性字眼（全部文案必须平和）
+['排行榜', '排行', '名次', '战区', '金币', '优惠券', '广告', '抽奖', '返现'].forEach(function (w) {
+  if (lampSrc.indexOf(w) > -1) { console.error('✗ data/lamp.js 出现竞争性/营销字眼「' + w + '」'); lampBad++; }
+});
+if (lampBad) process.exit(1);
 
 fs.mkdirSync(path.dirname(OUT), { recursive: true });
 fs.writeFileSync(OUT, html, 'utf8');

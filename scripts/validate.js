@@ -685,11 +685,24 @@ section('17. 留存系统与首页重构（PRD v4）');
   if (colSrc.indexOf('require(') === -1) ok('utils/collect.js 为纯函数模块（不依赖 wx / DOM）');
   else err('utils/collect.js 不应依赖其他模块');
 
-  // 17.4 首页结构（藤蔓地图 / 悬浮入口 / 底部平层 / 资源条 / 入口面板）
+  // 17.4 首页结构（朝圣天梯地图 / 悬浮入口 / 底部平层 / 资源条 / 入口面板）
   const iw = read('pages/index/index.wxml');
-  ['vine-map', 'vine-stem', 'region', 'side-rail', 'dock', 'entry-panel', 'res-bar'].forEach(cls => {
+  ['vine-map', 'vine-stem', 'region', 'side-rail', 'dock', 'entry-panel', 'res-bar',
+   'ladder-heaven', 'ladder-village', 'ladder-flags', 'node-deco'].forEach(cls => {
     if (iw.indexOf(cls) > -1) ok('index.wxml 含 ' + cls);
     else err('index.wxml 缺少 ' + cls);
+  });
+  // 文化红线：宗教符号只作装饰，不得成为可消除对象（不在 game 页元素表内）
+  // 硬约束：佛塔 / 酥油灯 一旦进入元素库即判错；
+  // 待决：莲花 / 经幡 目前仍是 icon_02 / icon_04 的可消除牌面 → 记警告（见 docs/DECISIONS.md D25）
+  const elsSrc = read('data/elements.js');
+  ['佛塔', '酥油灯'].forEach(sym => {
+    if (elsSrc.indexOf(sym) === -1) ok('宗教符号「' + sym + '」不作为消除元素');
+    else err('data/elements.js 出现宗教符号「' + sym + '」（违反文化红线）');
+  });
+  ['莲花', '经幡'].forEach(sym => {
+    if (elsSrc.indexOf(sym) === -1) ok('宗教符号「' + sym + '」已不作为消除元素');
+    else warn('牌面仍含「' + sym + '」：与「不作娱乐化消除对象」红线冲突，待拍板（DECISIONS.md D25）');
   });
   if (iw.indexOf('wx:if="{{canSignIn}}"') > -1 && iw.indexOf('side-dot') > -1)
     ok('签到红点仅在未签到时显示（canSignIn 控制）');
@@ -720,7 +733,8 @@ section('17. 留存系统与首页重构（PRD v4）');
   // 17.6 体验版镜像（源与镜像必须一致，否则体验版测不了）
   const tplHtml = read('preview/template.html');
   ['vine-map', 'side-rail', 'entry-panel', 'renderVine', 'refreshHomeV4', 'openPanel',
-    'doSignIn', 'buyItem', 'waterTree', 'rateStars', 'res-stars', 'res-rewards'].forEach(key => {
+    'doSignIn', 'buyItem', 'waterTree', 'rateStars', 'res-stars', 'res-rewards',
+    'ladder-heaven', 'ladder-village', 'ladder-flags'].forEach(key => {
     if (tplHtml.indexOf(key) > -1) ok('体验版已镜像 ' + key);
     else err('preview/template.html 未镜像 ' + key);
   });
@@ -805,6 +819,95 @@ section('17. 留存系统与首页重构（PRD v4）');
   if (buildSrc.indexOf('bg-global-h5.jpg') > -1 && buildSrc.indexOf('bgGlobal') > -1)
     ok('build-h5.js 已内联全局底图（bg-global-h5.jpg）');
   else err('build-h5.js 未内联全局底图');
+})();
+
+// ---------- 19. 万家灯火祈福跳窗（纯静态：无网络 / 无竞争字眼 / 每天一次） ----------
+(function () {
+  section('19. 万家灯火祈福跳窗');
+
+  // 19.1 数据与逻辑层文件
+  ['data/lamp.js', 'utils/lamp.js'].forEach(f => {
+    if (exists(f)) ok('存在 ' + f);
+    else err('缺少 ' + f);
+  });
+
+  // 19.2 纯逻辑行为（真跑一遍，不靠肉眼）
+  const lamp = require(path.join(ROOT, 'utils', 'lamp'));
+  if (lamp.isFirstOpenToday('2026-10-04', '2026-10-05')) ok('跨天视为当天首次打开');
+  else err('isFirstOpenToday 跨天判断错误');
+  if (!lamp.isFirstOpenToday('2026-10-05', '2026-10-05')) ok('同一天不再重复展示');
+  else err('isFirstOpenToday 同一天应返回 false');
+  if (lamp.lightOne(128456) === 128457) ok('点亮一盏灯：总数 128456 → 128457');
+  else err('lightOne 增量错误：' + lamp.lightOne(128456));
+  if (lamp.formatCount(128456) === '128,456') ok('数字千分位格式化正确');
+  else err('formatCount 结果错误：' + lamp.formatCount(128456));
+  if (lamp.fill('今日全国共点亮 {total} 盏灯', { total: '128,456' }) === '今日全国共点亮 128,456 盏灯')
+    ok('文案占位符代入正确（数字不写死在文案里）');
+  else err('fill 占位符代入错误');
+
+  // 19.3 数据合规：固定数据齐备 + 无营销/竞争字段
+  const lampData = require(path.join(ROOT, 'data', 'lamp'));
+  if (lampData.provinces.length === 5) ok('五地灯火数据齐备');
+  else err('data/lamp.js 应为 5 个地区，实际 ' + lampData.provinces.length);
+  ['price', 'amount', 'fee', 'discount', 'settle', 'reward', 'coin'].forEach(k => {
+    if (!Object.prototype.hasOwnProperty.call(lampData, k)) ok('data/lamp.js 无字段 ' + k + '（不承载交易/奖励）');
+    else err('data/lamp.js 含交易/奖励字段 ' + k);
+  });
+
+  // 19.4 文化红线：文案不得出现竞争性或营销字眼（逐文件机械扫描）
+  //      index.wxml 只扫祈福跳窗区块（首页其它面板的既有标题不在此约束内）
+  const BAN_WORDS = ['排行', '名次', '战区', '金币', '优惠券', '折扣', '抽奖', '返现', '广告'];
+  const iwAll = read('pages/index/index.wxml');
+  const lampBlock = iwAll.slice(iwAll.indexOf('lamp-mask'));
+  [['data/lamp.js', read('data/lamp.js')], ['pages/index/index.wxml（跳窗区块）', lampBlock]].forEach(pair => {
+    const hit = BAN_WORDS.filter(w => pair[1].indexOf(w) > -1);
+    if (!hit.length) ok(pair[0] + ' 无竞争性/营销字眼');
+    else err(pair[0] + ' 出现禁用字眼：' + hit.join('、'));
+  });
+
+  // 19.5 纯静态：祈福跳窗相关代码不得出现网络请求与云能力
+  // 注：这里刻意写成「网络请求接口 / 云函数」的措辞，避免禁用 API 字面量污染源码扫描
+  const lampJs = read('utils/lamp.js') + read('data/lamp.js');
+  ['wx.request', 'wx.cloud', 'callFunction', 'wx.login', 'getUserInfo', 'getLocation'].forEach(api => {
+    if (lampJs.indexOf(api) === -1) ok('祈福跳窗数据/逻辑层未使用 ' + api);
+    else err('祈福跳窗代码出现 ' + api + '（本版必须纯静态）');
+  });
+
+  // 19.6 首页结构：跳窗节点与按钮齐备 + 事件已绑定
+  const iw2 = read('pages/index/index.wxml');
+  ['lamp-mask', 'lamp-card', 'lamp-flame', 'lamp-list', 'lamp-btn', 'onLightLamp', 'closeLampWindow']
+    .forEach(cls => {
+      if (iw2.indexOf(cls) > -1) ok('index.wxml 含 ' + cls);
+      else err('index.wxml 缺少 ' + cls);
+    });
+  const ij2 = read('pages/index/index.js');
+  ['buildLampView:', 'onLightLamp:', 'closeLampWindow:'].forEach(fn => {
+    if (ij2.indexOf(fn) > -1) ok('index.js 提供 ' + fn);
+    else err('index.js 缺少 ' + fn);
+  });
+  if (ij2.indexOf('vibrateShort') > -1) ok('点亮后触发微震动（vibrateShort）');
+  else err('点亮后未触发微震动');
+  if (ij2.indexOf('storage.markLampDay') > -1 && ij2.indexOf('isFirstOpenToday') > -1)
+    ok('每天首次打开的判断与记录走纯函数 + 存储');
+  else err('跳窗未受「每天首次打开」控制');
+  if (read('pages/index/index.wxss').indexOf('sparkFly') > -1) ok('点亮后有金粉爆炸粒子动效');
+  else err('缺少金粉爆炸粒子动效');
+
+  // 19.7 存储层：lampDay 字段（只作为展示记录，不承载任何权益）
+  const stSrc2 = read('utils/storage.js');
+  ['function getLampDay', 'function markLampDay', 'lampDay:'].forEach(k => {
+    if (stSrc2.indexOf(k) > -1) ok('storage.js 含 ' + k);
+    else err('storage.js 缺少 ' + k);
+  });
+
+  // 19.8 体验版镜像 + 构建注入
+  const tpl2 = read('preview/template.html');
+  ['lamp-mask', 'lamp-btn', 'renderLamp', 'lightLamp', 'maybeShowLamp', 'sparkFly'].forEach(k => {
+    if (tpl2.indexOf(k) > -1) ok('体验版已镜像 ' + k);
+    else err('preview/template.html 未镜像 ' + k);
+  });
+  if (read('scripts/build-h5.js').indexOf("'lamp'") > -1) ok('build-h5.js 已注入 data/lamp.js');
+  else err('build-h5.js 未注入 data/lamp.js');
 })();
 
 // ---------- 汇总 ----------

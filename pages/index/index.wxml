@@ -32,13 +32,33 @@
     <view wx:if="{{bestCombo > 1}}" class="profile-combo">最高连击 ×{{bestCombo}}</view>
   </view>
 
-  <!-- 藤蔓地图：五地剪影 + 弯曲向上的关卡节点（对标消消乐主地图） -->
+  <!-- 朝圣天梯地图：山脚（人间）→ 石阶关卡 → 山顶（天堂/净土），五地剪影随进度点亮 -->
   <view class="stage-head">
-    <text class="stage-name">第一阶段 · 简单基字</text>
-    <text class="stage-range">第 1-10 关 · 通关可得证书</text>
+    <text class="stage-name">朝圣天梯 · 第一段</text>
+    <text class="stage-range">第 1-10 关 · 山脚到山腰 · 通关可得证书</text>
   </view>
 
   <view class="vine-map">
+    <!-- 天堂层：金色佛光 + 祥云 + 布达拉宫金顶剪影 + 坛城光环（纯装饰，不可点） -->
+    <view class="ladder-heaven" aria-hidden="true">
+      <view class="h-glow"></view>
+      <view class="h-mandala"></view>
+      <view class="h-cloud hc-l"></view>
+      <view class="h-cloud hc-r"></view>
+      <view class="h-potala"></view>
+    </view>
+
+    <!-- 山脚村落剪影（人间起点，纯装饰） -->
+    <view class="ladder-village" aria-hidden="true"></view>
+
+    <!-- 五色经幡（两侧竖挂，象征祝福与传播，纯装饰） -->
+    <view class="ladder-flags fl-left" aria-hidden="true">
+      <view class="flag"></view><view class="flag"></view><view class="flag"></view><view class="flag"></view><view class="flag"></view><view class="flag"></view><view class="flag"></view><view class="flag"></view>
+    </view>
+    <view class="ladder-flags fl-right" aria-hidden="true">
+      <view class="flag"></view><view class="flag"></view><view class="flag"></view><view class="flag"></view><view class="flag"></view><view class="flag"></view><view class="flag"></view><view class="flag"></view>
+    </view>
+
     <!-- 地区剪影：未解锁为灰色剪影，解锁后点亮 -->
     <view
       wx:for="{{regions}}"
@@ -53,10 +73,10 @@
       </view>
     </view>
 
-    <!-- 藤蔓主干 -->
+    <!-- 石阶中轴：金色描边的藏式石阶引路 -->
     <view class="vine-stem"></view>
 
-    <!-- 关卡节点：藤蔓上一左一右蜿蜒向上，节点下显示星级 -->
+    <!-- 关卡节点：每关是一级石阶，节点下显示星级 -->
     <view
       wx:for="{{levels}}"
       wx:key="n"
@@ -65,6 +85,7 @@
       data-n="{{item.n}}"
       bindtap="onTapLevel"
     >
+      <view wx:if="{{item.done}}" class="node-deco">🪷</view>
       <view class="node-badge">
         <text wx:if="{{item.unlocked}}">{{item.n}}</text>
         <text wx:else>🔒</text>
@@ -237,6 +258,61 @@
 
     </scroll-view>
     <view class="entry-foot">{{panelFoot}}</view>
+  </view>
+
+  <!-- 万家灯火：进入主界面前的静态祈福跳窗（每天首次打开一次；全部为本地固定数据，无任何网络请求） -->
+  <view wx:if="{{lampShow}}" class="lamp-mask">
+    <view class="lamp-card">
+      <view class="lamp-halo"></view>
+      <view class="lamp-title">{{lampTitle}}</view>
+      <view class="lamp-sub">{{lampSub}}</view>
+
+      <!-- 3D 酥油灯 + CSS 火焰 -->
+      <view class="lamp-flame">
+        <view class="flame-glow"></view>
+        <view class="flame f1"></view>
+        <view class="flame f2"></view>
+        <view class="flame f3"></view>
+        <view class="lamp-body">
+          <view class="lamp-cup"></view>
+          <view class="lamp-foot"></view>
+        </view>
+        <view wx:if="{{lampLit}}" class="sparks">
+          <view class="spark"></view><view class="spark"></view><view class="spark"></view>
+          <view class="spark"></view><view class="spark"></view><view class="spark"></view>
+          <view class="spark"></view><view class="spark"></view><view class="spark"></view>
+          <view class="spark"></view><view class="spark"></view><view class="spark"></view>
+        </view>
+      </view>
+
+      <view class="lamp-sec">各地灯火</view>
+      <view class="lamp-list">
+        <view class="lamp-row" wx:for="{{lampProvinces}}" wx:key="name">
+          <text class="lamp-p">{{item.name}}</text>
+          <text class="lamp-c">{{item.countText}}</text>
+        </view>
+      </view>
+      <view class="lamp-home">{{lampHomeText}}</view>
+
+      <view class="lamp-sec">两色莲花</view>
+      <view class="lamp-lotus">
+        <view class="lotus-cell gold">
+          <text class="lotus-ico">🪷</text>
+          <text class="lotus-k">金色莲花</text>
+          <text class="lotus-v">{{lampLotus.goldText}}</text>
+        </view>
+        <view class="lotus-cell pink">
+          <text class="lotus-ico">🌸</text>
+          <text class="lotus-k">粉色莲花</text>
+          <text class="lotus-v">{{lampLotus.pinkText}}</text>
+        </view>
+      </view>
+
+      <view class="lamp-btn {{lampLit ? 'lit' : ''}}" bindtap="onLightLamp">{{lampButtonText}}</view>
+      <view wx:if="{{lampLit}}" class="lamp-tip">{{lampTip}}</view>
+      <text class="lamp-skip" bindtap="closeLampWindow">今天先不点灯</text>
+      <view class="lamp-note">{{lampOnceNote}}</view>
+    </view>
   </view>
 
 </view>

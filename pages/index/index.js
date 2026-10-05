@@ -4,8 +4,10 @@
 var storage = require('../../utils/storage');
 var certificate = require('../../utils/certificate');
 var collect = require('../../utils/collect');
+var lamp = require('../../utils/lamp');
 var regionsData = require('../../data/regions');
 var dailyData = require('../../data/daily');
+var lampData = require('../../data/lamp');
 
 // 印记定义（v0 仅拉萨；后续扩展七地市）
 var STAMPS = {
@@ -69,7 +71,21 @@ Page({
     boxText: '',
     shopItems: [],
     pot: 0,
-    winterItems: []
+    winterItems: [],
+    // 万家灯火祈福跳窗（每次进入首页前展示，每天仅一次；纯本地，无任何网络请求）
+    lampShow: false,
+    lampLit: false,
+    lampTotal: lampData.total,
+    lampTotalText: lamp.formatCount(lampData.total),
+    lampProvinces: [],
+    lampHome: { name: '', countText: '' },
+    lampLotus: { goldText: '', pinkText: '' },
+    lampTitle: lampData.title,
+    lampSub: lamp.fill(lampData.subTemplate, { total: lamp.formatCount(lampData.total) }),
+    lampHomeText: '',
+    lampOnceNote: lampData.onceNote,
+    lampButtonText: lampData.buttonText,
+    lampTip: lampData.tip
   },
 
   onShow: function () {
@@ -152,6 +168,56 @@ Page({
       pot: storage.getPot(),
       winterItems: dailyData.winter.items
     });
+
+    // 万家灯火：每天首次打开时，先与远方的灯火同明一次（纯本地判断）
+    if (lamp.isFirstOpenToday(storage.getLampDay(), today)) {
+      this.setData(this.buildLampView());
+    }
+  },
+
+  // 万家灯火祈福跳窗：文案里的数字全部来自 data/lamp.js 的固定数据（含千分位）
+  buildLampView: function () {
+    var provinces = lampData.provinces.map(function (x) {
+      return { name: x.name, countText: lamp.formatCount(x.count) };
+    });
+    return {
+      lampShow: true,
+      lampLit: false,
+      lampTotal: lampData.total,
+      lampTotalText: lamp.formatCount(lampData.total),
+      lampSub: lamp.fill(lampData.subTemplate, { total: lamp.formatCount(lampData.total) }),
+      lampProvinces: provinces,
+      lampHome: { name: lampData.home.name, countText: lamp.formatCount(lampData.home.count) },
+      lampHomeText: lamp.fill(lampData.homeTemplate, {
+        name: lampData.home.name,
+        count: lamp.formatCount(lampData.home.count)
+      }),
+      lampLotus: {
+        goldText: lamp.formatCount(lampData.lotus.gold),
+        pinkText: lamp.formatCount(lampData.lotus.pink)
+      }
+    };
+  },
+
+  // 点亮我的一盏灯：只做视觉变化（总数 +1）+ 微震动 + 一句祝福，不发送任何请求
+  onLightLamp: function () {
+    if (this.data.lampLit) return;
+    var next = lamp.lightOne(this.data.lampTotal);
+    this.setData({
+      lampLit: true,
+      lampTotal: next,
+      lampTotalText: lamp.formatCount(next),
+      lampSub: lamp.fill(lampData.subTemplate, { total: lamp.formatCount(next) })
+    });
+    try {
+      if (wx.vibrateShort) wx.vibrateShort({ type: 'medium' });
+    } catch (err) { /* 部分机型不支持震动，静默降级 */ }
+    storage.markLampDay(todayStr());
+  },
+
+  closeLampWindow: function () {
+    this.setData({ lampShow: false });
+    storage.markLampDay(todayStr());
   },
 
   // 7 天循环灯阵（第几天已点亮）

@@ -822,6 +822,10 @@ function mockCtx() {
   // 藤蔓地图：五地剪影 + 10 个蜿蜒节点 + 主干
   check('首页为藤蔓地图（.vine-map）', !!$('#screen-home .vine-map'));
   check('有藤蔓主干', !!$('#screen-home .vine-stem'));
+  check('天梯顶部有天堂层（佛光/金顶/坛城）', !!$('#screen-home .ladder-heaven .h-potala'));
+  check('天梯底部有村落剪影', !!$('#screen-home .ladder-village'));
+  check('两侧五色经幡', $$('#screen-home .ladder-flags .flag').length === 16,
+    '实际 ' + $$('#screen-home .ladder-flags .flag').length);
   check('藤蔓上共 10 个关卡节点', $$('#screen-home #level-grid .level-item.node').length === 10,
     '实际 ' + $$('#screen-home #level-grid .level-item.node').length);
   check('五个地区剪影', $$('#screen-home #level-grid .region').length === 5,
@@ -840,6 +844,41 @@ function mockCtx() {
   check('新号资源条初始为 0/0/0-9',
     $('#res-oil').textContent === '0' && $('#res-points').textContent === '0' && $('#res-frag').textContent === '0/9',
     $('#res-oil').textContent + '|' + $('#res-points').textContent + '|' + $('#res-frag').textContent);
+
+  // 万家灯火 · 祈福跳窗（每天首次打开一次；纯静态：数字全部写死，不发任何网络请求）
+  check('首次进入首页出现祈福跳窗', $('#lamp-mask').classList.contains('show'));
+  check('总灯数为写死的 128,456', $('#lamp-sub').textContent.indexOf('128,456') > -1, $('#lamp-sub').textContent);
+  check('五地灯火列表齐备', $$('#lamp-list .lamp-row').length === 5,
+    '实际 ' + $$('#lamp-list .lamp-row').length);
+  check('家乡行为写死数据（浙江 12,000）',
+    $('#lamp-home').textContent.indexOf('浙江') > -1 && $('#lamp-home').textContent.indexOf('12,000') > -1,
+    $('#lamp-home').textContent);
+  check('两色莲花数字写死', $('#lamp-lotus-gold').textContent === '32,000' && $('#lamp-lotus-pink').textContent === '45,000',
+    $('#lamp-lotus-gold').textContent + '|' + $('#lamp-lotus-pink').textContent);
+  check('反向：未点亮前不显示祝福语', !$('#lamp-tip').classList.contains('show'));
+  $('#lamp-btn').click();
+  await sleep(60);
+  check('点亮后总灯数 +1（128,456 → 128,457）', $('#lamp-sub').textContent.indexOf('128,457') > -1,
+    $('#lamp-sub').textContent);
+  check('点亮后出现祝福语', $('#lamp-tip').classList.contains('show') && $('#lamp-tip').textContent.indexOf('感恩') > -1,
+    $('#lamp-tip').textContent);
+  check('点亮后生成 12 向金粉粒子', $$('#lamp-sparks .spark').length === 12,
+    '实际 ' + $$('#lamp-sparks .spark').length);
+  $('#lamp-btn').click();
+  await sleep(40);
+  check('反向：重复点击不再继续加数', $('#lamp-sub').textContent.indexOf('128,457') > -1 &&
+    $('#lamp-sub').textContent.indexOf('128,458') === -1, $('#lamp-sub').textContent);
+  check('点亮后记录当天日期（供「每天一次」判断）',
+    String((JSON.parse(win.localStorage.getItem('zangzi_progress')) || {}).lampDay || '').length === 10,
+    String((JSON.parse(win.localStorage.getItem('zangzi_progress')) || {}).lampDay));
+  check('反向：跳窗文案无竞争性/营销字眼',
+    !/排行|名次|金币|优惠券|广告|折扣|返现/.test($('#lamp-mask').textContent));
+  $('#lamp-skip').click();
+  await sleep(40);
+  check('关闭后跳窗消失', !$('#lamp-mask').classList.contains('show'));
+  ev('maybeShowLamp()');
+  await sleep(40);
+  check('反向：同一天再次进入不再弹出', !$('#lamp-mask').classList.contains('show'));
 
   // 悬浮入口 + 底部平层：仅首页显示，进入游戏后隐藏（不遮挡棋盘）
   check('首页显示左右悬浮入口', $('#side-left').classList.contains('show') && $('#side-right').classList.contains('show'));

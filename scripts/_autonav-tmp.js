@@ -10,6 +10,10 @@ const s = '<script>/*__AUTONAV__*/(function(){var q=location.search;' +
   'setTimeout(function(){try{showCard("letter_03");}catch(e){}},8800);}' +
   'else if(q.indexOf("vt=result")>-1){showScreen("game");startLevel(10);closeGuide();finishLevel();' +
   'setTimeout(function(){try{var b=document.getElementById("bless-name");if(b)b.value="卓玛";generateBlessing();}catch(e){}},200);}' +
+  // 万家灯火：light 后立即进入并点亮（截图用；lampLit 必须先判断，避免被 lamp 子串截胡）
+  'else if(q.indexOf("vt=lampLit")>-1){showLampWindow();' +
+  'setTimeout(function(){try{document.getElementById("lamp-btn").click();}catch(e){}},120);}' +
+  'else if(q.indexOf("vt=lamp")>-1){showLampWindow();}' +
   '}catch(e){document.title="ERR:"+e.message;}},150);})();</' + 'script>';
 h = h.replace('</body>', s + '</body>');
 fs.writeFileSync('preview/play.html', h);

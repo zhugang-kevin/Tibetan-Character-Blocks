@@ -32,7 +32,9 @@ function getProgress() {
     signIn: (p && p.signIn) || { streak: 0, lastDate: '', totalDays: 0, oil: 0 },
     fragments: (p && p.fragments) || [],
     inventory: (p && p.inventory) || {},
-    pot: (p && p.pot) || 0
+    pot: (p && p.pot) || 0,
+    // 万家灯火祈福跳窗：上次展示的日期（用于「每天首次打开只出现一次」）
+    lampDay: (p && p.lampDay) || ''
   };
 }
 
@@ -324,6 +326,16 @@ function waterPot(reward) {
 
 function getPot() { return getProgress().pot || 0; }
 
+// 万家灯火：记录「已展示日期」，保证每天只出现一次祈福跳窗
+function getLampDay() { return getProgress().lampDay || ''; }
+
+function markLampDay(day) {
+  var p = getProgress();
+  p.lampDay = String(day || '');
+  save(p);
+  return p.lampDay;
+}
+
 module.exports = {
   MAX_LEVEL: MAX_LEVEL,
   getProgress: getProgress,
@@ -367,5 +379,8 @@ module.exports = {
   getInventory: getInventory,
   useItem: useItem,
   waterPot: waterPot,
-  getPot: getPot
+  getPot: getPot,
+  // 万家灯火祈福跳窗（每天首次打开展示一次）
+  getLampDay: getLampDay,
+  markLampDay: markLampDay
 };
