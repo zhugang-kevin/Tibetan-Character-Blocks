@@ -31,6 +31,10 @@ var TOAST_MS = 1700;
 // 破碎粒子的六个方向 × 颜色（金粉 + 五色风马旗）
 var BIT_SLOTS = ['d0 gold', 'd1 r', 'd2 g', 'd3 b', 'd4 y', 'd5 w'];
 
+// 精灵表字母（试点：ཀ）：全部 ཀ 方块共用 images/sprite_ka.png 一张图（1 次图片请求），
+// 四色帧（红/蓝/绿/黄）由帧位移切换；质感（左上光源/软糖材质/底部暗色）已烘在帧里，不再叠加 CSS 渐变。
+var SPRITE_LETTERS = { letter_01: 'ka' };
+
 function findCard(id) {
   for (var k = 0; k < cardsData.length; k++) {
     if (cardsData[k].id === id) return cardsData[k];
@@ -173,9 +177,10 @@ Page({
       var j = Math.floor(Math.random() * (i + 1));
       var tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp;
     }
+    var occCount = {}; // 精灵表配对同色计数：同字母第 n 次出现 → 帧 floor(n/2)%4
     var tiles = pool.map(function (id, idx) {
       var el = elements[id];
-      return {
+      var t = {
         uid: idx,
         id: id,
         type: el.type,
@@ -190,6 +195,18 @@ Page({
         shatter: false,
         state: 'idle' // idle | selected | removing | removed | shake
       };
+      // 精灵表字母：成对同色帧（同字母第 1、2 张同帧，第 3、4 张同帧……）
+      // 配对仍按字母判定，颜色只是视觉暗示；洗牌在 pool 阶段已完成，同 id 出现顺序即池内顺序
+      var spriteKey = SPRITE_LETTERS[id];
+      if (spriteKey) {
+        var occ = occCount[id] || 0;
+        occCount[id] = occ + 1;
+        t.sprite = spriteKey;
+        t.variant = Math.floor(occ / 2) % 4;
+        t.spriteSrc = '/images/sprite_' + spriteKey + '.png';
+        t.pieceStyle = ''; // 质感烘在帧里，不用 CSS 渐变
+      }
+      return t;
     });
     // 障碍物：确定性布点（冰霜 / 藏式木箱），保证每种元素至少留 2 张可点的牌
     obstacles.planOverlays(cfg, pool).forEach(function (o) {

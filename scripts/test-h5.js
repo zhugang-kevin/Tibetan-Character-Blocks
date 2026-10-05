@@ -672,14 +672,34 @@ function mockCtx() {
   check('第 1 关无木箱', ev('state.crateTotal') === 0, 'crateTotal=' + ev('state.crateTotal'));
   check('第 1 关 DOM 无冰霜罩层', $$('#board .frost').length === 0);
 
-  // 四层物理层次：每张牌都有独立的 3D 凸起方块层（渐变 + 投影）
+  // 四层物理层次：每张牌都有独立的 3D 凸起方块层（渐变 + 投影；精灵表字母用帧图）
   check('每张牌都有 3D 方块层（.piece）', $$('#board .tile .piece').length === tiles().length,
     $$('#board .tile .piece').length + '/' + tiles().length);
-  const pieceStyle = ($('#board .tile .piece') || {}).getAttribute ? $('#board .tile .piece').getAttribute('style') : '';
-  check('方块为渐变底色（不是平铺纯色）', pieceStyle.indexOf('linear-gradient') > -1, pieceStyle.slice(0, 60));
-  check('方块有底部投影（3D 凸出感）', pieceStyle.indexOf('box-shadow') > -1);
+  const allPieces = $$('#board .tile .piece');
+  const gradPiece = allPieces.find(function (p) { return (p.getAttribute('style') || '').indexOf('linear-gradient') > -1; });
+  const spritePiece = allPieces.find(function (p) { return p.className.indexOf('ka-sprite-piece') > -1; });
+  check('方块为渐变底色或精灵帧图（不是平铺纯色）', !!gradPiece || !!spritePiece,
+    '渐变牌 ' + allPieces.filter(function (p) { return (p.getAttribute('style') || '').indexOf('linear-gradient') > -1; }).length
+    + ' 张 / 精灵牌 ' + allPieces.filter(function (p) { return p.className.indexOf('ka-sprite-piece') > -1; }).length + ' 张');
+  check('普通方块有底部投影（3D 凸出感）',
+    !gradPiece || (gradPiece.getAttribute('style') || '').indexOf('box-shadow') > -1,
+    gradPiece ? (gradPiece.getAttribute('style') || '').slice(0, 60) : '本局无渐变牌');
   const slotStyle = ($('#board .tile') || {}).getAttribute ? $('#board .tile').getAttribute('style') : '';
   check('槽位与方块分离（槽位不再承载牌面内容）', slotStyle.indexOf('linear-gradient') === -1);
+
+  // 精灵表字母（试点 ཀ）：共用一张 sprite_ka.png，帧位移切四色，成对同色
+  const kaTiles = tiles().filter(function (t) { return t.id === 'letter_01'; });
+  const kaSprites = $$('#board .ka-sprite');
+  check('ཀ 方块全部使用精灵表（.ka-sprite）', kaSprites.length === kaTiles.length && kaTiles.length > 0,
+    kaSprites.length + '/' + kaTiles.length);
+  const kaImgs = $$('#board .ka-sprite img');
+  const oneSrc = kaImgs.length ? kaImgs[0].getAttribute('src') : '';
+  check('精灵表共用一张图（全部 <img> 同源，1 次图片请求）',
+    kaImgs.length === kaSprites.length && kaImgs.every(function (i) { return i.getAttribute('src') === oneSrc; }) && oneSrc.length > 100);
+  check('精灵帧位移只可能是 4 色帧（ka-v0..ka-v3）',
+    kaSprites.every(function (s) { return /ka-v[0-3]\b/.test(s.className); }));
+  check('精灵牌不再叠加 CSS 渐变（质感由帧提供）',
+    kaSprites.every(function (s) { return (s.parentElement.getAttribute('style') || '').indexOf('linear-gradient') === -1; }));
 
   // 冰霜关（第 3 关）：罩住的牌不可点，且不计入正确率
   ev('startLevel(3)');

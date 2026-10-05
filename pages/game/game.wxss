@@ -174,6 +174,44 @@
   text-shadow: 0 3rpx 0 rgba(0, 0, 0, 0.45);
 }
 
+/* 精灵表字母（试点 ཀ）：全部该字母方块共用 images/sprite_ka.png 一张图（1 次图片请求），
+   2×2 四色帧（红/蓝/绿/黄）用帧位移切换；质感（左上光源/软糖材质/底部暗色）已烘在帧里。
+   注：WXSS 的 background-image url() 引用本地路径在真机不可靠，故用 <image> 组件 + 容器位移切帧（机制等价）。 */
+.piece.ka-sprite-piece {
+  box-shadow: 0 6rpx 10rpx rgba(0, 0, 0, 0.4);
+}
+.ka-sprite {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 100%;
+  height: 0;
+  padding-bottom: 100%; /* 牌面高 1.2×宽，精灵帧取正方形居中，避免拉伸变形 */
+  transform: translateY(-50%);
+  overflow: hidden;
+  border-radius: 12rpx;
+  pointer-events: none;
+}
+.ka-sprite image {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 200%;   /* 2×2 精灵表：单帧 = 容器 200% 尺寸的一半 */
+  height: 200%;
+  max-width: none;
+}
+.ka-v1 image { left: -100%; }
+.ka-v2 image { top: -100%; }
+.ka-v3 image { left: -100%; top: -100%; }
+/* 金色特殊方块：保留精灵质感，提亮 + 金星标记 */
+.tile.golden .piece.ka-sprite-piece {
+  background-image: none !important;
+  box-shadow: 0 6rpx 10rpx rgba(0, 0, 0, 0.4), 0 0 16rpx rgba(255, 217, 138, 0.55) !important;
+}
+.tile.golden .ka-sprite image {
+  filter: saturate(1.2) brightness(1.14);
+}
+
 /* 障碍物一：冰霜——半透明蓝罩 + 白边高光，罩住的牌不能直接点 */
 .frost {
   position: absolute;
@@ -227,13 +265,13 @@
   filter: saturate(0.6) brightness(0.78);
 }
 
-/* 消除：方块先向上浮起，再破碎（不是简单淡出） */
+/* 消除：方块先向上浮起 10px（20rpx），再缩小+金粉破碎（不是简单淡出） */
 .tile.removing .piece {
   animation: shatterUp 0.34s cubic-bezier(0.3, 0.9, 0.4, 1) forwards;
 }
 @keyframes shatterUp {
   0%   { transform: translateY(0) scale(1); opacity: 1; }
-  38%  { transform: translateY(-14rpx) scale(1.1); opacity: 1; }
+  38%  { transform: translateY(-20rpx) scale(1.1); opacity: 1; }
   100% { transform: translateY(-4rpx) scale(0.18); opacity: 0; }
 }
 

@@ -581,11 +581,31 @@
     box-shadow: 0 4px 0 #B8892A, 0 7px 12px rgba(0,0,0,.45), inset 0 2px 5px rgba(255,255,255,.5) !important;
   }
   #board .tile .star { color: #8A6414; text-shadow: 0 1px 0 rgba(255,255,255,.6); }
+  /* 精灵表字母（试点 ཀ）：全部该字母方块共用一张 2×2 四色帧图，帧位移切换；质感已烘在帧里 */
+  #board .piece.ka-sprite-piece { box-shadow: 0 3px 5px rgba(0,0,0,.4); }
+  #board .tile .ka-sprite {
+    position: absolute; left: 0; top: 50%;
+    width: 100%; height: 0; padding-bottom: 100%; /* 正方形帧居中，避免牌面 1.2:1 拉伸 */
+    transform: translateY(-50%);
+    overflow: hidden; border-radius: 7px; pointer-events: none;
+  }
+  #board .tile .ka-sprite img {
+    position: absolute; left: 0; top: 0;
+    width: 200%; height: 200%; max-width: none;
+  }
+  #board .tile .ka-v1 img { left: -100%; }
+  #board .tile .ka-v2 img { top: -100%; }
+  #board .tile .ka-v3 img { left: -100%; top: -100%; }
+  #board .tile.golden .piece.ka-sprite-piece {
+    background-image: none !important;
+    box-shadow: 0 3px 5px rgba(0,0,0,.4), 0 0 8px rgba(255,217,138,.55) !important;
+  }
+  #board .tile.golden .ka-sprite img { filter: saturate(1.2) brightness(1.14); }
   /* 消除：上浮后破碎（不是简单淡出） */
   #board .tile.removing .piece { animation: shatterUp .34s cubic-bezier(.3,.9,.4,1) forwards; }
   @keyframes shatterUp {
     0% { transform: translateY(0) scale(1); opacity: 1; }
-    38% { transform: translateY(-8px) scale(1.1); opacity: 1; }
+    38% { transform: translateY(-10px) scale(1.1); opacity: 1; }
     100% { transform: translateY(-2px) scale(.18); opacity: 0; }
   }
   /* 破碎粒子：金粉 / 五色风马旗碎片 */
@@ -1679,6 +1699,9 @@ function pieceStyle(color) {
 }
 const BIT_SLOTS = ['d0 gold', 'd1 r', 'd2 g', 'd3 b', 'd4 y', 'd5 w'];
 
+// 精灵表字母（试点 ཀ）：全部该字母方块共用一张 2×2 四色帧图（红/蓝/绿/黄），帧位移切换
+const SPRITE_LETTERS = { letter_01: 'ka' };
+
 /* ---------------- PRD v4 收集与留存（与 utils/collect.js 同规则，体验版镜像） ---------------- */
 const FRAGMENT_TOTAL = 9;
 const REGIONS = DATA.regions || [];
@@ -2018,9 +2041,10 @@ function startLevel(level) {
     const j = Math.floor(Math.random() * (i + 1));
     const tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp;
   }
+  const occCount = {}; // 精灵表配对同色计数：同字母第 n 次出现 → 帧 floor(n/2)%4
   state.tiles = pool.map(function (id, idx) {
     const el = ELEMENTS[id];
-    return {
+    const t = {
       uid: idx, id: id, type: el.type,
       tibetan: el.tibetan || '', color: el.color,
       fallbackText: el.char || '',
@@ -2029,6 +2053,15 @@ function startLevel(level) {
       frost: false, crate: 0, blocked: false, shatter: false,
       state: 'idle'
     };
+    // 精灵表字母（试点 ཀ）：成对同色帧（同字母第 1、2 张同帧，第 3、4 张同帧……）
+    if (SPRITE_LETTERS[id]) {
+      const occ = occCount[id] || 0;
+      occCount[id] = occ + 1;
+      t.sprite = SPRITE_LETTERS[id];
+      t.variant = Math.floor(occ / 2) % 4;
+      t.pieceStyle = ''; // 质感烘在帧里，不用 CSS 渐变
+    }
+    return t;
   });
   // 障碍物布点（冰霜 / 藏式木箱）
   planOverlays(cfg, pool).forEach(function (o) {
@@ -2093,9 +2126,11 @@ function renderBoard() {
     d.style.color = t.color;
     d.dataset.index = idx;
 
-    // 第四层：3D 凸起方块容器（渐变/投影由内联样式给出）
-    let inner = '<div class="piece" style="' + t.pieceStyle + '">';
-    if (t.type === 'letter') {
+    // 第四层：3D 凸起方块容器（渐变/投影由内联样式给出；精灵表字母用帧图取代渐变）
+    let inner = '<div class="piece' + (t.sprite ? ' ka-sprite-piece' : '') + '" style="' + t.pieceStyle + '">';
+    if (t.sprite) {
+      inner += '<div class="ka-sprite ka-v' + t.variant + '"><img src="' + IMAGES.spriteKa + '" alt=""></div>';
+    } else if (t.type === 'letter') {
       inner += '<span class="glyph tib">' + t.tibetan + '</span>';
     } else {
       inner += '<img class="icon-img" src="' + iconDataUrl(t.id) + '" alt="">';

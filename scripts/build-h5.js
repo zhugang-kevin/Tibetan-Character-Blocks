@@ -52,7 +52,9 @@ const IMAGES = {
   bgSky: dataUrl('images/bg-sky.png'),
   bgGround: dataUrl('images/bg-ground.png'),
   bgGlobal: dataUrl('images/bg-global-h5.jpg'),
-  pattern: dataUrl('images/pat-tile.png')
+  pattern: dataUrl('images/pat-tile.png'),
+  // 精灵表字母（试点 ཀ）：全部该字母方块共用一张 2×2 四色帧图
+  spriteKa: dataUrl('images/sprite_ka.png')
 };
 
 let html = fs.readFileSync(TEMPLATE, 'utf8');

@@ -37,9 +37,12 @@
             data-index="{{index}}"
             bindtap="onTapTile"
           >
-            <!-- 第四层：凸起方块（渐变底色 + 底部投影 + 顶部高光） -->
-            <view class="piece" style="{{item.pieceStyle}}">
-              <text wx:if="{{item.type === 'letter'}}" class="glyph tibetan" style="font-size: {{glyphSize}}rpx;">{{item.tibetan}}</text>
+            <!-- 第四层：凸起方块（渐变底色 + 底部投影 + 顶部高光；精灵表字母用帧图取代渐变） -->
+            <view class="piece {{item.sprite ? 'ka-sprite-piece' : ''}}" style="{{item.pieceStyle}}">
+              <view wx:if="{{item.sprite}}" class="ka-sprite ka-v{{item.variant}}">
+                <image src="{{item.spriteSrc}}" mode="scaleToFill" />
+              </view>
+              <text wx:elif="{{item.type === 'letter'}}" class="glyph tibetan" style="font-size: {{glyphSize}}rpx;">{{item.tibetan}}</text>
               <image wx:elif="{{iconPaths[item.id]}}" class="glyph-img" src="{{iconPaths[item.id]}}" mode="aspectFit" />
               <text wx:else class="glyph-fallback">{{item.fallbackText}}</text>
               <view wx:if="{{item.golden}}" class="gold-star">✦</view>
