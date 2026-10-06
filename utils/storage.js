@@ -7,13 +7,25 @@
 var KEY = 'progress';
 var MAX_LEVEL = 10;
 
+// 连击口径标记（D34）。D34 之前 bestCombo 记的是「本局内连续成功消除的次数」——
+// 因为配对判定是「任意两张同 id」（比三消宽两个数量级），链条几乎不会断，
+// 一个不错的玩家一局能从 ×2 单调涨到 ×30，这个值其实度量的是「这局你错了几次」。
+// D34 起改成「时间窗口内的连击」（utils/praise.js），量纲完全不同。
+// 所以：进度里没有口径标记 = 旧数据 → bestCombo 归零（旧值在新口径下是虚假纪录）；
+// 下一次 save 会打上标记，之后只按新口径累计。
+var COMBO_MODEL = 'window';
+
 function getProgress() {
   var p = wx.getStorageSync(KEY);
+  var comboCurrent = !!p && p.comboModel === COMBO_MODEL;
   return {
     unlockedLevel: (p && p.unlockedLevel) || 1,
     completedLevels: (p && p.completedLevels) || [],
     stamps: (p && p.stamps) || [],
-    bestCombo: (p && p.bestCombo) || 0,
+    bestCombo: comboCurrent ? ((p && p.bestCombo) || 0) : 0,
+    comboModel: COMBO_MODEL,
+    // 即时应激励的文案开关（D34）：只关赞美文案，不关元素发音
+    praiseOff: !!(p && p.praiseOff),
     seenCards: (p && p.seenCards) || [],
     onboardDone: !!(p && p.onboardDone),
     // 证书体系（藏文成长阶梯）：最佳正确率 / 证书 / 编号流水 / 持有人
@@ -43,6 +55,8 @@ function getProgress() {
 }
 
 function save(p) {
+  // 落库时打上连击口径标记：从此这次写入的 bestCombo 就是新口径的值（见 COMBO_MODEL 注释）
+  if (p && typeof p === 'object') p.comboModel = COMBO_MODEL;
   wx.setStorageSync(KEY, p);
 }
 
@@ -57,7 +71,9 @@ function completeLevel(n) {
   return p;
 }
 
-// 记录最高连击，返回是否刷新纪录
+// 记录最高连击，返回是否刷新纪录。
+// ⚠️ n 必须是 utils/praise.js 的「窗口连击」值（不是本局连续成功次数）。
+//    口径在 D34 变过一次，见顶部 COMBO_MODEL 注释。
 function recordCombo(n) {
   var p = getProgress();
   if (n > p.bestCombo) {
@@ -66,6 +82,19 @@ function recordCombo(n) {
     return true;
   }
   return false;
+}
+
+// ---------- 即时应激励的文案开关（D34） ----------
+// 只关「赞美文案」。元素发音属学习闭环（每次配对朗读该元素），不在可关范围内。
+function getPraiseOff() {
+  return !!getProgress().praiseOff;
+}
+
+function setPraiseOff(off) {
+  var p = getProgress();
+  p.praiseOff = !!off;
+  save(p);
+  return p.praiseOff;
 }
 
 // 授予印记（v0：'lhasa' 拉萨印章）。返回是否为新获得。
@@ -375,6 +404,8 @@ module.exports = {
   getProgress: getProgress,
   completeLevel: completeLevel,
   recordCombo: recordCombo,
+  getPraiseOff: getPraiseOff,
+  setPraiseOff: setPraiseOff,
   grantStamp: grantStamp,
   isCardSeen: isCardSeen,
   markCardSeen: markCardSeen,

@@ -45,6 +45,8 @@ const DATA = {
   lamp: require(path.join(ROOT, 'data', 'lamp')),
   // 「藏文可以组合」拼合预告（纯展示数据）
   combo: require(path.join(ROOT, 'data', 'combo')),
+  // 即时应激励文案库（D34：五档中藏双语赞美）
+  praise: require(path.join(ROOT, 'data', 'praise')),
   // 秘境揭图（D31）：十关各一张，程序绘制（scripts/make_reveals.py）
   reveals: require(path.join(ROOT, 'data', 'reveals'))
 };
@@ -228,6 +230,17 @@ if (!(DATA.lamp.lotus && DATA.lamp.lotus.gold > 0 && DATA.lamp.lotus.pink > 0)) 
 });
 if (lampBad) process.exit(1);
 
+// ---------- 8. 即时应激励文案库抽查（D34） ----------
+// 尺子放在 scripts/lib/praise-guard.js：validate §32 会用同一把尺子做反例自测，
+// 避免「build-h5 一套口径、validate 另一套口径」。
+const { checkPraiseLibrary } = require(path.join(ROOT, 'scripts', 'lib', 'praise-guard'));
+const { isWellFormedSentence } = require(path.join(ROOT, 'utils', 'tibetan-text'));
+const praise = DATA.praise || {};
+const praiseRes = checkPraiseLibrary(praise, { isWellFormedSentence: isWellFormedSentence });
+praiseRes.errors.forEach(function (m) { console.error('✗ ' + m); });
+praiseRes.warns.forEach(function (m) { console.warn('⚠ ' + m); });
+if (praiseRes.bad) process.exit(1);
+
 fs.mkdirSync(path.dirname(OUT), { recursive: true });
 fs.writeFileSync(OUT, html, 'utf8');
 
@@ -239,6 +252,8 @@ console.log('  阶梯：' + stages.length + ' 个阶段（已开放 ' +
   stages.filter(function (s) { return s.open; }).length + ' 个，每阶段 10 关一张证书）');
 console.log('  资产：4 个 Logo + 4 个背景（全局底图/经幡/布达拉宫/纹样，已内联 base64）');
 console.log('  牌数一致性：10 关全部通过');
+console.log('  应激励文案：' + (praise.tiers || []).reduce(function (n, t) { return n + t.texts.length; }, 0) +
+  ' 条（5 档中藏双语，藏文良构逐条校验通过）');
 console.log('  权益中心：' + DATA.merchants.length + ' 家商家（本地生活 ' +
   DATA.merchants.filter(function (m) { return m.track === 'local'; }).length + ' / 游客专属 ' +
   DATA.merchants.filter(function (m) { return m.track === 'tourist'; }).length + ' / 通用 ' +

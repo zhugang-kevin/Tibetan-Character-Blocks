@@ -15,10 +15,20 @@
     <text class="status-level">第 {{level}} 关</text>
     <text class="status-score">积分 {{score}}</text>
     <text class="status-pairs">{{matchedPairs}}/{{totalPairs}} 对</text>
+    <!-- 文案开关（D34）：只关赞美文案，不关元素发音（发音属学习闭环） -->
+    <text class="status-praise {{praiseOff ? 'off' : ''}}" bindtap="onTogglePraise">{{praiseOff ? '文案 关' : '文案 开'}}</text>
   </view>
 
-  <!-- 连击浮层 -->
-  <view wx:if="{{comboFx}}" class="combo-fx">{{comboFx}}</view>
+  <!-- 即时应激励浮字（D34）：一次只显示一条，**新的替换旧的**（不排队、不叠加）。
+       ant-a / ant-b 是同一组动画的两个名字，轮流用：WXSS 里同一个 animation-name
+       不会重播，替换文案时必须换名，否则第二条看不出在播放。 -->
+  <view wx:if="{{praiseOn}}" class="praise-fx lv{{praiseLevel}} {{praiseAnt ? 'ant-a' : 'ant-b'}}">
+    <text wx:if="{{praiseLevel >= 2}}" class="praise-combo">连击 ×{{praiseCombo}}</text>
+    <text wx:if="{{praiseTibetan}}" class="praise-bo tibetan">{{praiseBo}}</text>
+    <text class="praise-zh">{{praiseZh}}</text>
+  </view>
+  <!-- 档位跃迁（等级 4 起）的一次性光环：挂在 praiseAnt 上，靠重新挂载让动画重播 -->
+  <view wx:if="{{praiseOn && praiseBurst && praiseAnt}}" class="praise-burst"></view>
 
   <!-- 破冰 / 破箱浮字 -->
   <view wx:if="{{brokenFx}}" class="break-fx">{{brokenFx}}</view>

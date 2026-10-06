@@ -89,10 +89,59 @@ function drawTibetanWrapped(ctx, text, cx, topY, maxWidth, lineHeight) {
   return lines.length;
 }
 
+// 组合符号（不能独立出现；必须挂在基字或同簇组合符号之后）
+//   0F71..0F84 = 元音 / 变音；0F90..0FBC = 下加字；
+//   0F35 / 0F37 / 0F39 / 0FC6 = 长音、下加环、下加元音等附标。
+var COMBINING = /[\u0F71-\u0F84\u0F90-\u0FBC\u0F35\u0F37\u0F39\u0FC6]/;
+// 可作簇首的字符：辅音 / 元音字母 / 藏文特殊符号（ཀ ཁ … ཨ，以及 ༀ ཾ 等）
+var CLUSTER_HEAD = /[\u0F40-\u0F6C\u0F88-\u0F8C\u0F00-\u0F03\u0F7F]/;
+var PUNCT_ALL = /[\u0F0B-\u0F0F]/;
+
+/**
+ * 句子级藏文良构检查（纯函数，不依赖 Canvas）。
+ *
+ * ⚠️ 只用于「成句的文案」（如赞美术语），**不要**拿去校验单个字母牌面：
+ *    单个字母（如 ཀ）本来就没有 tsheg / shad 收尾，会被判为不完整。
+ *
+ * 检查三类会在真实渲染中「露馅」的错误：
+ *   ① 孤立组合符号 → 渲染成 ◌ 虚圈（违反 docs/tibetan-typography.md「绝不拆音节」）
+ *   ② tsheg / shad 居首或连续出现（shad 族永不居行首）
+ *   ③ 末尾音节没有 tsheg / shad 收尾（说明音节被截断）
+ *
+ * @param {string} text
+ * @returns {{ok: boolean, reasons: string[]}}
+ */
+function isWellFormedSentence(text) {
+  var s = String(text == null ? '' : text);
+  var reasons = [];
+  if (!s) return { ok: false, reasons: ['空文本'] };
+
+  for (var i = 0; i < s.length; i++) {
+    if (!COMBINING.test(s[i])) continue;
+    var prev = i > 0 ? s[i - 1] : '';
+    if (!(i > 0 && (CLUSTER_HEAD.test(prev) || COMBINING.test(prev)))) {
+      reasons.push('第 ' + i + ' 位（U+' +
+        s.charCodeAt(i).toString(16).toUpperCase() + '）是孤立组合符号，会渲染成 ◌ 虚圈');
+    }
+  }
+
+  for (var j = 0; j < s.length; j++) {
+    if (!PUNCT_ALL.test(s[j])) continue;
+    if (j === 0) reasons.push('首字符是 tsheg / shad（标点不得居首）');
+    else if (PUNCT_ALL.test(s[j - 1])) reasons.push('第 ' + j + ' 位出现连续标点（' + s[j - 1] + s[j] + '）');
+  }
+
+  var last = s[s.length - 1];
+  if (!PUNCT_ALL.test(last)) reasons.push('末尾音节没有 tsheg / shad 收尾，音节被截断');
+
+  return { ok: reasons.length === 0, reasons: reasons };
+}
+
 module.exports = {
   tokenize: tokenize,
   wrapTibetan: wrapTibetan,
   drawTibetanWrapped: drawTibetanWrapped,
+  isWellFormedSentence: isWellFormedSentence,
   TSHEG: TSHEG,
   SHAD: SHAD
 };

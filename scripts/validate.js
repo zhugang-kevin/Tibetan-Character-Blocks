@@ -232,8 +232,8 @@ var gameJs = read('pages/game/game.js');
     if (gameJs.indexOf(p[0]) > -1) ok('game.js 已接入' + p[1]);
     else err('game.js 未接入' + p[1]);
   });
-if (gameJs.indexOf('audio.combo(') > -1) ok('连击变调音效已接入');
-else warn('连击音效未变调（可接受但建议）');
+if (gameJs.indexOf('audio.tier(') > -1) ok('档位音效（D34 一档一音）已接入');
+else err('game.js 未接入档位音效 audio.tier');
 if (read('utils/storage.js').indexOf('grantStamp') > -1) ok('护照印记存储已接入');
 else err('存储层缺少印记能力');
 var resultJs2 = read('pages/result/result.js');
@@ -2288,6 +2288,330 @@ section('31. 下落式盘面模型（D33：下落 + 顶部补充 + 三条不变�
   else err('build-h5 仍在用「总数 = 格数」校验');
 }
 
+
+// ================================================================
+section('32. 消除情绪激励（D34：时间窗口连击 · 五档赞美 · 两端同源）');
+{
+  const praise32 = require(path.join(ROOT, 'utils', 'praise'));
+  const library32 = require(path.join(ROOT, 'data', 'praise'));
+  const tib32 = require(path.join(ROOT, 'utils', 'tibetan-text'));
+  const { checkPraiseLibrary } = require(path.join(ROOT, 'scripts', 'lib', 'praise-guard'));
+  const gw32 = read('pages/game/game.wxml');
+  const gx32 = read('pages/game/game.wxss');
+  const gj32 = read('pages/game/game.js');
+  const au32 = read('utils/audio.js');
+  const st32 = read('utils/storage.js');
+  const tpl32 = read('preview/template.html');
+  const b532 = read('scripts/build-h5.js');
+
+  // --- 32.1 文案库：用与 build-h5 同一把尺子（scripts/lib/praise-guard.js） ---
+  const libRes32 = checkPraiseLibrary(library32, { isWellFormedSentence: tib32.isWellFormedSentence });
+  if (libRes32.bad === 0) ok('文案库过守卫：5 档 / 每档 ≥5 条 / 中藏双语齐备 / 字段白名单 / 无重复');
+  else libRes32.errors.forEach(m => err(m));
+  const total32 = (library32.tiers || []).reduce((n, t) => n + t.texts.length, 0);
+  ok('文案库共 ' + total32 + ' 条（' + library32.tiers.length + ' 档 × ' +
+    library32.tiers.map(t => t.texts.length).join('/') + '）');
+  (library32.tiers || []).forEach(t => {
+    const wfAll = t.texts.every(x => tib32.isWellFormedSentence(x.bo).ok);
+    if (wfAll) ok('第 ' + t.level + ' 档（' + t.name + '）' + t.texts.length + ' 条藏文全部良构（无孤立组合符号 / 标点合法 / 末尾有收尾）');
+    else err('第 ' + t.level + ' 档存在藏文不良构条目');
+  });
+  if (library32.pendingNativeReview === true) warn('文案库藏文待母语者校对（pendingNativeReview=true，Gate 2 前置项）');
+  else ok('文案库已标记母语者校对完成');
+
+  // --- 32.2 反例自测：这把尺子必须真的拦得住（喂坏数据要判错） ---
+  const clone32 = () => JSON.parse(JSON.stringify(library32));
+  {
+    const c = clone32(); c.tiers.pop();
+    if (checkPraiseLibrary(c, { isWellFormedSentence: tib32.isWellFormedSentence }).bad > 0)
+      ok('反例自测：删掉一档 → 守卫判错（档位数是真的在查）');
+    else err('守卫漏判：只有 4 个档位却通过');
+  }
+  {
+    const c = clone32(); c.tiers[2].texts[0].bo = '\u0F72';
+    if (checkPraiseLibrary(c, { isWellFormedSentence: tib32.isWellFormedSentence }).bad > 0)
+      ok('反例自测：藏文换成孤立元音 ི → 守卫判错（排版良构是真的在查）');
+    else err('守卫漏判：孤立组合符号（会渲染成 ◌ 虚圈）却通过');
+  }
+  {
+    const c = clone32(); c.tiers[0].texts[0].zh = '排行榜第一';
+    if (checkPraiseLibrary(c, { isWellFormedSentence: tib32.isWellFormedSentence }).bad > 0)
+      ok('反例自测：中文塞入「排行榜」→ 守卫判错（违禁字眼是真的在查）');
+    else err('守卫漏判：竞争性字眼却通过');
+  }
+  {
+    const c = clone32(); c.tiers[1].texts[0].price = 9;
+    if (checkPraiseLibrary(c, { isWellFormedSentence: tib32.isWellFormedSentence }).bad > 0)
+      ok('反例自测：文案夹带 price 字段 → 守卫判错（字段白名单是真的在查）');
+    else err('守卫漏判：文案夹带金额字段却通过');
+  }
+  {
+    const c = clone32();
+    const bare = ['\u0F0Bཀ', 'ཀ\u0F0D\u0F0D', 'ཀ'];
+    if (bare.every(s => !tib32.isWellFormedSentence(s).ok))
+      ok('反例自测：tsheg 居首 / shad 连续 / 末尾缺收尾 均被判不良构');
+    else err('良构守卫对 tsheg / shad / 收尾 的判定失准');
+  }
+  if (tib32.isWellFormedSentence('ཡག་པོ།').ok && tib32.isWellFormedSentence('བཀྲ་ཤིས་བདེ་ལེགས།').ok)
+    ok('正例自测：ཡག་པོ། / བཀྲ་ཤིས་བདེ་ལེགས། 判为良构（不是一律报错）');
+  else err('良构守卫误判正常藏文句');
+
+  // --- 32.3 连击窗口数学（窗口随元素种类缩放，边界含端点） ---
+  const W32 = praise32.windowMsOf;
+  if (praise32.WINDOW_MIN === 900 && praise32.WINDOW_MAX === 2600) ok('窗口上下界 900 / 2600 ms（单种元素不会过短、12 种不会过长）');
+  else err('窗口上下界被改动：' + praise32.WINDOW_MIN + ' / ' + praise32.WINDOW_MAX);
+  [[0, 900], [1, 900], [2, 920], [4, 1240], [5, 1400], [6, 1560], [7, 1720], [8, 1880], [10, 2200], [12, 2520], [99, 2600]]
+    .forEach(([n, want]) => {
+      const got = W32(n);
+      if (got === want) ok('窗口：' + n + ' 种元素 → ' + got + ' ms');
+      else err('窗口：' + n + ' 种元素应为 ' + want + ' ms，实际 ' + got);
+    });
+  let mono32 = true;
+  for (let n = 1; n <= 20; n++) if (W32(n) < W32(n - 1)) mono32 = false;
+  if (mono32) ok('窗口随元素种类单调不减（越难找给的时间越长）');
+  else err('窗口出现收缩：某一关会比上一关更难连击');
+
+  // --- 32.4 时间窗口连击：端点算相连、超窗断链、时间倒流断链 ---
+  const w1 = W32(4);
+  const c1 = praise32.nextCombo({ combo: 0, at: null }, 1000, w1);
+  if (c1.combo === 1 && c1.at === 1000) ok('本局首次消除 → 连击 1');
+  else err('本局首次消除连击应为 1');
+  if (praise32.nextCombo(c1, 1000 + w1, w1).combo === 2) ok('距上次恰好 = 窗口（' + w1 + ' ms）仍算相连 → 连击 2');
+  else err('窗口端点判定错误：恰好等于窗口应算相连');
+  if (praise32.nextCombo(c1, 1000 + w1 + 1, w1).combo === 1) ok('超出窗口 1 ms → 断链回连击 1');
+  else err('超窗未断链（阶梯会退化成「永远是最高档」）');
+  if (praise32.nextCombo(c1, 999, w1).combo === 1) ok('时间倒流（now < at）→ 按断链处理，不会算出负数连击');
+  else err('时间倒流未断链');
+  if (praise32.nextCombo(c1, 1000, w1).combo === 2) ok('同一毫秒内连消两次仍算相连（Δ=0 ≤ 窗口）');
+  else err('Δ=0 的边界判定错误');
+
+  // --- 32.5 档位映射与视听档位 ---
+  [[0, 1], [1, 1], [2, 2], [3, 3], [4, 4], [5, 5], [6, 5], [99, 5]].forEach(([n, want]) => {
+    if (praise32.tierOf(n) === want) ok('连击 ' + n + ' → 档位 ' + want);
+    else err('连击 ' + n + ' 应为档位 ' + want + '，实际 ' + praise32.tierOf(n));
+  });
+  [3, 4, 5].forEach(lv => {
+    if (praise32.showsTibetan(lv)) ok('档位 ' + lv + ' 显示藏文大字');
+    else err('档位 ' + lv + ' 应显示藏文大字');
+  });
+  [1, 2].forEach(lv => {
+    if (!praise32.showsTibetan(lv)) ok('档位 ' + lv + ' 只出中文（藏文大字从档位 3 起）');
+    else err('档位 ' + lv + ' 不应显示藏文大字');
+  });
+  [4, 5].forEach(lv => {
+    if (praise32.showsBurst(lv)) ok('档位 ' + lv + ' 有跃迁光环');
+    else err('档位 ' + lv + ' 应有跃迁光环');
+  });
+  [1, 2, 3].forEach(lv => {
+    if (!praise32.showsBurst(lv)) ok('档位 ' + lv + ' 无光环（不喧宾夺主，也不盖住揭图层）');
+    else err('档位 ' + lv + ' 不应有光环');
+  });
+  const WANT_SOUND32 = { 1: 'match', 2: 'drum', 3: 'horn', 4: 'cheer', 5: 'cheer' };
+  Object.keys(WANT_SOUND32).forEach(lv => {
+    if (praise32.audioFor(Number(lv)) === WANT_SOUND32[lv]) ok('档位 ' + lv + ' 音效 = ' + WANT_SOUND32[lv]);
+    else err('档位 ' + lv + ' 音效应为 ' + WANT_SOUND32[lv] + '，实际 ' + praise32.audioFor(Number(lv)));
+  });
+
+  // --- 32.6 抽取：同一条文案不连续出现两次 ---
+  let bump32 = 0;
+  for (let lv = 1; lv <= 5; lv++) {
+    for (let r = 0; r < 1; r += 0.01) {
+      if (praise32.pickIndex(lv, 0, () => r) === 0) bump32++;
+      if (praise32.pickIndex(lv, 4, () => r) === 4) bump32++;
+    }
+  }
+  if (bump32 === 0) ok('抽取永不返回上一条（5 档 × 100 个 rand 采样 × 首/末位两种 lastIndex）');
+  else err('同一条文案会连续出现 ' + bump32 + ' 次（「不连续重复」规则失效）');
+  let consec32 = 0;
+  for (let lv = 1; lv <= 5; lv++) {
+    let last = -1;
+    for (let k = 0; k < 200; k++) {
+      const i = praise32.pickIndex(lv, last, Math.random);
+      if (i === last) consec32++;
+      last = i;
+    }
+  }
+  if (consec32 === 0) ok('1000 次真实随机抽取中零连续重复（5 档 × 200 次）');
+  else err('随机抽取出现连续重复 ' + consec32 + ' 次');
+
+  // --- 32.7 频率控制（阶梯往上跳 = 稀有事件，值得打断） ---
+  const GAP32 = praise32.PRAISE_GAP_MS;
+  if (praise32.shouldShow(3, 2, 10, () => 0.99)) ok('档位跃迁强制展示（间隔只有 10 ms 也照弹）');
+  else err('档位跃迁未强制展示，阶梯爬升的爽感会被间隔闸门吃掉');
+  if (!praise32.shouldShow(2, 2, GAP32 - 1, () => 0.99)) ok('同档且间隔不足 ' + GAP32 + ' ms → 丢弃（文字不会互相覆盖）');
+  else err('最小间隔未生效');
+  if (praise32.shouldShow(2, 2, GAP32, () => 0.99)) ok('间隔刚好达标 → 展示');
+  else err('间隔达标却未展示');
+  if (praise32.shouldShow(1, 1, GAP32, () => 0.29)) ok('档位 1 概率闸门命中（rand 0.29 < 0.30）');
+  else err('档位 1 概率闸门失准');
+  if (!praise32.shouldShow(1, 1, GAP32, () => 0.3)) ok('档位 1 概率闸门落空（rand 0.30 ≥ 0.30）');
+  else err('档位 1 概率闸门端点错误');
+  if (!praise32.shouldShow(1, 0, GAP32, () => 0.99)) ok('档位 1 不算「跃迁」（否则每次孤立消除都弹）');
+  else err('档位 1 被误判为跃迁');
+  if (praise32.shouldShow(1, 0, null, () => 0.0)) ok('首次展示不受最小间隔限制（since 为 null）');
+  else err('首次展示被最小间隔错误拦下');
+
+  // --- 32.8 onMatch / onMiss 端到端（注入假时钟，不依赖真实时间） ---
+  let S32 = praise32.initState();
+  const types32 = 2, win32 = W32(types32);
+  let tt = 100000;
+  const lvSeq32 = [];
+  for (let k = 0; k < 5; k++) {
+    const d = praise32.onMatch(S32, tt, types32, () => 0.0);
+    lvSeq32.push(d.level);
+    S32 = { combo: d.combo, prevTier: d.prevTier, lastShownAt: d.lastShownAt,
+            lastIndex: d.lastIndex, maxCombo: d.maxCombo };
+    tt += Math.floor(win32 / 2);
+  }
+  if (lvSeq32.join(',') === '1,2,3,4,5') ok('半窗内连续 5 次消除 → 档位依次 1→2→3→4→5（阶梯真的在爬）');
+  else err('档位阶梯不符：' + lvSeq32.join(','));
+  if (S32.maxCombo === 5) ok('最高连击记录累计到 5');
+  else err('maxCombo 应为 5，实际 ' + S32.maxCombo);
+  const slow32 = praise32.onMatch(S32, tt + win32 + 500, types32, () => 0.0);
+  if (slow32.level === 1 && slow32.maxCombo === 5) ok('超窗一次 → 档位回到 1，但最高连击仍记 5（只增不减）');
+  else err('超窗后档位/最高连击口径错误：level=' + slow32.level + ' maxCombo=' + slow32.maxCombo);
+  const M32 = praise32.onMiss(S32);
+  if (M32.combo.combo === 0 && M32.prevTier === 0) ok('错配 → 连击与档位同时归零');
+  else err('错配未把连击/档位归零');
+  if (M32.maxCombo === 5) ok('错配不清空最高连击（只增不减）');
+  else err('错配把最高连击也清了');
+  const after32 = praise32.onMatch(M32, tt, types32, () => 0.0);
+  if (after32.level === 1) ok('错配后下一次消除从档位 1 重新起步');
+  else err('错配后未回到档位 1，实际 ' + after32.level);
+
+  // --- 32.9 两端同源：常量 / 音效表 / 迁移标记 ---
+  [['WINDOW_BASE', 600], ['WINDOW_STEP', 160], ['WINDOW_MIN', 900], ['WINDOW_MAX', 2600],
+   ['PRAISE_GAP_MS', 1100], ['TIER1_PROB', 0.3]].forEach(([k, v]) => {
+    if (praise32[k] === v) ok('utils/praise.js ' + k + ' = ' + v);
+    else err('utils/praise.js ' + k + ' 被改动：' + praise32[k]);
+  });
+  [['PRAISE_WINDOW_BASE', '600'], ['PRAISE_WINDOW_STEP', '160'], ['PRAISE_WINDOW_MIN', '900'],
+   ['PRAISE_WINDOW_MAX', '2600'], ['PRAISE_GAP_MS', '1100'], ['PRAISE_TIER1_PROB', '0\\.3']].forEach(([k, v]) => {
+    if (new RegExp(k + '\\s*=\\s*' + v + '\\s*;').test(tpl32)) ok('体验版镜像 ' + k + ' = ' + v.replace('\\', ''));
+    else err('体验版镜像 ' + k + ' 未对齐 ' + v.replace('\\', '') + '（两端判定会漂移）');
+  });
+  const soundOf = (src, name) => {
+    const m = src.match(new RegExp(name + '\\s*=\\s*(\\[[^\\]]*\\])'));
+    return m ? m[1].replace(/\s|'/g, '') : null;
+  };
+  const tsAudio32 = soundOf(au32, 'TIER_SOUND');
+  const tsPraise32 = soundOf(read('utils/praise.js'), 'TIER_SOUND');
+  const tsTpl32 = soundOf(tpl32, 'PRAISE_TIER_SOUND');
+  if (tsAudio32 && tsAudio32 === tsPraise32 && tsAudio32 === tsTpl32) ok('档位音效表三处逐字一致：' + tsAudio32);
+  else err('档位音效表不一致：audio=' + tsAudio32 + ' praise=' + tsPraise32 + ' 体验版=' + tsTpl32);
+  [['utils/storage.js', st32], ['preview/template.html', tpl32]].forEach(([f, src]) => {
+    if (src.indexOf("COMBO_MODEL = 'window'") > -1 && src.indexOf('comboModel') > -1)
+      ok(f + ' 含连击单位迁移契约（COMBO_MODEL / comboModel）');
+    else err(f + ' 缺连击单位迁移契约（旧记录会以「每关连击」的旧口径冒充新口径）');
+  });
+  ['audio/drum.wav', 'audio/horn.wav', 'audio/cheer.wav'].forEach(f => {
+    if (exists(f)) ok('档位音效资产 ' + f + ' 存在');
+    else err('缺少档位音效资产 ' + f);
+  });
+  if (exists('scripts/make_praise_audio.py')) ok('音效合成脚本 scripts/make_praise_audio.py 存在（三条新音可复现）');
+  else err('缺少档位音效合成脚本，新音不可复现');
+
+  // --- 32.10 页面接线（小程序端） ---
+  if (gw32.indexOf('class="praise-fx') > -1 && gw32.indexOf('class="praise-burst"') > -1)
+    ok('game.wxml 含浮字节点与跃迁光环节点');
+  else err('game.wxml 缺浮字 / 光环节点');
+  if (gw32.indexOf('status-praise') > -1 && gw32.indexOf('onTogglePraise') > -1)
+    ok('game.wxml 含 HUD 文案开关（无设置页，开关落在状态条）');
+  else err('game.wxml 缺文案开关');
+  if (gw32.indexOf('class="break-fx"') > -1 && gw32.indexOf('class="praise-fx') > -1)
+    ok('浮字与破冰/破箱浮字是独立节点（互不打断）');
+  else err('浮字与破冰浮字共用了节点');
+  if (gw32.indexOf('praiseBurst && praiseAnt') > -1)
+    ok('跃迁光环靠 praiseAnt 重新挂载重播动画');
+  else err('跃迁光环未挂在 praiseAnt 上（动画不会重播）');
+  if (gj32.indexOf('praise.onMatch(') > -1 && gj32.indexOf("require('../../utils/praise')") > -1)
+    ok('game.js 引用 utils/praise 并走 onMatch 一站式判定');
+  else err('game.js 未走 utils/praise 判定（判定会与体验版漂移）');
+  if (gj32.indexOf('praise.onMiss(') > -1) ok('game.js 错配时走 onMiss 断链');
+  else err('game.js 错配未断链');
+  if (gj32.indexOf('maxCombo') > -1) ok('game.js 把峰值连击（maxCombo）带入结算页，而非最后一次连击');
+  else err('game.js 未带峰值连击（结算页「最高连击」会是错的）');
+  if (gj32.indexOf('comboVal') === -1) ok('旧的 comboVal 单值实现已清除');
+  else err('仍残留旧的 comboVal 实现（两套连击口径并存）');
+  ['praisePopA', 'praisePopB'].forEach(k => {
+    if (gx32.indexOf('@keyframes ' + k) > -1 && tpl32.indexOf('@keyframes ' + k) > -1) ok('两端都有 @keyframes ' + k);
+    else err('缺少 @keyframes ' + k + '（替换文案时第二条看不出在播放）');
+  });
+  // ⚠️ keyframes 体里还有嵌套的 `}`（每个百分比各一层），所以不能用惰性正则截取——
+  //    必须做花括号配平扫描，否则 A 与 B 会被截在不同深度，永远「不相等」。
+  const kfBody32 = (src, name) => {
+    const i = src.indexOf('@keyframes ' + name);
+    if (i < 0) return null;
+    const a = src.indexOf('{', i);
+    if (a < 0) return null;
+    let depth = 0, j = a;
+    for (; j < src.length; j++) {
+      if (src[j] === '{') depth++;
+      else if (src[j] === '}') { depth--; if (depth === 0) break; }
+    }
+    return src.slice(a + 1, j).replace(/\s+/g, '');
+  };
+  [['pages/game/game.wxss', gx32], ['preview/template.html', tpl32]].forEach(([f, src]) => {
+    const ba = kfBody32(src, 'praisePopA');
+    const bb = kfBody32(src, 'praisePopB');
+    if (ba && bb && ba === bb) ok(f + ' 的 praisePopA / praisePopB 内容逐字一致（只有名字不同）');
+    else err(f + ' 的 praisePopA / praisePopB 内容不一致（重播会跳变）');
+  });
+  if (gx32.indexOf('.praise-fx.lv4') > -1 && gx32.indexOf('.praise-fx.lv5') > -1)
+    ok('game.wxss 有档位放大规则（等级越高越大越亮）');
+  else err('game.wxss 缺档位放大规则');
+
+  // --- 32.11 页面接线（体验版镜像） ---
+  ['praise-fx', 'praise-combo', 'praise-bo', 'praise-zh', 'praise-burst', 'praise-toggle'].forEach(id => {
+    if (tpl32.indexOf('id="' + id + '"') > -1) ok('体验版含 #' + id);
+    else err('体验版缺 #' + id);
+  });
+  if (tpl32.indexOf("$('praise-toggle').addEventListener('click', togglePraise)") > -1)
+    ok('体验版文案开关已绑定 togglePraise');
+  else err('体验版文案开关未绑定（点了没反应）');
+  if (tpl32.indexOf('id="praise-fx"') < tpl32.indexOf('class="board-wrap"'))
+    ok('体验版浮字挂在盘面容器之外（.board-wrap 的 overflow:hidden 会裁掉它）');
+  else err('体验版浮字被放进 .board-wrap（会被裁掉）');
+  if (tpl32.indexOf('function praiseOnMatch') > -1 && tpl32.indexOf('praiseOnMiss') > -1)
+    ok('体验版镜像了 praiseOnMatch / praiseOnMiss');
+  else err('体验版未镜像 praise 判定');
+  if (tpl32.indexOf('combo-fx') === -1 && gw32.indexOf('combo-fx') === -1 && gj32.indexOf('audio.combo(') === -1)
+    ok('旧的 combo-fx / audio.combo 实现已全部清除（不会两套并存）');
+  else err('仍残留旧的 combo-fx / audio.combo 实现');
+  if (b532.indexOf('scripts/lib/praise-guard') > -1 || b532.indexOf("'praise-guard'") > -1)
+    ok('build-h5 引用了共享守卫（与本节同一把尺子）');
+  else err('build-h5 未引用共享守卫（会出现两把尺子）');
+
+  // --- 32.12 浮字墨色对比度（D32 铁律：只落暗底的元素才提亮） ---
+  const lin32 = c => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+  const lum32 = rgb => 0.2126 * lin32(rgb[0]) + 0.7152 * lin32(rgb[1]) + 0.0722 * lin32(rgb[2]);
+  const hex32 = h => { const s = h.replace('#', ''); return [0, 2, 4].map(i => parseInt(s.slice(i, i + 2), 16)); };
+  const ratio32 = (a, b) => { const la = lum32(hex32(a)), lb = lum32(hex32(b));
+    return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05); };
+  const rr32 = v => Math.round(v * 100) / 100;
+  [['#FFD98A', '#0B1E36', '藏文大字 / 连击行'], ['#F5E9CF', '#0B1E36', '中文文案'],
+   ['#B9C7D6', '#213A5C', 'HUD 开关（状态条最亮停靠点）'], ['#B9C7D6', '#12243E', 'HUD 开关（状态条最暗停靠点）']]
+    .forEach(([a, b, d]) => {
+      const r = ratio32(a, b);
+      if (r >= 4.5) ok('浮字墨 ' + a + '（' + d + '）on ' + b + ' = ' + rr32(r) + ':1');
+      else err('浮字墨 ' + a + '（' + d + '）on ' + b + ' 只有 ' + rr32(r) + ':1（需 ≥4.5）');
+    });
+  if (rr32(ratio32('#FFD98A', '#0B1E36')) === 12.4 && rr32(ratio32('#F5E9CF', '#0B1E36')) === 13.92)
+    ok('两支提亮墨与代码注释里写的 12.40 / 13.92 逐字吻合');
+  else warn('浮字墨对比度与注释不符，请同步更新 game.wxss / template.html 的注释');
+
+  // --- 32.13 教学闭环不受影响：关文案不关发音 ---
+  // 用「同一行不得同时出现 praiseOff 与 pronounce」这种可机械判定的写法，
+  // 代替脆弱的跨行正则（正则看不出「哪一行被哪个条件包住」）。
+  const offLines32 = gj32.split('\n').filter(l => l.indexOf('praiseOff') > -1);
+  const leak32 = offLines32.filter(l => l.indexOf('pronounce') > -1);
+  if (leak32.length === 0 && gj32.indexOf('audio.pronounce(') > -1)
+    ok('「文案开关」不影响元素发音（发音属学习闭环，不受开关控制）');
+  else err('文案开关疑似连带关掉了元素发音' + (leak32.length ? '：' + leak32[0].trim() : ''));
+  if (offLines32.some(l => l.indexOf('showPraise') > -1))
+    ok('praiseOff 只闸在 showPraise 上（开关的作用面被限定在浮字）');
+  else err('未找到「praiseOff 闸住 showPraise」的接线，开关可能没生效');
+}
 
 console.log('通过: ' + passed + ' | 错误: ' + errors.length + ' | 警告: ' + warnings.length);
 if (errors.length) { console.log('\x1b[31m存在错误，需修复后重试\x1b[0m'); process.exit(1); }

@@ -8,12 +8,16 @@
 //           消除后上方方块下落、顶部从池中补一对同元素的牌；池空后盘面收缩到空 → 通关揭图。
 //           渲染模型从「CSS grid 自动流 + 扁平数组」改为「绝对定位 + 按牌 uid 稳定 key」——
 //           这是**必须**的：grid 自动流下重排数组只会让牌瞬间跳位，落不下动画。
+// D34 即时应激励：每次消除给一句中藏双语赞美，档位由「时间窗口连击」判定（utils/praise.js）。
+//           为什么不用裸连击数：配对判定是「任意两张同 id」（比三消宽两个数量级），
+//           连击极易不断链（实测 90% 正确率下最高档占 56%）→ 裸连击分级会退化。详见 utils/praise.js 头注。
 var levelsData = require('../../data/levels');
 var elements = require('../../data/elements');
 var cardsData = require('../../data/cards');
 var revealsData = require('../../data/reveals');
 var audio = require('../../utils/audio');
 var icons = require('../../utils/icons');
+var praise = require('../../utils/praise');
 var storage = require('../../utils/storage');
 var tracker = require('../../utils/tracker');
 var obstacles = require('../../utils/obstacles');
@@ -34,6 +38,8 @@ var AVAIL_W = 750 - PAGE_PAD * 2 - PANEL_PAD * 2 - OUTLINE_PAD * 2 - 6;
 var CARD_AUTO_MS = 5200;
 var TOAST_MS = 1700;
 var SHATTER_MS = 340;  // 消除碎裂动画时长（与 game.wxss 的 shatterUp 0.34s 对齐），落定后再结算下落
+// 赞美的展示时长（与 game.wxss 的 praisePopA/B 1.2s 对齐）；一次只显示一条，新的替换旧的
+var PRAISE_SHOW_MS = 1200;
 // 下落/补充动画时长 = game.wxss 里 .tile 的 transition 300ms（同一个节点换 translate 坐标）
 
 // 破碎粒子的六个方向 × 颜色（金粉 + 五色风马旗）
@@ -109,8 +115,18 @@ Page({
     fxOn: false,
     fx: [],
     score: 0,
-    combo: 0,
-    comboFx: '',
+    // 即时应激励浮字（D34）：一次只显示一条，新的一条替换旧的（不排队、不叠加）
+    praiseOn: false,
+    praiseCombo: 0,
+    praiseLevel: 1,
+    praiseZh: '',
+    praiseBo: '',
+    praiseTibetan: false,
+    praiseBurst: false,
+    praiseAnt: false,   // A/B 翻转用：同一个 animation-name 不会重播，替换时必须换名
+    // 文案开关（HUD 内小开关）：只关「赞美文案」，不关元素发音——
+    // 元素发音属学习闭环（每次配对朗读该元素），不在可关范围内。
+    praiseOff: false,
     guideStep: 0,
     guide: GUIDE[0],
     bitSlots: BIT_SLOTS,   // 破碎粒子方向/颜色类名
@@ -120,7 +136,10 @@ Page({
   board: null,          // utils/board.js 的盘面状态（唯一真相源）
   firstIndex: -1,
   matchedCount: 0,
-  comboVal: 0,
+  // 即时应激励状态（D34）：combo/档位/抽取/频率控制全在 utils/praise.js 里判定，
+  // 页面只持有状态并按结果渲染。maxCombo 是本关窗口连击的峰值（传给结算页做星级判定）。
+  comboState: null,
+  praiseTimer: null,
   goldenId: '',
   goldenSeen: false,
   occCount: {},         // 精灵表帧计数（同字母第 n 次出现 → 帧 floor(n/2)%4）
@@ -188,6 +207,10 @@ Page({
     this.misses = 0;
     this.matchedCount = 0;
 
+    // 即时应激励（D34）：本关的连击/档位/抽取历史全部重新起步
+    this.comboState = praise.initState();
+    var praiseOff = storage.getPraiseOff();
+
     // 统一牌面尺寸：tile 由 8 列基准算出，各关只变列数与行数
     var gap = 8;
     var tileW = Math.floor((AVAIL_W - gap * (REF_COLS - 1)) / REF_COLS);
@@ -214,7 +237,8 @@ Page({
       boardH: boardH,
       gap: gap,
       reveal: rv ? { img: rv.img, name: rv.name, tibetan: rv.tibetan, roman: rv.roman, desc: rv.desc } : { img: '', name: '', tibetan: '', roman: '', desc: '' },
-      revealPct: 0
+      revealPct: 0,
+      praiseOff: praiseOff
     });
     this.applyPieces('settle');
     tracker.track('first_letter_seen');
@@ -387,6 +411,7 @@ Page({
 
   // 配对成功：消除立即生效、不锁盘面；首次发现弹完整文化卡，重复只出轻提示
   handleMatch: function (i, j) {
+    var that = this;
     var a = this.board.cells[i];
     var b = this.board.cells[j];
     if (!a || !b) return;
@@ -395,11 +420,22 @@ Page({
     this.collected[a.id] = true;
     tracker.track('first_match');
 
-    this.comboVal++;
-    if (this.comboVal >= 2) tracker.track('first_combo');
-    storage.recordCombo(this.comboVal);
+    // 即时应激励（D34）：连击判定 / 档位 / 文案抽取 / 频率控制全部交给 utils/praise.js。
+    // 元素种类数取自盘面配额（第 1 关 2 种 → 第 10 关 12 种），因为连击窗口要随
+    // 「找一对有多难」缩放：种类越多越难找，窗口就得越宽。
+    var types = (this.board.plan && this.board.plan.ids.length) || 1;
+    var dec = praise.onMatch(this.comboState, Date.now(), types, Math.random);
+    this.comboState = {
+      combo: dec.combo,
+      prevTier: dec.prevTier,
+      lastShownAt: dec.lastShownAt,
+      lastIndex: dec.lastIndex,
+      maxCombo: dec.maxCombo
+    };
+    if (dec.level >= 2) tracker.track('first_combo');
+    storage.recordCombo(dec.combo.combo);
 
-    var gain = 10 * (a.golden ? 2 : 1) + 2 * (this.comboVal - 1);
+    var gain = 10 * (a.golden ? 2 : 1) + 2 * (dec.combo.combo - 1);
 
     // 碎裂动画用：两张牌先转 removing + shatter，SHATTER_MS 后才真正从盘面移除
     a.state = 'removing'; a.shatter = true;
@@ -417,33 +453,21 @@ Page({
       if (c.broken) brokeLabels.push(c.kind === 'frost' ? '破冰！' : '木箱破开！');
     }, this);
 
-    this.setData({
-      score: this.data.score + gain,
-      combo: this.comboVal,
-      comboFx: this.comboVal >= 2 ? ('连击 ×' + this.comboVal) : ''
-    });
+    this.setData({ score: this.data.score + gain });
     this.applyPieces('settle');
     if (settled.changed.length) {
       if (brokeLabels.length) this.showBreakFx(brokeLabels[0]);
       tracker.track('obstacle_broken');
     }
 
-    // 轻微震动 + 铜铃（PRD 3.2：消除=铃音 + 机身轻震）
+    // 轻微震动 + 档位音效（D34：一档一音，1 铜铃 / 2 手鼓 / 3 法号 / 4+ 欢呼）
     try {
       if (wx.vibrateShort) wx.vibrateShort({ type: 'light' });
     } catch (err) { /* 部分机型不支持，忽略 */ }
 
-    var that = this;
-    if (this.comboTimer) clearTimeout(this.comboTimer);
-    this.comboTimer = setTimeout(function () {
-      that.setData({ comboFx: '' });
-    }, 1400);
-
-    if (this.comboVal >= 2) {
-      audio.combo(this.comboVal);
-    } else {
-      audio.match();
-    }
+    audio.tier(dec.level);
+    // 文案开关只关「文字」，不关音效与元素发音（发音属学习闭环，见 D34）
+    if (dec.show && dec.text && !this.data.praiseOff) this.showPraise(dec);
 
     var id = a.id;
     var firstTime = !storage.isCardSeen(id);
@@ -465,6 +489,35 @@ Page({
       if (that.matchedCount === that.data.totalPairs) return;
       if (firstTime) that.showCard(id); else that.showToastTip(id);
     }, 320);
+  },
+
+  // 展示一条赞美（D34）：一次只显示一条，**新的替换旧的**（不排队、不叠加）。
+  // 替换时靠 praiseAnt 在 A/B 之间翻转来重启动画——WXSS 里同一个 animation-name 不会重播，
+  // 必须换成另一个同名不同键的动画（praisePopA / praisePopB），否则第二条看不出播放。
+  showPraise: function (dec) {
+    var that = this;
+    this.setData({
+      praiseOn: true,
+      praiseAnt: !this.data.praiseAnt,
+      praiseCombo: dec.combo.combo,
+      praiseLevel: dec.level,
+      praiseZh: dec.text.zh,
+      praiseBo: dec.text.bo,
+      praiseTibetan: dec.tibetan,
+      praiseBurst: dec.burst
+    });
+    if (this.praiseTimer) clearTimeout(this.praiseTimer);
+    this.praiseTimer = setTimeout(function () {
+      that.setData({ praiseOn: false });
+    }, PRAISE_SHOW_MS);
+  },
+
+  // HUD 内的文案开关：只关「赞美文案」，不关音效与元素发音（发音属学习闭环）
+  onTogglePraise: function () {
+    var off = !this.data.praiseOff;
+    this.setData({ praiseOff: off, praiseOn: false });
+    storage.setPraiseOff(off);
+    if (this.praiseTimer) clearTimeout(this.praiseTimer);
   },
 
   // 逐对结算：碎裂动画 → 下落 + 补充 → 出图 → 判断通关
@@ -529,7 +582,10 @@ Page({
           '&pairs=' + that.data.totalPairs +
           '&cards=' + that.collectedIds().join(',') +
           '&score=' + that.data.score +
-          '&combo=' + that.comboVal +
+          // D34：传「本关窗口连击的峰值」而不是结算那一刻的连击值——
+          // 结算值取决于关卡何时结束（最后一对刚好连着就高），是个偶然量；
+          // 峰值才代表「本局曾达到过几连」，与 3 星门槛（rateStars 的 combo>=3）语义一致。
+          '&combo=' + ((that.comboState && that.comboState.maxCombo) || 0) +
           // 正确率（证书质量门槛）：attempts = 尝试次数，misses = 失败次数
           '&att=' + that.attempts +
           '&miss=' + that.misses
@@ -570,12 +626,13 @@ Page({
   handleMismatch: function (i, j) {
     var that = this;
     audio.mismatch();
-    this.comboVal = 0;
+    // D34：错配把窗口连击链条整条打断（档位同时归零，下一次消除从等级 1 重新起步）
+    this.comboState = praise.onMiss(this.comboState);
     var a = this.board.cells[i];
     var b = this.board.cells[j];
     if (a) a.state = 'shake';
     if (b) b.state = 'shake';
-    this.setData({ combo: 0, comboFx: '', locked: true });
+    this.setData({ locked: true });
     this.applyPieces('settle');
     setTimeout(function () {
       if (a) a.state = 'idle';
@@ -665,7 +722,7 @@ Page({
     }, TOAST_MS);
   },
 
-  // 破冰/破箱浮字（复用 combo-fx 的观感，独立节点避免互相打断）
+  // 破冰/破箱浮字（复用浮字的观感，独立节点避免互相打断）
   showBreakFx: function (label) {
     var that = this;
     this.setData({ brokenFx: label });
@@ -695,6 +752,7 @@ Page({
     if (this.fxTimer) clearTimeout(this.fxTimer);
     if (this.tashiTimer) clearTimeout(this.tashiTimer);
     if (this.breakTimer) clearTimeout(this.breakTimer);
+    if (this.praiseTimer) clearTimeout(this.praiseTimer);
     this.removeQueue = [];
   }
 });

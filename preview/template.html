@@ -181,14 +181,64 @@
     position: absolute; top: 3px; right: 5px; font-size: 11px; color: #E0A800; font-weight: 700;
   }
 
-  .combo-fx {
-    position: absolute; left: 50%; top: 38%; transform: translate(-50%, -50%) scale(.6);
-    font-size: 34px; font-weight: 900; color: var(--gold);
-    text-shadow: 0 2px 0 #fff, 0 0 14px rgba(183,149,11,.6);
-    pointer-events: none; opacity: 0; transition: opacity .2s, transform .25s;
-    white-space: nowrap; z-index: 5;
+  /* ---------- D34 即时应激励浮字 ----------
+     一次只显示一条，**新的替换旧的**（不排队、不叠加）。
+     两套逐字相同的动画（praisePopA / praisePopB）轮流用：CSS 里同一个 animation-name
+     不会重播，替换文案时必须换成另一个名字，否则第二条看不出在播放。
+     ⚠️ 两套 keyframes 的内容必须**逐字一致**，只有名字不同。 */
+  .praise-fx {
+    position: fixed; top: 112px; left: 50%; z-index: 9;
+    display: flex; flex-direction: column; align-items: center;
+    pointer-events: none;
+    /* 静息态不可见：只在 ant-a / ant-b 播放期间由 keyframes 抬到 opacity 1。
+       撤掉 ant-* 类 = 立即回到不可见，不需要额外的隐藏类。 */
+    opacity: 0;
   }
-  .combo-fx.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  .praise-fx.ant-a { animation: praisePopA 1.2s ease forwards; }
+  .praise-fx.ant-b { animation: praisePopB 1.2s ease forwards; }
+  @keyframes praisePopA {
+    0%   { opacity: 0; transform: translateX(-50%) scale(.7) translateY(8px); }
+    16%  { opacity: 1; transform: translateX(-50%) scale(1.06) translateY(0); }
+    30%  { transform: translateX(-50%) scale(1); }
+    78%  { opacity: 1; }
+    100% { opacity: 0; transform: translateX(-50%) translateY(-16px); }
+  }
+  @keyframes praisePopB {
+    0%   { opacity: 0; transform: translateX(-50%) scale(.7) translateY(8px); }
+    16%  { opacity: 1; transform: translateX(-50%) scale(1.06) translateY(0); }
+    30%  { transform: translateX(-50%) scale(1); }
+    78%  { opacity: 1; }
+    100% { opacity: 0; transform: translateX(-50%) translateY(-16px); }
+  }
+  /* 档位跃迁（等级 4 起）的一次性光环：重新挂载节点让动画重播 */
+  .praise-burst {
+    position: fixed; top: 112px; left: 50%; width: 74px; height: 74px;
+    margin-left: -37px; margin-top: -13px; z-index: 8; pointer-events: none;
+    border: 1px solid rgba(255,217,138,.85); border-radius: 50%;
+    animation: praiseBurst .72s ease-out forwards;
+  }
+  @keyframes praiseBurst {
+    0%   { opacity: .9; transform: scale(.45); }
+    100% { opacity: 0; transform: scale(2.7); }
+  }
+  /* 文字配色：只落暗底的元素才提亮（D32 铁律，别把 #2C3E50 全局换掉）。
+     #FFD98A / #F5E9CF 对 #0B1E36 实测 12.40:1 / 13.92:1，由 validate §32.12 机械断言。 */
+  .praise-combo { font-size: 15px; font-weight: 700; letter-spacing: 1px; color: #FFD98A; text-shadow: 0 1px 5px rgba(0,0,0,.75); }
+  .praise-bo { font-size: 32px; font-weight: 700; line-height: 1.25; color: #FFD98A; text-shadow: 0 0 10px rgba(255,217,138,.75), 0 2px 6px rgba(0,0,0,.8); }
+  .praise-zh { font-size: 22px; font-weight: 700; letter-spacing: 2px; color: #F5E9CF; text-shadow: 0 2px 7px rgba(0,0,0,.8); }
+  /* 等级越高越亮越大（同一套文字，靠档位类放大） */
+  .praise-fx.lv4 .praise-zh { font-size: 24px; }
+  .praise-fx.lv5 .praise-zh { font-size: 26px; color: #FFD98A; }
+  .praise-fx.lv5 .praise-bo {
+    font-size: 37px;
+    text-shadow: 0 0 15px rgba(255,217,138,.95), 0 0 26px rgba(255,165,0,.55), 0 2px 6px rgba(0,0,0,.8);
+  }
+  /* HUD 内的文案开关（D34）：只关赞美文案，不关音效与元素发音（发音属学习闭环） */
+  .status-praise {
+    border: 1px solid rgba(183,149,11,.65); background: none; border-radius: 11px;
+    padding: 2px 7px; font-size: 13px; color: #B9C7D6; cursor: pointer; white-space: nowrap;
+  }
+  .status-praise.off { border-style: dashed; opacity: .72; }
 
   /* ---------- 重复匹配轻提示（非阻塞） ---------- */
   .toast {
@@ -1126,14 +1176,28 @@
         <div><span class="sc" id="status-score">0</span> 分</div>
         <div class="combo-pill" id="status-combo">已消除 0/0 对</div>
       </div>
+      <!-- 文案开关（D34）：只关赞美文案，不关元素发音（发音属学习闭环） -->
+      <button class="status-praise" id="praise-toggle">文案 开</button>
     </div>
+
+    <!-- 即时应激励浮字（D34）：一次只显示一条，**新的替换旧的**（不排队、不叠加）。
+         必须放在盘面容器之外 —— .board-wrap 有 overflow:hidden，浮字会被裁掉。
+         ant-a / ant-b 是同一组动画的两个名字，轮流用：CSS 里同一个 animation-name
+         不会重播，替换文案时必须换名，否则第二条看不出在播放。 -->
+    <div class="praise-fx" id="praise-fx">
+      <span class="praise-combo" id="praise-combo"></span>
+      <span class="praise-bo tib" id="praise-bo"></span>
+      <span class="praise-zh" id="praise-zh"></span>
+    </div>
+    <!-- 档位跃迁（等级 4 起）的一次性光环：重新挂载节点让动画重播 -->
+    <div class="praise-burst" id="praise-burst" style="display:none"></div>
+
     <div class="game-body" id="game-body">
       <div class="board-panel">
         <div class="board-outline">
           <div class="board-wrap" id="board-wrap">
             <img class="reveal-img" id="reveal-img" alt="" aria-hidden="true">
             <div class="board" id="board"></div>
-            <div class="combo-fx" id="combo-fx"></div>
             <div class="break-fx" id="break-fx"></div>
           </div>
         </div>
@@ -1352,6 +1416,8 @@ const SHATTER_MS = 340;
 /* ---------------- 存储（对应 utils/storage.js） ---------------- */
 const SKEY = 'zangzi_progress';
 const MAX_LEVEL = 10;
+/* 连击口径标记（D34）：与 utils/storage.js 的 COMBO_MODEL 同值同义 */
+const COMBO_MODEL = 'window';
 let memoryStore = null;   // file:// 下 localStorage 不可用时的兜底
 
 function readRaw() {
@@ -1359,16 +1425,23 @@ function readRaw() {
   catch (e) { return memoryStore; }
 }
 function writeRaw(p) {
+  // 落库时打上连击口径标记（D34，与 utils/storage.js 的 save 同规则）
+  if (p && typeof p === 'object') p.comboModel = COMBO_MODEL;
   try { localStorage.setItem(SKEY, JSON.stringify(p)); }
   catch (e) { memoryStore = p; }
 }
 function getProgress() {
   const p = readRaw();
+  // 连击口径迁移（D34，与 utils/storage.js 同规则）：没有口径标记 = 旧数据，
+  // bestCombo 记的是「本局连续成功次数」（一局能到 ×30），与新口径不同量纲 → 归零。
+  const comboCurrent = !!p && p.comboModel === COMBO_MODEL;
   return {
     unlockedLevel: (p && p.unlockedLevel) || 1,
     completedLevels: (p && p.completedLevels) || [],
     stamps: (p && p.stamps) || [],
-    bestCombo: (p && p.bestCombo) || 0,
+    bestCombo: comboCurrent ? ((p && p.bestCombo) || 0) : 0,
+    comboModel: COMBO_MODEL,
+    praiseOff: !!(p && p.praiseOff),
     seenCards: (p && p.seenCards) || [],
     onboardDone: !!(p && p.onboardDone),
     // 证书体系（藏文成长阶梯）：最佳正确率 / 证书 / 编号流水 / 持有人
@@ -1737,12 +1810,19 @@ function audioCtx() {
   if (AC.state === 'suspended') { AC.resume(); }
   return AC;
 }
-/* [频率, 音量, 时长(秒)] */
+/* [频率, 音量, 时长(秒), 起音(秒，可选，默认 6ms)]
+   ⚠️ 浏览器体验版用 Web Audio 加性合成，是小程序 audio/*.wav 的**近似**：
+   音高内容一致（听得出一档一音在换乐器），但包络比 WAV 简化。
+   三条新音的 WAV 由 scripts/make_praise_audio.py 生成（只有小程序包内有）。 */
 const SOUNDS = {
   tap: [[1150, 0.20, 0.09]],
   match: [[1318, 0.26, 0.50], [1975, 0.13, 0.50], [2637, 0.07, 0.50]],
   mismatch: [[190, 0.16, 0.16]],
-  win: [[1318, 0.20, 1.00], [1975, 0.08, 1.00], [147, 0.15, 1.00], [220, 0.06, 1.00], [294, 0.03, 1.00]]
+  win: [[1318, 0.20, 1.00], [1975, 0.08, 1.00], [147, 0.15, 1.00], [220, 0.06, 1.00], [294, 0.03, 1.00]],
+  // D34 档位音效：手鼓（低频双击）/ 法号（低音长鸣，慢起音）/ 欢呼（明亮钟簇）
+  drum: [[95, 0.34, 0.30], [190, 0.11, 0.12]],
+  horn: [[98, 0.30, 0.90, 0.12], [196, 0.16, 0.90, 0.12], [294, 0.08, 0.90, 0.12], [392, 0.05, 0.90, 0.12]],
+  cheer: [[1046.5, 0.22, 0.78], [1318.5, 0.17, 0.72], [1568, 0.14, 0.66], [2093, 0.10, 0.55], [261.6, 0.12, 0.80]]
 };
 function playSound(name, rate) {
   const c = audioCtx();
@@ -1754,18 +1834,21 @@ function playSound(name, rate) {
     o.frequency.value = part[0] * (rate || 1);
     const g = c.createGain();
     g.gain.setValueAtTime(0.0001, now);
-    g.gain.linearRampToValueAtTime(part[1], now + 0.006);
+    g.gain.linearRampToValueAtTime(part[1], now + (part[3] || 0.006));
     g.gain.exponentialRampToValueAtTime(0.0001, now + part[2]);
     o.connect(g); g.connect(c.destination);
     o.start(now); o.stop(now + part[2] + 0.03);
   });
 }
+/* 档位 → 音效名（D34）：一档一音，同一档内不换。与 utils/audio.js 的 TIER_SOUND 同表。 */
+const PRAISE_TIER_SOUND = ['', 'match', 'drum', 'horn', 'cheer', 'cheer'];
 const audio = {
   tap: function () { playSound('tap'); },
   match: function () { playSound('match'); },
   mismatch: function () { playSound('mismatch'); },
   win: function () { playSound('win'); },
-  combo: function (n) { playSound('match', Math.min(2, 1 + 0.1 * Math.max(0, n - 1))); }
+  // 档位音效（D34）：1 铜铃 / 2 手鼓 / 3 法号 / 4+ 欢呼，同一档内不换
+  tier: function (level) { playSound(PRAISE_TIER_SOUND[praiseTierOf(level)] || 'match'); }
 };
 
 /* ---------------- 藏文发音（对应 utils/audio.js pronounce） ----------------
@@ -1972,6 +2055,8 @@ const state = {
   screenToken: 0,       // 换屏计数器：作废「通关后延迟切结算页」这类待执行的跳转
   locked: false, goldenId: null, guideStep: 0,
   collected: [], maxCombo: 0,
+  // 即时应激励（D34）：combo/档位/抽取/频率控制全在 praise* 镜像里判定，这里只存状态
+  praiseState: null, praiseOff: false, praiseAnt: false,
   pronounceCount: 0, lastPronounced: null,  // 朗读次数/最近朗读元素（供自动化测试断言）
   attempts: 0, matches: 0, misses: 0,       // 正确率统计（证书质量门槛）
   vibrateCount: 0,                          // 震动次数（情绪引擎，测试断言用）
@@ -2797,6 +2882,111 @@ function boardCountTiles(cells) {
   for (let i = 0; i < cells.length; i++) if (cells[i]) n++;
   return n;
 }
+
+/* ================= 即时应激励（D34）—— utils/praise.js 的镜像 =================
+   为什么连击要带「时间窗口」：本项目配对判定是「任意两张同 id」（无相邻要求），
+   比三消宽两个数量级 → 裸连击几乎不会断链（实测 90% 正确率下最高档占 56%），
+   分档会退化。窗口必须短于「找一对」的典型耗时，而找对耗时随元素种类数上升，
+   所以窗口按种类数缩放。标定与敏感性表见 docs/DECISIONS.md D34。
+   ⚠️ 这里的常量与判定必须与 utils/praise.js 逐字一致。 */
+const PRAISE_WINDOW_BASE = 600;
+const PRAISE_WINDOW_STEP = 160;
+const PRAISE_WINDOW_MIN = 900;
+const PRAISE_WINDOW_MAX = 2600;
+const PRAISE_GAP_MS = 1100;
+const PRAISE_TIER1_PROB = 0.3;
+/* PRAISE_TIER_SOUND 定义在音频层（它属于音频层的表） */
+
+function praiseWindowMsOf(types) {
+  const n = Math.max(0, Number(types) || 0);
+  return Math.max(PRAISE_WINDOW_MIN, Math.min(PRAISE_WINDOW_MAX, PRAISE_WINDOW_BASE + PRAISE_WINDOW_STEP * n));
+}
+function praiseNextCombo(prev, now, windowMs) {
+  const p = prev || {};
+  const at = p.at == null ? null : p.at;
+  const win = windowMs == null ? PRAISE_WINDOW_MIN : windowMs;
+  const chained = at != null && (now - at) >= 0 && (now - at) <= win;
+  return { combo: chained ? (p.combo || 0) + 1 : 1, at: now };
+}
+function praiseReset() { return { combo: 0, at: null }; }
+function praiseTierOf(combo) {
+  const n = Number(combo) || 0;
+  if (n <= 1) return 1;
+  if (n >= 5) return 5;
+  return n;
+}
+function praiseTierAt(level) {
+  const lv = praiseTierOf(level);
+  for (let i = 0; i < DATA.praise.tiers.length; i++) {
+    if (DATA.praise.tiers[i].level === lv) return DATA.praise.tiers[i];
+  }
+  return DATA.praise.tiers[DATA.praise.tiers.length - 1];
+}
+function praisePickIndex(level, lastIndex, rand) {
+  const n = praiseTierAt(level).texts.length;
+  if (n <= 1) return 0;
+  let r = (rand || Math.random)();
+  r = Math.max(0, Math.min(0.999999, r));
+  let i = Math.floor(r * n);
+  if (i === lastIndex) i = (i + 1) % n;
+  return i;
+}
+function praisePick(level, lastIndex, rand) {
+  const lv = praiseTierOf(level);
+  const i = praisePickIndex(lv, lastIndex, rand);
+  const e = praiseTierAt(lv).texts[i];
+  return { level: lv, index: i, zh: e.zh, bo: e.bo };
+}
+function praiseShouldShow(level, prevTier, sinceMs, rand) {
+  const lv = praiseTierOf(level);
+  const escalated = lv > 1 && lv > (Number(prevTier) || 0);
+  if (escalated) return true;
+  if (sinceMs != null && sinceMs < PRAISE_GAP_MS) return false;
+  if (lv === 1) return (rand || Math.random)() < PRAISE_TIER1_PROB;
+  return true;
+}
+function praiseShowsTibetan(level) { return praiseTierOf(level) >= 3; }
+function praiseShowsBurst(level) { return praiseTierOf(level) >= 4; }
+function praiseAudioFor(level) { return PRAISE_TIER_SOUND[praiseTierOf(level)] || 'match'; }
+function praiseInitState() {
+  return { combo: praiseReset(), prevTier: 0, lastShownAt: null, lastIndex: {}, maxCombo: 0 };
+}
+/* 一站式决策：喂一次「成功消除」，返回新状态 + 该不该展示 + 展示什么（与小程序同一契约） */
+function praiseOnMatch(st, now, types, rand) {
+  const s = st || praiseInitState();
+  const comboState = praiseNextCombo(s.combo, now, praiseWindowMsOf(types));
+  const level = praiseTierOf(comboState.combo);
+  const since = s.lastShownAt == null ? null : now - s.lastShownAt;
+  const show = praiseShouldShow(level, s.prevTier, since, rand);
+  const out = {
+    combo: comboState, level: level,
+    maxCombo: Math.max(s.maxCombo || 0, comboState.combo),
+    tibetan: praiseShowsTibetan(level), burst: praiseShowsBurst(level),
+    sound: praiseAudioFor(level), show: show, text: null,
+    prevTier: level,
+    lastShownAt: s.lastShownAt == null ? null : s.lastShownAt,
+    lastIndex: s.lastIndex || {}
+  };
+  if (show) {
+    const p = praisePick(level, out.lastIndex[level], rand);
+    out.text = p;
+    const li = {};
+    Object.keys(out.lastIndex).forEach(function (k) { li[k] = out.lastIndex[k]; });
+    li[level] = p.index;
+    out.lastIndex = li;
+    out.lastShownAt = now;
+  }
+  return out;
+}
+function praiseOnMiss(st) {
+  const s = st || praiseInitState();
+  return {
+    combo: praiseReset(), prevTier: 0,
+    lastShownAt: s.lastShownAt == null ? null : s.lastShownAt,
+    lastIndex: s.lastIndex || {}, maxCombo: s.maxCombo || 0
+  };
+}
+
 /* 造一张牌（含全部显示字段）。盘面模型只负责把它在格与格之间搬运。 */
 let occCount = {};   // 精灵表帧计数：同字母第 n 次出现 → 帧 floor(n/2)%4
 function makeTile(id, uid) {
@@ -2838,6 +3028,18 @@ function startLevel(level) {
   state.score = 0;
   state.combo = 0;
   state.maxCombo = 0;
+  // D34：本关的连击/档位/抽取历史重新起步
+  state.praiseState = praiseInitState();
+  // D34：文案开关是跨关持久化的偏好（存在 progress.praiseOff），进关时同步 HUD 上的标签
+  const praiseOffSaved = getProgress().praiseOff;
+  state.praiseOff = praiseOffSaved;
+  const praiseToggleEl = $('praise-toggle');
+  if (praiseToggleEl) {
+    praiseToggleEl.textContent = praiseOffSaved ? '文案 关' : '文案 开';
+    praiseToggleEl.className = 'status-praise' + (praiseOffSaved ? ' off' : '');
+  }
+  const praiseBoxEl = $('praise-fx');
+  if (praiseBoxEl) praiseBoxEl.className = 'praise-fx';
   state.removeQueue = [];
   state.draining = false;
   state.finished = false;
@@ -3166,14 +3368,70 @@ function showBreakFx(label) {
   el._t = setTimeout(function () { el.classList.remove('show'); }, 1000);
 }
 
+/* 展示一条赞美（D34）：一次只显示一条，**新的替换旧的**（不排队、不叠加）。
+   替换时靠 ant-a / ant-b 两个同名不同键的动画轮流用，强制重播——
+   同一个 animation-name 在 CSS 里不会重播，不换名第二条就看不出来。 */
+const PRAISE_SHOW_MS = 1200;
+function showPraise(dec) {
+  const box = $('praise-fx');
+  const burst = $('praise-burst');
+  if (!box) return;
+  state.praiseAnt = !state.praiseAnt;
+  box.className = 'praise-fx lv' + dec.level + (state.praiseAnt ? ' ant-a' : ' ant-b');
+  $('praise-combo').textContent = dec.level >= 2 ? '连击 ×' + dec.combo.combo : '';
+  $('praise-combo').style.display = dec.level >= 2 ? '' : 'none';
+  $('praise-bo').textContent = dec.tibetan ? dec.text.bo : '';
+  $('praise-bo').style.display = dec.tibetan ? '' : 'none';
+  $('praise-zh').textContent = dec.text.zh;
+  clearTimeout(box._t);
+  // 1.2s 后剥离 ant-* 类：动画停掉即回到静息 opacity:0（与 .praise-fx 的默认值一致）
+  box._t = setTimeout(function () { box.className = 'praise-fx'; }, PRAISE_SHOW_MS);
+  // 档位跃迁（等级 4 起）的一次性光环：重新挂载节点让动画重播
+  if (burst) {
+    if (dec.burst) {
+      burst.style.display = '';
+      burst.style.animation = 'none';
+      void burst.offsetWidth;   // 强制回流，让动画重新开始
+      burst.style.animation = '';
+      clearTimeout(burst._t);
+      burst._t = setTimeout(function () { burst.style.display = 'none'; }, 760);
+    } else {
+      burst.style.display = 'none';
+    }
+  }
+}
+/* HUD 内的文案开关（D34）：只关赞美文案，不关音效与元素发音（发音属学习闭环） */
+function togglePraise() {
+  state.praiseOff = !state.praiseOff;
+  const p = getProgress();
+  p.praiseOff = state.praiseOff;
+  saveProgress(p);
+  const el = $('praise-toggle');
+  if (el) {
+    el.textContent = state.praiseOff ? '文案 关' : '文案 开';
+    el.className = 'status-praise' + (state.praiseOff ? ' off' : '');
+  }
+  // 关掉文案时立刻收掉当前这条（撤 ant-* 类即静息不可见）
+  const pfx = $('praise-fx');
+  if (pfx) pfx.className = 'praise-fx';
+}
+
 function handleMatch(i, j) {
   const a = state.board.cells[i];
   const b = state.board.cells[j];
   if (!a || !b) return;
 
   state.matchedCount++;
-  state.combo++;
-  state.maxCombo = Math.max(state.maxCombo, state.combo);
+  // 即时应激励（D34）：连击判定 / 档位 / 文案抽取 / 频率控制全交给 praise* 镜像。
+  // 元素种类数取自盘面配额（第 1 关 2 种 → 第 10 关 12 种），连击窗口随「找一对有多难」缩放。
+  const praiseTypes = (state.board.plan && state.board.plan.ids.length) || 1;
+  const praiseDec = praiseOnMatch(state.praiseState, Date.now(), praiseTypes, Math.random);
+  state.praiseState = {
+    combo: praiseDec.combo, prevTier: praiseDec.prevTier,
+    lastShownAt: praiseDec.lastShownAt, lastIndex: praiseDec.lastIndex, maxCombo: praiseDec.maxCombo
+  };
+  state.combo = praiseDec.combo.combo;
+  state.maxCombo = praiseDec.maxCombo;
   recordCombo(state.combo);
 
   state.score += 10 * (a.golden ? 2 : 1) + 2 * (state.combo - 1);
@@ -3202,16 +3460,9 @@ function handleMatch(i, j) {
 
   if (labels.length) showBreakFx(labels[0]);
 
-  if (state.combo >= 2) {
-    audio.combo(state.combo);
-    const fx = $('combo-fx');
-    fx.textContent = '连击 ×' + state.combo;
-    fx.classList.add('show');
-    clearTimeout(fx._t);
-    fx._t = setTimeout(function () { fx.classList.remove('show'); }, 1200);
-  } else {
-    audio.match();
-  }
+  // 档位音效（D34：一档一音）+ 赞美浮字（文案开关只关文字，不关音效与元素发音）
+  audio.tier(praiseDec.level);
+  if (praiseDec.show && praiseDec.text && !state.praiseOff) showPraise(praiseDec);
 
   const id = a.id;
   if (state.collected.indexOf(id) === -1) state.collected.push(id);
@@ -3267,13 +3518,17 @@ function drainQueue() {
 
 function handleMismatch(i, j) {
   audio.mismatch();
+  // D34：错配把窗口连击链条整条打断（档位同时归零，下一次消除从等级 1 重新起步）
+  state.praiseState = praiseOnMiss(state.praiseState);
   state.combo = 0;
   state.locked = true;
   const a = state.board.cells[i];
   const b = state.board.cells[j];
   if (a) a.state = 'shake';
   if (b) b.state = 'shake';
-  $('combo-fx').classList.remove('show');
+  // 撤掉 ant-* 类 = 停掉动画；.praise-fx 静息态 opacity:0，于是立刻看不见
+  const pfx = $('praise-fx');
+  if (pfx) pfx.className = 'praise-fx';
   renderBoard({ phase: 'settle' });
   setTimeout(function () {
     if (a) a.state = 'idle';
@@ -4220,6 +4475,8 @@ $('game-back').addEventListener('click', function () {
   }
   renderHome();
 });
+// HUD 文案开关（D34）：只关赞美文案，不关音效与元素发音
+$('praise-toggle').addEventListener('click', togglePraise);
 $('reset-link').addEventListener('click', function () {
   if (!window.confirm('清空所有进度和印记，重新开始？')) return;
   clearProgress();

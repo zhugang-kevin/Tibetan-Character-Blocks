@@ -1690,6 +1690,166 @@ function mockCtx(sink) {
       doc.querySelectorAll('#pp-reveal-grid .rv-slot.got').length === 3);
   }
 
+  /* ---------- 31. 消除情绪激励（D34） ---------- */
+  section('31. 消除情绪激励（D34：窗口连击 · 五档浮字 · 文案开关）');
+  {
+    // 31.1 镜像常量与判定表（两端必须同值，改一边必须改另一边）
+    check('窗口常量与小程序一致（600 / 160 / 900 / 2600）',
+      ev('PRAISE_WINDOW_BASE===600&&PRAISE_WINDOW_STEP===160&&PRAISE_WINDOW_MIN===900&&PRAISE_WINDOW_MAX===2600'));
+    check('最小展示间隔 / 档位1概率与小程序一致',
+      ev('PRAISE_GAP_MS') === 1100 && ev('PRAISE_TIER1_PROB') === 0.3);
+    check('窗口随元素种类缩放（2 种 → 920ms，12 种 → 2520ms）',
+      ev('praiseWindowMsOf(2)') === 920 && ev('praiseWindowMsOf(12)') === 2520);
+    check('档位映射同表（≥5 全部归最高档）',
+      ev('[0,1,2,3,4,5,6,99].map(praiseTierOf).join()') === '1,1,2,3,4,5,5,5');
+    check('档位音效表与小程序同表（一档一音，顶部两档共用欢呼）',
+      ev('PRAISE_TIER_SOUND.join()') === ',match,drum,horn,cheer,cheer');
+    check('档位 3 起才出藏文大字', ev('praiseShowsTibetan(2)') === false && ev('praiseShowsTibetan(3)') === true);
+    check('档位 4 起才出跃迁光环', ev('praiseShowsBurst(3)') === false && ev('praiseShowsBurst(4)') === true);
+
+    // 31.2 文案库注入（与 data/praise.js 同源，不是体验版自己抄一份）
+    check('体验版注入了 5 档文案库', ev('DATA.praise.tiers.length') === 5);
+    check('每档 ≥5 条且中藏双语齐备', ev(
+      'DATA.praise.tiers.every(function(t){return t.texts.length>=5&&' +
+      't.texts.every(function(x){return x.zh&&x.bo;});})') === true);
+    check('文案库藏文全部良构（无孤立组合符号 / 标点不居首 / 末尾有收尾）', ev(
+      'DATA.praise.tiers.every(function(t){return t.texts.every(function(x){' +
+      'return !/[\\u0F71-\\u0F84\\u0F90-\\u0FBC]/.test(x.bo.replace(/[\\u0F40-\\u0F6C][\\u0F71-\\u0F84\\u0F90-\\u0FBC]*/g,\'\'))' +
+      '&&!/[\\u0F0B-\\u0F0F]{2}/.test(x.bo)&&!/^[\\u0F0B-\\u0F0F]/.test(x.bo)&&/[\\u0F0B-\\u0F0F]$/.test(x.bo);});})') === true);
+    check('文案库无竞争性 / 营销性字眼',
+      ev('JSON.stringify(DATA.praise)').indexOf('排行') === -1 &&
+      ev('JSON.stringify(DATA.praise)').indexOf('金币') === -1 &&
+      ev('JSON.stringify(DATA.praise)').indexOf('优惠券') === -1);
+
+    // 31.3 假时钟驱动纯判定：窗口内连消 → 档位一路爬到顶后停住
+    const ladder = ev(`(function(){
+      var s = praiseInitState(), lv = [], zhs = [];
+      for (var k = 0; k < 12; k++) {
+        var d = praiseOnMatch(s, 100000 + k * 200, 2, function () { return 0; });
+        lv.push(d.level);
+        if (d.text) zhs.push(d.text.zh);
+        s = { combo: d.combo, prevTier: d.prevTier, lastShownAt: d.lastShownAt,
+              lastIndex: d.lastIndex, maxCombo: d.maxCombo };
+      }
+      var rep = 0;
+      for (var i = 1; i < zhs.length; i++) if (zhs[i] === zhs[i - 1]) rep++;
+      return { levels: lv.join(','), shown: zhs.length, rep: rep, max: s.maxCombo };
+    })()`);
+    check('窗口内 12 次连消 → 档位 1→2→3→4→5 后停在 5',
+      ladder.levels === '1,2,3,4,5,5,5,5,5,5,5,5', ladder.levels);
+    check('峰值连击记录 = 12', ladder.max === 12, 'max=' + ladder.max);
+    check('同一条文案不连续出现两次', ladder.rep === 0, 'rep=' + ladder.rep);
+    check('受最小间隔约束：不是每次都弹（5 < 展示数 < 12）',
+      ladder.shown > 5 && ladder.shown < 12, 'shown=' + ladder.shown);
+
+    // 31.4 超窗断链 / 错配断链（峰值只增不减）
+    check('超窗一次 → 档位回到 1，峰值保留', ev(`(function(){
+      var s = praiseInitState();
+      var a = praiseOnMatch(s, 100000, 2, function () { return 0; });
+      s = { combo: a.combo, prevTier: a.prevTier, lastShownAt: a.lastShownAt,
+            lastIndex: a.lastIndex, maxCombo: a.maxCombo };
+      var b = praiseOnMatch(s, 100000 + 920 + 500, 2, function () { return 0; });
+      return b.level + '|' + b.maxCombo;
+    })()`) === '1|1');
+    check('错配 → 连击与档位归零，峰值保留', ev(`(function(){
+      var s = praiseInitState();
+      for (var k = 0; k < 3; k++) {
+        var d = praiseOnMatch(s, 100000 + k * 100, 2, function () { return 0; });
+        s = { combo: d.combo, prevTier: d.prevTier, lastShownAt: d.lastShownAt,
+              lastIndex: d.lastIndex, maxCombo: d.maxCombo };
+      }
+      var m = praiseOnMiss(s);
+      return m.combo.combo + '|' + m.prevTier + '|' + m.maxCombo;
+    })()`) === '0|0|3');
+
+    // 31.5 真链路：点击牌面 → handleMatch → 浮字真的画出来
+    //     门禁判据用「哨兵类名」：先塞一个不可能的类，再看它有没有被 showPraise 覆盖，
+    //     避免「上一条的 1.2s 定时器正好把类名清回原状」这种假绿。
+    ev('setOnboardDone(); startLevel(1); state.praiseOff = false');
+    await sleep(60);
+
+    // 档位 2：中文 + 连击行，不出藏文
+    ev('state.praiseState = {combo:{combo:1,at:Date.now()},prevTier:1,lastShownAt:null,lastIndex:{},maxCombo:1}');
+    ev("var _pf=$('praise-fx'); _pf.className='praise-fx sentinel';");
+    let d34pair = findPair();
+    await clickTile(d34pair[0]);
+    await clickTile(d34pair[1]);
+    check('配对成功即上屏浮字（真实点击链路）',
+      ev("$('praise-fx').className").indexOf('sentinel') === -1, ev("$('praise-fx').className"));
+    check('浮字挂了档位类 lv2', ev("$('praise-fx').className").indexOf('lv2') > -1);
+    check('浮字挂了动画类 ant-a / ant-b 之一', /ant-[ab]/.test(ev("$('praise-fx').className")));
+    check('连击行显示「连击 ×2」', ev("$('praise-combo').textContent") === '连击 ×2');
+    check('档位 2 不出藏文大字（藏文从档位 3 起）', ev("$('praise-bo').style.display") === 'none');
+    check('中文文案取自文案库档位 2', ev('(function(){var z=$("praise-zh").textContent;' +
+      'return DATA.praise.tiers[1].texts.some(function(x){return x.zh===z;});})()') === true);
+    const ant1 = ev("$('praise-fx').className").indexOf('ant-a') > -1 ? 'ant-a' : 'ant-b';
+
+    // 档位 3：出藏文大字，且动画类必须翻转（同一 animation-name 不会重播）
+    ev('state.praiseState = {combo:{combo:2,at:Date.now()},prevTier:2,lastShownAt:null,lastIndex:{},maxCombo:2}');
+    d34pair = findPair();
+    await clickTile(d34pair[0]);
+    await clickTile(d34pair[1]);
+    check('浮字升级到档位 3', ev("$('praise-fx').className").indexOf('lv3') > -1);
+    check('档位 3 出藏文大字且非空',
+      ev("$('praise-bo').style.display") !== 'none' && ev("$('praise-bo').textContent").length > 0);
+    check('藏文大字取自文案库档位 3', ev('(function(){var b=$("praise-bo").textContent;' +
+      'return DATA.praise.tiers[2].texts.some(function(x){return x.bo===b;});})()') === true);
+    check('替换文案时动画类翻转（否则第二条看不出在播放）',
+      (ev("$('praise-fx').className").indexOf(ant1) === -1), ant1 + ' → ' + ev("$('praise-fx').className"));
+
+    // 档位 4：一次性光环节点被点亮
+    ev("$('praise-burst').style.display='none'");
+    ev('state.praiseState = {combo:{combo:3,at:Date.now()},prevTier:3,lastShownAt:null,lastIndex:{},maxCombo:3}');
+    d34pair = findPair();
+    await clickTile(d34pair[0]);
+    await clickTile(d34pair[1]);
+    check('浮字升级到档位 4', ev("$('praise-fx').className").indexOf('lv4') > -1);
+    check('档位 4 点亮跃迁光环节点', ev("$('praise-burst').style.display") !== 'none');
+
+    // 31.6 文案开关：只关文案，不关音效与元素发音
+    ev("var _t=$('praise-toggle'); _t.click();");
+    check('点开关后按钮文案变「文案 关」', ev("$('praise-toggle').textContent") === '文案 关');
+    check('按钮切到 off 虚线态', ev("$('praise-toggle').className").indexOf('off') > -1);
+    check('开关状态落库（跨关记住）', ev('getProgress().praiseOff') === true);
+
+    ev("$('praise-fx').className='praise-fx sentinel'");
+    ev('state.praiseState = {combo:{combo:3,at:Date.now()},prevTier:3,lastShownAt:null,lastIndex:{},maxCombo:3}');
+    d34pair = findPair();
+    await clickTile(d34pair[0]);
+    await clickTile(d34pair[1]);
+    check('关掉文案后即使档位跃迁也不上屏浮字',
+      ev("$('praise-fx').className") === 'praise-fx sentinel', ev("$('praise-fx').className"));
+
+    // 再点一次：开关回到「文案 开」并清库
+    ev("var _t2=$('praise-toggle'); _t2.click();");
+    check('再点开关回到「文案 开」并清库',
+      ev("$('praise-toggle').textContent") === '文案 开' && ev('getProgress().praiseOff') === false);
+    check('开回来时按钮的 off 类被摘掉', ev("$('praise-toggle').className").indexOf('off') === -1);
+
+    // 进关时按落库的偏好同步 HUD 标签（换手机/重开也要记得）
+    ev('(function(){var p=getProgress(); p.praiseOff=true; saveProgress(p);})()');
+    ev('startLevel(1)');
+    await sleep(60);
+    check('进关时按落库偏好同步开关标签', ev("$('praise-toggle').textContent") === '文案 关'
+      && ev("$('praise-toggle').className").indexOf('off') > -1);
+    check('进关时清掉上一关残留的浮字类', ev("$('praise-fx').className") === 'praise-fx');
+
+    // 31.7 教学闭环不受影响：关文案后配对仍朗读元素发音（发音与文案是两条独立通道）
+    const speakDry = ev('state.pronounceCount');
+    d34pair = findPair();
+    await clickTile(d34pair[0]);
+    await clickTile(d34pair[1]);
+    await sleep(420);
+    check('关掉文案后配对仍朗读藏文发音', ev('state.pronounceCount') > speakDry,
+      speakDry + ' → ' + ev('state.pronounceCount'));
+    check('关掉文案后浮字仍不上屏（开关真的只作用在文案上）',
+      ev("$('praise-fx').className") === 'praise-fx');
+
+    // 收尾：把偏好复位，避免污染后续断言
+    ev('(function(){var p=getProgress(); p.praiseOff=false; saveProgress(p);})()');
+    ev('state.praiseOff = false');
+  }
+
   /* ---------- 汇总 ---------- */
   check('全程无脚本运行时错误', errors.length === 0, errors[0]);
 

@@ -60,25 +60,26 @@ function speak(name) {
   return pronounce(name);
 }
 
-// ---- 连击音效：复用铜铃声，播放速率随连击数升高 ----
-// playbackRate 支持范围约 0.5-2.0，部分机型不支持时自动忽略
-function combo(n) {
-  try {
-    var ctx = get('match');
-    var rate = Math.min(2, 1 + 0.1 * Math.max(0, n - 1));
-    try { ctx.playbackRate = rate; } catch (e) { /* 不支持则原速 */ }
-    ctx.stop();
-    ctx.play();
-  } catch (e) {
-    // 音效失败不影响游戏
-  }
+// ---- 档位音效：一档一音 ----
+// 等级 1 复用既有的铜铃（match）；等级 2/3/4+ 依次是手鼓 / 法号 / 欢呼，
+// 三条新音由 scripts/make_praise_audio.py 程序合成（与既有 4 条同规格、同响度口径，
+// 零版权可商用）。规格与标定见 docs/DECISIONS.md D34。
+//
+// 「同一档内不换音」：等级 4 与 5 共用欢呼，不再往上升——
+// 频次最高的档位如果每次都换音源，会变成噪音。档位由 utils/praise.js 判定。
+var TIER_SOUND = ['', 'match', 'drum', 'horn', 'cheer', 'cheer'];
+
+function tier(level) {
+  var lv = Math.max(1, Math.min(TIER_SOUND.length - 1, Number(level) || 1));
+  play(TIER_SOUND[lv]);
 }
 
 module.exports = {
   play: play,
   pronounce: pronounce,
   speak: speak,
-  combo: combo,
+  tier: tier,
+  TIER_SOUND: TIER_SOUND,
   // 语义化封装
   tap: function () { play('tap'); },
   match: function () { play('match'); },

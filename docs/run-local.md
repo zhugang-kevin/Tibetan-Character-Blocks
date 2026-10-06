@@ -33,7 +33,7 @@ cd tibetan-match
 node scripts/build-h5.js
 ```
 
-**自动验收**（模拟真人点击，464 项断言）：
+**自动验收**（模拟真人点击，503 项断言）：
 
 ```bash
 NODE_PATH="C:/Users/zhuga/.workbuddy/binaries/node/workspace/node_modules" \
@@ -130,6 +130,6 @@ key 为节点 id，值为**相对首次进入的秒数**，用于核对 15 分�
 
 ```bash
 cd tibetan-match
-node scripts/validate.js      # 小程序静态自检：31 大类 767 项
+node scripts/validate.js      # 小程序静态自检：32 大类 886 项
 node scripts/build-h5.js      # 重新生成浏览器体验版（含数据一致性校验）
 ```

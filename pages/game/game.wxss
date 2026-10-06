@@ -81,6 +81,19 @@
   color: #FFD98A;
   font-weight: 700;
 }
+/* 文案开关（D34）：只关赞美文案，不关元素发音（发音属学习闭环）。
+   「关」态靠虚线边框 + 降透明度区分，不引入新的字色。 */
+.status-praise {
+  font-size: 23rpx;
+  padding: 3rpx 12rpx;
+  border: 1rpx solid rgba(183, 149, 11, 0.65);
+  border-radius: 20rpx;
+  color: #B9C7D6;
+}
+.status-praise.off {
+  border-style: dashed;
+  opacity: 0.72;
+}
 
 /* ============ 盘面：四层物理层次（背景 → 底盘 → 槽位 → 方块） ============ */
 .game-body {
@@ -398,29 +411,85 @@
   text-shadow: 0 1rpx 0 rgba(255, 255, 255, 0.6);
 }
 
-/* 连击浮层 */
-.combo-fx {
+/* ============ 即时应激励浮字（D34）============
+   一次只显示一条，**新的替换旧的**（不排队、不叠加）。
+   两套完全相同的动画（praisePopA / praisePopB）轮流用：WXSS 里同一个 animation-name
+   不会重播，替换文案时必须换成另一个名字，否则第二条看不出在播放。
+   ⚠️ 两套 keyframes 的内容必须**逐字一致**，只有名字不同。 */
+.praise-fx {
   position: fixed;
-  top: 220rpx;
+  top: 196rpx;
   left: 50%;
-  transform: translateX(-50%);
-  background: rgba(192, 57, 43, 0.92);
-  color: #FFFFFF;
-  font-size: 40rpx;
-  font-weight: 700;
-  padding: 14rpx 44rpx;
-  border-radius: 40rpx;
   z-index: 9;
-  animation: comboPop 1.4s ease forwards;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   pointer-events: none;
 }
-
-@keyframes comboPop {
-  0%   { opacity: 0; transform: translateX(-50%) scale(0.6); }
-  18%  { opacity: 1; transform: translateX(-50%) scale(1.12); }
+.praise-fx.ant-a { animation: praisePopA 1.2s ease forwards; }
+.praise-fx.ant-b { animation: praisePopB 1.2s ease forwards; }
+@keyframes praisePopA {
+  0%   { opacity: 0; transform: translateX(-50%) scale(0.7) translateY(14rpx); }
+  16%  { opacity: 1; transform: translateX(-50%) scale(1.06) translateY(0); }
   30%  { transform: translateX(-50%) scale(1); }
-  80%  { opacity: 1; }
-  100% { opacity: 0; transform: translateX(-50%) translateY(-24rpx); }
+  78%  { opacity: 1; }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-28rpx); }
+}
+@keyframes praisePopB {
+  0%   { opacity: 0; transform: translateX(-50%) scale(0.7) translateY(14rpx); }
+  16%  { opacity: 1; transform: translateX(-50%) scale(1.06) translateY(0); }
+  30%  { transform: translateX(-50%) scale(1); }
+  78%  { opacity: 1; }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-28rpx); }
+}
+/* 档位跃迁（等级 4 起）的一次性光环：插在 WXML 上靠 praiseAnt 重新挂载来重播动画 */
+.praise-burst {
+  position: fixed;
+  top: 196rpx;
+  left: 50%;
+  width: 130rpx;
+  height: 130rpx;
+  margin-left: -65rpx;
+  margin-top: -22rpx;
+  border: 2rpx solid rgba(255, 217, 138, 0.85);
+  border-radius: 50%;
+  z-index: 8;
+  pointer-events: none;
+  animation: praiseBurst 0.72s ease-out forwards;
+}
+@keyframes praiseBurst {
+  0%   { opacity: 0.9; transform: scale(0.45); }
+  100% { opacity: 0; transform: scale(2.7); }
+}
+/* 文字配色：只落暗底的元素才提亮（D32 铁律，别把 #2C3E50 全局换掉）。
+   #FFD98A / #F5E9CF 对 #0B1E36 实测 12.40:1 / 13.92:1，由 validate §32.12 机械断言。 */
+.praise-combo {
+  font-size: 26rpx;
+  font-weight: 700;
+  letter-spacing: 2rpx;
+  color: #FFD98A;
+  text-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.75);
+}
+.praise-bo {
+  font-size: 56rpx;
+  font-weight: 700;
+  line-height: 1.25;
+  color: #FFD98A;
+  text-shadow: 0 0 18rpx rgba(255, 217, 138, 0.75), 0 3rpx 10rpx rgba(0, 0, 0, 0.8);
+}
+.praise-zh {
+  font-size: 38rpx;
+  font-weight: 700;
+  letter-spacing: 3rpx;
+  color: #F5E9CF;
+  text-shadow: 0 3rpx 12rpx rgba(0, 0, 0, 0.8);
+}
+/* 等级越高越亮越大（同一套文字，靠档位类放大） */
+.praise-fx.lv4 .praise-zh { font-size: 42rpx; }
+.praise-fx.lv5 .praise-zh { font-size: 46rpx; color: #FFD98A; }
+.praise-fx.lv5 .praise-bo {
+  font-size: 64rpx;
+  text-shadow: 0 0 26rpx rgba(255, 217, 138, 0.95), 0 0 46rpx rgba(255, 165, 0, 0.55), 0 3rpx 10rpx rgba(0, 0, 0, 0.8);
 }
 
 /* 破冰 / 破箱浮字 */
