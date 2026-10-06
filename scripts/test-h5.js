@@ -1076,8 +1076,37 @@ function mockCtx(sink) {
   // 万家灯火 · 祈福跳窗（每天首次打开一次；纯静态：数字全部写死，不发任何网络请求）
   check('首次进入首页出现祈福跳窗', $('#lamp-mask').classList.contains('show'));
   check('总灯数为写死的 128,456', $('#lamp-sub').textContent.indexOf('128,456') > -1, $('#lamp-sub').textContent);
-  check('五地灯火列表齐备', $$('#lamp-list .lamp-row').length === 5,
-    '实际 ' + $$('#lamp-list .lamp-row').length);
+  check('五地灯火列表齐备', $$('#lamp-list .lamp-item').length === 5,
+    '实际 ' + $$('#lamp-list .lamp-item').length);
+
+  // 万/亿口径：主数字短、好读；精确千分位仍留在副行（两者并存，互不替代）
+  check('主数字走万/亿口径（128,456 → 12.85万盏）', $('#lamp-total').textContent === '12.85万盏',
+    $('#lamp-total').textContent);
+  check('副行保留精确千分位（不因口径切换丢失精度）',
+    $('#lamp-sub').textContent.indexOf('128,456') > -1, $('#lamp-sub').textContent);
+  const lampRowCounts = $$('#lamp-list .lamp-c').map(function (e) { return e.textContent; });
+  check('地区行同样走万/亿口径', lampRowCounts.join(',') === '8.92万,7.65万,5.43万,3.21万,2.18万',
+    lampRowCounts.join(','));
+  check('反向：小数字不加万/亿单位（12,000 这种量级不写成 1.2万）',
+    $('#lamp-home').textContent.indexOf('1.2万') === -1 && $('#lamp-home').textContent.indexOf('12,000') > -1,
+    $('#lamp-home').textContent);
+
+  // 辉光：等级 1..4 按行号循环取，刻意不按数量 → 序列既非递增也非递减，无法当成排行
+  const lampGlowSeq = $$('#lamp-list .lamp-gl').map(function (e) {
+    const m = /glow-(\d)/.exec(e.className);
+    return m ? Number(m[1]) : 0;
+  });
+  check('五地灯火各带一个辉光点，等级落在 1..4',
+    lampGlowSeq.length === 5 && lampGlowSeq.every(function (v) { return v >= 1 && v <= 4; }),
+    lampGlowSeq.join(','));
+  check('辉光等级取自行号循环值（3,1,4,2,3）', lampGlowSeq.join(',') === '3,1,4,2,3', lampGlowSeq.join(','));
+  check('反向：辉光序列非单调 —— 无法表示「谁多谁少」',
+    lampGlowSeq.some(function (v, i) { return i > 0 && v > lampGlowSeq[i - 1]; }) &&
+    lampGlowSeq.some(function (v, i) { return i > 0 && v < lampGlowSeq[i - 1]; }),
+    lampGlowSeq.join(','));
+  const lampDelays = $$('#lamp-list .lamp-gl').map(function (e) { return e.style.animationDelay; });
+  check('辉光相位逐个错开（像远近不同的灯各自呼吸）',
+    lampDelays.length === 5 && new Set(lampDelays).size === 5, lampDelays.join(','));
   check('家乡行为写死数据（浙江 12,000）',
     $('#lamp-home').textContent.indexOf('浙江') > -1 && $('#lamp-home').textContent.indexOf('12,000') > -1,
     $('#lamp-home').textContent);
@@ -1088,6 +1117,10 @@ function mockCtx(sink) {
   await sleep(60);
   check('点亮后总灯数 +1（128,456 → 128,457）', $('#lamp-sub').textContent.indexOf('128,457') > -1,
     $('#lamp-sub').textContent);
+  check('点亮瞬间主数字与副行同时挂上跳动类', $('#lamp-total').classList.contains('pop') &&
+    $('#lamp-sub').classList.contains('pop'));
+  check('万/亿口径在 +1 后不变（12.85万 → 12.85万），故跳动必须同时挂在精确副行上',
+    $('#lamp-total').textContent === '12.85万盏', $('#lamp-total').textContent);
   check('点亮后出现祝福语', $('#lamp-tip').classList.contains('show') && $('#lamp-tip').textContent.indexOf('感恩') > -1,
     $('#lamp-tip').textContent);
   check('点亮后生成 12 向金粉粒子', $$('#lamp-sparks .spark').length === 12,

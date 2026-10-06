@@ -978,6 +978,90 @@ section('17. 留存系统与首页重构（PRD v4）');
   });
   if (read('scripts/build-h5.js').indexOf("'lamp'") > -1) ok('build-h5.js 已注入 data/lamp.js');
   else err('build-h5.js 未注入 data/lamp.js');
+
+  // 19.9 万/亿口径：主数字短、好读；精确千分位仍留在副行（两个函数并存，互不替代）
+  const WAN_TABLE = [[999, '999'], [9999, '9,999'], [10000, '1万'], [12000, '1.2万'],
+    [21800, '2.18万'], [32100, '3.21万'], [45000, '4.5万'], [54300, '5.43万'],
+    [76540, '7.65万'], [89201, '8.92万'], [128456, '12.85万'],
+    [99999999, '1亿'], [100000000, '1亿'], [1284567800, '12.85亿'], [0, '0']];
+  WAN_TABLE.forEach(pair => {
+    const got = lamp.formatWan(pair[0]);
+    if (got === pair[1]) ok('formatWan(' + pair[0] + ') = ' + got);
+    else err('formatWan(' + pair[0] + ') 应为 ' + pair[1] + '，实际 ' + got);
+  });
+  if (lamp.formatWan(128456) === '12.85万' && lamp.formatCount(128456) === '128,456')
+    ok('万/亿口径与千分位并存（主数字短、副行精确，没有二选一）');
+  else err('formatWan 与 formatCount 未并存');
+  if (lamp.formatWan(NaN) === '0' && lamp.formatWan(undefined) === '0' && lamp.formatWan('x') === '0')
+    ok('formatWan 对非数字入参降级为 0');
+  else err('formatWan 未处理非数字入参');
+  if (lamp.formatWan(99999999) === '1亿')
+    ok('反向：99,999,999 两位四舍五入顶到 10000万 时进位为 1亿（不留 10000万）');
+  else err('formatWan 进位边界错误：' + lamp.formatWan(99999999));
+
+  // 19.10 主数字节点 + 点亮跳动（+1 的反馈必须落在会变的那个数上）
+  const iws9 = read('pages/index/index.wxss');
+  const iwm9 = read('pages/index/index.wxml');
+  const ijs9 = read('pages/index/index.js');
+  const tpl9 = read('preview/template.html');
+  [['lamp-total', iwm9], ['lampTotalPop', iwm9], ['lampTotalPop: true', ijs9], ['lamp.formatWan(', ijs9],
+  ['@keyframes lampPop', iws9], ['.lamp-total.pop', iws9], ['lamp-unit', iws9],
+  ['lampWan(', tpl9], ['id="lamp-total"', tpl9], ['@keyframes lampPop', tpl9],
+  ["classList.add('pop')", tpl9], ['.lamp-total.pop', tpl9]].forEach(pair => {
+    if (pair[1].indexOf(pair[0]) > -1) ok('跳动/主数字已接入：' + pair[0]);
+    else err('缺少 ' + pair[0]);
+  });
+  if (ijs9.indexOf('lamp.formatWan(next)') > -1 && ijs9.indexOf("lamp.formatCount(next)") > -1)
+    ok('点亮后主数字走万/亿、副行仍走千分位（+1 在副行可见）');
+  else err('点亮后未同时更新两种口径');
+
+  // 19.11 辉光分级：纯装饰。机械证明它不是数量的单调函数（否则等于用亮度做了排行）
+  const glow = lamp.GLOW_ORDER;
+  if (Array.isArray(glow) && glow.length >= 4) ok('辉光等级表存在：' + glow.join(','));
+  else err('缺少 GLOW_ORDER');
+  const glowInc = glow.some((v, i) => i > 0 && v > glow[i - 1]);
+  const glowDec = glow.some((v, i) => i > 0 && v < glow[i - 1]);
+  if (glowInc && glowDec)
+    ok('反向：辉光序列既非递增也非递减 —— 不可能是数量的单调函数（不标示高低与位次）');
+  else err('辉光序列单调：等于用亮度做了排行，违反 data/lamp.js 的合规声明');
+  if (glow.every(v => v >= 1 && v <= 4) && Math.max.apply(null, glow) === 4 && Math.min.apply(null, glow) === 1)
+    ok('辉光等级恰好覆盖 1..4 四档');
+  else err('辉光等级未落在 1..4');
+  const cnts19 = lampData.provinces.map(p => p.count);
+  const cntDesc = cnts19.every((v, i) => i === 0 || v <= cnts19[i - 1]);
+  if (cntDesc && glowInc && glowDec)
+    ok('灯火数递减而辉光非单调 ⇒ 辉光与数量不构成单调关系（这是本条的证明）');
+  else err('无法证明辉光与数量非单调');
+  if ([0, 1, 2, 3, 4].map(i => lamp.glowLevel(i)).join(',') === glow.slice(0, 4).join(',') + ',' + glow[0])
+    ok('glowLevel 按行号循环取值（0..4 → ' + [0, 1, 2, 3, 4].map(i => lamp.glowLevel(i)).join(',') + '）');
+  else err('glowLevel 取值不符');
+  if ([lamp.glowLevel(-1), lamp.glowLevel(9), lamp.glowLevel(NaN)].every(v => v >= 1 && v <= 4))
+    ok('glowLevel 对越界/非数字入参仍落在 1..4');
+  else err('glowLevel 越界处理错误');
+  ['glow-1', 'glow-2', 'glow-3', 'glow-4'].forEach(c => {
+    if (iws9.indexOf('.' + c + ' {') > -1 && tpl9.indexOf('.' + c + ' {') > -1) ok('两端都定义了 .' + c);
+    else err('缺少 .' + c);
+  });
+  if (iws9.indexOf('.glow-5') === -1 && tpl9.indexOf('.glow-5') === -1) ok('两端都没有第 5 档辉光（恰好 4 档）');
+  else err('出现了第 5 档辉光');
+  if (tpl9.indexOf('[3, 1, 4, 2, 3]') > -1)
+    ok('体验版辉光等级表与小程序逐字一致（[3, 1, 4, 2, 3]）');
+  else err('体验版辉光等级表与小程序不一致');
+
+  // 19.12 类名撞名：.lamp-row 曾同时是「长明灯签到环容器」与「跳窗灯火行」，
+  //       后定义的规则会给签到环额外加上金色下边框（真实存在的视觉缺陷）→ 跳窗行改名 .lamp-item
+  const occ = (s, sub) => s.split(sub).length - 1;
+  if (occ(iws9, '.lamp-row {') === 1) ok('index.wxss 的 .lamp-row 只剩「长明灯签到环」一处（撞名已解）');
+  else err('.lamp-row 在 index.wxss 出现 ' + occ(iws9, '.lamp-row {') + ' 次（应为 1）');
+  if (occ(tpl9, '.lamp-row {') === 1) ok('体验版 .lamp-row 同样只剩一处');
+  else err('体验版 .lamp-row 出现 ' + occ(tpl9, '.lamp-row {') + ' 次（应为 1）');
+  [['index.wxss', iws9], ['体验版', tpl9]].forEach(pair => {
+    if (occ(pair[1], '.lamp-item {') === 1) ok(pair[0] + ' 定义了 .lamp-item（跳窗灯火行）');
+    else err(pair[0] + ' 缺少 .lamp-item');
+  });
+  if (iwm9.indexOf('class="lamp-item"') > -1 && tpl9.indexOf('class="lamp-item"') > -1)
+    ok('两端跳窗灯火行都用 .lamp-item');
+  else err('跳窗灯火行未统一为 .lamp-item');
 })();
 
 // ---------- 20. 朝圣天梯动效（入场升起 / 台阶错峰 / 莲花绽放 / 点击回弹） ----------

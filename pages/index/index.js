@@ -91,7 +91,9 @@ Page({
     lampShow: false,
     lampLit: false,
     lampTotal: lampData.total,
-    lampTotalText: lamp.formatCount(lampData.total),
+    // 主数字走万/亿口径（12.85万），副行仍给精确千分位（128,456）——两个函数并存
+    lampTotalText: lamp.formatWan(lampData.total),
+    lampTotalPop: false,
     lampProvinces: [],
     lampHome: { name: '', countText: '' },
     lampLotus: { goldText: '', pinkText: '' },
@@ -275,16 +277,25 @@ Page({
     }, 2400);
   },
 
-  // 万家灯火祈福跳窗：文案里的数字全部来自 data/lamp.js 的固定数据（含千分位）
+  // 万家灯火祈福跳窗：文案里的数字全部来自 data/lamp.js 的固定数据
+  // 主数字用万/亿口径（短、好读），副行与句子用千分位（精确、可见 +1）
+  // 地区行的辉光等级由 lamp.glowLevel(行号) 决定，是纯装饰，与数量无关
   buildLampView: function () {
-    var provinces = lampData.provinces.map(function (x) {
-      return { name: x.name, countText: lamp.formatCount(x.count) };
+    var provinces = lampData.provinces.map(function (x, i) {
+      return {
+        name: x.name,
+        countText: lamp.formatWan(x.count),
+        glow: lamp.glowLevel(i),
+        // 闪烁相位错开：五行各自呼吸，像远近不同的灯，而不是一起闪
+        glowDelay: (i * 0.37).toFixed(2) + 's'
+      };
     });
     return {
       lampShow: true,
       lampLit: false,
       lampTotal: lampData.total,
-      lampTotalText: lamp.formatCount(lampData.total),
+      lampTotalPop: false,
+      lampTotalText: lamp.formatWan(lampData.total),
       lampSub: lamp.fill(lampData.subTemplate, { total: lamp.formatCount(lampData.total) }),
       lampProvinces: provinces,
       lampHome: { name: lampData.home.name, countText: lamp.formatCount(lampData.home.count) },
@@ -300,13 +311,16 @@ Page({
   },
 
   // 点亮我的一盏灯：只做视觉变化（总数 +1）+ 微震动 + 一句祝福，不发送任何请求
+  // 主数字的万/亿口径在 +1 时通常不变（12.85万 → 12.85万），
+  // 所以跳动动效同时挂在主数字与精确副行上：真正在跳的是 128,456 → 128,457。
   onLightLamp: function () {
     if (this.data.lampLit) return;
     var next = lamp.lightOne(this.data.lampTotal);
     this.setData({
       lampLit: true,
       lampTotal: next,
-      lampTotalText: lamp.formatCount(next),
+      lampTotalPop: true,
+      lampTotalText: lamp.formatWan(next),
       lampSub: lamp.fill(lampData.subTemplate, { total: lamp.formatCount(next) })
     });
     try {

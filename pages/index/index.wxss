@@ -917,6 +917,50 @@ page,
   color: #EBD9B4;
 }
 
+/* 主数字：万/亿口径（12.85万）。精确值仍保留在下一行句子里（128,457 盏灯）。
+   两者共用同一套墨色（#FFD98A / #EBD9B4），不引入新墨，避免触碰 §30 白名单。 */
+.lamp-total {
+  position: relative;
+  margin-top: 8rpx;
+  text-align: center;
+  font-size: 54rpx;
+  font-weight: 700;
+  letter-spacing: 2rpx;
+  color: #FFD98A;
+  text-shadow: 0 3rpx 16rpx rgba(241, 196, 15, 0.45);
+}
+.lamp-unit { margin-left: 8rpx; font-size: 26rpx; font-weight: 400; color: #C9BFA8; }
+
+/* 点亮瞬间的跳动：主数字与精确副行同时弹一下。
+   万/亿口径在 +1 时通常不变，真正在跳的是副行里的 128,456 → 128,457。 */
+.lamp-total.pop, .lamp-sub.pop {
+  animation: lampPop 620ms cubic-bezier(0.22, 1.2, 0.36, 1) both;
+}
+@keyframes lampPop {
+  0% { transform: scale(1); }
+  34% { transform: scale(1.16); }
+  100% { transform: scale(1); }
+}
+
+/* 各地灯火的辉光点：等级由行号循环决定（3,1,4,2,3），与数量无关，纯装饰。
+   相位由 animation-delay 错开，像远近不同的灯各自呼吸，不构成高低或位次。 */
+.lamp-l { display: flex; align-items: center; gap: 12rpx; }
+.lamp-gl {
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 50%;
+  background: #FFD98A;
+  animation: lampGlow 2.8s ease-in-out infinite;
+}
+.glow-1 { opacity: 0.34; box-shadow: 0 0 5rpx rgba(255, 217, 138, 0.42); }
+.glow-2 { opacity: 0.52; box-shadow: 0 0 8rpx rgba(255, 217, 138, 0.54); }
+.glow-3 { opacity: 0.72; box-shadow: 0 0 12rpx rgba(255, 217, 138, 0.66); }
+.glow-4 { opacity: 0.92; box-shadow: 0 0 17rpx rgba(255, 217, 138, 0.82); }
+@keyframes lampGlow {
+  0%, 100% { transform: scale(0.86); }
+  50% { transform: scale(1.12); }
+}
+
 /* 3D 酥油灯 + CSS 火焰 */
 .lamp-flame {
   position: relative;
@@ -1053,7 +1097,7 @@ page,
   color: #C9BFA8;
 }
 .lamp-list { margin-top: 10rpx; }
-.lamp-row {
+.lamp-item {
   display: flex;
   align-items: center;
   justify-content: space-between;

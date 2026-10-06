@@ -884,6 +884,17 @@
     background: radial-gradient(ellipse at center, rgba(255,226,140,.5), rgba(241,196,15,.16) 44%, transparent 74%); }
   .lamp-title { position: relative; text-align: center; font-size: 22px; font-weight: 800; letter-spacing: 3px; color: #FFE9A8; text-shadow: 0 2px 8px rgba(241,196,15,.5); }
   .lamp-sub { position: relative; margin-top: 6px; text-align: center; font-size: 13px; color: #EBD9B4; }
+  .lamp-total { position: relative; margin-top: 4px; text-align: center; font-size: 27px; font-weight: 800; letter-spacing: 1px; color: #FFD98A; text-shadow: 0 2px 8px rgba(241,196,15,.45); }
+  .lamp-unit { margin-left: 4px; font-size: 13px; font-weight: 400; color: #C9BFA8; }
+  .lamp-total.pop, .lamp-sub.pop { animation: lampPop 620ms cubic-bezier(.22,1.2,.36,1) both; }
+  @keyframes lampPop { 0% { transform: scale(1); } 34% { transform: scale(1.16); } 100% { transform: scale(1); } }
+  .lamp-l { display: flex; align-items: center; gap: 6px; }
+  .lamp-gl { width: 8px; height: 8px; border-radius: 50%; background: #FFD98A; animation: lampGlow 2.8s ease-in-out infinite; }
+  .glow-1 { opacity: .34; box-shadow: 0 0 3px rgba(255,217,138,.42); }
+  .glow-2 { opacity: .52; box-shadow: 0 0 4px rgba(255,217,138,.54); }
+  .glow-3 { opacity: .72; box-shadow: 0 0 6px rgba(255,217,138,.66); }
+  .glow-4 { opacity: .92; box-shadow: 0 0 9px rgba(255,217,138,.82); }
+  @keyframes lampGlow { 0%, 100% { transform: scale(.86); } 50% { transform: scale(1.12); } }
   .lamp-flame { position: relative; height: 106px; margin: 13px 0 4px; }
   .flame-glow { position: absolute; left: 50%; top: 2px; width: 130px; height: 100px; transform: translateX(-50%); border-radius: 50%; animation: lampBreathe 2.6s ease-in-out infinite;
     background: radial-gradient(ellipse at center, rgba(255,206,84,.55), rgba(241,196,15,.14) 48%, transparent 76%); }
@@ -925,7 +936,7 @@
   }
   .lamp-sec { position: relative; margin-top: 11px; font-size: 12px; font-weight: 800; letter-spacing: 1.5px; color: #C9BFA8; }
   .lamp-list { margin-top: 5px; }
-  .lamp-row { display: flex; align-items: center; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid rgba(212,175,55,.22); }
+  .lamp-item { display: flex; align-items: center; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid rgba(212,175,55,.22); }
   .lamp-p { font-size: 13px; color: #F0E6D2; }
   .lamp-c { font-size: 13px; font-weight: 800; color: #FFD98A; }
   .lamp-home { margin-top: 7px; padding: 7px 9px; border-radius: 8px; font-size: 12px; color: #EBD9B4; background: rgba(36,113,163,.22); border: 1px solid rgba(36,113,163,.45); }
@@ -1131,6 +1142,7 @@
     <div class="lamp-card">
       <div class="lamp-halo"></div>
       <div class="lamp-title" id="lamp-title">万家灯火</div>
+      <div class="lamp-total" id="lamp-total"></div>
       <div class="lamp-sub" id="lamp-sub"></div>
       <div class="lamp-flame">
         <div class="flame-glow"></div>
@@ -4515,12 +4527,40 @@ function lampFill(tpl, obj) {
     return obj && obj[k] !== undefined ? String(obj[k]) : '';
   });
 }
+// 万/亿口径（与小程序 utils/lamp.js#formatWan 同契约，validate §19.9 逐值比对）
+function lampTrim2(x) {
+  const s = x.toFixed(2).replace(/\.?0+$/, '');
+  return s === '' ? '0' : s;
+}
+function lampWan(n) {
+  const num = typeof n === 'number' && isFinite(n) ? Math.round(n) : 0;
+  const sign = num < 0 ? '-' : '';
+  const abs = Math.abs(num);
+  if (abs >= 1e8) return sign + lampTrim2(abs / 1e8) + '亿';
+  if (abs >= 1e4) {
+    const wan = lampTrim2(abs / 1e4);
+    if (Number(wan) >= 1e4) return sign + lampTrim2(abs / 1e8) + '亿';
+    return sign + wan + '万';
+  }
+  return sign + lampFormat(abs);
+}
+// 辉光等级按行号循环（3,1,4,2,3），刻意不按数量 —— 不标示高低与位次
+const LAMP_GLOW_ORDER = [3, 1, 4, 2, 3];
+function lampGlow(i) {
+  const k = typeof i === 'number' && isFinite(i) ? Math.abs(Math.floor(i)) : 0;
+  return LAMP_GLOW_ORDER[k % LAMP_GLOW_ORDER.length];
+}
 function renderLamp() {
   $('lamp-title').textContent = LAMP.title;
+  $('lamp-total').classList.remove('pop');
+  $('lamp-sub').classList.remove('pop');
+  $('lamp-total').innerHTML = lampWan(lamp.total) + '<span class="lamp-unit">盏</span>';
   $('lamp-sub').textContent = lampFill(LAMP.subTemplate, { total: lampFormat(lamp.total) });
-  $('lamp-list').innerHTML = LAMP.provinces.map(function (p) {
-    return '<div class="lamp-row"><span class="lamp-p">' + p.name + '</span>' +
-      '<span class="lamp-c">' + lampFormat(p.count) + '</span></div>';
+  $('lamp-list').innerHTML = LAMP.provinces.map(function (p, i) {
+    return '<div class="lamp-item"><div class="lamp-l">' +
+      '<div class="lamp-gl glow-' + lampGlow(i) + '" style="animation-delay:' + (i * 0.37).toFixed(2) + 's"></div>' +
+      '<span class="lamp-p">' + p.name + '</span></div>' +
+      '<span class="lamp-c">' + lampWan(p.count) + '</span></div>';
   }).join('');
   $('lamp-home').textContent = lampFill(LAMP.homeTemplate, {
     name: LAMP.home.name, count: lampFormat(LAMP.home.count)
@@ -4545,7 +4585,11 @@ function lightLamp() {
   if (lamp.lit) return;
   lamp.lit = true;
   lamp.total = lamp.total + 1;
+  // 万/亿口径在 +1 时通常不变（12.85万 → 12.85万），真正在跳的是副行的 128,456 → 128,457
+  $('lamp-total').innerHTML = lampWan(lamp.total) + '<span class="lamp-unit">盏</span>';
   $('lamp-sub').textContent = lampFill(LAMP.subTemplate, { total: lampFormat(lamp.total) });
+  $('lamp-total').classList.add('pop');
+  $('lamp-sub').classList.add('pop');
   $('lamp-btn').classList.add('lit');
   $('lamp-tip').classList.add('show');
   const sp = $('lamp-sparks');

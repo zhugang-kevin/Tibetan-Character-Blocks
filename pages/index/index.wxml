@@ -267,7 +267,9 @@
     <view class="lamp-card">
       <view class="lamp-halo"></view>
       <view class="lamp-title">{{lampTitle}}</view>
-      <view class="lamp-sub">{{lampSub}}</view>
+      <!-- 主数字走万/亿口径（12.85万）；精确值在下一行的句子里（128,457 盏灯） -->
+      <view class="lamp-total {{lampTotalPop ? 'pop' : ''}}">{{lampTotalText}}<text class="lamp-unit">盏</text></view>
+      <view class="lamp-sub {{lampTotalPop ? 'pop' : ''}}">{{lampSub}}</view>
 
       <!-- 3D 酥油灯 + CSS 火焰 -->
       <view class="lamp-flame">
@@ -287,10 +289,14 @@
         </view>
       </view>
 
+      <!-- 各地灯火：辉光等级按行号循环取 1..4，纯装饰，与灯火数量无关（不标示高低与位次） -->
       <view class="lamp-sec">各地灯火</view>
       <view class="lamp-list">
-        <view class="lamp-row" wx:for="{{lampProvinces}}" wx:key="name">
-          <text class="lamp-p">{{item.name}}</text>
+        <view class="lamp-item" wx:for="{{lampProvinces}}" wx:key="name">
+          <view class="lamp-l">
+            <view class="lamp-gl glow-{{item.glow}}" style="animation-delay:{{item.glowDelay}}"></view>
+            <text class="lamp-p">{{item.name}}</text>
+          </view>
           <text class="lamp-c">{{item.countText}}</text>
         </view>
       </view>
