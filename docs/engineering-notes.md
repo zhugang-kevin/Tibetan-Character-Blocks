@@ -158,6 +158,9 @@ chrome-headless-shell.exe --headless --no-sandbox --disable-gpu --disable-dev-sh
 
 - 2026-10-06 22:36 项目目录被整体搬到 `C:/Users/zhuga/WorkBuddy/_backup/tibetan-match-2026-10-06`（**非本人操作**），
   会话目录 `2026-10-04-00-41-14/` 一度只剩空 `.workbuddy/`；记忆已从 `_backup/memory-00-41-14/` 还原。
+- **2026-10-07 00:53 项目迁至新家 `I:\藏趣游戏`（本人操作，用户指定）**：
+  robocopy /E 复制 209 文件 / 42,179,736 B → 逐字节校验一致 → git 干净同步 `5d6bdc1` →
+  新位置 validate 复跑 1098/0/2 → 删除 C 盘源目录。**此后所有仓库路径一律用 `I:\藏趣游戏`**。
 - `git push` 卡点定案（2026-10-06）：网络与仓库级代理都正常，卡的是**凭据链**
   （系统级 `credential.helper` 先跑 `helper-selector` ~22s → 沙箱弹不出 UI → timeout）。
   可用命令：`GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=Never git -c credential.helper= -c credential.helper=manager push origin main`
