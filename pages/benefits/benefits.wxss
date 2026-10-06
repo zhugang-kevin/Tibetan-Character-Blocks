@@ -78,7 +78,7 @@
 .bn-note {
   margin-top: 18rpx;
   font-size: 22rpx;
-  color: #B7950B;
+  color: #8A6A12;
   line-height: 1.6;
 }
 
@@ -134,7 +134,7 @@
 .bn-guide-foot {
   margin-top: 18rpx;
   font-size: 22rpx;
-  color: #9A9384;
+  color: #6E6759;
   text-align: center;
 }
 
@@ -179,15 +179,15 @@
 }
 .bn-city.on {
   color: #FFFFFF;
-  background: #B7950B;
-  border-color: #B7950B;
+  background: #8A6A12;
+  border-color: #8A6A12;
 }
 
 .bn-empty {
   padding: 60rpx 20rpx;
   text-align: center;
   font-size: 26rpx;
-  color: #9A9384;
+  color: #6E6759;
   background: rgba(255, 255, 255, 0.7);
   border-radius: 20rpx;
 }
@@ -225,7 +225,7 @@
 }
 .bc-kind {
   font-size: 21rpx;
-  color: #B7950B;
+  color: #8A6A12;
   border: 2rpx solid #E8D9A8;
   border-radius: 999rpx;
   padding: 4rpx 16rpx;
@@ -235,7 +235,7 @@
 .bc-meta {
   margin-top: 10rpx;
   font-size: 22rpx;
-  color: #9A9384;
+  color: #6E6759;
 }
 .bc-offer {
   margin-top: 16rpx;
@@ -249,7 +249,7 @@
 .bc-provider {
   margin-top: 14rpx;
   font-size: 21rpx;
-  color: #1E8449;
+  color: #176B3C;
   line-height: 1.5;
 }
 .bc-foot {
@@ -260,9 +260,9 @@
 }
 .bc-need {
   font-size: 23rpx;
-  color: #9A9384;
+  color: #6E6759;
 }
-.bc-need.ok { color: #1E8449; }
+.bc-need.ok { color: #176B3C; }
 .bc-btn {
   padding: 14rpx 38rpx;
   border-radius: 999rpx;
@@ -278,7 +278,7 @@
   font-size: 26rpx;
   font-weight: 700;
   letter-spacing: 4rpx;
-  color: #1E8449;
+  color: #176B3C;
   background: #EAF4EC;
   border: 2rpx dashed #1E8449;
 }
@@ -286,7 +286,7 @@
   padding: 12rpx 26rpx;
   border-radius: 999rpx;
   font-size: 24rpx;
-  color: #9A9384;
+  color: #6E6759;
   background: #F2EDE0;
 }
 
@@ -294,7 +294,7 @@
   margin: 26rpx 4rpx 0;
   font-size: 21rpx;
   line-height: 1.7;
-  color: #A79E8B;
+  color: #6E6759;
 }
 
 .home-btn {

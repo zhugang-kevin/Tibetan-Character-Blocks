@@ -155,7 +155,7 @@ Page({
 
       // 藏文装饰语（tsheg 断行，shad 类符号不落行首）
       ctx.textAlign = 'center';
-      ctx.fillStyle = 'rgba(192, 57, 43, 0.75)';
+      ctx.fillStyle = '#C0392B';
       ctx.font = '500 54px "Noto Serif Tibetan", "Microsoft Himalaya", serif';
       tibText.drawTibetanWrapped(ctx, CERT_TIB, W / 2, 148, W - 260, 68);
 
@@ -173,7 +173,7 @@ Page({
       ctx.stroke();
 
       // 阶段
-      ctx.fillStyle = '#8A8375';
+      ctx.fillStyle = '#6E6759';
       ctx.font = '400 28px "PingFang SC","Microsoft YaHei",sans-serif';
       ctx.fillText('第 ' + cert.stage + ' 阶段', W / 2, 352);
 
@@ -211,7 +211,7 @@ Page({
       for (var r = 0; r < rows.length; r++) {
         var y = metaY + r * 46;
         ctx.textAlign = 'left';
-        ctx.fillStyle = '#8A8375';
+        ctx.fillStyle = '#6E6759';
         ctx.fillText(rows[r][0], 120, y);
         ctx.textAlign = 'right';
         ctx.fillStyle = '#2C3E50';
@@ -239,7 +239,7 @@ Page({
       ctx.textAlign = 'center';
       ctx.fillText('小程序码', cx + cs / 2, cy + cs / 2 + 8);
 
-      ctx.fillStyle = '#B7950B';
+      ctx.fillStyle = '#8A6A12';
       ctx.font = '700 28px "PingFang SC","Microsoft YaHei",sans-serif';
       ctx.fillText('玩方块，认藏文', W / 2, H - 62);
 

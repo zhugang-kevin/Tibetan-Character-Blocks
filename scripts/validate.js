@@ -1869,6 +1869,197 @@ section('29. 通关揭图（十关秘境图 · 零金额 · 不新增存储字�
 }
 
 
+// ================= 30. 文字对比度（D32 · WCAG AA） =================
+// 背景：外部报告提出「所有文字对比度 ≥ 4.5:1」。实测发现三类真问题并已修：
+//   ① 牌面 3D 渐变把 shade(c,1.42) 高光铺满顶部 58%，白字被冲掉（四色 1.48~3.26）；
+//   ② 图标按 el.color 画在**同色**牌面上（1.41~1.75，几乎不可见）；金块浅金牌面配奶白字形（1.00）；
+//   ③ 13 个灰调/金/绿墨色在浅卡上只有 2.13~3.76（126 处声明）。
+// 本节用 sRGB 相对亮度把对比度**算出来**，不信任字面量。
+section('30. 文字对比度（WCAG AA · 牌面渐变采样 + 墨色回归锁）');
+{
+  // --- 30.0 对比度函数（sRGB 相对亮度，与 WCAG 定义一致） ---
+  const lin30 = c => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+  const lum30 = rgb => 0.2126 * lin30(rgb[0]) + 0.7152 * lin30(rgb[1]) + 0.0722 * lin30(rgb[2]);
+  const hex30 = h => { const s = h.replace('#', ''); const f = s.length === 3 ? s.split('').map(x => x + x).join('') : s;
+    return [parseInt(f.slice(0, 2), 16), parseInt(f.slice(2, 4), 16), parseInt(f.slice(4, 6), 16)]; };
+  const ratio30 = (a, b) => { const la = lum30(a), lb = lum30(b); return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05); };
+  const shade30 = (hex, f) => { const n = parseInt(hex.slice(1), 16);
+    return [16, 8, 0].map(s => Math.min(255, Math.round(((n >> s) & 255) * f))); };
+  const clamp30 = v => Math.round(v * 100) / 100;
+  const WHITE30 = hex30('#FFFFFF'), CREAM30 = hex30('#FDF6E3'), CARD30 = hex30('#FCF6E8'), DARK30 = hex30('#0B1E36');
+  const AA30 = 4.5;
+
+  // --- 30.1 牌面渐变：按 stops 采样，字形/图标占位区(y10%~90%)内最差对比度 ≥ 4.5 ---
+  const gj30 = read('pages/game/game.js');
+  const tpl30 = read('preview/template.html');
+  const el30 = read('data/elements.js');
+  // 新 stops：0% 1.39 → 8% 1.02 → 14% 起平色 → 58% → 100% 0.68（与 pieceStyle 同参数）
+  const STOPS30 = [[0.00, 1.39], [0.08, 1.02], [0.14, 1.00], [0.58, 1.00], [1.00, 0.68]];
+  const faceAt30 = (hex, y) => {
+    for (let i = 0; i < STOPS30.length - 1; i++) {
+      const [y0, k0] = STOPS30[i], [y1, k1] = STOPS30[i + 1];
+      if (y >= y0 && y <= y1) {
+        const t = y1 > y0 ? (y - y0) / (y1 - y0) : 0;
+        const a = shade30(hex, k0), b = shade30(hex, k1);
+        return [0, 1, 2].map(j => Math.round(a[j] * (1 - t) + b[j] * t));
+      }
+    }
+    return shade30(hex, STOPS30[STOPS30.length - 1][1]);
+  };
+  // 顶部窄倒角必须真的收进字形区之外：14% 处应已是平色
+  if (gj30.indexOf('shade(color, 1.39)') > -1 && gj30.indexOf("' 8%, ' + color + ' 14%, '") > -1)
+    ok('pieceStyle 高光收进顶部 14%（小程序）');
+  else err('pieceStyle 高光带仍压住字形占位区（应 1.39 → 1.02 → 14% 平色）');
+  if (tpl30.indexOf('shade(color, 1.39)') > -1 && tpl30.indexOf("' 8%, ' + color + ' 14%, '") > -1)
+    ok('pieceStyle 高光收进顶部 14%（体验版）');
+  else err('体验版 pieceStyle 未同步窄倒角 stops');
+
+  // 元素四色：奶白字形/图标在「平色段」上的对比度（金/绿已压暗）
+  const EL30 = { letter_01: '#C0392B', letter_02: '#176B3C', letter_03: '#2471A3', letter_04: '#8A6A12',
+                 icon_01: '#C0392B', icon_02: '#2471A3', icon_03: '#5D6D7E', icon_04: '#8A6A12' };
+  Object.keys(EL30).forEach(id => {
+    const c = EL30[id];
+    const worst = Math.min(...[0.10, 0.14, 0.30, 0.50, 0.70, 0.90].map(y => ratio30(hex30('#FFF6DC'), faceAt30(c, y))));
+    if (worst >= AA30) ok('元素 ' + id + ' ' + c + ' 奶白字形/图标 最差 ' + clamp30(worst) + ':1');
+    else err('元素 ' + id + ' ' + c + ' 奶白字形/图标 对比度不足：' + clamp30(worst) + ':1（需 ≥4.5）');
+  });
+  // 元素本色必须就是这四个（防止有人把金/绿改回去）
+  [['#8A6A12', '金'], ['#176B3C', '绿'], ['#C0392B', '红'], ['#2471A3', '蓝'], ['#5D6D7E', '灰']].forEach(([c, n]) => {
+    if (el30.indexOf("'" + c + "'") > -1) ok('元素库含' + n + '墨 ' + c);
+    else err('元素库丢了' + n + '墨 ' + c + '（对比度体系依赖它）');
+  });
+  [['#B7950B', 'data/elements.js'], ['#1E8449', 'data/elements.js']].forEach(([c, f]) => {
+    // 只扫非注释行：说明文字里会提到旧墨（「金 #B7950B→#8A6A12」），不算数
+    const code30 = read(f).split('\n').filter(l => l.trim().indexOf('//') !== 0).join('\n');
+    if (code30.indexOf(c) > -1) err(f + ' 代码行仍出现旧墨 ' + c + '（金字/绿字会掉回 2.66 / 4.37）');
+    else ok(f + ' 代码行已清除旧墨 ' + c);
+  });
+
+  // --- 30.2 图标三墨变体（普通牌奶白 / 金块深墨 / 卡片本色） ---
+  const ic30 = read('utils/icons.js');
+  [['TILE_LITE_INK', '#FFF6DC'], ['TILE_GOLD_INK', '#6B4406']].forEach(([k, v]) => {
+    if (ic30.indexOf(k + " = '" + v + "'") > -1) ok('icons.js ' + k + ' = ' + v);
+    else err('icons.js 缺 ' + k + '（图标三墨变体是修「同色图标隐形」的关键）');
+  });
+  ["['', null]", "['|lite', TILE_LITE_INK]", "['|gold', TILE_GOLD_INK]"].forEach(k => {
+    if (ic30.indexOf(k) > -1) ok('icons.js 渲染变体 ' + k);
+    else err('icons.js 未渲染变体 ' + k);
+  });
+  const gw30 = read('pages/game/game.wxml');
+  if (gw30.indexOf("iconPaths[item.id + '|lite']") > -1 && gw30.indexOf("iconPaths[item.id + '|gold']") > -1)
+    ok('game.wxml 牌面图标按 golden 选 |lite / |gold 变体');
+  else err('game.wxml 牌面图标仍引用无变体的 iconPaths[item.id]（会渲染同色隐形图标）');
+  if (tpl30.indexOf('function tileIconDataUrl') > -1 && tpl30.indexOf('tileIconDataUrl(t.id, t.golden)') > -1)
+    ok('体验版 tileIconDataUrl 按 golden 选墨');
+  else err('体验版未实现 tileIconDataUrl（牌面图标仍是同色）');
+
+  // --- 30.3 金块牌面：浅金三段上的深墨 ≥ 4.5 ---
+  const gx30 = read('pages/game/game.wxss');
+  ['#FFF6D8', '#FFE9A8', '#E8C465'].forEach(bg => {
+    const r = ratio30(hex30('#6B4406'), hex30(bg));
+    if (r >= AA30) ok('金块深墨 #6B4406 on ' + bg + ' = ' + clamp30(r) + ':1');
+    else err('金块深墨 #6B4406 on ' + bg + ' = ' + clamp30(r) + ':1（不足）');
+  });
+  ['.tile.golden .glyph', '.tile.golden .glyph-fallback'].forEach(k => {
+    if (gx30.indexOf(k) > -1 && gx30.indexOf('color: #6B4406') > -1) ok('game.wxss ' + k + ' 用深墨');
+    else err('game.wxss 缺 ' + k + ' 深墨规则（金块上奶白字 = 1.00）');
+  });
+  if (tpl30.indexOf('#6B4406; text-shadow') > -1) ok('体验版金块深墨规则已同步');
+  else err('体验版缺金块深墨规则');
+
+  // --- 30.4 浅卡墨色回归锁：13 个旧墨不得再以 color: 形式出现 ---
+  const OLD_INKS = { '#8A8375': 3.76, '#9A9384': 3.05, '#A79F8D': 2.63, '#A79E8B': 2.66, '#B9B1A0': 2.13,
+                     '#B9AE94': 2.20, '#C4BCA6': 1.89, '#B3AB99': 2.28, '#A9A192': 2.56, '#A69C88': 2.72,
+                     '#8D8577': 3.65, '#7F8C8D': 3.22 };
+  const cssFiles30 = ['pages/index/index.wxss', 'pages/game/game.wxss', 'pages/result/result.wxss',
+    'pages/cert/cert.wxss', 'pages/passport/passport.wxss', 'pages/benefits/benefits.wxss',
+    'app.wxss', 'preview/template.html'];
+  const colorDecl30 = cssFiles30.map(read).join('\n');
+  Object.keys(OLD_INKS).forEach(ink => {
+    const re = new RegExp('(?<![-\\w])color\\s*:\\s*' + ink, 'i');
+    if (re.test(colorDecl30)) err('仍有 color: ' + ink + '（浅卡上仅 ' + OLD_INKS[ink] + ':1，应改 #6E6759 / #5D6D7E）');
+    else ok('已无 color: ' + ink);
+  });
+  if (/(?<![-\w])color\s*:\s*#B7950B/i.test(colorDecl30))
+    err('仍有 color: #B7950B（浅卡金字 2.87，应改 #8A6A12）');
+  else ok('已无 color: #B7950B');
+  if (/(?<![-\w])color\s*:\s*#1E8449/i.test(colorDecl30))
+    err('仍有 color: #1E8449（米卡上 4.37，应改 #176B3C）');
+  else ok('已无 color: #1E8449');
+  // 合并后的新墨必须真的达标
+  [['#6E6759', WHITE30], ['#6E6759', CREAM30], ['#8A6A12', CREAM30], ['#176B3C', CREAM30], ['#5D6D7E', CREAM30]]
+    .forEach(([ink, bg]) => {
+      const r = ratio30(hex30(ink), bg);
+      if (r >= AA30) ok('新墨 ' + ink + ' on 米/白卡 = ' + clamp30(r) + ':1');
+      else err('新墨 ' + ink + ' 对比度不足 ' + clamp30(r) + ':1');
+    });
+
+  // --- 30.5 证书档位色（同一色既当文字又当白字标签的底） ---
+  const cert30 = read('utils/certificate.js');
+  if (cert30.indexOf("color: '#8A6A12'") > -1) ok('证书金档 #8A6A12');
+  else err('证书金档未改为 #8A6A12（宣纸米底 2.66 / 白字落金底 2.87）');
+  if (cert30.indexOf("color: '#5D6D7E'") > -1) ok('证书银档 #5D6D7E');
+  else err('证书银档未改为 #5D6D7E（3.22 / 3.48）');
+  if (tpl30.indexOf("color: '#8A6A12', minAccuracy: 0.95") > -1) ok('体验版证书金档已同步');
+  else err('体验版证书金档未同步');
+  [['#8A6A12', CREAM30], ['#FFFFFF', hex30('#8A6A12')], ['#5D6D7E', CREAM30], ['#FFFFFF', hex30('#5D6D7E')]]
+    .forEach(([a, b]) => {
+      const r = ratio30(hex30(a), b);
+      if (r >= AA30) ok('证书档位 ' + a + '×' + '#RGB' + ' = ' + clamp30(r) + ':1');
+      else err('证书档位对比度不足 ' + clamp30(r) + ':1');
+    });
+
+  // --- 30.6 证书藏文不得再用半透明红墨（20px 非大字，需 4.5） ---
+  const cx30 = read('pages/cert/cert.wxss');
+  if (cx30.indexOf('rgba(192, 57, 43, 0.78)') > -1) err('.sheet-tib 仍用半透明红墨（3.54）');
+  else ok('.sheet-tib 已改实色达标红');
+  if (cx30.indexOf('color: #C0392B') > -1) ok('证书藏文 #C0392B on 米底 ' + clamp30(ratio30(hex30('#C0392B'), CREAM30)) + ':1');
+  else err('证书藏文缺 #C0392B');
+
+  // --- 30.7 中调金底必须压暗：白/奶白字才可达标（同块 color×background 抽查） ---
+  const pairs30 = [
+    ['pages/game/game.wxss', 'color: #FFFFFF;\n  background: #B7950B;', 'game.wxss .fact-label 金底未压暗'],
+    ['pages/result/result.wxss', 'color: #FFFFFF;\n  background: #B7950B;', 'result.wxss .reveal-tag 金底未压暗'],
+    ['pages/benefits/benefits.wxss', 'background: #B7950B;\n  border-color: #B7950B;', 'benefits.wxss .bn-city.on 金底未压暗'],
+    ['preview/template.html', 'color: #fff; background: #B7950B;', 'template.html 仍有白字配中调金底'],
+  ];
+  pairs30.forEach(([f, k, msg]) => {
+    if (read(f).indexOf(k) > -1) err(msg + '（白字 on #B7950B = 2.87）');
+    else ok(msg.replace('未压暗', '已压暗').replace('仍有白字配中调金底', '白字金底已全部压暗'));
+  });
+  [['#FFFFFF', '#8A6A12'], ['#FFF6DC', '#8A6A12'], ['#FFFBF0', '#8A6A12'], ['#FFD98A', '#7A4E24']].forEach(([a, b]) => {
+    const r = ratio30(hex30(a), hex30(b));
+    if (r >= AA30) ok('浅字 on 深金 ' + b + ' = ' + clamp30(r) + ':1');
+    else err('浅字 on 深金 ' + b + ' 不足 ' + clamp30(r) + ':1');
+  });
+  // 木箱数字底
+  [['pages/game/game.wxss'], ['preview/template.html']].forEach(([f]) => {
+    if (read(f).indexOf('#9A6531 0%') > -1) err((f === 'pages/game/game.wxss' ? 'game.wxss' : 'template.html') + ' 木箱最亮停靠点仍为 #9A6531（金字 3.63）');
+    else ok((f === 'pages/game/game.wxss' ? 'game.wxss' : 'template.html') + ' 木箱底已压暗（金字 ≥4.5）');
+  });
+
+  // --- 30.8 体验版 CSS 变量（H5 的文字墨走 var()，字面量扫描抓不到） ---
+  const root30 = tpl30.slice(tpl30.indexOf(':root {'), tpl30.indexOf('}', tpl30.indexOf(':root {')));
+  [['--muted', '#6E6759', '次级文字'], ['--green', '#176B3C', '绿色文字'], ['--gold', '#8A6A12', '金色文字']]
+    .forEach(([k, v, d]) => {
+      if (root30.indexOf(k + ': ' + v) > -1) ok('体验版 ' + k + ' = ' + v + '（' + d + '）');
+      else err('体验版变量 ' + k + ' 未设为 ' + v + '（' + d + '会掉回旧墨）');
+    });
+  if (tpl30.indexOf('var(--gold, #B7950B)') > -1) err('体验版仍用 var(--gold, #B7950B) 回退（--gold 未定义时会掉回旧墨）');
+  else ok('体验版已清除 var(--gold, #B7950B) 回退');
+
+  // --- 30.9 负向自测：对比度函数本身必须能判错 ---
+  if (clamp30(ratio30(hex30('#FFFFFF'), hex30('#B7950B'))) === 2.87) ok('自测：白字 on 旧金底 = 2.87（与实测一致）');
+  else err('对比度函数失准：白字 on #B7950B 应为 2.87');
+  if (clamp30(ratio30(hex30('#FFF6DC'), hex30('#C0392B'))) === 5.04) ok('自测：奶白 on 红 = 5.04');
+  else err('对比度函数失准：奶白 on #C0392B 应为 5.04');
+  if (clamp30(ratio30(hex30('#FFF6DC'), hex30('#0D2137'))) === 15.09) ok('自测：奶白 on 暗底 = 15.09');
+  else err('对比度函数失准：奶白 on #0D2137 应为 15.09');
+  if (clamp30(ratio30(hex30('#2C3E50'), hex30('#0B1E36'))) < AA30) ok('自测：#2C3E50 on 暗底被正确判为不达标（这是 page 继承基色，属已知豁免）');
+  else err('对比度函数失准：#2C3E50 on 暗底应 < 4.5');
+}
+
+
 console.log('通过: ' + passed + ' | 错误: ' + errors.length + ' | 警告: ' + warnings.length);
 if (errors.length) { console.log('\x1b[31m存在错误，需修复后重试\x1b[0m'); process.exit(1); }
 console.log('\x1b[32m全部自检通过 ✓\x1b[0m');

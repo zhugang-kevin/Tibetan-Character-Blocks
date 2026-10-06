@@ -240,6 +240,13 @@
 .tile.golden .ka-sprite image {
   filter: saturate(1.2) brightness(1.14);
 }
+/* D32 对比度：金块牌面是浅金（#FFF6D8→#FFE9A8→#E8C465），奶白字形会掉到 1.00，
+   必须换深墨（#6B4406 = 7.91 / 7.12 / 5.10）；图标用 |gold 变体同墨。 */
+.tile.golden .glyph,
+.tile.golden .glyph-fallback {
+  color: #6B4406;
+  text-shadow: 0 2rpx 0 rgba(255, 255, 255, 0.55);
+}
 
 /* 障碍物一：冰霜——半透明蓝罩 + 白边高光，罩住的牌不能直接点 */
 .frost {
@@ -265,7 +272,7 @@
   position: absolute;
   left: 0; top: 0; right: 0; bottom: 0;
   border-radius: 12rpx;
-  background: linear-gradient(150deg, #9A6531 0%, #74461D 58%, #4E2E12 100%);
+  background: linear-gradient(150deg, #7A4E24 0%, #6B431E 58%, #4A2C10 100%);
   border: 2rpx solid rgba(60, 34, 12, 0.9);
   box-shadow: inset 0 3rpx 0 rgba(255, 214, 140, 0.35), inset 0 -5rpx 10rpx rgba(0, 0, 0, 0.45), 0 3rpx 8rpx rgba(0, 0, 0, 0.45);
   display: flex;
@@ -595,7 +602,7 @@
   display: inline-block;
   font-size: 20rpx;
   color: #FFFFFF;
-  background: #B7950B;
+  background: #8A6A12;
   border-radius: 8rpx;
   padding: 4rpx 12rpx;
   margin-bottom: 10rpx;
@@ -632,7 +639,7 @@
 .card-hint {
   text-align: center;
   font-size: 20rpx;
-  color: #B3AB99;
+  color: #6E6759;
   padding: 12rpx 0 16rpx;
 }
 
@@ -693,7 +700,7 @@
 
 .guide-step {
   font-size: 24rpx;
-  color: #B7950B;
+  color: #8A6A12;
   font-weight: 700;
   letter-spacing: 4rpx;
 }

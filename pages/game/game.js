@@ -52,9 +52,12 @@ function shade(hex, f) {
   return 'rgb(' + r + ',' + g + ',' + b + ')';
 }
 
-// 3D 方块内联样式：顶部提亮 → 本色 → 底部加深，配 0 偏移投影与顶部内高光
+// 3D 方块内联样式：顶部窄倒角高光 → 本色平段 → 底部加深，配 0 偏移投影与顶部内高光
+// D32 对比度：高光带必须收进字形占位区（y10%~90%）之外，否则白字被冲掉。
+//   旧 stops: shade(c,1.42) 0% → c 58% → shade(c,0.68) 100%，最亮段正压在字形上，四色牌面 1.48~3.26
+//   新 stops: 0% 1.39 → 8% 1.02 → 14% 起为平色 c，四色牌面 4.61~5.99（金/绿两色另见 data/elements.js）
 function pieceStyle(color) {
-  return 'background-image: linear-gradient(180deg, ' + shade(color, 1.42) + ' 0%, ' + color + ' 58%, ' + shade(color, 0.68) + ' 100%);' +
+  return 'background-image: linear-gradient(180deg, ' + shade(color, 1.39) + ' 0%, ' + shade(color, 1.02) + ' 8%, ' + color + ' 14%, ' + color + ' 58%, ' + shade(color, 0.68) + ' 100%);' +
     ' box-shadow: 0 6rpx 0 ' + shade(color, 0.46) + ', 0 10rpx 18rpx rgba(0, 0, 0, 0.46), inset 0 3rpx 8rpx rgba(255, 255, 255, 0.42);';
 }
 

@@ -441,7 +441,7 @@ Page({
     ctx.textAlign = 'center';
 
     // 抬头：雪域日签 · 第 n 签 · 日期
-    ctx.fillStyle = '#8A8375';
+    ctx.fillStyle = '#6E6759';
     ctx.font = '400 26px "PingFang SC","Microsoft YaHei",sans-serif';
     ctx.fillText('雪域日签 · 第 ' + card.no + ' 签 · ' + card.dateText, W / 2, 130);
 
@@ -453,7 +453,7 @@ Page({
 
     // 拉丁转写（有才印）+ 中文释义
     if (card.roman) {
-      ctx.fillStyle = '#8A8375';
+      ctx.fillStyle = '#6E6759';
       ctx.font = 'italic 30px Georgia, serif';
       ctx.fillText(card.roman, W / 2, y);
       y += 62;
@@ -465,7 +465,7 @@ Page({
 
     // 小知识（每行 20 字，最多 3 行）
     if (card.tip) {
-      ctx.fillStyle = '#8A8375';
+      ctx.fillStyle = '#6E6759';
       ctx.font = '400 28px "PingFang SC","Microsoft YaHei",sans-serif';
       var tipMax = Math.min(3, Math.ceil(card.tip.length / 20));
       for (var i = 0; i < tipMax; i++) {
@@ -497,7 +497,7 @@ Page({
     ctx.fillText('小程序码', cx + cs / 2, cy + cs / 2 + 8);
 
     // 品牌
-    ctx.fillStyle = '#B7950B';
+    ctx.fillStyle = '#8A6A12';
     ctx.font = '700 28px "PingFang SC","Microsoft YaHei",sans-serif';
     ctx.fillText('玩方块，认藏文', W / 2, H - 62);
 

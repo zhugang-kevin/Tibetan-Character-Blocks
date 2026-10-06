@@ -130,6 +130,6 @@ key 为节点 id，值为**相对首次进入的秒数**，用于核对 15 分�
 
 ```bash
 cd tibetan-match
-node scripts/validate.js      # 小程序静态自检：29 大类 657 项
+node scripts/validate.js      # 小程序静态自检：30 大类 733 项
 node scripts/build-h5.js      # 重新生成浏览器体验版（含数据一致性校验）
 ```

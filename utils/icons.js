@@ -110,7 +110,16 @@ var DRAWERS = {
   flags: drawFlags
 };
 
-// 批量渲染某关需要的图标，返回 Promise<{iconId: tempFilePath}>
+// 三种墨色变体（对比度 D32）：
+//   id        → el.color 深墨：浅底卡片 / 奖章 / 徽章（icon_01 吉祥结 #C0392B on 米卡 = 5.04）
+//   id|lite   → 奶白 #FFF6DC：普通牌面（牌面本色平色段，#FFF6DC on #C0392B = 5.04）
+//   id|gold   → 深墨 #6B4406：金块牌面（浅金底，#6B4406 on #FFE9A8 = 7.12）
+// 此前图标只按 el.color 渲染一份，落在同色牌面上对比度仅 1.41~1.75，符号几乎不可见。
+var TILE_LITE_INK = '#FFF6DC';
+var TILE_GOLD_INK = '#6B4406';
+var TILE_INKS = [['', null], ['|lite', TILE_LITE_INK], ['|gold', TILE_GOLD_INK]];
+
+// 批量渲染某关需要的图标，返回 Promise<{iconId: tempFilePath}>（含 |lite / |gold 变体）
 function renderIcons(elementIds) {
   return new Promise(function (resolve) {
     var ids = [];
@@ -135,26 +144,37 @@ function renderIcons(elementIds) {
         return;
       }
       var id = ids[i++];
-      try {
-        var canvas = wx.createOffscreenCanvas({ type: '2d', width: S, height: S });
-        var ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, S, S);
-        ctx.strokeStyle = elements[id].color;
-        ctx.fillStyle = elements[id].color;
-        ctx.lineWidth = S * 0.05;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        DRAWERS[elements[id].iconKey](ctx, S);
-        wx.canvasToTempFilePath({
-          canvas: canvas,
-          x: 0, y: 0, width: S, height: S,
-          destWidth: S, destHeight: S,
-          success: function (res) { out[id] = res.tempFilePath; },
-          complete: next
-        });
-      } catch (e) {
-        next();
-      }
+      var v = 0;
+      var one = function () {
+        if (v >= TILE_INKS.length) {
+          next();
+          return;
+        }
+        var suffix = TILE_INKS[v][0];
+        var ink = TILE_INKS[v][1];
+        v++;
+        try {
+          var canvas = wx.createOffscreenCanvas({ type: '2d', width: S, height: S });
+          var ctx = canvas.getContext('2d');
+          ctx.clearRect(0, 0, S, S);
+          ctx.strokeStyle = ink || elements[id].color;
+          ctx.fillStyle = ink || elements[id].color;
+          ctx.lineWidth = S * 0.05;
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+          DRAWERS[elements[id].iconKey](ctx, S);
+          wx.canvasToTempFilePath({
+            canvas: canvas,
+            x: 0, y: 0, width: S, height: S,
+            destWidth: S, destHeight: S,
+            success: function (res) { out[id + suffix] = res.tempFilePath; },
+            complete: one
+          });
+        } catch (e) {
+          one();
+        }
+      };
+      one();
     };
     next();
   });

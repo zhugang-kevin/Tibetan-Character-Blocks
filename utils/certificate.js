@@ -15,14 +15,17 @@ var storage = require('./storage');
 var PREFIX = 'ZWFK';
 
 // 证书等级：质量门槛（正确率为该阶段各关「最佳正确率」的平均值）
+// D32 对比度：tierColor 同时用作宣纸米卡上的「档名文字」与「白字档位标签的底」，
+//   金 #B7950B（2.66 / 2.87 双向不达标）→ #8A6A12（4.69 / 5.06）
+//   银 #7F8C8D（3.22 / 3.48）→ #5D6D7E（4.92 / 5.31）
 var TIERS = {
   gold: {
-    key: 'gold', label: '金质证书', seal: '金', color: '#B7950B',
+    key: 'gold', label: '金质证书', seal: '金', color: '#8A6A12',
     minAccuracy: 0.95, requireClean: true,
     rule: '完成 10 关 · 正确率 ≥ 95% · 全程无失误'
   },
   silver: {
-    key: 'silver', label: '银质证书', seal: '银', color: '#7F8C8D',
+    key: 'silver', label: '银质证书', seal: '银', color: '#5D6D7E',
     minAccuracy: 0.80, requireClean: false,
     rule: '完成 10 关 · 正确率 ≥ 80%'
   },

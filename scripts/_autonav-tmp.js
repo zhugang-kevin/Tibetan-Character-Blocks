@@ -10,6 +10,17 @@ const s = '<script>/*__AUTONAV__*/(function(){var q=location.search;' +
   'setTimeout(function(){try{showCard("letter_03");}catch(e){}},8800);}' +
   'else if(q.indexOf("vt=result")>-1){showScreen("game");startLevel(10);closeGuide();finishLevel();' +
   'setTimeout(function(){try{var b=document.getElementById("bless-name");if(b)b.value="卓玛";generateBlessing();}catch(e){}},200);}' +
+  // D32 对比度核验：补进度走 onLevelComplete 真实发证 → 证书页（宣纸米卡次级灰墨 + 档位色）
+  'else if(q.indexOf("vt=cert")>-1){' +
+  'var pc=getProgress();for(var L1=1;L1<=10;L1++){if(pc.completedLevels.indexOf(L1)===-1)pc.completedLevels.push(L1);pc.levelStats[L1]={bestAcc:1,clean:true,plays:1,lastAcc:1};}pc.unlockedLevel=10;saveProgress(pc);' +
+  'onLevelComplete(10,{matches:8,attempts:8});showScreen("cert");showCert(1);}' +
+  // D32 对比度核验：文化护照页（揭示图鉴 + 唐卡格）
+  'else if(q.indexOf("vt=pp")>-1){' +
+  'var pd=getProgress();for(var L2=1;L2<=10;L2++){if(pd.completedLevels.indexOf(L2)===-1)pd.completedLevels.push(L2);pd.levelStats[L2]={bestAcc:1,clean:true,plays:1,lastAcc:1};}pd.unlockedLevel=10;saveProgress(pd);' +
+  'showScreen("passport");showPassport();}' +
+  // D32 对比度核验：首页天梯带进度（节点徽章 / 万家灯火按钮）
+  'else if(q.indexOf("vt=home")>-1){' +
+  'var ph=getProgress();for(var L3=1;L3<=6;L3++){if(ph.completedLevels.indexOf(L3)===-1)ph.completedLevels.push(L3);ph.levelStats[L3]={bestAcc:1,clean:true,plays:1,lastAcc:1};}ph.unlockedLevel=7;saveProgress(ph);renderHome();}' +
   // 万家灯火：light 后立即进入并点亮（截图用；lampLit 必须先判断，避免被 lamp 子串截胡）
   'else if(q.indexOf("vt=lampLit")>-1){showLampWindow();' +
   'setTimeout(function(){try{document.getElementById("lamp-btn").click();}catch(e){}},120);}' +

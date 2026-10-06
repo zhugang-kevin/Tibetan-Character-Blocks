@@ -46,7 +46,7 @@ button::after {
   box-shadow: inset 0 3rpx 8rpx rgba(255, 255, 255, 0.6);
 }
 .tk-mark { font-size: 32rpx; color: #8A6A12; }
-.tk-mark.dim { color: #B9B1A0; }
+.tk-mark.dim { color: #6E6759; }
 /* 已合成：九宫格外框收成一幅（金框 + 内衬），视觉上从「9 格」变「1 幅」 */
 .tk-grid.done {
   padding: 12rpx;

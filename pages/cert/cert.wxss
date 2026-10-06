@@ -85,7 +85,7 @@
 
 .sheet-tib {
   font-size: 40rpx;
-  color: rgba(192, 57, 43, 0.78);
+  color: #C0392B; /* D32：原 .78 半透明在宣纸米底上仅 3.54，20px 非大字需 4.5 */
   letter-spacing: 2rpx;
 }
 
@@ -106,7 +106,7 @@
 
 .sheet-stage {
   font-size: 26rpx;
-  color: #8A8375;
+  color: #6E6759;
   letter-spacing: 4rpx;
 }
 
@@ -153,7 +153,7 @@
 
 .meta-k {
   font-size: 24rpx;
-  color: #8A8375;
+  color: #6E6759;
   flex-shrink: 0;
 }
 
@@ -198,7 +198,7 @@
   margin-top: 16rpx;
   font-size: 26rpx;
   font-weight: 700;
-  color: #B7950B;
+  color: #8A6A12;
   letter-spacing: 4rpx;
 }
 
@@ -288,7 +288,7 @@
 .locked-sub {
   margin-top: 10rpx;
   font-size: 26rpx;
-  color: #8A8375;
+  color: #6E6759;
 }
 
 .locked-progress {
@@ -343,7 +343,7 @@
 
 .tier-rule {
   font-size: 22rpx;
-  color: #8A8375;
+  color: #6E6759;
   line-height: 1.5;
 }
 
@@ -356,7 +356,7 @@
   font-weight: 600;
   border-radius: 46rpx;
   background: #FFFFFF;
-  color: #1E8449;
+  color: #176B3C;
   border: 2rpx solid #1E8449;
   box-sizing: border-box;
 }
@@ -404,7 +404,7 @@
   text-align: center;
   margin-top: 10rpx;
   font-size: 24rpx;
-  color: #8A8375;
+  color: #6E6759;
   line-height: 1.6;
 }
 
@@ -419,7 +419,7 @@
 }
 
 .name-placeholder {
-  color: #B9B1A0;
+  color: #6E6759;
 }
 
 .modal-btns {
