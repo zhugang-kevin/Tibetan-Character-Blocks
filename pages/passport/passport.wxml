@@ -26,7 +26,7 @@
         <text class="section-title">藏文成长证书</text>
         <text class="section-count">{{owned}} / {{certTotal}}</text>
       </view>
-      <view class="section-sub">每 10 关一个阶段，通关即颁发一张证书。集齐 12 张，就是一套完整的藏文入门档案。</view>
+      <view class="section-sub">每 10 课一个阶段，完成即颁发一张证书。集齐 12 张，就是一套完整的藏文入门档案。</view>
 
       <view class="cert-grid">
         <view
@@ -44,14 +44,14 @@
           </block>
           <block wx:else>
             <view class="slot-lock">🔒</view>
-            <view class="slot-progress">{{item.progress}}/{{item.total}} 关</view>
+            <view class="slot-progress">{{item.progress}}/{{item.total}} 课</view>
           </block>
         </view>
       </view>
 
       <view wx:if="{{nextStage}}" class="next-hint">
         下一张：第 {{nextStage.stage}} 阶段 · {{nextStage.name}}
-        <text class="next-need">还差 {{nextStage.total - nextStage.progress}} 关</text>
+        <text class="next-need">还差 {{nextStage.total - nextStage.progress}} 课</text>
       </view>
     </view>
 
@@ -71,7 +71,7 @@
         <text class="section-title">唐卡收藏</text>
         <text class="section-count">{{fragCount}} / 9</text>
       </view>
-      <view class="section-sub">每通关一关掉落一片唐卡碎片；集齐 9 片回首页「唐卡拼图」面板点「合成唐卡」。</view>
+      <view class="section-sub">每完成一课掉落一片唐卡碎片；集齐 9 片回首页「唐卡拼图」面板点「合成唐卡」。</view>
       <view class="tk-grid {{thangkaDone ? 'done' : ''}}">
         <view wx:for="{{thangkaCells}}" wx:key="i" class="tk-cell {{item.on ? 'on' : ''}}">
           <text wx:if="{{item.on}}" class="tk-mark">✦</text>
@@ -82,32 +82,32 @@
       <view wx:else class="bar"><view class="bar-in" style="width: {{fragCount * 100 / 9}}%;"></view></view>
     </view>
 
-    <!-- 2.6 揭示图鉴（D31）：十关各一张秘境图，通关即揭晓收入 -->
+    <!-- 2.6 揭示图鉴（D31）：十关各一张秘境图，完成即揭晓收入 -->
     <view class="section">
       <view class="section-head">
         <text class="section-title">揭示图鉴</text>
         <text class="section-count">{{revealGot}} / {{revealTotal}}</text>
       </view>
-      <view class="section-sub">每一关的棋盘下都垫着一张秘境图，消除越多透出越多，通关整幅揭晓。</view>
+      <view class="section-sub">每一关的棋盘下都垫着一张秘境图，消除越多透出越多，完成后整幅揭晓。</view>
       <view class="rv-grid">
         <view wx:for="{{revealSlots}}" wx:key="level" class="rv-slot {{item.unlocked ? 'got' : 'locked'}}">
           <view class="rv-frame">
             <image wx:if="{{item.unlocked}}" class="rv-img" src="{{item.img}}" mode="aspectFill" />
             <text wx:else class="rv-lock-mark">🔒</text>
           </view>
-          <view class="rv-name">{{item.unlocked ? item.name : ('第 ' + item.level + ' 关')}}</view>
+          <view class="rv-name">{{item.unlocked ? item.name : ('第 ' + item.level + ' 课')}}</view>
         </view>
       </view>
     </view>
 
-    <!-- 2.7 藏地密码（PRD 5.2）：十则藏地小知识，通关即解锁收入。
+    <!-- 2.7 藏地密码（PRD 5.2）：十则藏地小知识，完成即解锁收入。
          未解锁的槽位只给关卡号、不给标题（不剧透），与收藏册的「?」同一用意。 -->
     <view class="section">
       <view class="section-head">
         <text class="section-title">藏地密码</text>
         <text class="section-count">{{secretGot}} / {{secretTotal}}</text>
       </view>
-      <view class="section-sub">每通关一关，解锁一则藏在高原生活里的密码 —— 从雪线到音节点，共十则。</view>
+      <view class="section-sub">每完成一课，解锁一则藏在高原生活里的密码 —— 从雪线到音节点，共十则。</view>
       <view class="se-grid">
         <view wx:for="{{secretSlots}}" wx:key="level" class="se-slot {{item.got ? 'got' : 'locked'}}">
           <view class="se-tag">{{item.got ? item.tag : '尚未解锁'}}</view>
@@ -149,7 +149,7 @@
       <view class="graph-row">
         <view class="graph-item">
           <text class="graph-v">{{levelsDone}}</text>
-          <text class="graph-k">通关关卡</text>
+          <text class="graph-k">已完成课程</text>
         </view>
         <view class="graph-item">
           <text class="graph-v">{{owned}}</text>
@@ -161,7 +161,7 @@
         </view>
         <view class="graph-item">
           <text class="graph-v">×{{bestCombo}}</text>
-          <text class="graph-k">最高连击</text>
+          <text class="graph-k">最高连续正确</text>
         </view>
       </view>
     </view>

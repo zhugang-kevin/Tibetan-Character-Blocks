@@ -54,7 +54,7 @@
             <image class="foot-logo" src="/images/logo-80.png" mode="aspectFit" />
             <view class="foot-code">小程序码</view>
           </view>
-          <view class="sheet-slogan">玩方块，认藏文</view>
+          <view class="sheet-slogan">认藏文，从方块开始</view>
         </view>
       </view>
 
@@ -71,7 +71,7 @@
         <button class="share-btn" open-type="share">分享给朋友</button>
       </block>
 
-      <view class="cert-tip">证书是学习证明，不是积分。正确率越高，等级越高：金质 &gt; 银质 &gt; 普通。</view>
+      <view class="cert-tip">证书是学习证明。正确率越高，等级越高：金质 &gt; 银质 &gt; 普通。</view>
     </block>
 
     <!-- ============ 尚未获得 ============ -->
@@ -80,9 +80,9 @@
         <view class="locked-icon">🔒</view>
         <view class="locked-title">第 {{stage}} 阶段 · {{stageInfo.name}}</view>
         <view class="locked-sub">{{stageInfo.goal}}</view>
-        <view class="locked-progress">当前进度 {{progress}} / {{total}} 关</view>
+        <view class="locked-progress">当前进度 {{progress}} / {{total}} 课</view>
         <view class="locked-rule">
-          通关第 {{stageInfo.from}}-{{stageInfo.to}} 关，即可获得「{{stageInfo.name}}」证书
+          完成第 {{stageInfo.from}}-{{stageInfo.to}} 课，即可获得「{{stageInfo.name}}」证书
         </view>
       </view>
 

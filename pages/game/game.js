@@ -24,9 +24,9 @@ var obstacles = require('../../utils/obstacles');
 var board = require('../../utils/board');
 
 var GUIDE = [
-  { title: '如何消除', text: '点击两张相同的藏文字母或文化图标，它们就会一起消失。' },
-  { title: '听发音', text: '每消除成功一次，都会读出这个字的藏文发音——边玩边听，记得更牢。连击不断，声音还会越清亮。' },
-  { title: '方块会下落', text: '消除之后，上方的方块会落下来补位，顶上还会掉下新的方块。把这一关的方块全部消完，棋盘下面的秘境图就整幅揭晓了。带 ❄ 的牌先碰不得，消除它旁边的牌即可解冻；木箱上的金色数字是剩余耐久。金色 ✦ 是特殊方块，双倍积分。' }
+  { title: '如何使用', text: '点击两张相同的藏文字母或文化图标，它们就会一起消失。' },
+  { title: '听发音', text: '每消除成功一次，都会读出这个字的藏文发音——边学边听，记得更牢。连续正确不断，声音还会越清亮。' },
+  { title: '方块会下落', text: '消除之后，上方的方块会落下来补位，顶上还会掉下新的方块。把这一课的方块全部消完，棋盘下面的秘境图就整幅揭晓了。带 ❄ 的牌先碰不得，消除它旁边的牌即可解冻；木箱上的金色数字是剩余耐久。金色 ✦ 是特殊方块，双倍练习。' }
 ];
 
 // 统一牌面尺寸：以 8 列为基准（所有关卡牌一样大，只变数量）
@@ -146,7 +146,7 @@ Page({
   goldenSeen: false,
   occCount: {},         // 精灵表帧计数（同字母第 n 次出现 → 帧 floor(n/2)%4）
   freed: [],            // 曾清空过的格（揭图透出 = 该格 freed，透出后不再被遮回）
-  collected: {},        // 本关收集到的元素 id（结算页文化卡用）
+  collected: {},        // 本课收集到的元素 id（结算页文化卡用）
   // ⚠️ removeQueue 里存的是**牌的 uid**，不是格号 —— 排队期间盘面会因前面的下落而变化，
   //    格号到结算时就过期了（会消错牌、破坏守恒）。uid 不变，结算时再解析成格号。
   removeQueue: [],      // 待结算的消除对（连点不阻塞，逐对结算）
@@ -202,7 +202,7 @@ Page({
     this.freed = [];
     for (var i = 0; i < this.board.slots; i++) this.freed.push(false);
 
-    wx.setNavigationBarTitle({ title: '第 ' + level + ' 关' });
+    wx.setNavigationBarTitle({ title: '第 ' + level + ' 课' });
 
     // 正确率统计清零（本关重新计数）
     this.attempts = 0;
@@ -763,7 +763,7 @@ Page({
     if (audio.pronounce(this.data.card.id)) tracker.track('card_pronounce');
   },
 
-  // 本关消掉过的元素（结算页据此展示本关收集的文化卡）
+  // 本关消掉过的元素（结算页据此展示本课收集的文化卡）
   collectedIds: function () {
     return Object.keys(this.collected);
   },

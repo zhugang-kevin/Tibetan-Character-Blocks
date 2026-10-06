@@ -364,7 +364,7 @@ Page({
     var n = parseInt(e.currentTarget.dataset.n, 10);
     var item = this.data.levels[n - 1];
     if (!item.unlocked) {
-      wx.showToast({ title: '先完成前面的关卡哦', icon: 'none' });
+      wx.showToast({ title: '先完成前面的课程哦', icon: 'none' });
       return;
     }
     wx.navigateTo({ url: '/pages/game/game?level=' + n });
@@ -513,7 +513,7 @@ Page({
     // 品牌
     ctx.fillStyle = '#8A6A12';
     ctx.font = '700 28px "PingFang SC","Microsoft YaHei",sans-serif';
-    ctx.fillText('玩方块，认藏文', W / 2, H - 62);
+    ctx.fillText('认藏文，从方块开始', W / 2, H - 62);
 
     wx.canvasToTempFilePath({
       canvas: canvas,
@@ -565,7 +565,7 @@ Page({
     }
     if (!item) return;
     if (!storage.spendPoints(item.cost)) {
-      wx.showToast({ title: '积分不够，先去闯关吧', icon: 'none' });
+      wx.showToast({ title: '学习得分不够，先去完成课程吧', icon: 'none' });
       return;
     }
     if (id === 'oil') storage.addOil(2);
@@ -579,7 +579,7 @@ Page({
   waterTree: function () {
     storage.waterPot(collect.waterReward());
     this.refresh();
-    wx.showToast({ title: '菩提树 +' + collect.waterReward() + ' 积分', icon: 'none' });
+    wx.showToast({ title: '菩提树 +' + collect.waterReward() + ' 学习得分', icon: 'none' });
   },
 
   // 打开文化护照（12 张证书 + 印章 + 收藏 + 图谱）
@@ -587,7 +587,7 @@ Page({
     wx.navigateTo({ url: '/pages/passport/passport' });
   },
 
-  // 打开权益中心（双轨制到店权益，凭通关进度领取）
+  // 打开权益中心（双轨制到店权益，凭课程进度领取）
   openBenefits: function () {
     wx.navigateTo({ url: '/pages/benefits/benefits' });
   },
@@ -609,7 +609,7 @@ Page({
   // 转发给微信好友：只带内容不带激励（滥用分享 ▶2 自查通过）
   onShareAppMessage: function () {
     return {
-      title: '藏字方块 · 玩方块，认藏文',
+      title: '藏字方块 · 认藏文，从方块开始',
       path: '/pages/index/index'
     };
   }

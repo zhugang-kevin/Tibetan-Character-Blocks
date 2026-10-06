@@ -12,8 +12,8 @@
 
   <!-- 顶部状态条 -->
   <view class="statusbar">
-    <text class="status-level">第 {{level}} 关</text>
-    <text class="status-score">积分 {{score}}</text>
+    <text class="status-level">第 {{level}} 课</text>
+    <text class="status-score">学习得分 {{score}}</text>
     <text class="status-pairs">{{matchedPairs}}/{{totalPairs}} 对</text>
     <!-- 文案开关（D34）：只关赞美文案，不关元素发音（发音属学习闭环） -->
     <text class="status-praise {{praiseOff ? 'off' : ''}}" bindtap="onTogglePraise">{{praiseOff ? '文案 关' : '文案 开'}}</text>
@@ -25,7 +25,7 @@
        ant-a / ant-b 是同一组动画的两个名字，轮流用：WXSS 里同一个 animation-name
        不会重播，替换文案时必须换名，否则第二条看不出在播放。 -->
   <view wx:if="{{praiseOn}}" class="praise-fx lv{{praiseLevel}} {{praiseAnt ? 'ant-a' : 'ant-b'}}">
-    <text wx:if="{{praiseLevel >= 2}}" class="praise-combo">连击 ×{{praiseCombo}}</text>
+    <text wx:if="{{praiseLevel >= 2}}" class="praise-combo">连续正确 ×{{praiseCombo}}</text>
     <text wx:if="{{praiseTibetan}}" class="praise-bo tibetan">{{praiseBo}}</text>
     <text class="praise-zh">{{praiseZh}}</text>
   </view>
@@ -39,7 +39,7 @@
   <view class="game-body">
     <view class="board-panel">
       <view class="board-outline">
-        <!-- 秘境揭图（D31）：垫在牌层之下，某格被清空过就永久透出，通关整幅揭晓 -->
+        <!-- 秘境揭图（D31）：垫在牌层之下，某格被清空过就永久透出，完成后整幅揭晓 -->
         <view class="board-wrap" style="width: {{boardW}}rpx; height: {{boardH}}rpx;">
           <image wx:if="{{reveal.img}}" class="reveal-img" src="{{reveal.img}}" mode="scaleToFill" aria-hidden="true" />
           <!-- D33 下落式盘面：方块绝对定位（按 uid 稳定 key），坐标用百分比表达；
@@ -148,7 +148,7 @@
       <view class="guide-step">{{guideStep}} / 3</view>
       <view class="guide-title">{{guide.title}}</view>
       <view class="guide-text">{{guide.text}}</view>
-      <button class="guide-btn" bindtap="guideNext">{{guideStep === 3 ? '开始玩' : '下一步'}}</button>
+      <button class="guide-btn" bindtap="guideNext">{{guideStep === 3 ? '开始学习' : '下一步'}}</button>
     </view>
   </view>
 

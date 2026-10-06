@@ -12,7 +12,7 @@ var tracker = require('../../utils/tracker');
 
 // 印记定义（v0 仅拉萨；后续扩展七地市）
 var STAMPS = {
-  lhasa: { name: '拉萨', desc: '通关第 1 关获得' }
+  lhasa: { name: '拉萨', desc: '完成第 1 课获得' }
 };
 var STAMP_TOTAL = 7;   // 规划：七地市印章
 
@@ -64,7 +64,7 @@ Page({
     // 唐卡收藏：九宫格视图模型走与首页同一个纯函数（两端/两页同源）
     var tk = collect.thangkaGrid(p.fragments);
 
-    // 揭示图鉴（D31）：通关即揭晓，图与名都来自 data/reveals.js
+    // 揭示图鉴（D31）：完成即揭晓，图与名都来自 data/reveals.js
     var revealSlots = revealsData.map(function (r) {
       return {
         level: r.level,
@@ -74,7 +74,7 @@ Page({
       };
     });
 
-    // 藏地密码：与揭示图鉴同一口径（解锁 = 已通关该关），槽位由纯函数生成
+    // 藏地密码：与揭示图鉴同一口径（解锁 = 已完成该关），槽位由纯函数生成
     var secP = collect.secretProgress(secretsData, p.completedLevels);
 
     this.setData({

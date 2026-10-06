@@ -16,23 +16,23 @@
 
   <view class="result-hero">
     <view class="result-check">✓</view>
-    <view class="result-title">第 {{level}} 关完成！</view>
-    <view class="result-sub">共消除 {{pairs}} 对 · 积分 {{score}} · 连击 ×{{combo}}</view>
+    <view class="result-title">第 {{level}} 课完成！</view>
+    <view class="result-sub">共消除 {{pairs}} 对 · 学习得分 {{score}} · 连续正确 ×{{combo}}</view>
     <view class="result-acc {{clean ? 'ok' : ''}}">
-      本关正确率 {{accuracy}}% {{clean ? '· 全程无失误 ✦' : ''}}
+      本课正确率 {{accuracy}}% {{clean ? '· 全程无失误 ✦' : ''}}
     </view>
     <!-- PRD v4：本关星级评价（只增不减） -->
     <view class="result-stars">
       <text class="rs-star {{item}}" wx:for="{{starList}}" wx:key="*this">★</text>
-      <text class="rs-tip">{{starsImproved ? '刷新了本关最佳评价' : '本关评价'}}</text>
+      <text class="rs-tip">{{starsImproved ? '刷新了本课最佳评价' : '本课评价'}}</text>
     </view>
   </view>
 
-  <!-- PRD v4：唐卡碎片掉落 + 积分入账 -->
+  <!-- PRD v4：唐卡碎片掉落 + 学习得分入账 -->
   <view class="reward-row">
     <view class="reward-box">
       <view class="rw-v">+{{pointsGained}}</view>
-      <view class="rw-k">积分入账</view>
+      <view class="rw-k">学习得分入账</view>
     </view>
     <view class="reward-box">
       <view class="rw-v">{{fragmentNew ? ('第 ' + fragmentNew + ' 片') : '已集齐'}}</view>
@@ -55,7 +55,7 @@
     <view class="reveal-note">已收入文化护照 · 揭示图鉴 {{revealGot}} / {{revealTotal}}</view>
   </view>
 
-  <!-- 藏地密码：通关即解锁一则藏地小知识，收入护照「藏地密码」。
+  <!-- 藏地密码：完成即解锁一则藏地小知识，收入护照「藏地密码」。
        解锁状态 = completedLevels（不新增存储字段），与揭示图鉴同一口径。 -->
   <view wx:if="{{secret}}" class="secret-card">
     <view class="secret-head">
@@ -70,7 +70,7 @@
   <!-- 前 60 秒钩子：在「要不要再来一关」的决策点上摆出进度与悬念 -->
   <view class="journey">
     <view class="j-head">
-      <text class="j-step">第 {{level}} / {{totalLevels}} 关</text>
+      <text class="j-step">第 {{level}} / {{totalLevels}} 课</text>
       <text class="j-day">旅行第 {{journeyDay}} 天</text>
     </view>
     <view class="j-bar"><view class="j-bar-in" style="width: {{cardPercent}}%;"></view></view>
@@ -106,7 +106,7 @@
     <text class="ct-note">{{comboTease.note}}</text>
   </view>
 
-  <!-- 成长阶梯 · 证书（通关某阶段最后一关时颁发 / 升级） -->
+  <!-- 成长阶梯 · 证书（完成某阶段最后一关时颁发 / 升级） -->
   <view wx:if="{{cert}}" class="cert-banner" style="border-color: {{cert.tierColor}};">
     <view class="cert-seal" style="background: {{cert.tierColor}};">{{cert.tierSeal}}</view>
     <view class="cert-info">
@@ -131,7 +131,7 @@
       <text class="ns-name">第 {{nextStageNo}} 阶段 · {{nextStageName}}</text>
     </view>
     <text class="ns-goal">下一步：{{nextStageGoal}}</text>
-    <text class="ns-note">{{nextStageOpen ? ('已开放 · 第 ' + nextStageRange + ' 关') : ('内容制作中 · 规划第 ' + nextStageRange + ' 关')}}</text>
+    <text class="ns-note">{{nextStageOpen ? ('已开放 · 第 ' + nextStageRange + ' 课') : ('内容制作中 · 规划第 ' + nextStageRange + ' 课')}}</text>
   </view>
 
   <!-- 文化护照印记 v0 -->
@@ -144,7 +144,7 @@
   </view>
 
   <view class="section" wx:if="{{collected.length}}">
-    <view class="section-title">本关收集的文化卡（{{collected.length}} 张）</view>
+    <view class="section-title">本课收集的文化卡（{{collected.length}} 张）</view>
     <view class="chips">
       <view wx:for="{{collected}}" wx:key="id" class="chip" style="border-color: {{item.color}};">
         <text wx:if="{{item.isLetter}}" class="chip-glyph tibetan" style="color: {{item.color}};">{{item.label}}</text>        <text wx:else class="chip-glyph" style="color: {{item.color}};">{{item.label}}</text>
@@ -156,7 +156,7 @@
   <!-- 祝福卡（仅第10关） -->
   <block wx:if="{{isFinal}}">
     <view class="bless-section" wx:if="{{!imagePath}}">
-      <view class="bless-title">🎉 扎西德勒！通关全部10关</view>
+      <view class="bless-title">🎉 扎西德勒！完成全部10课</view>
       <view class="bless-sub">生成你的专属扎西德勒祝福卡，分享给朋友吧</view>
       <button class="primary-btn" bindtap="openNameModal" disabled="{{generating}}">
         {{generating ? '生成中…' : '生成我的祝福卡'}}
@@ -173,7 +173,7 @@
     </view>
   </block>
 
-  <button wx:if="{{!isFinal}}" class="next-btn" bindtap="goNext">下一关 →</button>
+  <button wx:if="{{!isFinal}}" class="next-btn" bindtap="goNext">下一课 →</button>
   <button class="passport-btn" bindtap="openPassport">文化护照 · 已获 {{ownedCerts}} 张证书</button>
   <button class="home-btn" bindtap="goHome">返回首页</button>
 

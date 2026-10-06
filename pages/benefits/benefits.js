@@ -83,7 +83,7 @@ Page({
       return;
     }
     if (!benefits.isUnlocked(doneCount, m)) {
-      wx.showToast({ title: '还差 ' + (m.need - doneCount) + ' 关，通关后即可领取', icon: 'none' });
+      wx.showToast({ title: '还差 ' + (m.need - doneCount) + ' 课，完成后即可领取', icon: 'none' });
       return;
     }
 

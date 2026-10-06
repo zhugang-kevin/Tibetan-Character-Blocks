@@ -24,7 +24,7 @@ module.exports = [
     certLines: [
       '已认识 {letters} 个藏文字母',
       '已认识 {icons} 个藏文化元素',
-      '完成 {levels} 个关卡'
+      '完成 {levels} 个学习单元'
     ]
   },
   {

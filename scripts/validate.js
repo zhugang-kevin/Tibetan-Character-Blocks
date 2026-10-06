@@ -201,8 +201,8 @@ try {
 // 品牌语的法定载体改为：转发卡（onShareAppMessage）+ 证书绘制 + 祝福签绘制。
 const brandWxml = read('pages/index/index.wxml');
 const brandJs = read('pages/index/index.js');
-if (brandJs.includes('玩方块，认藏文')) ok('Slogan「玩方块，认藏文」保留在首页转发卡（onShareAppMessage）');
-else err('品牌语丢失：首页转发卡应含 Slogan「玩方块，认藏文」');
+if (brandJs.includes('认藏文，从方块开始')) ok('Slogan「认藏文，从方块开始」保留在首页转发卡（onShareAppMessage）');
+else err('品牌语丢失：首页转发卡应含 Slogan「认藏文，从方块开始」');
 if (brandWxml.includes('logo-200.png')) ok('首页使用 Logo（200px 完整方块版）');
 else ok('首页品牌行已按拍板移除（Logo 保留在证书 / 护照等载体）');
 const brandAssets = ['images/logo-144.png', 'images/logo-200.png', 'images/logo-80.png', 'images/logo-watermark.png', 'images/logo-master.png'];
@@ -229,7 +229,7 @@ else warn('结算页仍使用「恭喜通关」，应改为「扎西德勒」');
 const resultJs = read('pages/result/result.js');
 if (resultJs.indexOf('恭喜') === -1) ok('语气规范：JS 文案无「恭喜」表述');
 else warn('result.js 存在「恭喜」表述');
-if (resultJs.includes('玩方块，认藏文')) ok('Slogan 已写入祝福卡');
+if (resultJs.includes('认藏文，从方块开始')) ok('Slogan 已写入祝福卡');
 else warn('祝福卡未包含 Slogan');
 if (resultJs.includes('logo-watermark.png')) ok('祝福卡已包含半透明 Logo 水印');
 else warn('祝福卡缺少 Logo 水印');
@@ -1816,7 +1816,7 @@ section('27. 祝福签卡片（确定性抽取 + 零金额 + 两端同源）');
   else err('index.wxml 缺定性文案「' + BLESS_NOTE + '」');
 
   // 27.4 卡片承载的全部文案无金额 / 让利数字（逐条量尺）
-  ['生成今日祝福签卡片', '保存到相册', '雪域日签 · 第 ' + 'n 签', '小程序码', '玩方块，认藏文']
+  ['生成今日祝福签卡片', '保存到相册', '雪域日签 · 第 ' + 'n 签', '小程序码', '认藏文，从方块开始']
     .forEach(t => {
       const bad = OFFER_DIGIT_PAT.test(t) || MONEY_UNIT_PAT.test(t);
       if (!bad) ok('祝福签文案「' + t + '」无金额 / 让利数字');
@@ -3260,6 +3260,55 @@ section('34. 背景音乐（PRD 3.3：程序合成 · 无缝循环 · 开关三�
     else err('宗教名「' + w + '」出现在代码里（D25：只许世俗皮肤）');
   });
 })();
+
+// ---------- 37. 去游戏化守卫（教育/文化类目提审前置，2026-10-07 落地） ----------
+// 依据 business-model-v2.md §3.1 与 release-and-monetization.md §三：
+// 「类目与内容不符」是最高频驳回原因，游戏化措辞（积分/连击/通关/关卡…）不得出现在
+// 用户可见文案里。口径：扫描 pages/**(wxml/js/wxss) + data/*.js + 体验版模板，
+// 注释一律剥掉（HTML <!-- --> / CSS与JS /* */ / JS 行注释，带 :// 守卫）——
+// 只看会渲染出来的字。品牌语新基线 =「认藏文，从方块开始」。
+section('37. 去游戏化守卫（教育类目 · 文案红线）');
+{
+  function stripCopyComments(text) {
+    text = text.replace(/<!--[\s\S]*?-->/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+    return text.split('\n').map(l => {
+      const i = l.indexOf('//'); const u = l.indexOf('://');
+      return (i === -1 || (u !== -1 && u < i)) ? l : l.slice(0, i);
+    }).join('\n');
+  }
+  function walkPages(dir, out) {
+    for (const e of fs.readdirSync(path.join(ROOT, dir), { withFileTypes: true })) {
+      const rel = dir + '/' + e.name;
+      if (e.isDirectory()) walkPages(rel, out);
+      else if (/\.(wxml|js|wxss)$/.test(e.name)) out.push(rel);
+    }
+    return out;
+  }
+  const copyFiles37 = walkPages('pages', [])
+    .concat(fs.readdirSync(path.join(ROOT, 'data')).filter(f => f.endsWith('.js')).map(f => 'data/' + f))
+    .concat(['preview/template.html']);
+  const FORBIDDEN37 = ['积分', '连击', '通关', '关卡', '玩方块', '如何消除', '闯关'];
+  let hit37 = null;
+  copyFiles37.forEach(f => {
+    const s = stripCopyComments(read(f));
+    FORBIDDEN37.forEach(w => {
+      if (s.indexOf(w) > -1 && !hit37) {
+        const line = s.split('\n').findIndex(l => l.indexOf(w) > -1) + 1;
+        hit37 = f + ':' + line + ' 含「' + w + '」';
+      }
+    });
+  });
+  if (!hit37) ok('用户可见文案无游戏化措辞（' + FORBIDDEN37.join('/') + '，' + copyFiles37.length + ' 个文件）');
+  else err('游戏化措辞回流（教育类目红线）：' + hit37);
+  // 反例自测：守卫必须证明自己拦得住，而不是「碰巧现在干净」
+  if (stripCopyComments('x = "积分"').indexOf('积分') > -1 && stripCopyComments('// 注释里的积分不算').indexOf('积分') === -1)
+    ok('守卫自测：字符串命中 / 注释豁免 均成立');
+  else err('去游戏化守卫自测失败（注释剥离或命中逻辑坏了）');
+  // 新品牌语基线
+  const slogan37 = read('pages/index/index.js');
+  if (slogan37.indexOf('认藏文，从方块开始') > -1) ok('新品牌语「认藏文，从方块开始」在首页转发卡');
+  else err('首页转发卡缺少新品牌语「认藏文，从方块开始」');
+}
 
 console.log('通过: ' + passed + ' | 错误: ' + errors.length + ' | 警告: ' + warnings.length);
 if (errors.length) { console.log('\x1b[31m存在错误，需修复后重试\x1b[0m'); process.exit(1); }

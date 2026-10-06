@@ -138,7 +138,7 @@ function mockCtx(sink) {
   check('首页已移除品牌行（2026-10-06 用户拍板：视觉重心交给朝圣天梯）',
     !$('#hero-logo') && !$('.hero-title') && !$('.hero-slogan'));
   check('品牌语仍保留在证书 / 祝福签绘制与转发口径中（不是消失）',
-    fs.readFileSync(HTML, 'utf8').indexOf('玩方块，认藏文') > -1);
+    fs.readFileSync(HTML, 'utf8').indexOf('认藏文，从方块开始') > -1);
 
   /* ---------- 2. 藏文化背景层（修复②：背景不单调） ---------- */
   section('2. 藏文化背景层');
@@ -549,7 +549,7 @@ function mockCtx(sink) {
   check('显示积分/连击/文化卡统计', $('#res-score').textContent !== '0' || ev('state.score') === 0);
   check('授予「拉萨」印记横幅', ($('#res-stamp').textContent || '').indexOf('拉萨') > -1);
   check('文化卡列表去重后 2 张', $$('#res-chips .chip').length === 2, 'chips=' + $$('#res-chips .chip').length);
-  check('出现「下一关」按钮', $('#res-actions').textContent.indexOf('下一关') > -1, $('#res-actions').textContent);
+  check('出现「下一关」按钮', $('#res-actions').textContent.indexOf('下一课') > -1, $('#res-actions').textContent);
   check('非第10关不显示祝福卡', $('#res-bless').textContent.trim() === '');
 
   /* ---------- 10. 进度持久化 ---------- */
@@ -581,8 +581,8 @@ function mockCtx(sink) {
   check('第 10 关 6×8 = 48 张牌', $$('#board .tile').length === 48, '实际 ' + $$('#board .tile').length);
   ev('state.matchedCount = totalPairs(); state.collected = ["letter_01","icon_03"]; state.score = 520; state.maxCombo = 6; finishLevel()');
   await sleep(90);
-  check('第 10 关结算出现祝福卡区块', doc.body.textContent.indexOf('扎西德勒！通关全部 10 关') > -1);
-  check('无「下一关」按钮（已是最后一关）', $('#res-actions').textContent.indexOf('下一关') === -1,
+  check('第 10 关结算出现祝福卡区块', doc.body.textContent.indexOf('扎西德勒！完成全部 10 课') > -1);
+  check('无「下一关」按钮（已是最后一关）', $('#res-actions').textContent.indexOf('下一课') === -1,
     '实际按钮：' + $('#res-actions').textContent);
   $('#bless-name').value = '小藏';
   $('#bless-gen').click();
@@ -1260,7 +1260,7 @@ function mockCtx(sink) {
   ev('(function(){var p=getProgress(); p.points=0; saveProgress(p);})()');
   $$('#entry-body .shop-btn')[0].click();
   await sleep(50);
-  check('积分不足时拒买（给出提示）', ev('getProgress().points') === 0 && $('#toast-text').textContent.indexOf('积分不够') > -1,
+  check('积分不足时拒买（给出提示）', ev('getProgress().points') === 0 && $('#toast-text').textContent.indexOf('学习得分不够') > -1,
     $('#toast-text').textContent);
   ev('(function(){var p=getProgress(); p.points=' + (firstCost + 5) + '; saveProgress(p);})()');
   ev('openPanel("shop")');
@@ -1314,7 +1314,7 @@ function mockCtx(sink) {
   await sleep(80);
   check('重玩表现更差时星级不降级（仍 3 星）', $$('#res-stars .rs-star.on').length === 3,
     '实际 ' + $$('#res-stars .rs-star.on').length);
-  check('未刷新评价时提示「本关评价」', $('#res-stars .rs-tip').textContent === '本关评价',
+  check('未刷新评价时提示「本关评价」', $('#res-stars .rs-tip').textContent === '本课评价',
     $('#res-stars .rs-tip').textContent);
   check('重玩仍会累积积分（不惩罚）', ev('getProgress().points') === 220, String(ev('getProgress().points')));
   // 反向：碎片不重复投放（已持有第 1 片 → 本次掉第 2 片）
@@ -1686,7 +1686,7 @@ function mockCtx(sink) {
     return (win.__texts || []).slice(textsBefore).some(function (t) { return t.t === cn; });
   })());
   check('画布上画了品牌句「玩方块，认藏文」',
-    (win.__texts || []).slice(textsBefore).some(function (t) { return t.t === '玩方块，认藏文'; }));
+    (win.__texts || []).slice(textsBefore).some(function (t) { return t.t === '认藏文，从方块开始'; }));
   check('画布上画了小程序码占位（品牌出口，非二维码内容）',
     (win.__texts || []).slice(textsBefore).some(function (t) { return t.t === '小程序码'; }));
 
@@ -1864,7 +1864,7 @@ function mockCtx(sink) {
       ev("$('praise-fx').className").indexOf('sentinel') === -1, ev("$('praise-fx').className"));
     check('浮字挂了档位类 lv2', ev("$('praise-fx').className").indexOf('lv2') > -1);
     check('浮字挂了动画类 ant-a / ant-b 之一', /ant-[ab]/.test(ev("$('praise-fx').className")));
-    check('连击行显示「连击 ×2」', ev("$('praise-combo').textContent") === '连击 ×2');
+    check('连续正确行显示「连续正确 ×2」', ev("$('praise-combo').textContent") === '连续正确 ×2');
     check('档位 2 不出藏文大字（藏文从档位 3 起）', ev("$('praise-bo').style.display") === 'none');
     check('中文文案取自文案库档位 2', ev('(function(){var z=$("praise-zh").textContent;' +
       'return DATA.praise.tiers[1].texts.some(function(x){return x.zh===z;});})()') === true);

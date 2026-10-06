@@ -12,22 +12,22 @@
   <!-- 顶部资源条（灯油 / 积分 / 唐卡碎片） -->
   <view class="res-bar">
     <view class="res-item"><text class="res-ico">🪔</text><text class="res-val">{{oil}}</text><text class="res-cap">灯油</text></view>
-    <view class="res-item"><text class="res-ico">✧</text><text class="res-val">{{points}}</text><text class="res-cap">积分</text></view>
+    <view class="res-item"><text class="res-ico">✧</text><text class="res-val">{{points}}</text><text class="res-cap">学习得分</text></view>
     <view class="res-item"><text class="res-ico">🖼</text><text class="res-val">{{fragCount}}/9</text><text class="res-cap">唐卡</text></view>
   </view>
 
-  <!-- 我的档案：护照印记 + 最高连击 -->
+  <!-- 我的档案：护照印记 + 最高连续正确 -->
   <view wx:if="{{stamps.length || bestCombo > 1}}" class="profile-row">
     <view class="profile-stamps">
       <view wx:for="{{stamps}}" wx:key="id" class="mini-stamp">{{item.name}}</view>
     </view>
-    <view wx:if="{{bestCombo > 1}}" class="profile-combo">最高连击 ×{{bestCombo}}</view>
+    <view wx:if="{{bestCombo > 1}}" class="profile-combo">最高连续正确 ×{{bestCombo}}</view>
   </view>
 
   <!-- 朝圣天梯地图：山脚（人间）→ 石阶关卡 → 山顶（天堂/净土），五地剪影随进度点亮 -->
   <view class="stage-head">
     <text class="stage-name">朝圣天梯 · 第一段</text>
-    <text class="stage-range">第 1-10 关 · 山脚到山腰 · 通关可得证书</text>
+    <text class="stage-range">第 1-10 课 · 山脚到山腰 · 完成可得证书</text>
   </view>
 
   <view class="vine-map {{ladderIn ? 'in' : ''}}">
@@ -96,12 +96,12 @@
     <view class="pc-left">
       <view class="pc-title">我的西藏文化护照</view>
       <view wx:if="{{stage}}" class="pc-sub">
-        第 {{stage.stage}} 阶段 · {{stage.name}} · 进度 {{stage.progress}}/{{stage.total}} 关
+        第 {{stage.stage}} 阶段 · {{stage.name}} · 进度 {{stage.progress}}/{{stage.total}} 课
       </view>
       <view wx:elif="{{lastCert}}" class="pc-sub">
         最近获得：第 {{lastCert.stage}} 阶段 · {{lastCert.tierLabel}}
       </view>
-      <view wx:else class="pc-sub">通关第 10 关，获得第一张藏文成长证书</view>
+      <view wx:else class="pc-sub">完成第 10 课，获得第一张藏文成长证书</view>
     </view>
     <view class="pc-right">
       <view class="pc-count">{{certCount}}<text class="pc-total">/{{certTotal}}</text></view>
@@ -111,7 +111,7 @@
 
   <view class="footer">
     <view class="footer-tagline">每个字母，都是一座西藏</view>
-    <view>共 10 关 · 进度自动保存在本机</view>
+    <view>共 10 课 · 进度自动保存在本机</view>
   </view>
 
   <!-- 左侧悬浮入口 -->
@@ -162,7 +162,7 @@
         <view class="entry-grid">
           <view class="entry-metric"><text class="em-v">{{journal.letters}}</text><text class="em-k">已认识字母</text></view>
           <view class="entry-metric"><text class="em-v">{{journal.cards}}</text><text class="em-k">看过的文化卡</text></view>
-          <view class="entry-metric"><text class="em-v">{{journal.done}}</text><text class="em-k">已通关</text></view>
+          <view class="entry-metric"><text class="em-v">{{journal.done}}</text><text class="em-k">已完成</text></view>
           <view class="entry-metric"><text class="em-v">{{journal.stars}}</text><text class="em-k">累计星星</text></view>
         </view>
         <view class="entry-note">今天也可继续：每消一对，就多认识一个字。</view>
@@ -178,7 +178,7 @@
         </view>
         <view class="entry-note">连续签到 {{signIn.streak}} 天 · 灯油 {{signIn.oil}} · 累计 {{signIn.totalDays}} 天</view>
         <view class="entry-btn {{canSignIn ? '' : 'off'}}" bindtap="doSignIn">{{canSignIn ? '点亮今日酥油灯' : '今日已点亮 · 明天再来'}}</view>
-        <view class="entry-note">签到奖励全部为本地积分与道具，不含任何金额，也不需要登录。</view>
+        <view class="entry-note">签到奖励全部为本地学习得分与道具，不含任何金额，也不需要登录。</view>
       </block>
 
       <!-- 雪域日签 -->
@@ -222,15 +222,15 @@
             <view class="shop-name">{{item.name}} <text class="shop-count">持有 {{item.have}}</text></view>
             <view class="shop-desc">{{item.desc}}</view>
           </view>
-          <view class="shop-btn" data-id="{{item.id}}" bindtap="buyItem">{{item.cost}} 积分</view>
+          <view class="shop-btn" data-id="{{item.id}}" bindtap="buyItem">{{item.cost}} 学习得分</view>
         </view>
-        <view class="entry-note">道具用游戏积分兑换：全程不涉及支付，也不含广告。</view>
+        <view class="entry-note">道具用学习得分兑换：全程不涉及支付，也不含广告。</view>
       </block>
 
       <!-- 雪域排行榜（本地记录） -->
       <block wx:elif="{{panel === 'rank'}}">
-        <view class="rank-row"><text class="rank-k">累计积分</text><text class="rank-v">{{points}}</text></view>
-        <view class="rank-row"><text class="rank-k">最高连击</text><text class="rank-v">×{{bestCombo}}</text></view>
+        <view class="rank-row"><text class="rank-k">累计学习得分</text><text class="rank-v">{{points}}</text></view>
+        <view class="rank-row"><text class="rank-k">最高连续正确</text><text class="rank-v">×{{bestCombo}}</text></view>
         <view class="rank-row"><text class="rank-k">累计星星</text><text class="rank-v">{{journal.stars}}</text></view>
         <view class="rank-row"><text class="rank-k">已认识字母</text><text class="rank-v">{{journal.letters}}</text></view>
         <view class="entry-note">这是你自己的雪域成绩单：全部数据保存在本机，不上传、不做全服排名。</view>
@@ -239,9 +239,9 @@
       <!-- 菩提树 -->
       <block wx:elif="{{panel === 'tree'}}">
         <view class="tree-art">🌳</view>
-        <view class="entry-note">已浇水 {{pot}} 次 · 每次收获 12 积分</view>
+        <view class="entry-note">已浇水 {{pot}} 次 · 每次收获 12 学习得分</view>
         <view class="entry-btn" bindtap="waterTree">给菩提树浇一次水</view>
-        <view class="entry-note">浇树只用游戏积分循环，不依赖广告，也不售卖任何东西。</view>
+        <view class="entry-note">浇树只用学习得分循环，不依赖广告，也不售卖任何东西。</view>
       </block>
 
       <!-- 冬游西藏 -->
@@ -254,7 +254,7 @@
 
       <!-- 八廓街集市 → 藏文权益中心（双轨制到店权益，已有页面） -->
       <block wx:elif="{{panel === 'market'}}">
-        <view class="entry-note">八廓街集市即「藏文权益中心」：用通关进度领取由商家提供并兑现的到店体验，平台不参与交易、不经手资金。</view>
+        <view class="entry-note">八廓街集市即「藏文权益中心」：用课程进度领取由商家提供并兑现的到店体验，平台不参与交易、不经手资金。</view>
         <view class="entry-btn" bindtap="openBenefits">进入藏文权益中心</view>
       </block>
 

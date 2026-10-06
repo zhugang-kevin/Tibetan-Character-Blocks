@@ -241,7 +241,7 @@ Page({
 
       ctx.fillStyle = '#8A6A12';
       ctx.font = '700 28px "PingFang SC","Microsoft YaHei",sans-serif';
-      ctx.fillText('玩方块，认藏文', W / 2, H - 62);
+      ctx.fillText('认藏文，从方块开始', W / 2, H - 62);
 
       finish();
     };
@@ -301,7 +301,7 @@ Page({
     return {
       title: cert
         ? ('我拿到了「' + cert.stageName + '」' + cert.tierLabel + ' · 藏文成长证书')
-        : '藏字方块，玩方块，认藏文',
+        : '藏字方块，认藏文，从方块开始',
       path: '/pages/index/index',
       imageUrl: this.data.imagePath || undefined
     };

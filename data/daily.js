@@ -13,13 +13,13 @@ module.exports = {
   ],
   // 祈福长明灯：7 天循环签到奖励（纯本地点数/道具，无金额、无券）
   signInRewards: [
-    { day: 1, label: '50 积分', kind: 'points', value: 50 },
+    { day: 1, label: '50 学习得分', kind: 'points', value: 50 },
     { day: 2, label: '1 张文化卡', kind: 'card', value: 1 },
     { day: 3, label: '1 个提示道具', kind: 'item', value: 'hint' },
     { day: 4, label: '灯油 +2（主题装饰）', kind: 'oil', value: 2 },
-    { day: 5, label: '下一关双倍积分', kind: 'points', value: 100 },
+    { day: 5, label: '下一课双倍练习', kind: 'points', value: 100 },
     { day: 6, label: '2 张文化卡', kind: 'card', value: 2 },
-    { day: 7, label: '稀有文化卡 + 120 积分', kind: 'points', value: 120 }
+    { day: 7, label: '稀有文化卡 + 120 学习得分', kind: 'points', value: 120 }
   ],
   // 非遗盲盒：只抽文化小知识（不承载金额）
   trivia: [
@@ -32,14 +32,14 @@ module.exports = {
     '酥油灯用酥油点燃，灯芯多为草茎，火光稳而不烈。',
     '藏历一年分四季，却有「六季」的说法：春、下春、夏、秋、初冬、冬。'
   ],
-  // 藏式道具铺：用游戏积分兑换（不涉及任何支付）
+  // 藏式道具铺：用学习得分兑换（不涉及任何支付）
   shop: [
-    { id: 'hint', name: '提示', cost: 40, icon: '🔍', desc: '在关卡里点出一对可消除的牌' },
+    { id: 'hint', name: '提示', cost: 40, icon: '🔍', desc: '在课程里点出一对可配对的牌' },
     { id: 'shuffle', name: '洗牌', cost: 60, icon: '🌀', desc: '重排剩余牌，打散死局' },
     { id: 'oil', name: '灯油', cost: 30, icon: '🪔', desc: '给长明灯添油，连签更亮' }
   ],
   // 菩提树：浇水得积分（不做广告施肥）
-  tree: { name: '菩提树', desc: '每天浇一次水，收获灯油与积分', water: 12 },
+  tree: { name: '菩提树', desc: '每天浇一次水，收获灯油与学习得分', water: 12 },
   // 冬游西藏：文化专题入口（静态知识卡，不涉及地图与景区下单）
   winter: {
     title: '冬游西藏 · 文化专题',

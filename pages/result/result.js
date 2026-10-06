@@ -15,7 +15,7 @@ var comboData = require('../../data/combo');
 // 秘境揭图（D31）：通关即整幅揭晓，结算页是揭晓的高光时刻
 var revealsData = require('../../data/reveals');
 
-// 藏地密码：通关即解锁一则藏地小知识（解锁状态 = completedLevels，不新增存储字段）
+// 藏地密码：完成即解锁一则藏地小知识（解锁状态 = completedLevels，不新增存储字段）
 var secretsData = require('../../data/secrets');
 
 // 祝福卡（750×1050）中段文案的基线位置。
@@ -44,7 +44,7 @@ Page({
     pairs: 0,
     score: 0,
     combo: 0,
-    collected: [],       // 本关收集到的文化卡（去重）
+    collected: [],       // 本课收集到的文化卡（去重）
     isFinal: false,      // 是否第10关
     newStamp: false,     // 本局是否新获得护照印记
     showNameModal: false,
@@ -62,7 +62,7 @@ Page({
     stampCount: 0,       // 已获印章数（此前写死为 1）
     stampTotal: 7,       // 规划中的印章总数（七地市）
     // ---- 成长阶梯 · 证书 ----
-    accuracy: 100,       // 本关正确率（%）
+    accuracy: 100,       // 本课正确率（%）
     clean: true,         // 本关是否全程无失误
     stageName: '',       // 当前所属阶段名
     stageNo: 0,          // 当前阶段序号
@@ -87,13 +87,13 @@ Page({
     stars: 0,            // 本关星级（1-3）
     starList: [],        // 三颗星的亮/灭（供 wxml 渲染）
     starsImproved: false,// 是否刷新了该关的最优星数
-    pointsGained: 0,     // 本关积分
+    pointsGained: 0,     // 本课学习得分
     fragmentNew: 0,      // 本关新得的唐卡碎片编号（1-9，0 = 无）
     fragmentCount: 0,    // 已收集碎片总数
     fragmentDone: false, // 是否已拼成一幅完整唐卡
     // ---- 秘境揭图（D31）：本关揭晓的图 + 图鉴进度 ----
     reveal: null,        // { name, tibetan, roman, img, desc }
-    revealGot: 0,        // 已揭晓图数（= 已通关关卡数，不新增存储字段）
+    revealGot: 0,        // 已揭晓图数（= 已完成关卡数，不新增存储字段）
     revealTotal: 10,
     // ---- 藏地密码：本关解锁的一则小知识 + 图鉴进度 ----
     secret: null,        // { tag, title, text }
@@ -403,7 +403,7 @@ Page({
       // 品牌 slogan
       ctx.font = '700 34px sans-serif';
       ctx.fillStyle = '#FFF3D6';
-      ctx.fillText('玩方块，认藏文', W / 2, POSTER_SLOGAN_Y);
+      ctx.fillText('认藏文，从方块开始', W / 2, POSTER_SLOGAN_Y);
 
       // 底部左侧：藏字方块 Logo
       if (blessImgs.logo) {
@@ -476,7 +476,7 @@ Page({
   // 好友分享（右上角菜单 / 按钮 open-type="share"）
   onShareAppMessage: function () {
     return {
-      title: '藏字方块，玩方块，认藏文',
+      title: '藏字方块，认藏文，从方块开始',
       path: '/pages/index/index',
       imageUrl: this.data.imagePath || undefined
     };

@@ -1099,13 +1099,13 @@
     <!-- 顶部资源条（灯油 / 积分 / 唐卡碎片） -->
     <div class="res-bar">
       <div class="res-item"><span class="res-ico">🪔</span><span class="res-val" id="res-oil">0</span><span class="res-cap">灯油</span></div>
-      <div class="res-item"><span class="res-ico">✧</span><span class="res-val" id="res-points">0</span><span class="res-cap">积分</span></div>
+      <div class="res-item"><span class="res-ico">✧</span><span class="res-val" id="res-points">0</span><span class="res-cap">学习得分</span></div>
       <div class="res-item"><span class="res-ico">🖼</span><span class="res-val" id="res-frag">0/9</span><span class="res-cap">唐卡</span></div>
     </div>
 
     <div class="profile-row">
       <div class="profile-stamps" id="profile-stamps"></div>
-      <div class="profile-combo" id="profile-combo">最高连击 ×0</div>
+      <div class="profile-combo" id="profile-combo">最高连续正确 ×0</div>
     </div>
 
     <!-- 文化护照入口（总档案：12 张藏文成长证书 + 印章 + 收藏） -->
@@ -1114,7 +1114,7 @@
 
     <!-- 文化护照入口（总档案：12 张藏文成长证书 + 印章 + 收藏） -->
     <div id="home-passport"></div>
-    <div class="stage-head" id="home-stage-head">朝圣天梯 · 第一段 · 第 1-10 关</div>
+    <div class="stage-head" id="home-stage-head">朝圣天梯 · 第一段 · 第 1-10 课</div>
 
     <!-- 朝圣天梯地图：山脚（人间）→ 石阶关卡 → 山顶（天堂/净土），五地剪影随进度点亮 -->
     <div class="vine-map" id="vine-map">
@@ -1137,7 +1137,7 @@
     </div>
 
     <div class="footer">每个字母，都是一座西藏</div>
-    <div class="footer-sub">共 10 关 · 进度保存在本机</div>
+    <div class="footer-sub">共 10 课 · 进度保存在本机</div>
     <div class="reset-link" id="reset-link">清空进度，重新开始</div>
   </section>
 
@@ -1267,13 +1267,13 @@
       <div class="result-stars" id="res-stars"></div>
     </div>
 
-    <!-- PRD v4：唐卡碎片掉落 + 积分入账 -->
+    <!-- PRD v4：唐卡碎片掉落 + 学习得分入账 -->
     <div class="reward-row" id="res-rewards"></div>
 
     <!-- 秘境揭图揭晓（D31）：通关即整幅揭晓，图收入护照「揭示图鉴」 -->
     <div id="res-reveal"></div>
 
-    <!-- 藏地密码（PRD 5.2）：通关解锁一则藏地小知识，收入护照「藏地密码」 -->
+    <!-- 藏地密码（PRD 5.2）：完成解锁一则藏地小知识，收入护照「藏地密码」 -->
     <div id="res-secret"></div>
 
     <!-- 前 60 秒钩子：结算决策点上的进度锚（关卡 / 旅程天数 / 收藏槽位） -->
@@ -1283,15 +1283,15 @@
     <div id="res-combo-tease"></div>
 
     <div class="stat-row">
-      <div class="stat-box"><div class="v" id="res-score">0</div><div class="k">本关积分</div></div>
-      <div class="stat-box"><div class="v" id="res-combo">0</div><div class="k">最高连击</div></div>
+      <div class="stat-box"><div class="v" id="res-score">0</div><div class="k">本课学习得分</div></div>
+      <div class="stat-box"><div class="v" id="res-combo">0</div><div class="k">最高连续正确</div></div>
       <div class="stat-box"><div class="v" id="res-cards">0</div><div class="k">文化卡</div></div>
     </div>
 
     <div id="res-cert"></div>
     <div id="res-stamp"></div>
 
-    <div class="section-title">本关收集到的文化卡</div>
+    <div class="section-title">本课收集到的文化卡</div>
     <div class="chips" id="res-chips"></div>
 
     <div id="res-bless"></div>
@@ -1315,7 +1315,7 @@
         <span class="pp-h-title">藏文成长证书</span>
         <span class="pp-h-count" id="pp-cert-count">0 / 12</span>
       </div>
-      <div class="pp-sub">每 10 关一个阶段，通关即颁发一张证书。集齐 12 张，就是一套完整的藏文入门档案。</div>
+      <div class="pp-sub">每 10 课一个阶段，完成即颁发一张证书。集齐 12 张，就是一套完整的藏文入门档案。</div>
       <div class="cert-grid" id="pp-cert-grid"></div>
       <div class="pp-next" id="pp-next"></div>
     </div>
@@ -1334,28 +1334,28 @@
         <span class="pp-h-title">唐卡收藏</span>
         <span class="pp-h-count" id="pp-frag-count">0 / 9</span>
       </div>
-      <div class="pp-sub">每通关一关掉落一片唐卡碎片；集齐 9 片回首页「唐卡拼图」面板点「合成唐卡」。</div>
+      <div class="pp-sub">每完成一课掉落一片唐卡碎片；集齐 9 片回首页「唐卡拼图」面板点「合成唐卡」。</div>
       <div class="tk-grid" id="pp-frag-grid"></div>
       <div id="pp-frag-note"></div>
     </div>
 
-    <!-- 揭示图鉴（D31）：十关各一张秘境图，通关即揭晓收入 -->
+    <!-- 揭示图鉴（D31）：十关各一张秘境图，完成即揭晓收入 -->
     <div class="pp-section">
       <div class="pp-head">
         <span class="pp-h-title">揭示图鉴</span>
         <span class="pp-h-count" id="pp-reveal-count">0 / 10</span>
       </div>
-      <div class="pp-sub">每一关的棋盘下都垫着一张秘境图，消除越多透出越多，通关整幅揭晓。</div>
+      <div class="pp-sub">每一关的棋盘下都垫着一张秘境图，消除越多透出越多，完成后整幅揭晓。</div>
       <div class="rv-grid" id="pp-reveal-grid"></div>
     </div>
 
-    <!-- 藏地密码（PRD 5.2）：十则藏地小知识，通关即解锁收入 -->
+    <!-- 藏地密码（PRD 5.2）：十则藏地小知识，完成即解锁收入 -->
     <div class="pp-section">
       <div class="pp-head">
         <span class="pp-h-title">藏地密码</span>
         <span class="pp-h-count" id="pp-secret-count">0 / 10</span>
       </div>
-      <div class="pp-sub">每通关一关，解锁一则藏在高原生活里的密码 —— 从雪线到音节点，共十则。</div>
+      <div class="pp-sub">每完成一课，解锁一则藏在高原生活里的密码 —— 从雪线到音节点，共十则。</div>
       <div class="se-grid" id="pp-secret-grid"></div>
     </div>
 
@@ -1396,7 +1396,7 @@
   <section id="screen-benefits" class="screen">
     <div class="bn-hero">
       <div class="bn-title">藏文权益中心</div>
-      <div class="bn-sub">玩方块攒进度，到店解锁藏地体验</div>
+      <div class="bn-sub">认字攒进度，到店解锁藏地体验</div>
       <div class="bn-note" id="bn-note"></div>
     </div>
     <div id="bn-guide"></div>
@@ -1464,7 +1464,7 @@ const ELEMENTS = DATA.elements;
 const CARDS = DATA.cards;
 const LEVELS = DATA.levels;
 const REVEALS = DATA.reveals;   // 秘境揭图（D31）：十关各一张，程序绘制
-const SECRETS = DATA.secrets;   // 藏地密码（PRD 5.2）：十关各一则，通关解锁（不落库）
+const SECRETS = DATA.secrets;   // 藏地密码（PRD 5.2）：十关各一则，完成解锁（不落库）
 const STAGES = DATA.stages;
 const Merchants = DATA.merchants;   // 权益中心（双轨制到店权益）
 const CARD_BY_ID = {};
@@ -1594,7 +1594,7 @@ function addFragment(idx) {
 }
 
 /* ---------------- 成长阶梯 · 证书（对应 utils/certificate.js） ----------------
-   证书是「学习证明」：每 10 关一个阶段，通关该阶段最后一关颁发一张证书。
+   证书是「学习证明」：每 10 课一个阶段，完成该阶段最后一关颁发一张证书。
    等级是质量门槛（金 > 银 > 普通），编号 ZWFK-YYYY-NNNN，可保存 / 分享。 */
 const CERT_PREFIX = 'ZWFK';
 const TIERS = {
@@ -1745,7 +1745,7 @@ function certNo(seq, d) {
 }
 
 function buildLines(stage, content) {
-  const tpl = (stage.certLines && stage.certLines.length) ? stage.certLines : ['完成 {levels} 个关卡'];
+  const tpl = (stage.certLines && stage.certLines.length) ? stage.certLines : ['完成 {levels} 个学习单元'];
   const levels = stage.to - stage.from + 1;
   return tpl.map(function (t) {
     return t.replace(/\{letters\}/g, content.letters)
@@ -1800,13 +1800,13 @@ function buildCert(stage, tier, agg, content, prev) {
 }
 
 function nextTierHint(agg) {
-  if (agg.levels === 0) return { text: '完成本阶段关卡即可获得证书', tier: 'bronze' };
+  if (agg.levels === 0) return { text: '完成本阶段课程即可获得证书', tier: 'bronze' };
   if (agg.avgAcc >= TIERS.gold.minAccuracy && agg.clean) return null;
   if (agg.avgAcc >= TIERS.silver.minAccuracy) return { text: '保持零失误即可升为金质证书', tier: 'gold' };
   return { text: '正确率提升到 80% 即可升为银质证书', tier: 'silver' };
 }
 
-/* 通关一关后调用：记录成绩 → 若该阶段已通关则（升级）颁发证书 */
+/* 通关一关后调用：记录成绩 → 若该阶段已完成则（升级）颁发证书 */
 function onLevelComplete(level, r) {
   const stat = recordLevelResult(level, r || {});
   const stage = stageOf(level);
@@ -2236,9 +2236,9 @@ function wrapTibetan(measure, text, maxWidth) {
 
 /* ---------------- 游戏状态 ---------------- */
 const GUIDE = [
-  { title: '如何消除', text: '点击两张相同的藏文字母或文化图标，它们就会一起消失。' },
-  { title: '听发音', text: '每消除成功一次，都会读出这个字的藏文发音——边玩边听，记得更牢。连击不断，声音还会越清亮。' },
-  { title: '文化卡', text: '第一次消除某种字母或图标时，底部会滑出它的文化卡，不会打断游戏；之后只出现小提示。金色 ✦ 是特殊方块，双倍积分。' }
+  { title: '如何使用', text: '点击两张相同的藏文字母或文化图标，它们就会一起消失。' },
+  { title: '听发音', text: '每消除成功一次，都会读出这个字的藏文发音——边学边听，记得更牢。连续正确不断，声音还会越清亮。' },
+  { title: '文化卡', text: '第一次消除某种字母或图标时，底部会滑出它的文化卡，不会打断游戏；之后只出现小提示。金色 ✦ 是特殊方块，双倍练习。' }
 ];
 
 const state = {
@@ -2676,7 +2676,7 @@ function openPanel(key) {
       '<div class="entry-grid">' +
       '<div class="entry-metric"><div class="em-v">' + letters + '</div><div class="em-k">已认识字母</div></div>' +
       '<div class="entry-metric"><div class="em-v">' + (p.seenCards || []).length + '</div><div class="em-k">看过的文化卡</div></div>' +
-      '<div class="entry-metric"><div class="em-v">' + (p.completedLevels || []).length + '</div><div class="em-k">已通关</div></div>' +
+      '<div class="entry-metric"><div class="em-v">' + (p.completedLevels || []).length + '</div><div class="em-k">已完成</div></div>' +
       '<div class="entry-metric"><div class="em-v">' + stars + '</div><div class="em-k">累计星星</div></div>' +
       '</div><div class="entry-note">今天也可继续：每消一对，就多认识一个字。</div>';
   } else if (key === 'lamp') {
@@ -2691,7 +2691,7 @@ function openPanel(key) {
       }).join('') + '</div>' +
       '<div class="entry-note">连续签到 ' + (s.streak || 0) + ' 天 · 灯油 ' + (s.oil || 0) + ' · 累计 ' + (s.totalDays || 0) + ' 天</div>' +
       '<div class="entry-btn' + (canSign ? '' : ' off') + '" id="signin-btn">' + (canSign ? '点亮今日酥油灯' : '今日已点亮 · 明天再来') + '</div>' +
-      '<div class="entry-note">签到奖励全部为本地积分与道具，不含任何金额，也不需要登录。</div>';
+      '<div class="entry-note">签到奖励全部为本地学习得分与道具，不含任何金额，也不需要登录。</div>';
     // 注意：这里必须用唯一 id。此前误与跳窗的 #lamp-btn 撞名，
     // 导致面板的签到按钮取到的是跳窗按钮、真实按钮没有监听。
     $('signin-btn').addEventListener('click', doSignIn);
@@ -2744,8 +2744,8 @@ function openPanel(key) {
       return '<div class="shop-row"><span class="shop-ico">' + it.icon + '</span>' +
         '<div class="shop-main"><div class="shop-name">' + it.name + ' <span class="shop-count">持有 ' + (inv[it.id] || 0) + '</span></div>' +
         '<div class="shop-desc">' + it.desc + '</div></div>' +
-        '<div class="shop-btn" data-id="' + it.id + '">' + it.cost + ' 积分</div></div>';
-    }).join('') + '<div class="entry-note">道具用游戏积分兑换：全程不涉及支付，也不含广告。</div>';
+        '<div class="shop-btn" data-id="' + it.id + '">' + it.cost + ' 学习得分</div></div>';
+    }).join('') + '<div class="entry-note">道具用学习得分兑换：全程不涉及支付，也不含广告。</div>';
     Array.prototype.slice.call(body.querySelectorAll('.shop-btn')).forEach(function (b) {
       b.addEventListener('click', function () { buyItem(b.dataset.id); });
     });
@@ -2754,23 +2754,23 @@ function openPanel(key) {
     Object.keys(p.stars || {}).forEach(function (k) { stars += p.stars[k]; });
     const letters = (p.seenCards || []).filter(function (id) { return id.indexOf('letter_') === 0; }).length;
     body.innerHTML =
-      '<div class="rank-row"><span class="rank-k">累计积分</span><span class="rank-v">' + (p.points || 0) + '</span></div>' +
-      '<div class="rank-row"><span class="rank-k">最高连击</span><span class="rank-v">×' + p.bestCombo + '</span></div>' +
+      '<div class="rank-row"><span class="rank-k">累计学习得分</span><span class="rank-v">' + (p.points || 0) + '</span></div>' +
+      '<div class="rank-row"><span class="rank-k">最高连续正确</span><span class="rank-v">×' + p.bestCombo + '</span></div>' +
       '<div class="rank-row"><span class="rank-k">累计星星</span><span class="rank-v">' + stars + '</span></div>' +
       '<div class="rank-row"><span class="rank-k">已认识字母</span><span class="rank-v">' + letters + '</span></div>' +
       '<div class="entry-note">这是你自己的雪域成绩单：全部数据保存在本机，不上传、不做全服排名。</div>';
   } else if (key === 'tree') {
     body.innerHTML = '<div class="tree-art">🌳</div>' +
-      '<div class="entry-note">已浇水 ' + (p.pot || 0) + ' 次 · 每次收获 ' + DAILY.tree.water + ' 积分</div>' +
+      '<div class="entry-note">已浇水 ' + (p.pot || 0) + ' 次 · 每次收获 ' + DAILY.tree.water + ' 学习得分</div>' +
       '<div class="entry-btn" id="tree-btn">给菩提树浇一次水</div>' +
-      '<div class="entry-note">浇树只用游戏积分循环，不依赖广告，也不售卖任何东西。</div>';
+      '<div class="entry-note">浇树只用学习得分循环，不依赖广告，也不售卖任何东西。</div>';
     $('tree-btn').addEventListener('click', waterTree);
   } else if (key === 'winter') {
     body.innerHTML = DAILY.winter.items.map(function (it) {
       return '<div class="winter-card"><div class="wc-title">' + it.title + '</div><div class="wc-text">' + it.text + '</div></div>';
     }).join('');
   } else if (key === 'market') {
-    body.innerHTML = '<div class="entry-note">八廓街集市即「藏文权益中心」：用通关进度领取由商家提供并兑现的到店体验，平台不参与交易、不经手资金。</div>' +
+    body.innerHTML = '<div class="entry-note">八廓街集市即「藏文权益中心」：用课程进度领取由商家提供并兑现的到店体验，平台不参与交易、不经手资金。</div>' +
       '<div class="entry-btn" id="market-btn">进入藏文权益中心</div>';
     $('market-btn').addEventListener('click', function () { closePanel(); showBenefits(); });
   }
@@ -2802,7 +2802,7 @@ function buyItem(id) {
   const item = DAILY.shop.filter(function (i) { return i.id === id; })[0];
   if (!item) return;
   const p = getProgress();
-  if ((p.points || 0) < item.cost) { showTip('积分不够，先去闯关吧'); return; }
+  if ((p.points || 0) < item.cost) { showTip('学习得分不够，先去完成课程吧'); return; }
   p.points -= item.cost;
   if (id === 'oil') p.signIn.oil = ((p.signIn && p.signIn.oil) || 0) + 2;
   else { p.inventory = p.inventory || {}; p.inventory[id] = (p.inventory[id] || 0) + 1; }
@@ -2820,7 +2820,7 @@ function waterTree() {
   refreshHomeV4();
   renderVine();
   openPanel('tree');
-  showTip('菩提树 +' + DAILY.tree.water + ' 积分');
+  showTip('菩提树 +' + DAILY.tree.water + ' 学习得分');
 }
 
 /* ---------------- 首页 ---------------- */
@@ -2917,9 +2917,9 @@ function renderHome() {
       return '<div class="mini-stamp">拉萨</div>';
     }).join('');
   } else {
-    stampsEl.innerHTML = '<div class="stamp-empty">还没有印记 · 通关第 1 关获得</div>';
+    stampsEl.innerHTML = '<div class="stamp-empty">还没有印记 · 完成第 1 课获得</div>';
   }
-  $('profile-combo').textContent = '最高连击 ×' + p.bestCombo;
+  $('profile-combo').textContent = '最高连续正确 ×' + p.bestCombo;
 
   // 文化护照入口：证书数 + 当前阶段进度（形成「还差几关」的牵引）
   const slots = certList();
@@ -2928,9 +2928,9 @@ function renderHome() {
   slots.forEach(function (it) { if (!stage && it.open && !it.unlocked) stage = it; });
   const lastCert = p.certs.length ? p.certs[p.certs.length - 1] : null;
   const sub = stage
-    ? ('第 ' + stage.stage + ' 阶段 · ' + stage.name + ' · 进度 ' + stage.progress + '/' + stage.total + ' 关')
+    ? ('第 ' + stage.stage + ' 阶段 · ' + stage.name + ' · 进度 ' + stage.progress + '/' + stage.total + ' 课')
     : (lastCert ? ('最近获得：第 ' + lastCert.stage + ' 阶段 · ' + lastCert.tierLabel)
-      : '通关第 10 关，获得第一张藏文成长证书');
+      : '完成第 10 课，获得第一张藏文成长证书');
   const hp = $('home-passport');
   hp.innerHTML =
     '<div class="passport-card">' +
@@ -2951,7 +2951,7 @@ function renderHome() {
     '<div class="benefit-card">' +
     '<div class="bc-left">' +
     '<div class="bc-title">藏文权益中心</div>' +
-    '<div class="bc-sub">凭通关进度领取到店权益 · 本地生活 / 游客专属</div>' +
+    '<div class="bc-sub">凭课程进度领取到店权益 · 本地生活 / 游客专属</div>' +
     '</div>' +
     '<div class="bc-right"><div class="bc-arrow">&rsaquo;</div><div class="bc-label">去逛逛</div></div>' +
     '</div>';
@@ -3343,7 +3343,7 @@ function startLevel(level) {
   state.ropeTotal = state.board.cells.filter(function (t) { return t && t.rope > 0; }).length;
   state.brokenCount = 0;
 
-  $('status-mid').textContent = '第 ' + level + ' 关';
+  $('status-mid').textContent = '第 ' + level + ' 课';
   layoutBoard();
   renderBoard({ phase: 'settle' });
   updateHud();
@@ -3651,7 +3651,7 @@ function showPraise(dec) {
   if (!box) return;
   state.praiseAnt = !state.praiseAnt;
   box.className = 'praise-fx lv' + dec.level + (state.praiseAnt ? ' ant-a' : ' ant-b');
-  $('praise-combo').textContent = dec.level >= 2 ? '连击 ×' + dec.combo.combo : '';
+  $('praise-combo').textContent = dec.level >= 2 ? '连续正确 ×' + dec.combo.combo : '';
   $('praise-combo').style.display = dec.level >= 2 ? '' : 'none';
   $('praise-bo').textContent = dec.tibetan ? dec.text.bo : '';
   $('praise-bo').style.display = dec.tibetan ? '' : 'none';
@@ -3892,7 +3892,7 @@ function showGuide() {
   $('guide-step').textContent = '第 ' + state.guideStep + ' / ' + GUIDE.length + ' 步';
   $('guide-title').textContent = g.title;
   $('guide-text').textContent = g.text;
-  $('guide-next').textContent = state.guideStep >= GUIDE.length ? '开始玩' : '下一步';
+  $('guide-next').textContent = state.guideStep >= GUIDE.length ? '开始学习' : '下一步';
   $('guide-mask').classList.add('show');
 }
 $('guide-next').addEventListener('click', function () {
@@ -3946,12 +3946,12 @@ function renderResult() {
   const p = getProgress();
 
   $('res-title').textContent = '第 ' + level + ' 关完成！';
-  $('res-sub').textContent = '共消除 ' + state.matchedCount + ' 对 · 最高连击 ×' + state.maxCombo;
-  $('res-acc').textContent = '本关正确率 ' + certRes.accuracy + '%' +
+  $('res-sub').textContent = '共消除 ' + state.matchedCount + ' 对 · 最高连续正确 ×' + state.maxCombo;
+  $('res-acc').textContent = '本课正确率 ' + certRes.accuracy + '%' +
     (state.misses === 0 ? ' · 全程无失误 ✦' : '');
   $('res-acc').className = 'result-acc' + (state.misses === 0 ? ' ok' : '');
 
-  // PRD v4 留存：星级（按正确率与连击，只增不减）+ 积分入账 + 唐卡碎片掉落
+  // PRD v4 留存：星级（按正确率与连击，只增不减）+ 学习得分入账 + 唐卡碎片掉落
   const att = state.attempts > 0 ? state.attempts : state.matchedCount;
   const starRes = recordStars(level, rateStars(att, state.misses, state.maxCombo));
   addPoints(state.score);
@@ -3961,10 +3961,10 @@ function renderResult() {
 
   $('res-stars').innerHTML = [1, 2, 3].map(function (i) {
     return '<span class="rs-star' + (starRes.stars >= i ? ' on' : '') + '">★</span>';
-  }).join('') + '<span class="rs-tip">' + (starRes.improved ? '刷新了本关最佳评价' : '本关评价') + '</span>';
+  }).join('') + '<span class="rs-tip">' + (starRes.improved ? '刷新了本课最佳评价' : '本课评价') + '</span>';
 
   $('res-rewards').innerHTML =
-    '<div class="reward-box"><div class="rw-v">+' + state.score + '</div><div class="rw-k">积分入账</div></div>' +
+    '<div class="reward-box"><div class="rw-v">+' + state.score + '</div><div class="rw-k">学习得分入账</div></div>' +
     '<div class="reward-box"><div class="rw-v">' + (fragRes.added ? ('第 ' + (fragRes.index + 1) + ' 片') : '已集齐') + '</div>' +
     '<div class="rw-k">' + (fragDone ? '唐卡已拼成' : ('唐卡碎片 ' + fragList.length + '/' + FRAGMENT_TOTAL)) + '</div></div>';
 
@@ -3983,7 +3983,7 @@ function renderResult() {
     '</div>'
   ) : '';
 
-  // 藏地密码（PRD 5.2）：通关即解锁一则小知识（解锁判定与揭示图鉴同源：completedLevels）
+  // 藏地密码（PRD 5.2）：完成即解锁一则小知识（解锁判定与揭示图鉴同源：completedLevels）
   const secItem = SECRETS[level - 1] || null;
   const secP = secretProgress(SECRETS, getProgress().completedLevels);
   $('res-secret').innerHTML = secItem ? (
@@ -4069,8 +4069,8 @@ function renderResult() {
       '<span class="ns-name">第 ' + ns.stage + ' 阶段 · ' + ns.name + '</span></div>' +
       '<div class="ns-goal">下一步：' + ns.goal + '</div>' +
       '<div class="ns-note">' +
-      (ns.open ? ('已开放 · 第 ' + ns.from + '-' + ns.to + ' 关')
-               : ('内容制作中 · 规划第 ' + ns.from + '-' + ns.to + ' 关')) +
+      (ns.open ? ('已开放 · 第 ' + ns.from + '-' + ns.to + ' 课')
+               : ('内容制作中 · 规划第 ' + ns.from + '-' + ns.to + ' 课')) +
       '</div></div>');
   }
 
@@ -4109,7 +4109,7 @@ function renderResult() {
   if (level === MAX_LEVEL) {
     blessEl.innerHTML =
       '<div class="bless-box">' +
-      '<div class="t">🎉 扎西德勒！通关全部 10 关</div>' +
+      '<div class="t">🎉 扎西德勒！完成全部 10 课</div>' +
       '<div class="s">生成你的专属祝福卡，保存下来分享给朋友</div>' +
       '<input class="name-input" id="bless-name" maxlength="10" placeholder="输入你的名字（可留空，默认「朋友」）">' +
       '<button class="primary-btn" id="bless-gen" style="background: var(--red); color:#fff; border:0; border-radius:14px; padding:14px 0; width:100%; font-size:16px; font-weight:700; margin-top:14px; cursor:pointer;">生成我的祝福卡</button>' +
@@ -4126,7 +4126,7 @@ function renderResult() {
   if (level < MAX_LEVEL) {
     const next = document.createElement('button');
     next.className = 'primary-btn';
-    next.textContent = '下一关 →';
+    next.textContent = '下一课 →';
     next.setAttribute('style', 'background: var(--red); color:#fff; border:0; border-radius:14px; padding:14px 0; width:100%; font-size:16px; font-weight:700; cursor:pointer;');
     next.addEventListener('click', function () { startLevel(level + 1); });
     actions.appendChild(next);
@@ -4212,7 +4212,7 @@ function generateBlessing() {
   // slogan
   ctx.font = '700 30px "PingFang SC","Microsoft YaHei",sans-serif';
   ctx.fillStyle = '#FFF3D6';
-  ctx.fillText('玩方块，认藏文', W / 2, POSTER_SLOGAN_Y);
+  ctx.fillText('认藏文，从方块开始', W / 2, POSTER_SLOGAN_Y);
 
   // Logo（左下）+ 小程序码占位（右下）
   // 先输出一版（Logo 未加载也能拿到图），Logo 就绪后再重绘刷新
@@ -4314,10 +4314,10 @@ function showPassport() {
       '<div class="rv-frame">' + (s.unlocked
         ? '<img class="rv-img" src="' + s.img + '" alt="">'
         : '<span class="rv-lock-mark">🔒</span>') + '</div>' +
-      '<div class="rv-name">' + (s.unlocked ? s.name : ('第 ' + s.level + ' 关')) + '</div></div>';
+      '<div class="rv-name">' + (s.unlocked ? s.name : ('第 ' + s.level + ' 课')) + '</div></div>';
   }).join('');
 
-  // 藏地密码（PRD 5.2）：与揭示图鉴同一口径（解锁 = 已通关该关）
+  // 藏地密码（PRD 5.2）：与揭示图鉴同一口径（解锁 = 已完成该关）
   const secSlots = secretProgress(SECRETS, p.completedLevels);
   $('pp-secret-count').textContent = secSlots.got + ' / ' + SECRETS.length;
   $('pp-secret-grid').innerHTML = secSlots.slots.map(function (s) {
@@ -4329,15 +4329,15 @@ function showPassport() {
   $('pp-stamp-count').textContent = p.stamps.length + ' / ' + STAMP_TOTAL;
   $('pp-stamps').innerHTML = p.stamps.length
     ? p.stamps.map(function () {
-      return '<div class="pp-stamp"><div class="seal">拉萨</div><div class="desc">通关第 1 关获得</div></div>';
+      return '<div class="pp-stamp"><div class="seal">拉萨</div><div class="desc">完成第 1 课获得</div></div>';
     }).join('') + '<div class="empty">更多印章陆续开放（规划七地市）</div>'
-    : '<div class="empty">还没有印章 · 通关第 1 关获得「拉萨」印章</div>';
+    : '<div class="empty">还没有印章 · 完成第 1 课获得「拉萨」印章</div>';
 
   $('pp-graph').innerHTML =
-    '<div class="g"><div class="v">' + p.completedLevels.length + '</div><div class="k">通关关卡</div></div>' +
+    '<div class="g"><div class="v">' + p.completedLevels.length + '</div><div class="k">已完成课程</div></div>' +
     '<div class="g"><div class="v">' + owned + '</div><div class="k">成长证书</div></div>' +
     '<div class="g"><div class="v">' + p.seenCards.length + '</div><div class="k">文化卡</div></div>' +
-    '<div class="g"><div class="v">×' + p.bestCombo + '</div><div class="k">最高连击</div></div>';
+    '<div class="g"><div class="v">×' + p.bestCombo + '</div><div class="k">最高连续正确</div></div>';
 
   showScreen('passport');
 }
@@ -4373,11 +4373,11 @@ function showCert(stage) {
       (cert.clean ? ' · 零失误' : '') + '</span></div>' +
       '</div>' +
       '<div class="cs-foot"><img src="' + IMAGES.logo80 + '" alt=""><div class="cs-code">小程序码</div></div>' +
-      '<div class="cs-slogan">玩方块，认藏文</div>' +
+      '<div class="cs-slogan">认藏文，从方块开始</div>' +
       '</div></div>' +
       '<div class="cert-actions"><button class="solid" id="cert-gen">生成证书图片</button></div>' +
       '<div id="cert-out"></div>' +
-      '<div class="cert-tip">证书是学习证明，不是积分。正确率越高，等级越高：金质 &gt; 银质 &gt; 普通。</div>';
+      '<div class="cert-tip">证书是学习证明。正确率越高，等级越高：金质 &gt; 银质 &gt; 普通。</div>';
 
     $('cert-gen').addEventListener('click', function () { generateCertImage(cert); });
     $('cs-edit').addEventListener('click', function () {
@@ -4400,7 +4400,7 @@ function showCert(stage) {
       '<div class="t">第 ' + info.stage + ' 阶段 · ' + info.name + '</div>' +
       '<div class="s">' + info.goal + '</div>' +
       '<div class="p">当前进度 ' + (slot ? slot.progress : 0) + ' / ' + (slot ? slot.total : 10) + ' 关</div>' +
-      '<div class="r">通关第 ' + info.from + '-' + info.to + ' 关，即可获得「' + info.name + '」证书</div>' +
+      '<div class="r">完成第 ' + info.from + '-' + info.to + ' 课，即可获得「' + info.name + '」证书</div>' +
       '</div>' +
       '<div class="tier-box"><div class="tt">证书等级（质量门槛）</div>' +
       ['gold', 'silver', 'bronze'].map(function (k) {
@@ -4500,7 +4500,7 @@ function generateCertImage(cert) {
 
   ctx.fillStyle = '#B7950B';
   ctx.font = '700 28px "PingFang SC","Microsoft YaHei",sans-serif';
-  ctx.fillText('玩方块，认藏文', W / 2, H - 62);
+  ctx.fillText('认藏文，从方块开始', W / 2, H - 62);
 
   const out = function () {
     const url = cv.toDataURL('image/png');
@@ -4594,7 +4594,7 @@ function drawBlessingCard(card, done) {
   // 品牌
   ctx.fillStyle = '#B7950B';
   ctx.font = '700 28px "PingFang SC","Microsoft YaHei",sans-serif';
-  ctx.fillText('玩方块，认藏文', W / 2, H - 62);
+  ctx.fillText('认藏文，从方块开始', W / 2, H - 62);
 
   done(cv.toDataURL('image/png'));
 }
@@ -4670,7 +4670,7 @@ function claimBenefit(mid) {
   const p = getProgress();
   const done = p.completedLevels.length;
   if (hasBenefit(mid)) { showTip('已领取，请到店出示核销码'); return false; }
-  if (!bnUnlocked(done, m.need)) { showTip('还差 ' + (m.need - done) + ' 关，通关后即可领取'); return false; }
+  if (!bnUnlocked(done, m.need)) { showTip('还差 ' + (m.need - done) + ' 课，完成后即可领取'); return false; }
   p.benefitSeq = (p.benefitSeq || 0) + 1;
   p.benefits = p.benefits || [];
   const rec = { mid: m.id, name: m.name, city: m.city, code: bnMakeCode(p.benefitSeq), at: Date.now(), status: 'claimed' };
@@ -4751,7 +4751,7 @@ function renderBenefits() {
       '<div class="bc-meta">' + bnCityName(m.city) + ' · ' + m.category + '</div>' +
       '<div class="bc-offer">' + m.offer + '</div>' +
       '<div class="bc-provider">' + BENEFIT_PROVIDER + '</div>' +
-      '<div class="bc-foot"><div class="bc-need' + (unlocked ? ' ok' : '') + '">通关 ' + m.need + ' 关可领</div>' +
+      '<div class="bc-foot"><div class="bc-need' + (unlocked ? ' ok' : '') + '">完成第 ' + m.need + ' 课可领</div>' +
       (rec ? '<div class="bc-code">' + rec.code + '</div>'
         : (unlocked ? '<div class="bc-btn" data-mid="' + m.id + '">领取凭证</div>'
           : '<div class="bc-lock">还差 ' + (m.need - done) + ' 关</div>')) +
@@ -4761,7 +4761,7 @@ function renderBenefits() {
   state.benefitGot = got;
 
   body.innerHTML =
-    '<div class="bn-count">共 ' + list.length + ' 家 · 通关 ' + done + ' 关 · 可领 ' + claimable +
+    '<div class="bn-count">共 ' + list.length + ' 家 · 已完成 ' + done + ' 课 · 可领 ' + claimable +
     ' 家 · 已领 ' + got + '</div>' + '<div class="bn-list">' + cards + '</div>';
   Array.prototype.forEach.call(body.querySelectorAll('.bc-btn'), function (b) {
     b.addEventListener('click', function () { claimBenefit(b.getAttribute('data-mid')); });

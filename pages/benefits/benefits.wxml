@@ -14,7 +14,7 @@
 
     <view class="bn-hero">
       <view class="bn-title">藏文权益中心</view>
-      <view class="bn-sub">玩方块攒进度，到店解锁藏地体验</view>
+      <view class="bn-sub">认字攒进度，到店解锁藏地体验</view>
       <view class="bn-note">{{pageNote}}</view>
     </view>
 
@@ -54,7 +54,7 @@
     <view wx:if="{{!mode}}" class="bn-empty">请先在上方选择「本地生活」或「游客专属」</view>
 
     <block wx:else>
-      <view class="bn-count">共 {{total}} 家 · 通关 {{doneCount}} 关 · 可领 {{claimable}} 家 · 已领 {{claimedCount}}</view>
+      <view class="bn-count">共 {{total}} 家 · 已完成 {{doneCount}} 课 · 可领 {{claimable}} 家 · 已领 {{claimedCount}}</view>
 
       <view class="bn-list">
         <view wx:for="{{list}}" wx:key="id" class="bn-card {{item.claimed ? 'got' : ''}}">
@@ -66,10 +66,10 @@
           <view class="bc-offer">{{item.offer}}</view>
           <view class="bc-provider">{{item.providerNote}}</view>
           <view class="bc-foot">
-            <view class="bc-need {{item.unlocked ? 'ok' : ''}}">通关 {{item.need}} 关可领</view>
+            <view class="bc-need {{item.unlocked ? 'ok' : ''}}">完成第 {{item.need}} 课可领</view>
             <view wx:if="{{item.claimed}}" class="bc-code">{{item.code}}</view>
             <view wx:if="{{!item.claimed && item.unlocked}}" class="bc-btn" data-mid="{{item.id}}" bindtap="onClaim">领取凭证</view>
-            <view wx:if="{{!item.unlocked}}" class="bc-lock">还差 {{item.shortBy}} 关</view>
+            <view wx:if="{{!item.unlocked}}" class="bc-lock">还差 {{item.shortBy}} 课</view>
           </view>
         </view>
       </view>
