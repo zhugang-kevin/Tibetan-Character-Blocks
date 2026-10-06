@@ -61,5 +61,5 @@ node scripts/test-tibetan.js
 
 每次**配对成功**都会朗读该元素的藏文发音（`utils/audio.js` 的 `pronounce`）。
 发音与文字排版是同一套「音节」概念：读音单元 = tsheg 切分出的音节。
-录音文件命名与元素 ID 一致（`letter_01.mp3` ~ `letter_08.mp3`，图标为 `icon_01.mp3` ~ `icon_04.mp3`），
+录音文件命名与元素 ID 一致（`letter_01.mp3` ~ `letter_30.mp3`，图标为 `icon_01.mp3` ~ `icon_04.mp3`），
 缺失时静默回退，不影响游戏。

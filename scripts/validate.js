@@ -99,15 +99,39 @@ levels.forEach(l => {
       ' = ' + total + ' 张 OK');
   }
 });
-if (elementIds.length === 12) ok('元素库 12 个（8字母+4图标）');
-else err('元素库应为 12 个，实际 ' + elementIds.length);
+if (elementIds.length === 34) ok('元素库 34 个（30字母+4图标）');
+else err('元素库应为 34 个，实际 ' + elementIds.length);
+
+// 30 辅音基线（2026-10-07 用户拍板扩充）：字母不重不漏、颜色只在达标四色内循环、
+// 三十个字母全部被至少一关使用（不得出现「有卡无盘」的死内容）
+{
+  const el30 = eval('(' + read('data/elements.js').replace(/^module\.exports\s*=\s*/, '').replace(/;\s*$/, '') + ')');
+  const letterIds30 = Object.keys(el30).filter(id => /^letter_\d{2}$/.test(id)).sort();
+  const lettersOk30 = letterIds30.length === 30 && letterIds30.every((id, i) => id === 'letter_' + String(i + 1).padStart(2, '0'));
+  if (lettersOk30) ok('元素库含 letter_01..letter_30 连续 30 个辅音');
+  else err('字母编号应连续覆盖 letter_01..letter_30，实际 ' + letterIds30.length + ' 个');
+  const glyphs30 = letterIds30.map(id => el30[id].tibetan);
+  if (new Set(glyphs30).size === 30) ok('三十个藏文字形互不重复');
+  else err('藏文字形有重复：' + glyphs30.join(' '));
+  const TILE_INKS30 = ['#C0392B', '#176B3C', '#2471A3', '#8A6A12'];
+  const badInk30 = letterIds30.filter(id => TILE_INKS30.indexOf(el30[id].color) === -1);
+  if (!badInk30.length) ok('30 个字母颜色全部取自四张达标牌面色（§30 零波及）');
+  else err('字母用了牌面四色之外的墨（对比度门禁未覆盖）: ' + badInk30.join(','));
+  const usedInLevels30 = new Set([].concat(...levels.map(l => l.elements.map(e => e[0]))));
+  const idle30 = letterIds30.filter(id => !usedInLevels30.has(id));
+  if (!idle30.length) ok('三十个辅音全部在至少一关出场');
+  else err('有卡无盘（字母从未在任何关卡出现）: ' + idle30.join(','));
+  const kindsMax30 = Math.max(...levels.map(l => l.elements.length));
+  if (kindsMax30 <= 15) ok('单关元素种类上限内（最多 ' + kindsMax30 + ' 种 ≤ 15）');
+  else err('有关超过 15 种元素（60 张牌按每种 4 张已放不下）: ' + kindsMax30);
+}
 
 // ---------- 4. 文化卡覆盖 ----------
 section('4. 文化卡覆盖');
 const cardsSrc = read('data/cards.js');
 const cardIds = [...cardsSrc.matchAll(/id:\s*'(letter_\d{2}|icon_\d{2})'/g)].map(m => m[1]);
 const missing = elementIds.filter(id => !cardIds.includes(id));
-if (cardIds.length === 12) ok('文化卡 12 张'); else err('文化卡应为 12 张，实际 ' + cardIds.length);
+if (cardIds.length === 34) ok('文化卡 34 张（30字母+4图标）'); else err('文化卡应为 34 张，实际 ' + cardIds.length);
 if (missing.length) err('缺文化卡的元素: ' + missing.join(','));
 else ok('每个元素都有对应文化卡');
 const requiredFields = ['title', 'subtitle', 'description', 'funFact'];
@@ -1936,8 +1960,8 @@ section('29. 通关揭图（十关秘境图 · 零金额 · 不新增存储字�
   else err('data/reveals.js 出现 D25 红线符号：' + hit25.join('/'));
   // 元素库不得被顺手扩充（ religious symbols 只能以「装饰纹样」存在，不能变成可消除牌面）
   const elCount29 = (read('data/elements.js').match(/type:\s*'(letter|icon)'/g) || []).length;
-  if (elCount29 === 12) ok('元素库仍为 12 个元素（揭图没有顺手进元素库）');
-  else err('元素库元素数变了（' + elCount29 + ' ≠ 12）：新增元素需另行拍板，不得随揭图夹带');
+  if (elCount29 === 34) ok('元素库为 34 个元素（30 辅音扩充 2026-10-07 拍板后的新基线；揭图不得再夹带）');
+  else err('元素库元素数变了（' + elCount29 + ' ≠ 34）：再增删元素需另行拍板，不得随任何特性夹带');
 
   // 29.4 金额守卫：图鉴文案不承载金额 / 让利 / 结算字段
   if (!moneyFieldHit(rvRaw29).length && !OFFER_DIGIT_PAT.test(rvRaw29) && !MONEY_UNIT_PAT.test(rvRaw29))
@@ -2064,8 +2088,12 @@ section('30. 文字对比度（WCAG AA · 牌面渐变采样 + 墨色回归锁�
   else err('体验版 pieceStyle 未同步窄倒角 stops');
 
   // 元素四色：奶白字形/图标在「平色段」上的对比度（金/绿已压暗）
-  const EL30 = { letter_01: '#C0392B', letter_02: '#176B3C', letter_03: '#2471A3', letter_04: '#8A6A12',
-                 icon_01: '#C0392B', icon_02: '#2471A3', icon_03: '#5D6D7E', icon_04: '#8A6A12' };
+  // 30 辅音扩充后：颜色在四张达标牌面色里循环，逐元素全量采样（不再是 8 字母抽样）
+  const EL30 = {};
+  {
+    const elSrc30 = eval('(' + read('data/elements.js').replace(/^module\.exports\s*=\s*/, '').replace(/;\s*$/, '') + ')');
+    Object.keys(elSrc30).forEach(id => { EL30[id] = elSrc30[id].color; });
+  }
   Object.keys(EL30).forEach(id => {
     const c = EL30[id];
     const worst = Math.min(...[0.10, 0.14, 0.30, 0.50, 0.70, 0.90].map(y => ratio30(hex30('#FFF6DC'), faceAt30(c, y))));

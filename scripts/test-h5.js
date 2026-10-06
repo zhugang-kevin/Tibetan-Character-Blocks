@@ -429,7 +429,7 @@ function mockCtx(sink) {
 
   /* ---------- 6. 连击 + 重复匹配轻提示（修复①） ---------- */
   section('6. 连击与重复匹配轻提示');
-  // 把 12 张文化卡全部标记为「已看过」，之后的匹配应只出轻提示
+  // 把 34 张文化卡全部标记为「已看过」，之后的匹配应只出轻提示
   ev('Object.keys(ELEMENTS).forEach(function (k) { markCardSeen(k); });');
   const pr1 = findPair();
   const pronAtMatch = ev('state.pronounceCount');
@@ -612,8 +612,8 @@ function mockCtx(sink) {
   check('每关补充池非空（下落机制真的会发生）', levels.every(function (c) {
     return Math.max(2, Math.ceil(c.cols * c.rows / 4 / 2) * 2) > 0;
   }));
-  check('元素库 12 项', ev('Object.keys(ELEMENTS).length') === 12);
-  check('文化卡 12 张', ev('CARDS.length') === 12);
+  check('元素库 34 项（30字母+4图标）', ev('Object.keys(ELEMENTS).length') === 34);
+  check('文化卡 34 张', ev('CARDS.length') === 34);
   check('藏文排序正确（ཀ ཁ ག ང ཅ ཆ ཇ ཉ）',
     ev('["letter_01","letter_02","letter_03","letter_04","letter_05","letter_06","letter_07","letter_08"].map(function(k){return ELEMENTS[k].tibetan}).join("")')
     === 'ཀཁགངཅཆཇཉ');
@@ -706,8 +706,8 @@ function mockCtx(sink) {
     cert1 && (cert1.tier + ' acc=' + cert1.acc));
   check('证书编号符合 ZWFK-YYYY-NNNN', cert1 && /^ZWFK-\d{4}-\d{4}$/.test(cert1.no), cert1 && cert1.no);
   check('首张证书流水号为 0001', cert1 && cert1.no.slice(-4) === '0001', cert1 && cert1.no);
-  check('证书成就行按真实数据生成（8 个藏文字母）',
-    cert1 && cert1.lines.join('|').indexOf('已认识 8 个藏文字母') > -1,
+  check('证书成就行按真实数据生成（30 个藏文字母）',
+    cert1 && cert1.lines.join('|').indexOf('已认识 30 个藏文字母') > -1,
     cert1 && cert1.lines.join(' | '));
   check('证书默认持有人', cert1 && cert1.holder === '藏文学习者', cert1 && cert1.holder);
   check('结算页出现证书横幅', $('#res-cert').textContent.indexOf('获得藏文成长证书') > -1,
@@ -1404,11 +1404,11 @@ function mockCtx(sink) {
   await sleep(60);
 
   check('结算页出现进度锚区块（#res-journey）', !!$('#res-journey'));
-  check('进度锚有 12 个收藏槽位', $$('#res-journey .j-slot').length === 12,
+  check('进度锚有 34 个收藏槽位', $$('#res-journey .j-slot').length === 34,
     '实际 ' + $$('#res-journey .j-slot').length);
   check('已收藏槽位 = 2（本关认识的两个字母）', $$('#res-journey .j-slot.got').length === 2,
     '实际 ' + $$('#res-journey .j-slot.got').length);
-  check('未收藏槽位 = 10', $$('#res-journey .j-unknown').length === 10,
+  check('未收藏槽位 = 32', $$('#res-journey .j-unknown').length === 32,
     '实际 ' + $$('#res-journey .j-unknown').length);
   check('未收藏槽位只显示「?」，不剧透下一张的名字', $$('#res-journey .j-unknown').every(function (n) {
     return n.textContent.trim() === '?';
@@ -1421,12 +1421,12 @@ function mockCtx(sink) {
     ($('#res-journey .j-step') || {}).textContent);
   check('进度锚有旅程天数', /旅行第 \d+ 天/.test($('#res-journey .j-day').textContent),
     $('#res-journey .j-day').textContent);
-  check('进度条宽度 = 已收藏比例（2/12 ≈ 17%）',
-    ($('#res-journey .j-bar-in').getAttribute('style') || '').indexOf('17%') > -1,
+  check('进度条宽度 = 已收藏比例（2/34 ≈ 6%）',
+    ($('#res-journey .j-bar-in').getAttribute('style') || '').indexOf('6%') > -1,
     $('#res-journey .j-bar-in').getAttribute('style'));
   check('文案给出「还剩多少没遇见」（牵引下一关）',
-    $('#res-journey .j-note').textContent.indexOf('已认识 2 / 12') > -1 &&
-    $('#res-journey .j-note').textContent.indexOf('还有 10 个') > -1,
+    $('#res-journey .j-note').textContent.indexOf('已认识 2 / 34') > -1 &&
+    $('#res-journey .j-note').textContent.indexOf('还有 32 个') > -1,
     $('#res-journey .j-note').textContent);
   check('反向：进度锚不出现「?」以外的未收藏字形泄漏',
     $('#res-journey .j-note').textContent.indexOf('吉祥结') === -1 &&
@@ -1591,9 +1591,9 @@ function mockCtx(sink) {
   ev('generateBlessing()');
   const posterTexts = win.__texts.map(function (x) { return x.t; });
   check('海报按真实进度印出字母行',
-    posterTexts.indexOf('已认识 3 / 8 个藏文字母') > -1, posterTexts.join(' | '));
+    posterTexts.indexOf('已认识 3 / 30 个藏文字母') > -1, posterTexts.join(' | '));
   check('海报按真实进度印出文化卡与印章行（3 字母 + 1 图标 = 4 张卡 · 1 枚印章）',
-    posterTexts.indexOf('文化卡 4 / 12 · 护照印章 1 / 7') > -1, posterTexts.join(' | '));
+    posterTexts.indexOf('文化卡 4 / 34 · 护照印章 1 / 7') > -1, posterTexts.join(' | '));
   check('反向：海报不再出现写死的字母数',
     !posterTexts.some(function (t) { return /认了\s*8|学会了\s*8|认识\s*8\s*个/.test(t); }),
     posterTexts.join(' | '));
@@ -1952,8 +1952,8 @@ function mockCtx(sink) {
       ev('DATA.elements.icon_04.iconKey') === 'yak' &&
       ev('DATA.elements.icon_04.char') === '牦' &&
       ev('DATA.elements.icon_04.color') === '#8A6A12');
-    check('元素库仍为 12 个元素（换题材不缩库）',
-      ev('Object.keys(DATA.elements).length') === 12);
+    check('元素库为 34 个元素（30 辅音扩充后的新基线，换题材不缩库）',
+      ev('Object.keys(DATA.elements).length') === 34);
     check('注入体验版的元素库 JSON 不含任何宗教符号字面', SYMS.every(function (s) {
       return ev('JSON.stringify(DATA.elements)').indexOf(s) === -1;
     }));
