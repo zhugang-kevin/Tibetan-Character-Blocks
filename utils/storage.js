@@ -26,6 +26,7 @@ function getProgress() {
     comboModel: COMBO_MODEL,
     // 即时应激励的文案开关（D34）：只关赞美文案，不关元素发音
     praiseOff: !!(p && p.praiseOff),
+    bgmOff: !!(p && p.bgmOff),
     seenCards: (p && p.seenCards) || [],
     onboardDone: !!(p && p.onboardDone),
     // 证书体系（藏文成长阶梯）：最佳正确率 / 证书 / 编号流水 / 持有人
@@ -95,6 +96,20 @@ function setPraiseOff(off) {
   p.praiseOff = !!off;
   save(p);
   return p.praiseOff;
+}
+
+// ---------- 背景音乐开关（PRD 3.3） ----------
+// 默认**开**（bgmOff=false）：BGM 是氛围的一部分，但用户必须随时能关。
+// 与 praiseOff 同一条链路：getProgress 白名单 + 体验版 getProgress + 页面三处同步。
+function getBgmOff() {
+  return !!getProgress().bgmOff;
+}
+
+function setBgmOff(off) {
+  var p = getProgress();
+  p.bgmOff = !!off;
+  save(p);
+  return p.bgmOff;
 }
 
 // 授予印记（v0：'lhasa' 拉萨印章）。返回是否为新获得。

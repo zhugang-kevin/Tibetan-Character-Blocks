@@ -314,7 +314,7 @@ var sceneryImgs = ['bg-ground.png', 'bg-sky.png'];
   var patOk = !!patBlock && /background-image:\s*url\('data:image\/png;base64,/.test(patBlock[0]) &&
     /background-repeat:\s*repeat/.test(patBlock[0]);
   var hasLayer = wxss.indexOf('.scenery') > -1 && wxss.indexOf('.sc-sky') > -1 && wxss.indexOf('.sc-ground') > -1;
-  if (!missImg.length && patOk && hasLayer) ok(p[1] + '背景层完整（平铺菱格纹/经幡/雪山布达拉宫）');
+  if (!missImg.length && patOk && hasLayer) ok(p[1] + '背景层完整（平铺八宝卷草纹/经幡/雪山布达拉宫）');
   else err(p[1] + '背景层不完整（缺图: ' + missImg.join(',') + '，纹样平铺: ' + patOk + '，层样式: ' + hasLayer + '）');
 });
 sceneryImgs.concat(['pat-tile.png']).forEach(function (s) {
@@ -2735,6 +2735,394 @@ section('32. 消除情绪激励（D34：时间窗口连击 · 五档赞美 · �
     ok('praiseOff 只闸在 showPraise 上（开关的作用面被限定在浮字）');
   else err('未找到「praiseOff 闸住 showPraise」的接线，开关可能没生效');
 }
+
+// ---------- 33. 藏地密码（PRD 5.2：十则小知识 · 通关解锁 · 不新增存储字段） ----------
+// 背景：PRD 5.2 原为「藏地密码语音故事」。因 audio/voice/ 的 12 条录音尚未录（#19），
+// 语音版无法交付，本轮以**纯文字版**落地：每通关一关解锁一则藏地小知识，
+// 结算页呈现 + 护照「藏地密码」板块收藏。
+// 四条红线机械锁死：
+//   ① 一关一则、关卡号严格 1..10（不跳号 / 不重复 / 正文不是占位一句话）；
+//   ② 解锁状态派生自 completedLevels，**不新增存储字段**（与 D31 揭图同一口径）；
+//   ③ 正文不踩 D25 宗教符号 / 竞争性营销字眼 / 金额字眼；
+//   ④ 两端同构：小程序 pages/* 与体验版 preview/template.html 同名函数、同一判定。
+section('33. 藏地密码（PRD 5.2：十则小知识 · 通关解锁 · 不新增存储字段）');
+{
+  const rj33 = read('pages/result/result.js');
+  const rw33 = read('pages/result/result.wxml');
+  const rx33 = read('pages/result/result.wxss');
+  const pj33 = read('pages/passport/passport.js');
+  const pw33 = read('pages/passport/passport.wxml');
+  const px33 = read('pages/passport/passport.wxss');
+  const tpl33 = read('preview/template.html');
+  const bh33 = read('scripts/build-h5.js');
+
+  // --- 33.1 数据层：十关全覆盖、一一对应、字段齐备 ---
+  let secList33 = null;
+  try { secList33 = require(path.join(ROOT, 'data', 'secrets.js')); } catch (e) { /* 走下面 err */ }
+  if (Array.isArray(secList33) && secList33.length === 10)
+    ok('data/secrets.js 共 10 则（每关一则）');
+  else err('data/secrets.js 应为 10 则，实际 ' + (secList33 && secList33.length));
+  if (Array.isArray(secList33)) {
+    const lv33 = secList33.map(s => s.level);
+    if (lv33.every((n, i) => n === i + 1)) ok('密码关卡区间无缝覆盖 1-10 关（顺序一致，无跳号）');
+    else err('密码关卡序号必须严格为 1..10，实际 ' + JSON.stringify(lv33));
+    if (new Set(lv33).size === 10) ok('十则关卡号互不重复');
+    else err('密码关卡号有重复：' + JSON.stringify(lv33));
+    const miss33 = secList33.filter(s => !s.tag || !s.title || !s.text || !s.key);
+    if (!miss33.length) ok('每则都有 key + tag + 标题 + 正文');
+    else err('密码缺字段：' + miss33.map(s => s.level).join(','));
+    const short33 = secList33.filter(s => String(s.text).length < 40);
+    if (!short33.length) ok('每则正文 ≥40 字（不是一句话占位）');
+    else err('密码正文过短（<40 字）：' + short33.map(s => s.level).join(','));
+    if (new Set(secList33.map(s => s.key)).size === 10) ok('十则 key 互不重复');
+    else err('密码 key 有重复');
+    if (new Set(secList33.map(s => s.title)).size === 10) ok('十则标题互不重复');
+    else err('密码标题有重复');
+  }
+
+  // --- 33.2 内容红线（扫「解析后的数据」，不扫源文件文本）---
+  // ⚠️ 为什么不扫源文件：文件头注释里必须写明「本文件不得出现酥油灯」这类红线说明，
+  //    扫文本会自己绊倒自己（与 §17.8「去注释源码」同一教训）。
+  const secJson33 = JSON.stringify(secList33 || []);
+  // 注意用**非全局**正则：带 /g 的 RegExp.test 会保留 lastIndex，跨次调用结果漂移。
+  const D25_RE33 = /佛塔|酥油灯|风马旗|莲花|经幡/;
+  const COMP_RE33 = /排行榜|排行|名次|战区|金币|优惠券|广告|抽奖|返现/;
+  const MONEY_RE33 = /[¥￥]|元(?!音|素)/;
+  const hitD25_33 = secJson33.match(new RegExp(D25_RE33.source, 'g')) || [];
+  if (!hitD25_33.length) ok('正文未出现 D25 红线符号（佛塔 / 酥油灯 / 风马旗 / 莲花 / 经幡）');
+  else err('正文出现 D25 红线符号：' + hitD25_33.join('/'));
+  const hitComp33 = secJson33.match(new RegExp(COMP_RE33.source, 'g')) || [];
+  if (!hitComp33.length) ok('正文无竞争性 / 营销字眼（排行 / 名次 / 金币 / 优惠券 / 广告 / 抽奖…）');
+  else err('正文出现竞争性 / 营销字眼：' + hitComp33.join('/'));
+  if (!MONEY_RE33.test(secJson33) && !OFFER_DIGIT_PAT.test(secJson33))
+    ok('正文无金额字段 / 让利数字 / 货币符号');
+  else err('正文出现金额 / 让利字样（¥ / 元 / 折 / 满N减N）');
+  // 反例自测：这把尺必须真的拦得住
+  const NEG33 = ['拉萨的佛塔', '酥油灯', '排行榜第一', '金币 ×10', '满100减20', '奖励 5 元', '立减 8 折'];
+  const slip33 = NEG33.filter(s =>
+    !D25_RE33.test(s) && !COMP_RE33.test(s) && !MONEY_RE33.test(s) && !OFFER_DIGIT_PAT.test(s));
+  if (!slip33.length) ok('反例自测通过：' + NEG33.length + ' 种违禁写法全部被拦');
+  else err('密码内容守卫有缺口：' + slip33.join(' | '));
+  // 正向：合法的「元音」不得被误伤（元(?!音|素) 的负向断言）
+  if (!MONEY_RE33.test('4 个元音符号') && !MONEY_RE33.test('文化元素')) ok('正向：「元音 / 元素」不被误判为金额（负向断言生效）');
+  else err('金额正则误伤「元音 / 元素」');
+
+  // --- 33.3 解锁口径：派生自 completedLevels，存储层不得出现第二真相源 ---
+  const st33 = read('utils/storage.js');
+  if (st33.indexOf('secret') === -1)
+    ok('utils/storage.js 未新增 secret 字段（解锁 = 通关状态，单一真相源）');
+  else err('utils/storage.js 出现 secret 字段：密码解锁应派生自 completedLevels，不要落第二份');
+  const h5gp33 = (read('preview/template.html').match(/function getProgress\(\)[\s\S]*?\n\}/) || [''])[0];
+  if (h5gp33 && h5gp33.indexOf('secret') === -1)
+    ok('体验版 getProgress 白名单未新增 secret（两端字段表一致）');
+  else err('体验版 getProgress 新增了 secret 字段，或函数体提取失败');
+
+  // --- 33.4 纯函数层：两端同名 + 行为等价 ---
+  const cl33 = read('utils/collect.js');
+  [['function secretOf', 'secretOf 定义'], ['function secretProgress', 'secretProgress 定义'],
+   ['secretOf: secretOf', 'secretOf 导出'], ['secretProgress: secretProgress', 'secretProgress 导出']]
+    .forEach(([k, label]) => {
+      if (cl33.indexOf(k) > -1) ok('utils/collect.js 含 ' + label);
+      else err('utils/collect.js 缺 ' + label);
+    });
+  ['function secretOf', 'function secretProgress'].forEach(k => {
+    if (tpl33.indexOf(k) > -1) ok('体验版镜像含 ' + k + '（两端判定同源）');
+    else err('体验版镜像缺 ' + k + '（两端判定会漂移）');
+  });
+  const collect33 = require(path.join(ROOT, 'utils', 'collect'));
+  const sp33a = collect33.secretProgress(secList33 || [], []);
+  if (sp33a.got === 0 && sp33a.total === 10 &&
+      sp33a.slots.every(s => s.title === '' && s.tag === '' && s.got === false))
+    ok('未通关时 10 个槽位全部不给标题（不剧透，与 cardProgress 空 label 同一用意）');
+  else err('未通关时槽位泄露了标题或计数错误：got=' + sp33a.got);
+  const sp33b = collect33.secretProgress(secList33 || [], [1, 3]);
+  if (sp33b.got === 2 && !!sp33b.slots[0].title && sp33b.slots[1].title === '' && !!sp33b.slots[2].title)
+    ok('通关 1 / 3 关 → 恰解锁第 1、3 则（槽位与关卡号严格绑定）');
+  else err('解锁映射错误：got=' + sp33b.got + ' 槽位1=' + sp33b.slots[0].title + ' 槽位2=' + sp33b.slots[1].title);
+  const so33 = collect33.secretOf(secList33 || [], 7);
+  if (so33 && so33.level === 7 && collect33.secretOf(secList33 || [], 99) === null)
+    ok('secretOf 按关卡号取条，越界返回 null');
+  else err('secretOf 取条 / 越界行为不符');
+
+  // --- 33.5 小程序页面接线 ---
+  if (rj33.indexOf("require('../../data/secrets')") > -1) ok('result.js 引入 data/secrets（同源数据）');
+  else err('result.js 未引入 data/secrets');
+  if (rj33.indexOf('collect.secretOf(secretsData, level)') > -1)
+    ok('result.js 用 collect.secretOf 取本关密码（页面不内联关卡规则）');
+  else err('result.js 未走 collect.secretOf');
+  if (rj33.indexOf('collect.secretProgress(secretsData, storage.getProgress().completedLevels)') > -1)
+    ok('result.js 的图鉴计数也走 completedLevels');
+  else err('result.js 图鉴计数未走 completedLevels');
+  ['secret-card', 'secret-title', 'secret-text', '已收入文化护照 · 藏地密码'].forEach(k => {
+    if (rw33.indexOf(k) > -1) ok('result.wxml 含 ' + k);
+    else err('result.wxml 缺 ' + k);
+  });
+  if (rx33.indexOf('.secret-card') > -1 && rx33.indexOf('.secret-text') > -1)
+    ok('result.wxss 含 .secret-* 样式');
+  else err('result.wxss 缺 .secret-* 样式');
+  if (pj33.indexOf("require('../../data/secrets')") > -1 &&
+      pj33.indexOf('collect.secretProgress(secretsData, p.completedLevels)') > -1)
+    ok('passport.js 走 collect.secretProgress 且解锁判定 = completedLevels');
+  else err('passport.js 未走 secretProgress / completedLevels');
+  ['se-grid', 'secretSlots', '藏地密码'].forEach(k => {
+    if (pw33.indexOf(k) > -1) ok('passport.wxml 含 ' + k);
+    else err('passport.wxml 缺 ' + k);
+  });
+  if (px33.indexOf('.se-grid') > -1 && px33.indexOf('.se-slot.got') > -1)
+    ok('passport.wxss 含 .se-* 样式');
+  else err('passport.wxss 缺 .se-* 样式');
+
+  // --- 33.6 跨文件契约：结算页承诺「已收入文化护照」→ 护照必须真有该板块 ---
+  const promised33 = rw33.indexOf('已收入文化护照 · 藏地密码') > -1;
+  const delivered33 = pw33.indexOf('藏地密码') > -1 && pw33.indexOf('se-grid') > -1;
+  if (promised33 && delivered33)
+    ok('跨文件契约成立：结算页「已收入文化护照 · 藏地密码」→ 护照页真有「藏地密码」板块');
+  else err('空头承诺 / 板块缺失：结算页承诺=' + promised33 + ' 护照板块=' + delivered33);
+
+  // --- 33.7 体验版镜像 + build-h5 注入 ---
+  ['id="res-secret"', 'id="pp-secret-grid"', 'const SECRETS = DATA.secrets',
+   'secretProgress(SECRETS, getProgress().completedLevels)'].forEach(k => {
+    if (tpl33.indexOf(k) > -1) ok('体验版镜像含 ' + k);
+    else err('体验版镜像缺 ' + k);
+  });
+  if (bh33.indexOf("secrets: require(path.join(ROOT, 'data', 'secrets'))") > -1)
+    ok('build-h5.js 注入 data/secrets（与小程序同源）');
+  else err('build-h5.js 未注入 data/secrets');
+  if (bh33.indexOf('藏地密码数据抽查') > -1)
+    ok('build-h5.js 带藏地密码数据抽查（与本节同一组红线）');
+  else err('build-h5.js 缺藏地密码数据抽查（会出现两把尺子）');
+}
+
+// ---------- 34. 背景音乐（PRD 3.3：程序合成 · 无缝循环 · 开关三处同步） ----------
+// 四条红线机械锁死：
+//   ① 资产是**程序合成**的（有脚本能复现），体积进预算（≤150KB，主包 2MB 硬约束）；
+//   ② 真无缝：循环点首尾采样跳变 ≪ 峰值（否则每 2.8s「咔」一下）；
+//   ③ 开关偏好 bgmOff 走「storage 白名单 + 体验版 getProgress + 页面」三处同步；
+//   ④ 两端音符表逐字一致（小程序 WAV ↔ 体验版 Web Audio 是同一段旋律）。
+section('34. 背景音乐（PRD 3.3：程序合成 · 无缝循环 · 开关三处同步 · 两端同表）');
+{
+  const au34 = read('utils/audio.js');
+  const st34 = read('utils/storage.js');
+  const gw34 = read('pages/game/game.wxml');
+  const gj34 = read('pages/game/game.js');
+  const gx34 = read('pages/game/game.wxss');
+  const tpl34 = read('preview/template.html');
+  const wavPath = 'audio/bgm.wav';
+
+  // --- 34.1 资产：存在 + 体积 + WAV 规格 + 可复现脚本 ---
+  if (exists(wavPath)) {
+    const wav = fs.readFileSync(path.join(ROOT, wavPath));
+    const bytes = wav.length;
+    if (bytes <= 150 * 1024) ok('audio/bgm.wav 体积 ' + Math.round(bytes / 1024) + 'KB（≤150KB 预算）');
+    else err('audio/bgm.wav 超预算：' + Math.round(bytes / 1024) + 'KB > 150KB');
+    const riff = wav.toString('ascii', 0, 4), wave = wav.toString('ascii', 8, 12);
+    const ch = wav.readUInt16LE(22), rate = wav.readUInt32LE(24), bits = wav.readUInt16LE(34);
+    if (riff === 'RIFF' && wave === 'WAVE') ok('audio/bgm.wav 是合法 RIFF/WAVE 容器');
+    else err('audio/bgm.wav 不是合法 WAV（RIFF=' + riff + ' WAVE=' + wave + '）');
+    if (ch === 1 && rate === 22050 && bits === 16)
+      ok('规格与既有音效一致：单声道 / 22050Hz / 16-bit');
+    else err('规格不符：channels=' + ch + ' rate=' + rate + ' bits=' + bits + '（应为 1/22050/16）');
+    // data 块长度 → 时长
+    const di = wav.indexOf(Buffer.from('data'));
+    const dataLen = di > -1 ? wav.readUInt32LE(di + 4) : 0;
+    const secs = dataLen / (rate * ch * (bits / 8));
+    if (secs >= 2.0 && secs <= 6.0) ok('循环长度 ' + secs.toFixed(2) + 's（2-6s：太短会听腻、太长进不了包）');
+    else err('循环长度 ' + secs.toFixed(2) + 's 不在 2-6s 区间');
+    // 无缝：循环点首尾采样跳变必须 ≪ 峰值
+    if (dataLen > 4) {
+      const first = wav.readInt16LE(di + 8);
+      const last = wav.readInt16LE(di + 8 + dataLen - 2);
+      let peak = 0;
+      for (let i = di + 8; i < di + 8 + dataLen; i += 2) {
+        const v = Math.abs(wav.readInt16LE(i));
+        if (v > peak) peak = v;
+      }
+      const jump = Math.abs(first - last);
+      if (jump < peak * 0.1)
+        ok('循环点连续：首尾采样跳变 ' + jump + ' ≪ 峰值 ' + peak + '（2.8s 一循环不会「咔」）');
+      else err('循环点不连续：跳变 ' + jump + ' 对峰值 ' + peak + ' 偏大，循环处会有爆点');
+      if (peak > 0 && peak < 20000) ok('峰值 ' + peak + '（留足余量，手机小喇叭不削波）');
+      else err('峰值 ' + peak + ' 过高 / 为 0，可能削波或文件为空');
+    }
+  } else err('缺少 ' + wavPath + '（背景音乐资产）');
+  if (exists('scripts/make_bgm.py')) ok('scripts/make_bgm.py 存在（BGM 可零成本复现）');
+  else err('缺 scripts/make_bgm.py（BGM 必须可由脚本复现，不引入来路不明的音源）');
+
+  // --- 34.2 utils/audio.js：独立 ctx + 音量 + 导出 ---
+  [['bgmStart', 'bgmStart'], ['bgmStop', 'bgmStop'], ['bgmStart: bgmStart', '导出 bgmStart'],
+   ['bgmStop: bgmStop', '导出 bgmStop'], ['BGM_VOLUME: BGM_VOLUME', '导出 BGM_VOLUME']]
+    .forEach(([k, label]) => {
+      if (au34.indexOf(k) > -1) ok('utils/audio.js 含 ' + label);
+      else err('utils/audio.js 缺 ' + label);
+    });
+  if (au34.indexOf("src = '/audio/bgm.wav'") > -1 && au34.indexOf('loop = true') > -1)
+    ok('BGM 走独立 InnerAudioContext 且 loop = true');
+  else err('BGM 未挂 loop 或未用独立 ctx（会与音效互相 stop）');
+  if (/BGM_VOLUME\s*=\s*0\.35\s*;/.test(au34) && au34.indexOf('volume = BGM_VOLUME') > -1)
+    ok('BGM 音量压到 0.35（明显低于音效，不与配对提示抢注意力）');
+  else err('BGM 音量未压低或 BGM_VOLUME 被改动');
+  // BGM 不得混进 play() 的瞬时通道（否则每次消除都会把 BGM 掐掉重放）
+  const playFn34 = (au34.match(/function play\(name\)[\s\S]*?\n\}/) || [''])[0];
+  if (playFn34.indexOf('bgm') === -1) ok('BGM 未混进 play() 的瞬时通道（消除音效不会掐断音乐）');
+  else err('BGM 混进了 play()，每次音效都会影响背景音乐');
+
+  // --- 34.3 偏好三处同步：storage 白名单 + 体验版 getProgress + 页面 ---
+  if (st34.indexOf('bgmOff: !!(p && p.bgmOff)') > -1) ok('utils/storage.js getProgress 白名单含 bgmOff');
+  else err('utils/storage.js getProgress 白名单缺 bgmOff（字段会静默丢失）');
+  if (st34.indexOf('function getBgmOff') > -1 && st34.indexOf('function setBgmOff') > -1)
+    ok('utils/storage.js 提供 getBgmOff / setBgmOff');
+  else err('utils/storage.js 缺 getBgmOff / setBgmOff（开关无法持久化）');
+  if (tpl34.indexOf('bgmOff: !!(p && p.bgmOff)') > -1)
+    ok('体验版 getProgress 同步含 bgmOff（两端字段表一致）');
+  else err('体验版 getProgress 缺 bgmOff（两端字段表漂移）');
+
+  // --- 34.4 小程序页面接线 ---
+  if (gw34.indexOf('status-bgm') > -1 && gw34.indexOf('bindtap="onToggleBgm"') > -1)
+    ok('game.wxml 含 HUD 音乐开关（onToggleBgm）');
+  else err('game.wxml 缺 HUD 音乐开关');
+  if (gj34.indexOf('onToggleBgm: function') > -1 && gj34.indexOf('storage.setBgmOff(') > -1)
+    ok('game.js 开关落库（storage.setBgmOff）');
+  else err('game.js 开关未落库');
+  if (gj34.indexOf('onShow: function') > -1 && gj34.indexOf('onHide: function') > -1 &&
+      gj34.indexOf('audio.bgmStart()') > -1 && gj34.indexOf('audio.bgmStop()') > -1)
+    ok('game.js 随页面生命周期启停（onShow 响 / onHide 停 / onUnload 停）');
+  else err('game.js 未按生命周期启停 BGM（会漏到别的页面或一直响）');
+  if (/onUnload:\s*function\s*\(\)\s*\{\s*[\r\n]+\s*audio\.bgmStop\(\);/.test(gj34))
+    ok('onUnload 第一件事就是停 BGM');
+  else err('onUnload 未停 BGM');
+  // 「音乐开关」不得连带关掉元素发音（与 praiseOff 同一条铁律）
+  const bgmOffLines34 = gj34.split('\n').filter(l => l.indexOf('onToggleBgm') > -1 || l.indexOf('bgmOff') > -1);
+  if (!bgmOffLines34.some(l => l.indexOf('pronounce') > -1))
+    ok('音乐开关不影响元素发音与音效（只管 BGM）');
+  else err('音乐开关疑似连带关掉了发音');
+  if (gx34.indexOf('.status-bgm') > -1) ok('game.wxss 有 .status-bgm 样式');
+  else err('game.wxss 缺 .status-bgm 样式');
+
+  // --- 34.5 体验版镜像：开关 + 常量 + 与 Python 同一张音符表 ---
+  ['id="bgm-toggle"', 'function bgmStart', 'function bgmStop', 'function toggleBgm',
+   "addEventListener('click', toggleBgm)", 'function showScreen', 'bgmOffPreference'].forEach(k => {
+    if (tpl34.indexOf(k) > -1) ok('体验版镜像含 ' + k);
+    else err('体验版镜像缺 ' + k);
+  });
+  if (tpl34.indexOf("if (name === 'game' && !bgmOffPreference()) bgmStart();") > -1)
+    ok('体验版 BGM 也只跟游戏页（进响出停，与小程序 onShow/onHide 同口径）');
+  else err('体验版 BGM 未绑到游戏页（会漏到首页 / 结算页）');
+  // 常量两端同值
+  const pySrc34 = read('scripts/make_bgm.py');
+  [['LOOP_LEN', 2.8, 'BGM_LOOP_LEN'], ['BEAT', 0.35, 'BGM_BEAT']].forEach(([pk, val, hk]) => {
+    // ⚠️ 不要用 \s*$ 收尾：make_bgm.py 的值后面跟着行内注释（`LOOP_LEN = 2.8      # …`）
+    const py = new RegExp('(?:^|\\n)' + pk + '\\s*=\\s*' + String(val).replace('.', '\\.') + '\\b').test(pySrc34);
+    const h5 = new RegExp(hk + '\\s*=\\s*' + String(val).replace('.', '\\.')).test(tpl34);
+    if (py && h5) ok('循环常量两端同值：' + pk + ' = ' + val + '（' + hk + '）');
+    else err('循环常量两端不一致：' + pk + ' 在 py=' + py + ' / 体验版=' + h5);
+  });
+  // 旋律音符表：把两端写法归一化后逐字比对（这是「两端是同一段旋律」的唯一机械证明）
+  const normTokens = s => s.replace(/[\s'"]/g, '').split(',').filter(Boolean);
+  const pyMel = (pySrc34.match(/MELODY\s*=\s*\[([\s\S]*?)\]/) || [])[1];
+  const h5Mel = (tpl34.match(/BGM_MEL\s*=\s*\[([\s\S]*?)\]/) || [])[1];
+  if (pyMel && h5Mel && normTokens(pyMel).join() === normTokens(h5Mel).join())
+    ok('旋律音符表两端逐字一致（16 个八分音符：' + normTokens(h5Mel).join(' ') + '）');
+  else err('旋律音符表两端不一致：py=' + (pyMel && normTokens(pyMel).join(' ')) + ' / h5=' + (h5Mel && normTokens(h5Mel).join(' ')));
+  const pyAmp = (pySrc34.match(/MELODY_AMP\s*=\s*\[([\s\S]*?)\]/) || [])[1];
+  const h5Amp = (tpl34.match(/BGM_MEL_AMP\s*=\s*\[([\s\S]*?)\]/) || [])[1];
+  if (pyAmp && h5Amp && normTokens(pyAmp).join() === normTokens(h5Amp).join())
+    ok('旋律力度表两端一致（16 个值逐字相同）');
+  else err('旋律力度表两端不一致：py=' + (pyAmp && normTokens(pyAmp).join(' ')) + ' / h5=' + (h5Amp && normTokens(h5Amp).join(' ')));
+  // 反例自测：把一端改一个音，比对必须失败
+  if (h5Mel && normTokens(pyMel.replace(/D4/, 'E4', 1)).join() !== normTokens(h5Mel).join())
+    ok('反例自测：任一端改一个音，逐字比对即失败（这把尺是真的在比内容）');
+  else err('音符表比对尺失效：改了一个音仍判相等');
+  if (/BGM_VOLUME\s*=\s*0\.35/.test(tpl34)) ok('体验版 BGM_VOLUME = 0.35（与 audio.js 同值）');
+  else err('体验版 BGM_VOLUME 与小程序不一致');
+  // 合成脚本必须写明回绕（无缝循环的实现手段），否则后人删掉就退化
+  if (pySrc34.indexOf('% total') > -1 && pySrc34.indexOf('回绕') > -1)
+    ok('make_bgm.py 用回绕写入实现无缝循环（音符尾巴接回开头）');
+  else err('make_bgm.py 缺回绕实现（直接截断会在循环点留爆点）');
+}
+
+// ---------- 35. 纹样砖完整性（八宝 + 卷草纹：base64 六页同源 · 砖规格 · 保形 · 无缝自证在案） ----------
+// 纹样砖以 base64 内联在每页 .sc-pattern（WXSS 平铺背景只能 base64）。历史上「改了砖忘了同步某页」
+// 不会被任何门禁发现 —— 本节把这变成硬错误。改砖流程：重跑 make_astamangala.py → node scripts/inject-pattern.js
+// → 重跑 build-h5.js（体验版自动跟随）。
+(function () {
+  section('35. 纹样砖完整性（八宝+卷草纹）');
+
+  const TILE = 'images/pat-tile.png';
+  const PAGES35 = ['index', 'game', 'result', 'cert', 'passport', 'benefits'];
+
+  if (!exists(TILE)) { err('缺少纹样砖：' + TILE); return; }
+  const tileBuf = fs.readFileSync(path.join(ROOT, TILE));
+
+  // 35.1 砖规格：PNG IHDR 直接读宽高（零依赖），尺寸与体积双预算
+  const isPng = tileBuf.length > 24 && tileBuf.readUInt32BE(0) === 0x89504e47;
+  const w35 = isPng ? tileBuf.readUInt32BE(16) : 0;
+  const h35 = isPng ? tileBuf.readUInt32BE(20) : 0;
+  if (isPng && w35 === 256 && h35 === 128) ok('砖规格 256×128（4×2 格，2:1）');
+  else err('砖规格异常：' + w35 + '×' + h35 + '（应为 256×128）');
+  if (tileBuf.length <= 20000) ok('砖体积 ' + tileBuf.length + 'B ≤ 20000B（卷草并入前为 21233B）');
+  else err('砖体积超预算：' + tileBuf.length + 'B > 20000B');
+
+  // 35.2 六页 .sc-pattern 的 base64 必须与砖逐字节一致
+  const RE35 = /\.sc-pattern\s*\{[^}]*?background-image:\s*url\('data:image\/png;base64,([A-Za-z0-9+/=]+)'\)/;
+  const embedded = [];
+  PAGES35.forEach(function (name) {
+    const m = RE35.exec(read('pages/' + name + '/' + name + '.wxss'));
+    const buf = m ? Buffer.from(m[1], 'base64') : null;
+    if (buf && buf.length === tileBuf.length && buf.equals(tileBuf)) {
+      ok(name + '.wxss 的 .sc-pattern 与 pat-tile.png 逐字节一致');
+      embedded.push(m[1]);
+    } else {
+      err(name + '.wxss 的 .sc-pattern 与 pat-tile.png 不一致（重跑 node scripts/inject-pattern.js）');
+    }
+  });
+
+  // 35.2b 反例自测：翻转砖的一个字节，比对必须失败（证明这把尺不是摆设）
+  if (embedded.length === PAGES35.length) {
+    const flip = Buffer.from(tileBuf);
+    flip[flip.length - 1] ^= 0xff;
+    if (!flip.equals(tileBuf) && !Buffer.from(embedded[0], 'base64').equals(flip))
+      ok('反例自测：翻转砖末字节后逐字节比对必失败（比对尺真实有效）');
+    else err('砖比对尺失效：翻转字节后仍判相等');
+  }
+
+  // 35.3 砖是 2:1，铺进正方形 background-size 会把八宝纵向拉伸两倍 —— 必须保形
+  PAGES35.forEach(function (name) {
+    const src = read('pages/' + name + '/' + name + '.wxss');
+    if (/\.sc-pattern\s*\{[^}]*?background-size:\s*60rpx\s+30rpx/.test(src))
+      ok(name + '.wxss 保形铺贴（60rpx 30rpx = 2:1）');
+    else err(name + '.wxss 的 background-size 未保形（应为 60rpx 30rpx）');
+  });
+  const tpl35 = read('preview/template.html');
+  if (/\.sc-pattern\s*\{[^}]*?background-size:\s*68px\s+34px/.test(tpl35))
+    ok('体验版 .sc-pattern 保形铺贴（68px 34px = 2:1）');
+  else err('体验版 .sc-pattern 未保形（应为 68px 34px）');
+
+  // 35.4 注入工具必须存在且覆盖全部六页（以后加页面漏掉一页就会被抓）
+  const inj = read('scripts/inject-pattern.js');
+  const missed = PAGES35.filter(function (n) { return inj.indexOf("'" + n + "'") === -1; });
+  if (!missed.length) ok('inject-pattern.js 覆盖全部 ' + PAGES35.length + ' 页');
+  else err('inject-pattern.js 缺页：' + missed.join('/'));
+
+  // 35.5 体验版链路：build-h5 内联 → 模板走 var(--pat)
+  if (read('scripts/build-h5.js').indexOf("dataUrl('images/pat-tile.png')") > -1)
+    ok('build-h5.js 内联 pat-tile.png（体验版自动跟随新砖）');
+  else err('build-h5.js 未内联 pat-tile.png');
+  if (/\.sc-pattern\s*\{[^}]*?background-image:\s*var\(--pat\)/.test(tpl35))
+    ok('体验版 .sc-pattern 走 var(--pat)');
+  else err('体验版 .sc-pattern 未走 var(--pat)');
+
+  // 35.6 无缝自证必须在案：边带周期性判据 + BOX 面积平均 + 3×3 画布裁正中
+  const py35 = read('scripts/make_astamangala.py');
+  if (py35.indexOf('edge-band periodicity') > -1 && py35.indexOf('chdiff') > -1)
+    ok('make_astamangala.py 自带「边带周期性」无缝自证（预乘色比较）');
+  else err('make_astamangala.py 缺无缝自证（改纹样后无法证明绕边续接）');
+  if (py35.indexOf('Image.BOX') > -1)
+    ok('降采样用 BOX 面积平均（4x 超采样的正确滤波，且逐位周期）');
+  else err('降采样未用 BOX（LANCZOS 负瓣会让边带不严格周期）');
+  if (py35.indexOf('3 * W * S') > -1 && py35.indexOf('img.crop((CX, CY') > -1)
+    ok('3×3 画布 + 裁正中一块（消除 PIL 边缘单边取窗的假接缝）');
+  else err('缺 3×3 画布 + 裁正中（边缘列会不周期）');
+})();
 
 console.log('通过: ' + passed + ' | 错误: ' + errors.length + ' | 警告: ' + warnings.length);
 if (errors.length) { console.log('\x1b[31m存在错误，需修复后重试\x1b[0m'); process.exit(1); }

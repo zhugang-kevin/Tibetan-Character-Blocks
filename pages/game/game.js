@@ -127,6 +127,8 @@ Page({
     // 文案开关（HUD 内小开关）：只关「赞美文案」，不关元素发音——
     // 元素发音属学习闭环（每次配对朗读该元素），不在可关范围内。
     praiseOff: false,
+    // 背景音乐开关（HUD 内小开关，PRD 3.3）：默认开，偏好落 progress.bgmOff
+    bgmOff: false,
     guideStep: 0,
     guide: GUIDE[0],
     bitSlots: BIT_SLOTS,   // 破碎粒子方向/颜色类名
@@ -238,7 +240,8 @@ Page({
       gap: gap,
       reveal: rv ? { img: rv.img, name: rv.name, tibetan: rv.tibetan, roman: rv.roman, desc: rv.desc } : { img: '', name: '', tibetan: '', roman: '', desc: '' },
       revealPct: 0,
-      praiseOff: praiseOff
+      praiseOff: praiseOff,
+      bgmOff: storage.getBgmOff()
     });
     this.applyPieces('settle');
     tracker.track('first_letter_seen');
@@ -520,6 +523,24 @@ Page({
     if (this.praiseTimer) clearTimeout(this.praiseTimer);
   },
 
+  // HUD 内的背景音乐开关（PRD 3.3）：默认开，偏好落 progress.bgmOff（跨关/跨次保留）
+  onToggleBgm: function () {
+    var off = !this.data.bgmOff;
+    this.setData({ bgmOff: off });
+    storage.setBgmOff(off);
+    if (off) audio.bgmStop();
+    else audio.bgmStart();
+  },
+
+  // 背景音乐随页面生命周期启停：进入游戏页响、切走 / 关闭时停（不漏到别的页面）
+  onShow: function () {
+    if (!storage.getBgmOff()) audio.bgmStart();
+  },
+
+  onHide: function () {
+    audio.bgmStop();
+  },
+
   // 逐对结算：碎裂动画 → 下落 + 补充 → 出图 → 判断通关
   drainQueue: function () {
     var that = this;
@@ -744,6 +765,7 @@ Page({
   noop: function () {},
 
   onUnload: function () {
+    audio.bgmStop();
     if (this.cardTimer) clearTimeout(this.cardTimer);
     if (this.toastTimer) clearTimeout(this.toastTimer);
     if (this.comboTimer) clearTimeout(this.comboTimer);

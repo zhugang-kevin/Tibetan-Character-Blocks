@@ -1,7 +1,8 @@
 // utils/collect.js — 收集与留存系统的纯逻辑（不依赖 wx / DOM，页面与体验版镜像共用）
 //
 // 覆盖 PRD 五、六章的可本地实现部分：
-//   唐卡碎片收集（9 片拼一幅）· 7 天循环签到（祈福长明灯）· 星级评价 · 积分与道具
+//   唐卡碎片收集（9 片拼一幅）· 7 天循环签到（祈福长明灯）· 星级评价 · 积分与道具 ·
+//   藏地密码（每关一则文化小知识，解锁状态不落库）
 // 合规约束：全部本地计算，无登录、无支付、无广告 SDK、无排行榜后端、不发放任何带金额的券。
 var FRAGMENT_TOTAL = 9;
 var CYCLE_DAYS = 7;
@@ -202,6 +203,38 @@ function shareIdentity(input) {
   return { line1: line1, line2: parts.join(' · ') };
 }
 
+// ---------- 藏地密码：按关取条 + 图鉴进度（页面与体验版共用同一份口径） ----------
+// 与揭示图鉴（D31）同一条铁律：**解锁状态不新增存储字段**，
+// 解锁与否 = completedLevels 是否含该关。数据源由调用方注入（本模块保持零依赖）。
+function secretOf(list, level) {
+  var arr = list || [];
+  var n = Number(level) || 0;
+  for (var i = 0; i < arr.length; i++) {
+    if (Number(arr[i].level) === n) return arr[i];
+  }
+  return null;
+}
+
+// 图鉴槽位：未解锁的**只给关卡号、不给标题** —— 不剧透，与 cardProgress 的空 label 同一用意。
+function secretProgress(list, completed) {
+  var arr = list || [];
+  var done = completed || [];
+  var slots = [];
+  var got = 0;
+  for (var i = 0; i < arr.length; i++) {
+    var s = arr[i];
+    var has = done.indexOf(s.level) > -1;
+    if (has) got++;
+    slots.push({
+      level: s.level,
+      tag: has ? (s.tag || '') : '',
+      title: has ? s.title : '',
+      got: has
+    });
+  }
+  return { slots: slots, got: got, total: arr.length };
+}
+
 // 「藏文可以组合」预告：只在配置指定的那一关出现（当前 = 第 2 关，认全 ཀ ཁ ག ང 那一刻）。
 // 纯判据函数——配置由调用方注入（本模块保持零依赖，便于被体验版镜像逐字复用），
 // 页面不必自己内联「哪一关该讲解拼合」这条规则（将来挪关卡只改 data/combo.js）。
@@ -230,6 +263,8 @@ module.exports = {
   cardProgress: cardProgress,
   markOpen: markOpen,
   retainedOn: retainedOn,
+  secretOf: secretOf,
+  secretProgress: secretProgress,
   comboTease: comboTease,
   shareIdentity: shareIdentity
 };

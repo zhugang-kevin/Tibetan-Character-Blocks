@@ -17,6 +17,8 @@
     <text class="status-pairs">{{matchedPairs}}/{{totalPairs}} 对</text>
     <!-- 文案开关（D34）：只关赞美文案，不关元素发音（发音属学习闭环） -->
     <text class="status-praise {{praiseOff ? 'off' : ''}}" bindtap="onTogglePraise">{{praiseOff ? '文案 关' : '文案 开'}}</text>
+    <!-- 背景音乐开关（PRD 3.3）：默认开，只关 BGM，不关音效与朗读 -->
+    <text class="status-praise status-bgm {{bgmOff ? 'off' : ''}}" bindtap="onToggleBgm">{{bgmOff ? '音乐 关' : '音乐 开'}}</text>
   </view>
 
   <!-- 即时应激励浮字（D34）：一次只显示一条，**新的替换旧的**（不排队、不叠加）。

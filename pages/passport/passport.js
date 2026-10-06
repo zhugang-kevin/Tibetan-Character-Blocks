@@ -7,6 +7,7 @@ var storage = require('../../utils/storage');
 var collect = require('../../utils/collect');
 var cardsData = require('../../data/cards');
 var revealsData = require('../../data/reveals');
+var secretsData = require('../../data/secrets');
 var tracker = require('../../utils/tracker');
 
 // 印记定义（v0 仅拉萨；后续扩展七地市）
@@ -36,7 +37,11 @@ Page({
     // 揭示图鉴（D31）：解锁与否 = 是否通关该关（不新增存储字段，避免第二真相源）
     revealSlots: [],
     revealGot: 0,
-    revealTotal: 10
+    revealTotal: 10,
+    // 藏地密码：解锁与否 = 是否通关该关（同样不新增存储字段）
+    secretSlots: [],
+    secretGot: 0,
+    secretTotal: 10
   },
 
   onShow: function () {
@@ -69,9 +74,11 @@ Page({
       };
     });
 
+    // 藏地密码：与揭示图鉴同一口径（解锁 = 已通关该关），槽位由纯函数生成
+    var secP = collect.secretProgress(secretsData, p.completedLevels);
+
     this.setData({
-      certs: list,
-      owned: owned,
+      certs: list,      owned: owned,
       nextStage: next,
       stamps: stamps,
       stampOwned: stamps.length,
@@ -85,7 +92,10 @@ Page({
       thangkaDone: !!(p.thangkaDone && tk.done),
       revealSlots: revealSlots,
       revealGot: revealSlots.filter(function (s) { return s.unlocked; }).length,
-      revealTotal: revealsData.length
+      revealTotal: revealsData.length,
+      secretSlots: secP.slots,
+      secretGot: secP.got,
+      secretTotal: secP.total
     });
   },
 

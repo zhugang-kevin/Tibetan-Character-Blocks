@@ -55,6 +55,18 @@
     <view class="reveal-note">已收入文化护照 · 揭示图鉴 {{revealGot}} / {{revealTotal}}</view>
   </view>
 
+  <!-- 藏地密码：通关即解锁一则藏地小知识，收入护照「藏地密码」。
+       解锁状态 = completedLevels（不新增存储字段），与揭示图鉴同一口径。 -->
+  <view wx:if="{{secret}}" class="secret-card">
+    <view class="secret-head">
+      <text class="secret-tag">藏地密码</text>
+      <text class="secret-kind">{{secret.tag}}</text>
+    </view>
+    <view class="secret-title">{{secret.title}}</view>
+    <view class="secret-text">{{secret.text}}</view>
+    <view class="secret-note">已收入文化护照 · 藏地密码 {{secretGot}} / {{secretTotal}}</view>
+  </view>
+
   <!-- 前 60 秒钩子：在「要不要再来一关」的决策点上摆出进度与悬念 -->
   <view class="journey">
     <view class="j-head">

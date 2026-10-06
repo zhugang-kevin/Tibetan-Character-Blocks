@@ -48,7 +48,9 @@ const DATA = {
   // 即时应激励文案库（D34：五档中藏双语赞美）
   praise: require(path.join(ROOT, 'data', 'praise')),
   // 秘境揭图（D31）：十关各一张，程序绘制（scripts/make_reveals.py）
-  reveals: require(path.join(ROOT, 'data', 'reveals'))
+  reveals: require(path.join(ROOT, 'data', 'reveals')),
+  // 藏地密码（PRD 5.2）：十关各一则藏地小知识，通关解锁（纯文字，无资产）
+  secrets: require(path.join(ROOT, 'data', 'secrets'))
 };
 
 // ---------- 2. 注入品牌与背景资产 ----------
@@ -240,6 +242,33 @@ const praiseRes = checkPraiseLibrary(praise, { isWellFormedSentence: isWellForme
 praiseRes.errors.forEach(function (m) { console.error('✗ ' + m); });
 praiseRes.warns.forEach(function (m) { console.warn('⚠ ' + m); });
 if (praiseRes.bad) process.exit(1);
+
+// ---------- 9. 藏地密码数据抽查（PRD 5.2：一关一则 · 正文够长 · 不踩文化/营销红线） ----------
+// ⚠️ 扫描对象是**解析后的数据**（JSON 序列化），不是源文件文本——
+//    这样文件头注释里为说明红线而写下的「酥油灯」等字样不会误伤（与 validate §17.8 同一教训）。
+const secJson = JSON.stringify(DATA.secrets || []);
+let secBad = 0;
+if (!Array.isArray(DATA.secrets) || DATA.secrets.length !== DATA.levels.length) {
+  console.error('✗ data/secrets.js 应为 ' + DATA.levels.length + ' 则（一关一则），实际 ' +
+    ((DATA.secrets || []).length));
+  secBad++;
+}
+(DATA.secrets || []).forEach(function (s, i) {
+  if (Number(s.level) !== i + 1) { console.error('✗ 藏地密码第 ' + (i + 1) + ' 则 level 应为 ' + (i + 1)); secBad++; }
+  if (!s.tag || !s.title || !s.text) { console.error('✗ 藏地密码第 ' + s.level + ' 则缺 tag/title/text'); secBad++; }
+  if (String(s.text).length < 40) { console.error('✗ 藏地密码第 ' + s.level + ' 则正文过短（<40 字）'); secBad++; }
+});
+['佛塔', '酥油灯', '风马旗', '莲花', '经幡'].forEach(function (w) {
+  if (secJson.indexOf(w) > -1) { console.error('✗ 藏地密码正文出现 D25 红线符号「' + w + '」'); secBad++; }
+});
+['排行榜', '排行', '名次', '战区', '金币', '优惠券', '广告', '抽奖', '返现'].forEach(function (w) {
+  if (secJson.indexOf(w) > -1) { console.error('✗ 藏地密码正文出现竞争性/营销字眼「' + w + '」'); secBad++; }
+});
+if (/[¥￥]|元(?!音|素)/.test(secJson) || /\d\s*折|\d\s*%\s*off|满\s*\d+\s*减\s*\d+/i.test(secJson)) {
+  console.error('✗ 藏地密码正文出现金额 / 让利字眼（¥ / 元 / 折 / 满N减N）');
+  secBad++;
+}
+if (secBad) process.exit(1);
 
 fs.mkdirSync(path.dirname(OUT), { recursive: true });
 fs.writeFileSync(OUT, html, 'utf8');

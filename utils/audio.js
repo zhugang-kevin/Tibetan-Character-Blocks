@@ -74,12 +74,56 @@ function tier(level) {
   play(TIER_SOUND[lv]);
 }
 
+// ---- 背景音乐（PRD 3.3）----
+// audio/bgm.wav：藏式五声音阶拨弦 + 低音 + 铺底，两小节无缝循环，
+// 由 scripts/make_bgm.py 程序合成（零版权）。与音效**分开建 ctx**：
+// loop 循环播放、音量压到 0.35，绝不参与 play() 的 stop/play 瞬时抢占。
+// 偏好位 bgmOff 存 progress（与 praiseOff 同一条三处同步链路）。
+// 体验版用 Web Audio 按同一份音符表复现（WAV 资产只在小程序包内）。
+var BGM_VOLUME = 0.35;
+var bgmCtx = null;
+
+function bgmContext() {
+  if (!bgmCtx) {
+    bgmCtx = wx.createInnerAudioContext();
+    bgmCtx.src = '/audio/bgm.wav';
+    bgmCtx.loop = true;
+    bgmCtx.volume = BGM_VOLUME;
+    bgmCtx.obeyMuteSwitch = true;
+    bgmCtx.onError(function () { /* 缺文件时静默，不影响游戏 */ });
+  }
+  return bgmCtx;
+}
+
+// 开始 / 恢复背景音乐。已开关偏好时调用方应先判断，本函数只管「响」。
+function bgmStart() {
+  try {
+    bgmContext().play();
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+// 暂停（离开游戏页 / 用户关闭时用）。pause 保留进度，loop 音无所谓，但 pause 比 stop 温和。
+function bgmStop() {
+  try {
+    if (bgmCtx) bgmCtx.pause();
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
 module.exports = {
   play: play,
   pronounce: pronounce,
   speak: speak,
   tier: tier,
   TIER_SOUND: TIER_SOUND,
+  BGM_VOLUME: BGM_VOLUME,
+  bgmStart: bgmStart,
+  bgmStop: bgmStop,
   // 语义化封装
   tap: function () { play('tap'); },
   match: function () { play('match'); },

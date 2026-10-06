@@ -15,6 +15,9 @@ var comboData = require('../../data/combo');
 // 秘境揭图（D31）：通关即整幅揭晓，结算页是揭晓的高光时刻
 var revealsData = require('../../data/reveals');
 
+// 藏地密码：通关即解锁一则藏地小知识（解锁状态 = completedLevels，不新增存储字段）
+var secretsData = require('../../data/secrets');
+
 // 祝福卡（750×1050）中段文案的基线位置。
 // ⚠️ 必须留在底部「Logo（y=855）」与「小程序码（y=850）」之**上**：
 //    中文按 1em/字估算，一长行会横跨到两侧的 Logo / 小程序码上（上一版就是这样重叠的）。
@@ -91,7 +94,11 @@ Page({
     // ---- 秘境揭图（D31）：本关揭晓的图 + 图鉴进度 ----
     reveal: null,        // { name, tibetan, roman, img, desc }
     revealGot: 0,        // 已揭晓图数（= 已通关关卡数，不新增存储字段）
-    revealTotal: 10
+    revealTotal: 10,
+    // ---- 藏地密码：本关解锁的一则小知识 + 图鉴进度 ----
+    secret: null,        // { tag, title, text }
+    secretGot: 0,
+    secretTotal: 10
   },
 
   onLoad: function (query) {
@@ -200,6 +207,13 @@ Page({
         return rv ? { name: rv.name, tibetan: rv.tibetan, roman: rv.roman, img: rv.img, desc: rv.desc } : null;
       })(),
       revealGot: storage.getProgress().completedLevels.filter(function (n) { return n >= 1 && n <= 10; }).length,
+      // 藏地密码：本关解锁一则小知识（completeLevel 已落库，解锁判定与揭示图鉴同源）
+      secret: (function () {
+        var s = collect.secretOf(secretsData, level);
+        return s ? { tag: s.tag, title: s.title, text: s.text } : null;
+      })(),
+      secretGot: collect.secretProgress(secretsData, storage.getProgress().completedLevels).got,
+      secretTotal: secretsData.length,
       // 前 60 秒钩子：关卡锚 + 旅程天数 + 收藏进度
       totalLevels: storage.MAX_LEVEL,
       journeyDay: openLog.total || 1,

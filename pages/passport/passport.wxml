@@ -100,6 +100,22 @@
       </view>
     </view>
 
+    <!-- 2.7 藏地密码（PRD 5.2）：十则藏地小知识，通关即解锁收入。
+         未解锁的槽位只给关卡号、不给标题（不剧透），与收藏册的「?」同一用意。 -->
+    <view class="section">
+      <view class="section-head">
+        <text class="section-title">藏地密码</text>
+        <text class="section-count">{{secretGot}} / {{secretTotal}}</text>
+      </view>
+      <view class="section-sub">每通关一关，解锁一则藏在高原生活里的密码 —— 从雪线到音节点，共十则。</view>
+      <view class="se-grid">
+        <view wx:for="{{secretSlots}}" wx:key="level" class="se-slot {{item.got ? 'got' : 'locked'}}">
+          <view class="se-tag">{{item.got ? item.tag : '尚未解锁'}}</view>
+          <view class="se-title">{{item.got ? item.title : ('第 ' + item.level + ' 号')}}</view>
+        </view>
+      </view>
+    </view>
+
     <!-- 3. 地区印章 -->
     <view class="section">
       <view class="section-head">

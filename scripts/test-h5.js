@@ -1943,6 +1943,177 @@ function mockCtx(sink) {
     await sleep(60);
   }
 
+  /* ---------- 33. 藏地密码（PRD 5.2：通关解锁十则小知识） ---------- */
+  section('33. 藏地密码（PRD 5.2：十则小知识 · 通关解锁 · 未解锁不剧透）');
+  {
+    const SYMS33 = ['佛塔', '酥油灯', '风马旗', '莲花', '经幡'];
+
+    // 33.1 数据契约（与 validate §33 同一组口径，但这里是「注入体验版之后」的真身）
+    check('SECRETS 共 10 则且关卡号严格 1..10',
+      ev('SECRETS.length===10&&SECRETS.every(function(s,i){return s.level===i+1;})') === true);
+    check('每则都有 key / tag / 标题 / 正文，且正文 ≥40 字',
+      ev('SECRETS.every(function(s){return !!(s.key&&s.tag&&s.title&&s.text)&&String(s.text).length>=40;})') === true);
+    check('十则标题互不重复',
+      ev('new Set(SECRETS.map(function(s){return s.title;})).size===10') === true);
+    check('注入体验版的密码数据不含 D25 宗教符号字面', SYMS33.every(function (s) {
+      return ev('JSON.stringify(DATA.secrets)').indexOf(s) === -1;
+    }));
+    check('密码正文无金额 / 让利 / 营销字眼', (function () {
+      const t = ev('JSON.stringify(DATA.secrets)');
+      const money = /[¥￥]|元(?!音|素)|\d\s*折|满\s*\d+\s*减\s*\d+/.test(t);
+      const comp = ['排行榜', '排行', '名次', '战区', '金币', '优惠券', '广告', '抽奖', '返现']
+        .some(function (w) { return t.indexOf(w) > -1; });
+      return !money && !comp;
+    })());
+
+    // 33.2 结算页：通关即解锁本关那一则
+    ev('(function(){var p=getProgress(); p.completedLevels=[]; saveProgress(p);})()');
+    ev('setOnboardDone(); startLevel(1)');
+    ev('finishLevel()');
+    await sleep(60);
+    check('结算页出现藏地密码卡', !!$('#res-secret .secret-card'));
+    check('解锁的是第 1 则（标题与 SECRETS[0] 逐字一致）',
+      $('#res-secret .secret-title').textContent === ev('SECRETS[0].title'),
+      'got=' + ($('#res-secret .secret-title') || {}).textContent);
+    check('卡片带分类标签（取自数据层 tag）',
+      $('#res-secret .secret-kind').textContent === ev('SECRETS[0].tag'));
+    check('卡片报图鉴进度 1 / 10 且承诺「已收入文化护照」', (function () {
+      const t = $('#res-secret .secret-note').textContent;
+      return t.indexOf('1 / 10') > -1 && t.indexOf('已收入文化护照') > -1;
+    })(), $('#res-secret .secret-note').textContent);
+    check('卡片文案无货币符号 / 让利数字', !/[¥￥]|元(?!音|素)/.test($('#res-secret').textContent));
+
+    // 33.3 护照页：10 格；解锁 = 已通关；未解锁只给关号、不泄露标题
+    ev('showPassport()');
+    check('护照页出现藏地密码板块（10 格）',
+      doc.querySelectorAll('#pp-secret-grid .se-slot').length === 10);
+    check('解锁数 = 通关关卡数（第 1 关通关 → 1）',
+      doc.querySelectorAll('#pp-secret-grid .se-slot.got').length === 1
+      && $('#pp-secret-count').textContent === '1 / 10',
+      'count=' + $('#pp-secret-count').textContent);
+    check('已解锁格显示分类 + 标题（逐字来自数据层）',
+      doc.querySelector('#pp-secret-grid .se-slot.got .se-title').textContent === ev('SECRETS[0].title')
+      && doc.querySelector('#pp-secret-grid .se-slot.got .se-tag').textContent === ev('SECRETS[0].tag'));
+    check('未解锁格只给关号、不泄露标题（不剧透）', (function () {
+      const locked = doc.querySelector('#pp-secret-grid .se-slot.locked');
+      if (!locked) return false;
+      const txt = locked.textContent;
+      return txt.indexOf('第 2 号') > -1 && txt.indexOf(ev('SECRETS[1].title')) === -1;
+    })(), 'locked=' + ((doc.querySelector('#pp-secret-grid .se-slot.locked') || {}).textContent));
+
+    // 33.4 单一真相源：不落库，补通关自动补齐（无需数据迁移）
+    check('不新增存储字段（密码解锁派生自 completedLevels）', ev('getProgress().secrets') === undefined);
+    ev('(function(){var p=getProgress(); p.completedLevels=[1,2,3,4,5]; saveProgress(p); showPassport();})()');
+    check('补通关至 5 关后自动补齐 5 格',
+      doc.querySelectorAll('#pp-secret-grid .se-slot.got').length === 5);
+    check('第 5 格显示第 5 则（槽位与关卡号严格绑定）',
+      doc.querySelectorAll('#pp-secret-grid .se-slot.got')[4].textContent.indexOf(ev('SECRETS[4].title')) > -1);
+
+    // 33.5 确定性：同一进度两次渲染逐字一致（无随机源，无时间依赖）
+    const secGrid33 = $('#pp-secret-grid').innerHTML;
+    ev('showPassport()');
+    check('同一进度两次渲染逐字一致（无随机源）', $('#pp-secret-grid').innerHTML === secGrid33);
+
+    // 复原到干净状态，避免影响后续断言
+    ev('(function(){var p=getProgress(); p.completedLevels=[]; saveProgress(p);})()');
+  }
+
+  /* ---------- 34. 背景音乐（PRD 3.3：进游戏页响 / 离开停 / 开关落库） ---------- */
+  section('34. 背景音乐（PRD 3.3：进游戏页响 · 离开停 · 开关落库 · 不越界）');
+  {
+    // 34.1 体验版常量与音符表（与 scripts/make_bgm.py 同一段旋律，validate §34.5 逐字比对）
+    check('体验版含循环常量与 16 音旋律表',
+      ev('BGM_LOOP_LEN') === 2.8 && ev('BGM_MEL.length') === 16 && ev('BGM_MEL_AMP.length') === 16);
+    check('每个音名都能解析到频率（表与音名一一对应）',
+      ev('BGM_MEL.every(function(n){return typeof BGM_F[n]==="number";})') === true);
+    check('BGM 音量与小程序同值 0.35（明显低于音效）', ev('BGM_VOLUME') === 0.35);
+
+    // 34.2 HUD 开关存在，默认「音乐 开」
+    check('HUD 上有音乐开关且默认「音乐 开」', (function () {
+      const b = $('#bgm-toggle');
+      return !!b && b.textContent === '音乐 开' && b.className.indexOf('off') === -1;
+    })(), String(($('#bgm-toggle') || {}).textContent));
+
+    // 34.3 进游戏页响 / 离开停（与小程序 onShow / onHide 同口径）
+    ev('(function(){var p=getProgress();p.bgmOff=false;saveProgress(p);})()');
+    ev('setOnboardDone(); startLevel(1)');
+    await sleep(40);
+    check('进入游戏页即开始播放（bgmPlaying = true）', ev('state.bgmPlaying') === true);
+    ev('showScreen("home")');
+    check('离开游戏页即停止（不会漏到首页 / 结算页）', ev('state.bgmPlaying') === false);
+
+    // 34.4 开关：立即生效 + 落库 + 重进尊重偏好
+    ev('setOnboardDone(); startLevel(1)');
+    await sleep(40);
+    ev('toggleBgm()');
+    check('关掉后立即停，标签变「音乐 关」',
+      ev('state.bgmOff') === true && ev('state.bgmPlaying') === false &&
+      $('#bgm-toggle').textContent === '音乐 关' && $('#bgm-toggle').className.indexOf('off') > -1);
+    check('偏好已落库（progress.bgmOff = true）', ev('getProgress().bgmOff') === true);
+    ev('showScreen("home")');
+    ev('setOnboardDone(); startLevel(1)');
+    await sleep(40);
+    check('重进游戏页尊重已存偏好（关着不会自己响）',
+      ev('state.bgmPlaying') === false && $('#bgm-toggle').textContent === '音乐 关');
+    ev('toggleBgm()');
+    check('再点开回来（bgmOff=false，标签复原，立刻响）',
+      ev('state.bgmOff') === false && ev('state.bgmPlaying') === true &&
+      $('#bgm-toggle').textContent === '音乐 开');
+
+    // 34.5 不越界：音乐开关只管 BGM，元素发音与音效照常（发音属学习闭环）
+    ev('toggleBgm()');                              // 关掉音乐
+    const before34 = ev('state.pronounceCount');
+    const pr34 = findPair();
+    await clickTile(pr34[0]);
+    await clickTile(pr34[1]);
+    await sleep(430);                               // 发音在配对成功后 300ms 触发
+    check('音乐关掉后配对仍然朗读元素发音', ev('state.pronounceCount') > before34,
+      'before=' + before34 + ' after=' + ev('state.pronounceCount'));
+    check('音乐关掉后 bgmPlaying 仍为 false（开关作用面限定在 BGM）',
+      ev('state.bgmPlaying') === false);
+
+    // 复原：开着，避免影响后续断言
+    ev('toggleBgm()');
+    ev('(function(){var p=getProgress();p.bgmOff=false;saveProgress(p);})()');
+    check('复原为开启（后续断言不受影响）', ev('getProgress().bgmOff') === false);
+  }
+
+  /* ---------- 35. 纹样砖（八宝+卷草纹：体验版内联同源 · 保形铺贴） ---------- */
+  section('35. 纹样砖（八宝+卷草纹：内联同源 · 保形铺贴）');
+  {
+    // 35.1 体验版内联的必须「就是」仓库里这块砖 —— 改了砖忘重跑 build-h5 会被抓
+    const tileBuf35 = fs.readFileSync(path.join(ROOT, 'images', 'pat-tile.png'));
+    const htmlSrc35 = fs.readFileSync(HTML, 'utf8');
+    check('build 产物把 pat-tile.png 内联为 IMAGES.pattern（改砖后必须重跑 build-h5）',
+      /"pattern"\s*:\s*"data:image\/png;base64,/.test(htmlSrc35));
+    check('体验版内联的 base64 与 pat-tile.png 逐字节一致',
+      htmlSrc35.indexOf(tileBuf35.toString('base64')) > -1);
+    // 反例自测：翻转砖末字节，这个变体绝不能出现在产物里（证明比对尺不是摆设）
+    const flip35 = (function () {
+      const f = Buffer.from(tileBuf35);
+      f[f.length - 1] ^= 0xff;
+      return f.toString('base64');
+    })();
+    check('反例自测：翻转砖末字节的变体不出现在产物里（比对尺真实有效）',
+      htmlSrc35.indexOf(flip35) === -1);
+
+    // 35.2 保形铺贴：砖是 2:1，铺进正方形会把八宝纵向拉伸两倍
+    check('.sc-pattern 保形铺贴（68px 34px = 2:1）',
+      /\.sc-pattern\s*\{[^}]*?background-size:\s*68px\s+34px/.test(htmlSrc35));
+    check('.card-hero 纹样同样保形（54px 27px）',
+      /\.card-hero::before\s*\{[^}]*?background-size:\s*54px\s+27px/.test(htmlSrc35));
+
+    // 35.3 运行时真的把砖挂上了（不是 --pat: none 兜底）
+    check('运行时 --pat 已挂为 data URL（真实平铺）',
+      (ev('document.documentElement.style.getPropertyValue("--pat")') || '')
+        .indexOf('data:image/png') > -1);
+
+    // 35.4 砖规格（PNG IHDR 零依赖直读）
+    check('砖规格 256×128（4×2 格，2:1）',
+      tileBuf35.readUInt32BE(0) === 0x89504e47 &&
+      tileBuf35.readUInt32BE(16) === 256 && tileBuf35.readUInt32BE(20) === 128);
+  }
+
   /* ---------- 汇总 ---------- */
   check('全程无脚本运行时错误', errors.length === 0, errors[0]);
 
