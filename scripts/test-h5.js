@@ -1689,7 +1689,7 @@ function mockCtx(sink) {
       ev('REVEALS.every(function(r){return r.tibetan&&r.roman&&r.name&&r.desc;})') === true);
     check('揭图藏文名符合 tsheg 规范（无行首/行尾/连续 tsheg）',
       ev('REVEALS.every(function(r){return !/་\\s*་|^་|་\\s*$/.test(r.tibetan);})') === true);
-    check('揭图数据层未出现 D25 待拍板符号', ev(
+    check('揭图数据层未出现 D25 红线符号', ev(
       '(function(){var s=JSON.stringify(REVEALS);' +
       'return s.indexOf("莲花")===-1&&s.indexOf("经幡")===-1&&s.indexOf("佛塔")===-1&&s.indexOf("酥油灯")===-1;})()') === true);
 
@@ -1881,6 +1881,66 @@ function mockCtx(sink) {
     // 收尾：把偏好复位，避免污染后续断言
     ev('(function(){var p=getProgress(); p.praiseOff=false; saveProgress(p);})()');
     ev('state.praiseOff = false');
+  }
+
+  /* ---------- 32. D25 文化红线：元素库宗教符号清零（莲花/经幡 → 青稞/牦牛） ---------- */
+  section('32. D25 文化红线（元素库世俗题材：莲花/经幡 → 青稞/牦牛）');
+  {
+    const SYMS = ['佛塔', '酥油灯', '风马旗', '莲花', '经幡'];
+
+    // 32.1 数据层：题材已换，id / color / 元素数一律不动（关卡配比零波及）
+    check('icon_02 = 青稞（barley / 稞），id 与配色未动',
+      ev('DATA.elements.icon_02.title') === '青稞' &&
+      ev('DATA.elements.icon_02.iconKey') === 'barley' &&
+      ev('DATA.elements.icon_02.char') === '稞' &&
+      ev('DATA.elements.icon_02.color') === '#2471A3');
+    check('icon_04 = 牦牛（yak / 牦），id 与配色未动',
+      ev('DATA.elements.icon_04.title') === '牦牛' &&
+      ev('DATA.elements.icon_04.iconKey') === 'yak' &&
+      ev('DATA.elements.icon_04.char') === '牦' &&
+      ev('DATA.elements.icon_04.color') === '#8A6A12');
+    check('元素库仍为 12 个元素（换题材不缩库）',
+      ev('Object.keys(DATA.elements).length') === 12);
+    check('注入体验版的元素库 JSON 不含任何宗教符号字面', SYMS.every(function (s) {
+      return ev('JSON.stringify(DATA.elements)').indexOf(s) === -1;
+    }));
+    check('文化卡 JSON 也不含宗教符号字面（图标换了、文案还讲旧题材 = 假换）', SYMS.every(function (s) {
+      return ev('JSON.stringify(DATA.cards)').indexOf(s) === -1;
+    }));
+
+    // 32.2 文化卡：新题材自洽，藏语名随卡给出
+    check('icon_02 卡讲的是青稞（含藏语 ནས）',
+      ev('CARD_BY_ID.icon_02.title') === '青稞' &&
+      String(ev('CARD_BY_ID.icon_02.subtitle')).indexOf('ནས') > -1);
+    check('icon_04 卡讲的是牦牛（含藏语 གཡག）',
+      ev('CARD_BY_ID.icon_04.title') === '牦牛' &&
+      String(ev('CARD_BY_ID.icon_04.subtitle')).indexOf('གཡག') > -1);
+
+    // 32.3 绘制器两端同构：新题材在、旧符号亡
+    check('体验版绘制器映射 = {knot, barley, mountain, yak}',
+      ev('Object.keys(DRAWERS).sort().join()') === 'barley,knot,mountain,yak');
+    check('旧符号绘制器已不存在（ DRAWERS 上无 lotus / flags 键）',
+      ev('DRAWERS.lotus') === undefined && ev('DRAWERS.flags') === undefined);
+    check('两种新图标都能渲染出牌面图（普通牌面奶白墨）',
+      String(ev('tileIconDataUrl("icon_02", false)')).indexOf('data:image') === 0 &&
+      String(ev('tileIconDataUrl("icon_04", false)')).indexOf('data:image') === 0);
+    check('金块牌面深墨变体也能渲染',
+      String(ev('tileIconDataUrl("icon_02", true)')).indexOf('data:image') === 0 &&
+      String(ev('tileIconDataUrl("icon_04", true)')).indexOf('data:image') === 0);
+
+    // 32.4 真盘面反向断言：第 10 关四图标齐全（icon_02 在第 7 关引入、icon_04 只在第 10 关出现）
+    ev('startLevel(10)');
+    await sleep(80);
+    check('第 10 关盘面上确实有 icon_02 / icon_04 牌', ev(
+      'state.board.cells.some(function(c){return c&&c.id==="icon_02";})&&' +
+      'state.board.cells.some(function(c){return c&&c.id==="icon_04";})') === true);
+    check('第 10 关图标牌已按新绘制器出图（icon-img 数 > 0）',
+      ev('document.querySelectorAll("#board .icon-img").length') > 0);
+    check('盘面文本层不含宗教符号字面', SYMS.every(function (s) {
+      return $('#board').textContent.indexOf(s) === -1;
+    }));
+    ev('startLevel(1)');
+    await sleep(60);
   }
 
   /* ---------- 汇总 ---------- */

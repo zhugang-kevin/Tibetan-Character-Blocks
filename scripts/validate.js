@@ -762,18 +762,8 @@ section('17. 留存系统与首页重构（PRD v4）');
     if (iw.indexOf(cls) > -1) ok('index.wxml 含 ' + cls);
     else err('index.wxml 缺少 ' + cls);
   });
-  // 文化红线：宗教符号只作装饰，不得成为可消除对象（不在 game 页元素表内）
-  // 硬约束：佛塔 / 酥油灯 一旦进入元素库即判错；
-  // 待决：莲花 / 经幡 目前仍是 icon_02 / icon_04 的可消除牌面 → 记警告（见 docs/DECISIONS.md D25）
-  const elsSrc = read('data/elements.js');
-  ['佛塔', '酥油灯'].forEach(sym => {
-    if (elsSrc.indexOf(sym) === -1) ok('宗教符号「' + sym + '」不作为消除元素');
-    else err('data/elements.js 出现宗教符号「' + sym + '」（违反文化红线）');
-  });
-  ['莲花', '经幡'].forEach(sym => {
-    if (elsSrc.indexOf(sym) === -1) ok('宗教符号「' + sym + '」已不作为消除元素');
-    else warn('牌面仍含「' + sym + '」：与「不作娱乐化消除对象」红线冲突，待拍板（DECISIONS.md D25）');
-  });
+  // 文化红线（D25 已拍板，2026-10-06）：宗教符号只作装饰，不得成为可消除牌面。
+  // 佛塔 / 酥油灯 / 风马旗 / 莲花 / 经幡 一律不得进入元素库 —— 统一由 §17.8 按「去注释源码」硬性把关。
   if (iw.indexOf('wx:if="{{canSignIn}}"') > -1 && iw.indexOf('side-dot') > -1)
     ok('签到红点仅在未签到时显示（canSignIn 控制）');
   else err('侧栏红点未受 canSignIn 控制');
@@ -819,6 +809,55 @@ section('17. 留存系统与首页重构（PRD v4）');
       if (new RegExp('function ' + fn + '\\s*\\(').test(stSrc)) ok('storage.js 提供 ' + fn + '()');
       else err('utils/storage.js 缺少 ' + fn + '()');
     });
+
+  // 17.8 D25 文化红线（2026-10-06 拍板定案，由警告升级为硬错误）
+  //   宗教符号只作装饰、不得娱乐化消除：佛塔 / 酥油灯 / 风马旗 / 莲花 / 经幡 一律不得进入元素库。
+  //   icon_02 / icon_04 已由两个宗教题材换成「青稞 / 牦牛」——**id 与 color 不动**（关卡配比 / 文化卡键 /
+  //   精灵映射零波及），只换 title + iconKey + char + 绘制器。
+  //   扫描用去注释源码：允许在注释里说明历史（写明「原为宗教题材」不会误伤），真正出现在字段里才判错。
+  const elsRaw = read('data/elements.js');
+  const elsJs = elsRaw.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\/\/[^\n]*/g, ' ');
+  ['佛塔', '酥油灯', '风马旗', '莲花', '经幡'].forEach(sym => {
+    if (elsJs.indexOf(sym) === -1) ok('元素库不含宗教符号「' + sym + '」（D25）');
+    else err('data/elements.js 出现宗教符号「' + sym + '」（D25 文化红线，§17.8）');
+  });
+  const iconKeys = [];
+  elsRaw.replace(/iconKey:\s*'([a-z]+)'/g, (m, k) => { iconKeys.push(k); return m; });
+  const WANT_KEYS = ['knot', 'barley', 'mountain', 'yak'];
+  if (iconKeys.length === 4 && WANT_KEYS.every(k => iconKeys.indexOf(k) > -1))
+    ok('iconKey 集合恰为 {knot, barley, mountain, yak}（世俗题材，D25）');
+  else err('iconKey 集合异常：[' + iconKeys.join(', ') + ']（应为 ' + WANT_KEYS.join(' / ') + '）');
+  if (elsJs.indexOf("'莲花'") === -1 && elsJs.indexOf("'经幡'") === -1)
+    ok('icon_02 / icon_04 的 title 与 char 已不含宗教符号字面');
+  else err('icon_02 / icon_04 仍是宗教题材（D25）');
+
+  // 两端绘制器：新题材必须存在，旧符号绘制器必须彻底消失（标识符级扫描，注释里的历史说明不误伤）
+  const icoSrc = read('utils/icons.js');
+  [['drawBarley', icoSrc], ['drawYak', icoSrc],
+   ['barley: drawBarley', icoSrc], ['yak: drawYak', icoSrc],
+   ['drawBarley', tplHtml], ['drawYak', tplHtml],
+   ['barley: drawBarley', tplHtml], ['yak: drawYak', tplHtml]].forEach(pair => {
+    if (pair[1].indexOf(pair[0]) > -1) ok('绘制器就位：' + pair[0]);
+    else err('缺少绘制器 ' + pair[0] + '（D25 两端必须同构）');
+  });
+  [['drawLotus', icoSrc], ['drawFlags', icoSrc],
+   ['lotus: drawLotus', tplHtml], ['flags: drawFlags', tplHtml]].forEach(pair => {
+    if (pair[1].indexOf(pair[0]) === -1) ok('旧符号绘制器已移除：' + pair[0]);
+    else err('仍保留旧宗教符号绘制器 ' + pair[0] + '（D25）');
+  });
+
+  // 文化卡与元素库 title 一致（换题材后最容易漏的一处：图标换成青稞、卡还在讲莲花）
+  const cardsRaw = read('data/cards.js');
+  const cardTitle = {};
+  cardsRaw.replace(/id:\s*'(icon_0\d)'[\s\S]*?title:\s*'([^']+)'/g, (m, id, t) => { cardTitle[id] = t; return m; });
+  const elTitle = {};
+  elsRaw.replace(/(icon_0\d):[\s\S]{0,120}?title:\s*'([^']+)'/g, (m, id, t) => { elTitle[id] = t; return m; });
+  ['icon_01', 'icon_02', 'icon_03', 'icon_04'].forEach(id => {
+    if (cardTitle[id] && elTitle[id] && cardTitle[id] === elTitle[id])
+      ok('文化卡标题与元素一致：' + id + ' = 「' + cardTitle[id] + '」');
+    else err('文化卡 title 与元素 title 不一致：' + id +
+      '（card=' + cardTitle[id] + ' / el=' + elTitle[id] + '）');
+  });
 })();
 
 // ---------- 18. 全局视觉底盘（暗金光晕底图 + 金色棋盘底盘） ----------
@@ -1832,7 +1871,7 @@ section('28. 微信生态分享守卫（分享不带激励 + 首页分享卡补�
 
 // ---------- 29. 通关揭图（十关秘境图 · 程序绘制 · 零金额 · 两端同构） ----------
 // 背景：D31「通关揭图」试点。三条红线机械锁死：
-//   ① D25 待拍板 → 揭图**不得新增** 莲花 / 经幡（吉祥八宝只取另外 7 个 + 3 个自然/生活题）；
+//   ① D25 已拍板（2026-10-06）→ 揭图**不得新增**宗教符号（吉祥八宝只取另外 7 个 + 3 个自然/生活题）；
 //   ② 图与文案不承载金额 / 让利（和 data/daily.js 同一把尺）；
 //   ③ **不新增存储字段**：解锁与否 = completedLevels（避免第二真相源，也就没有「三处同步」的坑）。
 section('29. 通关揭图（十关秘境图 · 零金额 · 不新增存储字段 · 两端同构）');
@@ -1888,13 +1927,13 @@ section('29. 通关揭图（十关秘境图 · 零金额 · 不新增存储字�
   if (exists('scripts/make_reveals.py')) ok('scripts/make_reveals.py 存在（揭示图可零美术成本复现）');
   else err('缺 scripts/make_reveals.py（揭示图必须可由脚本复现，不靠手绘资产）');
 
-  // 29.3 D25 红线：揭图不得新增 莲花 / 经幡（等拍板；这两个符号只能出现在既有 4 个可消除牌面里）
+  // 29.3 D25 红线（2026-10-06 已拍板定案）：揭图不得新增宗教符号。
   //      只扫「非注释行」：文件头注释里要写清楚这条红线本身，不能自己绊倒自己。
   const rvCode29 = rvRaw29.split('\n').filter(l => l.trim().indexOf('//') !== 0).join('\n');
   const D25_PAT29 = /莲花|lotus|经幡|风马旗|佛塔|酥油灯/g;
   const hit25 = rvCode29.match(D25_PAT29) || [];
-  if (!hit25.length) ok('data/reveals.js 数据层未出现 D25 待拍板符号（莲花/经幡/佛塔/酥油灯）');
-  else err('data/reveals.js 出现 D25 待拍板符号：' + hit25.join('/'));
+  if (!hit25.length) ok('data/reveals.js 数据层未出现 D25 红线符号（莲花/经幡/佛塔/酥油灯）');
+  else err('data/reveals.js 出现 D25 红线符号：' + hit25.join('/'));
   // 元素库不得被顺手扩充（ religious symbols 只能以「装饰纹样」存在，不能变成可消除牌面）
   const elCount29 = (read('data/elements.js').match(/type:\s*'(letter|icon)'/g) || []).length;
   if (elCount29 === 12) ok('元素库仍为 12 个元素（揭图没有顺手进元素库）');

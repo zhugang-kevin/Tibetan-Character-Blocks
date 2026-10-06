@@ -28,7 +28,7 @@ module.exports = [
   { level: 5, cols: 8, rows: 5, elements: [['letter_01', 10], ['letter_02', 10], ['letter_03', 10], ['letter_04', 10], ['letter_05', 10]], obstacles: { frost: 5 } },
   // 第6关：6×8 网格（48 格 / 60 张牌），首次出现藏式木箱
   { level: 6, cols: 6, rows: 8, elements: [['letter_01', 10], ['letter_02', 10], ['letter_03', 10], ['letter_04', 10], ['letter_05', 10], ['letter_06', 10]], obstacles: { frost: 4, crate: 2, crateHp: 1 } },
-  // 第7关：6×8 网格（48 格 / 60 张牌），引入莲花图标
+  // 第7关：6×8 网格（48 格 / 60 张牌），引入青稞图标（icon_02）
   { level: 7, cols: 6, rows: 8, elements: [['letter_01', 8], ['letter_02', 8], ['letter_03', 8], ['letter_04', 8], ['letter_05', 8], ['letter_06', 8], ['icon_01', 6], ['icon_02', 6]], obstacles: { frost: 6 } },
   // 第8关：6×8 网格（48 格 / 60 张牌），7个字母，木箱需破两次
   { level: 8, cols: 6, rows: 8, elements: [['letter_01', 8], ['letter_02', 8], ['letter_03', 8], ['letter_04', 8], ['letter_05', 10], ['letter_06', 10], ['letter_07', 8]], obstacles: { frost: 6, crate: 3, crateHp: 2 } },

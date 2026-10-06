@@ -85,10 +85,10 @@ module.exports = [
     id: 'icon_02',
     type: 'icon',
     tibetan: '',
-    title: '莲花',
-    subtitle: '藏语：པད་མ',
-    description: '八吉祥之一，象征纯洁与觉悟。莲花出淤泥而不染，代表超越烦恼的清净。',
-    funFact: '藏传佛教中，许多佛像和菩萨都坐在莲花座上。'
+    title: '青稞',
+    subtitle: '藏语：ནས',
+    description: '高原上的主粮作物，耐寒耐旱，籽粒可炒熟磨成糌粑，也可酿青稞酒。',
+    funFact: '青稞是大麦的一支，在海拔四千米以上依然能结实成熟。'
   },
   {
     id: 'icon_03',
@@ -103,9 +103,9 @@ module.exports = [
     id: 'icon_04',
     type: 'icon',
     tibetan: '',
-    title: '经幡',
-    subtitle: '藏语：དར་ལྕོག',
-    description: '五色经幡（蓝白红绿黄）随风飘扬，藏族人认为风每吹动一次经幡，就是诵经一次。',
-    funFact: '经幡的五种颜色分别代表蓝天、白云、火焰、绿水和大地。'
+    title: '牦牛',
+    subtitle: '藏语：གཡག',
+    description: '被称作「高原之舟」，驮运、乳食、毛帐都离不开它，是高原生活的老伙伴。',
+    funFact: '牦牛的长毛一直垂到腿边，像一条厚厚的裙子，风雪里也冻不着。'
   }
 ];
