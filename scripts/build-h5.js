@@ -99,12 +99,23 @@ try {
 }
 
 // ---------- 4. 数据一致性抽查 ----------
+// D33 下落式盘面：总牌数 ≠ 格数。盘面初始满铺 cols×rows（格数 slots），
+// 其余牌进补充池（供下落补位），池 = round2(slots/4) 且必须为偶数 →
+//   每种元素配比恒为偶数、池余量恒为偶数 → 盘面上永远至少有一对可消（零死局）。
+// 因此一致性口径是「总数 = 格数 + 池」，不再是「总数 = 格数」。
 let bad = 0;
 DATA.levels.forEach(function (cfg) {
   const total = cfg.elements.reduce(function (s, e) { return s + e[1]; }, 0);
+  const slots = cfg.cols * cfg.rows;
+  const pool = Math.max(2, Math.ceil(slots / 4 / 2) * 2);
   const even = cfg.elements.every(function (e) { return e[1] % 2 === 0; });
-  if (total !== cfg.cols * cfg.rows || !even) {
-    console.error('✗ 第 ' + cfg.level + ' 关牌数不符：total=' + total + ' grid=' + (cfg.cols * cfg.rows));
+  if (!even) {
+    console.error('✗ 第 ' + cfg.level + ' 关配比含奇数（与 board.js 的偶不变前提冲突）');
+    bad++;
+  }
+  if (total !== slots + pool) {
+    console.error('✗ 第 ' + cfg.level + ' 关牌数不符：total=' + total +
+      ' 应为 格数 ' + slots + ' + 池 ' + pool + ' = ' + (slots + pool));
     bad++;
   }
 });

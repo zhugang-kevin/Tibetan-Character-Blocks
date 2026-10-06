@@ -74,15 +74,30 @@ const elementsSrc = read('data/elements.js');
 const elementIds = [...elementsSrc.matchAll(/^\s{2}(letter_\d{2}|icon_\d{2}):/gm)].map(m => m[1]);
 const levels = eval('(' + levelsSrc.replace(/^module\.exports\s*=\s*/, '').replace(/;\s*$/, '') + ')');
 if (levels.length === 10) ok('共 10 关'); else err('应为 10 关，实际 ' + levels.length);
+// D33 下落式盘面：总牌数 = 格数 + 补充池（池 = round2(格数/4)，且恒为偶数）。
+// 口径变更的原因：盘面初始满铺 cols×rows，其余牌进池供下落补位。
+// 偶不变：每种元素配比偶数 + 池余量偶数 → 盘面上任何时刻都至少有一对可消（零死局）。
+const boardMod = require(path.join(ROOT, 'utils/board.js'));
+const sumObj = o => Object.keys(o).reduce((s, k) => s + o[k], 0);
 levels.forEach(l => {
   const total = l.elements.reduce((s, e) => s + e[1], 0);
-  const grid = l.cols * l.rows;
-  if (total !== grid) err('第' + l.level + '关: 总牌数 ' + total + ' ≠ 网格 ' + grid);
-  const odd = l.elements.filter(e => e[1] % 2 !== 0);
-  if (odd.length) err('第' + l.level + '关: 次数为奇数 ' + odd.map(e => e[0]).join(','));
+  const slots = l.cols * l.rows;
+  const plan = boardMod.planCounts(l);
+  const pool = boardMod.poolLeft(plan.pool);
+  const give = sumObj(plan.give);
+  if (total !== slots + pool) err('第' + l.level + '关: 总牌数 ' + total + ' ≠ 格数 ' + slots + ' + 补充池 ' + pool);
+  if (pool % 2 !== 0) err('第' + l.level + '关: 补充池 ' + pool + ' 为奇数（会打破偶不变）');
+  if (give !== slots) err('第' + l.level + '关: 初始铺牌 ' + give + ' ≠ 格数 ' + slots);
+  const odd = l.elements.filter(e => e[1] % 2 !== 0).map(e => e[0]);
+  if (odd.length) err('第' + l.level + '关: 次数为奇数 ' + odd.join(','));
+  const oddPool = Object.keys(plan.pool).filter(k => plan.pool[k] % 2 !== 0);
+  if (oddPool.length) err('第' + l.level + '关: 池余量为奇数 ' + oddPool.join(','));
   const unknown = l.elements.filter(e => !elementIds.includes(e[0]));
   if (unknown.length) err('第' + l.level + '关: 未知元素 ' + unknown.map(e => e[0]).join(','));
-  if (total === grid && !odd.length && !unknown.length) ok('第' + l.level + '关: ' + l.cols + '×' + l.rows + ' ' + total + '张牌 OK');
+  if (total === slots + pool && give === slots && !odd.length && !oddPool.length && !unknown.length) {
+    ok('第' + l.level + '关: ' + l.cols + '×' + l.rows + ' 格 ' + slots + ' 张 + 池 ' + pool +
+      ' = ' + total + ' 张 OK');
+  }
 });
 if (elementIds.length === 12) ok('元素库 12 个（8字母+4图标）');
 else err('元素库应为 12 个，实际 ' + elementIds.length);
@@ -272,8 +287,15 @@ if (gameJs.indexOf('showToastTip') > -1) ok('重复匹配走轻提示 showToastT
 else err('缺少重复匹配轻提示方法 showToastTip');
 if (gameJs.indexOf('.showToast(') === -1) ok('无对未定义方法 showToast 的调用（命名一致性）');
 else err('game.js 调用了未定义的 showToast（应为 showToastTip）');
-if (gameJs.indexOf('this.pendingRemove = [') > -1) ok('配对成功后写入 pendingRemove（保证牌面落定 removed）');
-else err('pendingRemove 未被赋值，牌面无法转为 removed');
+// D33：消除结算改成「排队（按 uid）+ 逐对下落」，不再有 pendingRemove。
+// 断言换成「消除对进队列 + 由 collapse 真结算 + 队列排空才判通关」这条链。
+if (gameJs.indexOf('this.removeQueue.push([a.uid, b.uid])') > -1 &&
+    gameJs.indexOf('board.collapse(that.board, pair') > -1) {
+  ok('配对成功后进消除队列（按 uid），并由 utils/board.js 的 collapse 真结算（下落 + 补充）');
+} else err('消除队列 / collapse 结算链缺失（下落机制不会生效）');
+if (gameJs.indexOf('!that.removeQueue.length') > -1)
+  ok('通关判定等队列排空（连点时最后一对不会提前触发结算）');
+else err('通关判定未等队列排空，连点可能提前进结算');
 if (gameJs.indexOf('isCardSeen') > -1 && gameJs.indexOf('markCardSeen') > -1) ok('文化卡「仅首次发现弹出」逻辑已接入');
 else err('缺少「仅首次弹出」逻辑');
 if (gameJs.indexOf('CARD_AUTO_MS') > -1) ok('文化卡自动收起已实现');
@@ -1812,9 +1834,13 @@ section('29. 通关揭图（十关秘境图 · 零金额 · 不新增存储字�
     });
   if (gj29.indexOf("require('../../data/reveals')") > -1) ok('game.js 引入 data/reveals（同源数据）');
   else err('game.js 未引入 data/reveals');
-  if (gj29.indexOf('revealPct: Math.round(this.matchedCount * 100 / this.data.totalPairs)') > -1)
-    ok('game.js 揭图进度按「已配对数 / 总对数」实时推进');
-  else err('game.js 缺 revealPct 计算（揭图不会随消除推进）');
+  // 揭图口径变更（D33）：分母不再是「总对数」，而是「格数」——
+  // 有补充牌后盘面不会全空，改成「多少格曾清空过」，通关时同样是整幅揭晓（只增不减）。
+  if (gj29.indexOf('freedPct: function ()') > -1 &&
+      gj29.indexOf('Math.round(n * 100 / this.board.slots)') > -1 &&
+      gj29.indexOf('revealPct: that.freedPct()') > -1)
+    ok('game.js 揭图进度按「曾清空的格数 / 格数」实时推进（只增不减）');
+  else err('game.js 缺 freedPct 计算（揭图不会随消除推进，或分母仍写死总对数）');
   if (gj29.indexOf('boardH: boardH') > -1 && gj29.indexOf('cfg.rows * tileH + (cfg.rows - 1) * gap') > -1)
     ok('game.js 计算 boardH（揭图层与牌区精确对齐）');
   else err('game.js 缺 boardH 计算（揭图层会错位）');
@@ -2057,6 +2083,209 @@ section('30. 文字对比度（WCAG AA · 牌面渐变采样 + 墨色回归锁�
   else err('对比度函数失准：奶白 on #0D2137 应为 15.09');
   if (clamp30(ratio30(hex30('#2C3E50'), hex30('#0B1E36'))) < AA30) ok('自测：#2C3E50 on 暗底被正确判为不达标（这是 page 继承基色，属已知豁免）');
   else err('对比度函数失准：#2C3E50 on 暗底应 < 4.5');
+}
+
+// ================================================================
+section('31. 下落式盘面模型（D33：下落 + 顶部补充 + 三条不变量）');
+// 这一节是**行为断言**，不是字符串断言：直接把 utils/board.js 跑起来，
+// 用种子随机的完整通关模拟验证「能消完 / 池能用光 / 三条不变量恒成立 / 真的会下落」。
+// 之所以必须真跑：本轮 4e 模拟就抓出了一个真 bug —— 一对牌竖着落在同一列时，
+// 旧实现只能补 1 张（池却少 1 张）→ 池余量变奇数 → 偶不变破 → 盘面卡死（真死局）。
+{
+  const B = boardMod;
+  const mk = (id, uid) => ({ id: id, uid: uid, state: 'idle' });
+  // 线性同余种子随机：确定性，才能「同一版本必然同一结果」
+  const seeded = (s0) => { let s = s0 >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); };
+
+  // --- 31.1 池公式与规划 ---
+  const poolOk = levels.every(l => {
+    const slots = l.cols * l.rows;
+    return B.poolSize(l.cols, l.rows) === Math.max(2, Math.ceil(slots / 4 / 2) * 2);
+  });
+  if (poolOk) ok('补充池公式 = round2(格数/4) 且下限 2（十关一致）');
+  else err('补充池公式与 utils/board.js 不一致');
+
+  // --- 31.2 开局：满铺、无一格悬空、三不变量成立 ---
+  const lv1 = levels[0];
+  const st0 = B.createLevel(lv1, mk, seeded(7));
+  const inv0 = B.checkInvariants(st0);
+  if (B.countTiles(st0.cells) === st0.slots) ok('开局满铺：在场张数 = 格数 ' + st0.slots);
+  else err('开局未满铺：' + B.countTiles(st0.cells) + ' ≠ ' + st0.slots);
+  if (st0.cells.length === st0.slots) ok('cells 长度 = 格数（row-major 一维数组）');
+  else err('cells 长度 ' + st0.cells.length + ' ≠ 格数 ' + st0.slots);
+  if (inv0.even && inv0.conserved && inv0.contiguous) ok('开局三不变量成立（偶 / 守恒 / 列连续）');
+  else err('开局三不变量不成立：' + JSON.stringify(inv0));
+  if (B.hasPair(st0.cells)) ok('开局盘面就存在可配对（玩家不必先洗牌）');
+  else err('开局无可配对 —— 会出现开局死局');
+
+  // --- 31.3 十关种子随机完整模拟 ---
+  const simBadAll = [];
+  const simNoFall = [];
+  const simRow = [];
+  levels.forEach(l => {
+    const rnd = seeded(1000 + l.level * 37);
+    let st = B.createLevel(l, mk, rnd);
+    const startLive = B.countTiles(st.cells);
+    const poolAll = B.poolLeft(st.pool);
+    let falls = 0, spawns = 0, pairs = 0, bad = 0, deadLock = false;
+    for (let round = 0; round < 500; round++) {
+      const cands = [];
+      for (let i = 0; i < st.cells.length; i++) {
+        if (!st.cells[i]) continue;
+        for (let j = i + 1; j < st.cells.length; j++) {
+          if (st.cells[j] && st.cells[i].id === st.cells[j].id) cands.push([i, j]);
+        }
+      }
+      if (!cands.length) {
+        const pl = B.poolLeft(st.pool);
+        // 无对可配 + 盘面还有牌 = 真死局（偶不变成立的实现里不该出现）
+        if (B.countTiles(st.cells) > 0) deadLock = true;
+        break;
+      }
+      const sel = cands[Math.floor(rnd() * cands.length)];
+      pairs++;
+      const nx = B.collapse(st, sel, { create: mk, rng: rnd });
+      const spIdx = {};
+      nx.spawned.forEach(s => { spIdx[s.index] = 1; });
+      nx.drops.forEach(d => { if (!spIdx[d.index]) falls++; });   // 补充牌不算「下落」
+      spawns += nx.spawned.length;
+      st = nx;
+      const inv = B.checkInvariants(st);
+      if (!inv.even || !inv.conserved || !inv.contiguous) bad++;
+      if (inv.onBoardCount === 0 && inv.poolLeft === 0) break;
+    }
+    const poolLeft = B.poolLeft(st.pool);
+    const live = B.countTiles(st.cells);
+    simRow.push('L' + l.level + ':' + pairs + '/' + (st.total / 2) + ' fall' + falls);
+    if (live !== 0 || poolLeft !== 0 || pairs !== st.total / 2 || st.spent !== st.total ||
+        bad !== 0 || deadLock || startLive !== st.total - poolAll || spawns !== poolAll) {
+      simBadAll.push(JSON.stringify({
+        level: l.level, pairs: pairs, need: st.total / 2, live: live, poolLeft: poolLeft,
+        spent: st.spent, total: st.total, bad: bad, deadLock: deadLock,
+        startLive: startLive, poolAll: poolAll, spawns: spawns
+      }));
+    }
+    if (falls < 1) simNoFall.push('L' + l.level);
+  });
+  if (!simBadAll.length) ok('十关随机模拟：全部消完 + 池用尽 + 全程零死局 + 三不变量零违反');
+  else err('十关模拟异常：' + simBadAll.slice(0, 3).join(' | '));
+  if (!simNoFall.length) ok('十关都真的会下落（随机玩法下每关都有非补充牌的位移）');
+  else err('下列关卡全程零下落：' + simNoFall.join(','));
+  ok('模拟明细（对数/总对数 下落次数）：' + simRow.join(' '));
+
+  // --- 31.4 偶不变为什么能杜绝死局：反例自测 ---
+  // 构造「一对牌竖着落在同一列」的场景：这是旧实现唯一会补 1 张的路径。
+  const sameCol = {
+    cols: 2, rows: 3, total: 6, slots: 6, nextUid: 90, spent: 0, pool: { a: 2 },
+    cells: [mk('a', 1), mk('b', 2), mk('a', 3), mk('b', 4), null, null]
+  };
+  const sc = B.collapse(sameCol, [0, 2], { create: mk, rng: () => 0 });
+  const scInv = B.checkInvariants(sc);
+  if (sc.spawned.length === 2) ok('反例自测：同列被消 2 张时仍补满 2 张（同列叠放，不半途而废）');
+  else err('反例自测失败：同列消 2 张只补了 ' + sc.spawned.length + ' 张（池会变奇数 → 死局）');
+  if (scInv.even && scInv.conserved && scInv.contiguous) ok('反例自测：该情形下三不变量仍成立');
+  else err('反例自测失败：同列补充破坏了不变量 ' + JSON.stringify(scInv));
+  // 反向：如果只补 1 张，池会变奇数 —— 用「人为只补 1 张」的盘面验证检测器抓得住
+  const poisoned = {
+    cols: 2, rows: 3, total: 6, slots: 6, nextUid: 90, spent: 0, pool: { a: 1 },
+    cells: [mk('a', 1), mk('b', 2), null, mk('b', 4), null, null]
+  };
+  if (B.checkInvariants(poisoned).even === false) ok('反例自测：人为把池改成奇数 1 → 不变量检测器判错（尺子是准的）');
+  else err('不变量检测器失准：池为奇数时未判错');
+  // 反向：人为造一张悬空牌 → 列连续检测器必须抓得住
+  const floating = {
+    cols: 2, rows: 3, total: 6, slots: 6, nextUid: 90, spent: 0, pool: { a: 0 },
+    cells: [mk('a', 1), null, null, mk('b', 4), null, null]
+  };
+  if (B.checkInvariants(floating).contiguous === false) ok('反例自测：人为造悬空牌 → 列连续检测器判错');
+  else err('列连续检测器失准：悬空牌未被发现');
+  // 反向：总量守恒检测器
+  const leaky = {
+    cols: 2, rows: 3, total: 99, slots: 6, nextUid: 90, spent: 0, pool: { a: 0 },
+    cells: [mk('a', 1), null, null, mk('b', 4), null, null]
+  };
+  if (B.checkInvariants(leaky).conserved === false) ok('反例自测：人为改总数 → 守恒检测器判错');
+  else err('守恒检测器失准：总数对不上时未判错');
+
+  // --- 31.5 两端同构：体验版必须镜像同一套契约 ---
+  const tpl31 = read('preview/template.html');
+  const gj31 = read('pages/game/game.js');
+  const gw31 = read('pages/game/game.wxml');
+  const gx31 = read('pages/game/game.wxss');
+  [
+    ['boardCollapse', '体验版镜像 boardCollapse（下落结算）'],
+    ['boardPlanRefillCells', '体验版镜像 boardPlanRefillCells（整对落子规划）'],
+    ['boardColumnHeight', '体验版镜像 boardColumnHeight'],
+  ].forEach(([k, m]) => {
+    if (tpl31.indexOf('function ' + k + '(') > -1) ok(m);
+    else err(m + ' 缺失（两端契约会漂移）');
+  });
+  if (!/pool\[pickId\]\s*-=\s*1;/.test(tpl31) || /take\s*-=\s*1/.test(tpl31) === false) {
+    ok('体验版已移除「take 可能为奇数」的旧补牌写法');
+  } else {
+    err('体验版仍保留「take 为奇数就减 1」的旧写法（会漏补一张 → 池余量变奇数）');
+  }
+  if (tpl31.indexOf('boardCountTiles') > -1) ok('体验版镜像 boardCountTiles');
+  else err('体验版缺 boardCountTiles');
+
+  // 盘面渲染：绝对定位 + 按 uid 稳定 key + 双帧下落
+  if (gx31.indexOf('position: absolute') > -1 && /\.board\s*\{[\s\S]*?position:\s*relative/.test(gx31))
+    ok('game.wxss 盘面改绝对定位（父层 relative + 牌 absolute）');
+  else err('game.wxss 盘面仍非绝对定位（CSS grid 自动流无法做下落动画）');
+  if (gx31.indexOf('transition: transform') > -1) ok('game.wxss .tile 用 transform 过渡播放下落');
+  else err('game.wxss .tile 缺 transform 过渡（下落会跳变）');
+  if (gw31.indexOf('wx:key="uid"') > -1) ok('game.wxml 用 wx:key="uid"（牌换格要复用同一节点）');
+  else err('game.wxml 未按 uid 稳定 key（下落时节点会重建，动画丢失）');
+  if (/\.tile\.shake\s+\.piece/.test(gx31) && /\.tile\.shake\s+\.piece/.test(tpl31))
+    ok('抖动动画作用在内层 .piece（.tile 的 transform 已被定位占用）');
+  else err('抖动动画写在了 .tile 上（会让牌瞬移到盘面左上角）');
+  if (/\.tile\s+fresh|\.tile\.fresh/.test(gx31) && /\.tile\.fresh/.test(tpl31))
+    ok('两端都有 .tile.fresh（补充牌的首帧盘外 + 透明）');
+  else err('缺 .tile.fresh（补充牌会凭空出现在盘内，看不到「掉下来」）');
+  if (/\.board-wrap\s*\{[\s\S]*?overflow:\s*hidden/.test(gx31) && /#board\s*\{[^}]*overflow:\s*hidden/.test(tpl31))
+    ok('两端牌区都裁切溢出（补充牌在盘外时不可见）');
+  else err('牌区未裁切溢出（补充牌会飘在盘面之外）');
+
+  // 队列/选中态按 uid 记：这两处按格号记都会出错（排队期间盘面会变）
+  if (gj31.indexOf('this.removeQueue.push([a.uid, b.uid])') > -1)
+    ok('game.js 消除队列存 uid（格号在排队期间会过期）');
+  else err('game.js 消除队列仍存格号（前面的下落会让格号失效 → 消错牌）');
+  if (gj31.indexOf('firstUid') > -1 && tpl31.indexOf('state.firstUid') > -1)
+    ok('两端选中态按 uid 记（牌换格后选中框跟着走）');
+  else err('选中态按格号记（牌换格后选中框会留在另一张牌上）');
+  if (gj31.indexOf('this.indexOfUid(') > -1 && /function indexOfUid\(/.test(tpl31))
+    ok('两端都有「uid → 当前格号」反查');
+  else err('缺 uid → 格号反查（结算时无法定位牌）');
+  // 揭图口径与通关去重
+  if (gj31.indexOf('freedPct: function ()') > -1 && tpl31.indexOf('function freedPct()') > -1)
+    ok('两端都有 freedPct（揭图按「曾清空的格」算）');
+  else err('缺 freedPct');
+  if (gj31.indexOf('finished') > -1 && tpl31.indexOf('state.finished') > -1)
+    ok('两端通关只结算一次（finished 去重）');
+  else err('通关结算未去重（连点会重复播粒子并重复跳页）');
+  if (tpl31.indexOf('function renderResult()') > -1)
+    ok('体验版把结算内容与庆祝拆开（庆祝一次、内容可重绘）');
+  else err('体验版未拆开 finishLevel / renderResult');
+
+  // --- 31.6 体验版内联脚本语法 + 与小程序同一套盘面常量 ---
+  try {
+    // 与 build-h5 同一套抽取方式（非贪婪匹配内联块），并且**必须先填占位符**：
+    // 模板里是 `const DATA = /*__DATA__*/;`，不替换就是 `const DATA = ;` → 语法报错。
+    const filled31 = tpl31.replace('/*__DATA__*/', 'null').replace('/*__IMAGES__*/', 'null');
+    const m31 = filled31.match(/<script>([\s\S]*?)<\/script>/);
+    if (!m31) throw new Error('未找到内联 <script> 块');
+    new Function(m31[1]);
+    ok('体验版内联脚本语法通过（board 镜像可加载）');
+  } catch (ex) {
+    err('体验版内联脚本语法错误：' + ex.message);
+  }
+  const lv31 = read('data/levels.js');
+  if (lv31.indexOf('round2(slots/4)') > -1 || lv31.indexOf('POOL_DIV') > -1 || lv31.indexOf('补充池') > -1)
+    ok('data/levels.js 标注了「总数 = 格数 + 补充池」口径');
+  else warn('data/levels.js 未标注新口径（后人容易误改回「总数 = 格数」）');
+  if (read('scripts/build-h5.js').indexOf('slots + pool') > -1)
+    ok('build-h5 一致性校验已改口径（总数 = 格数 + 池）');
+  else err('build-h5 仍在用「总数 = 格数」校验');
 }
 
 

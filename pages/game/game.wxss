@@ -119,18 +119,23 @@
     inset 0 -2rpx 0 rgba(232, 200, 107, 0.14);
 }
 
+/* D33：盘面不再是 CSS grid 自动流 —— 方块绝对定位，坐标由 transform: translate(%, %)
+   给出（百分比相对元素自身，所以不必在 transform 里写 rpx 单位）。
+   下落 = 同一个节点的 ty 变化，由 .tile 的 transition 平滑过渡。 */
 .board {
-  display: grid;
-  margin: 0 auto;
   position: relative;
+  margin: 0 auto;
   z-index: 1;
 }
 
-/* 秘境揭图（D31）：垫在牌层之下的整幅图，格子清空即透出。
-   ⚠️ 必须用 <image> 组件（WXSS background-image 引本地路径真机不可靠），尺寸由 JS 精确对齐牌区 */
+/* 秘境揭图（D31）：垫在牌层之下的整幅图，某格清空过就永久透出。
+   ⚠️ 必须用 <image> 组件（WXSS background-image 引本地路径真机不可靠），尺寸由 JS 精确对齐牌区。
+   overflow:hidden 让补充牌在盘外上方时被裁掉，像从边框里滑出来。 */
 .board-wrap {
   position: relative;
   margin: 0 auto;
+  overflow: hidden;
+  border-radius: 16rpx;
 }
 
 .reveal-img {
@@ -153,9 +158,14 @@
   text-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.6);
 }
 
-/* 第三层：槽位——比底盘更深 + inset 内阴影，视觉上像挖空的坑 */
+/* 第三层：槽位 + 方块（D33 起二合一，绝对定位、按牌 uid 稳定 key）。
+   槽位凹陷感来自 inset 内阴影；牌层由内层 .piece 提供 3D 凸起。
+   transition 的 cubic-bezier 带轻微过冲（1.16）= 下落到位时的「弹一下」。
+   ⚠️ 用 left/top 之外的属性都要小心单位；这里只动 transform，位置用 translate(%) 表达。 */
 .tile {
-  position: relative;
+  position: absolute;
+  left: 0;
+  top: 0;
   background: #0D2137;
   border: none;
   border-radius: 12rpx;
@@ -165,6 +175,13 @@
   box-sizing: border-box;
   box-shadow: inset 0 5rpx 9rpx rgba(0, 0, 0, 0.72);
   overflow: visible;
+  transition: transform 300ms cubic-bezier(0.34, 1.16, 0.64, 1), opacity 180ms ease;
+  will-change: transform;
+}
+
+/* 补充牌首帧：停在盘外上方（ty 已减去下落格数）且透明，下一帧落到位置 → 「从顶上掉下来」 */
+.tile.fresh {
+  opacity: 0;
 }
 
 /* 第四层：凸起方块——渐变底色 + 底部厚重投影 + 顶部高光（3D 凸出感） */
@@ -311,11 +328,8 @@
   100% { transform: translateY(-4rpx) scale(0.18); opacity: 0; }
 }
 
-/* 已消除 */
-.tile.removed {
-  visibility: hidden;
-  pointer-events: none;
-}
+/* 已消除：D33 起消除的牌直接从盘面移除（不再用 visibility 隐藏）——
+   格子空出来就透出下层秘境图，这正是 D31 揭图要的效果 */
 
 /* 破碎粒子：金粉 + 风马旗碎片（六向飞散） */
 .bits {
@@ -353,8 +367,11 @@
 @keyframes bitFly4 { 0% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 100% { opacity: 0; transform: translate(-40%, 180%) scale(0.4); } }
 @keyframes bitFly5 { 0% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 100% { opacity: 0; transform: translate(-220%, 70%) scale(0.4); } }
 
-/* 不匹配抖动 */
-.tile.shake {
+/* 不匹配抖动
+   ⚠️ 必须抖内层 .piece，不能抖 .tile —— .tile 的 transform 已被用作定位
+      （translate(tx%, ty%)），animation 里的 transform 会把它整体覆盖掉，
+      牌会瞬间跳到盘面左上角。 */
+.tile.shake .piece {
   animation: shake 0.4s ease;
 }
 

@@ -32,7 +32,7 @@
 ## 自检
 
 ```bash
-node scripts/validate.js         # 小程序静态自检：30 大类 733 项
+node scripts/validate.js         # 小程序静态自检：31 大类 767 项（含 §31 盘面模型真跑模拟）
 node scripts/test-tibetan.js     # 藏文排版规则：1392 项断言（无需依赖）
 ```
 

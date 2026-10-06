@@ -27,17 +27,19 @@
   <view class="game-body">
     <view class="board-panel">
       <view class="board-outline">
-        <!-- 秘境揭图（D31）：垫在牌层之下，消除掉一格牌就露出一格，通关整幅揭晓 -->
+        <!-- 秘境揭图（D31）：垫在牌层之下，某格被清空过就永久透出，通关整幅揭晓 -->
         <view class="board-wrap" style="width: {{boardW}}rpx; height: {{boardH}}rpx;">
           <image wx:if="{{reveal.img}}" class="reveal-img" src="{{reveal.img}}" mode="scaleToFill" aria-hidden="true" />
-          <view class="board"
-            style="grid-template-columns: repeat({{cols}}, {{tileW}}rpx); gap: {{gap}}rpx; width: {{boardW}}rpx;">
+          <!-- D33 下落式盘面：方块绝对定位（按 uid 稳定 key），坐标用百分比表达；
+               消除后上方方块下落 = 同一个节点换坐标，由 CSS transition 平滑过渡；
+               补充牌首帧停在盘外上方且透明（.fresh），下一帧落到位置，于是「从顶上掉下来」。 -->
+          <view class="board" style="width: {{boardW}}rpx; height: {{boardH}}rpx;">
             <view
-              wx:for="{{tiles}}"
+              wx:for="{{pieces}}"
               wx:key="uid"
-              class="tile {{item.state}} {{item.blocked ? 'blocked' : ''}}"
-              style="width: {{tileW}}rpx; height: {{tileH}}rpx;"
-              data-index="{{index}}"
+              class="tile {{item.state}} {{item.blocked ? 'blocked' : ''}} {{item.fresh ? 'fresh' : ''}}"
+              style="width: {{tileW}}rpx; height: {{tileH}}rpx; transform: translate({{item.tx}}%, {{item.ty}}%);"
+              data-index="{{item.index}}"
               bindtap="onTapTile"
             >
               <!-- 第四层：凸起方块（渐变底色 + 底部投影 + 顶部高光；精灵表字母用帧图取代渐变） -->
@@ -54,7 +56,7 @@
                   <view wx:for="{{bitSlots}}" wx:for-item="b" wx:key="*this" class="bit {{b}}"></view>
                 </view>
               </view>
-              <!-- 障碍物：冰霜（半透明蓝罩 + 白边高光） -->
+              <!-- 障碍物：冰霜（半透明蓝罩 + 白边高光）——遮挡跟随方块下落（D33） -->
               <view wx:if="{{item.frost}}" class="frost"><text class="frost-mark">❄</text></view>
               <!-- 障碍物：藏式木箱（木纹 + 金色剩余耐久） -->
               <view wx:if="{{item.crate > 0}}" class="crate"><text class="crate-num">{{item.crate}}</text></view>

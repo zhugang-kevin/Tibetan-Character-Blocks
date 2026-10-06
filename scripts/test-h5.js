@@ -165,11 +165,40 @@ function mockCtx(sink) {
   check('引导完成状态已持久化', ev('isOnboardDone()') === true);
 
   const tiles = function () { return ev('state.tiles'); };
+  // D33 盘面按牌 uid 缓存节点（牌会下落换格），所以点击必须「先按当前格号查 uid，再找节点」。
+  // ⚠️ 池耗尽后盘面会被掏空，空格的元素是 null —— 所有扫描都必须先判空。
+  const uidAt = function (i) {
+    const t = tiles()[i];
+    return t ? String(t.uid) : null;
+  };
+  const tileElAt = function (i) {
+    const u = uidAt(i);
+    return u === null ? null : doc.querySelector('#board .tile[data-uid="' + u + '"]');
+  };
+  const indexOfUid = function (uid) {
+    const t = tiles();
+    for (let i = 0; i < t.length; i++) if (t[i] && String(t[i].uid) === String(uid)) return i;
+    return -1;
+  };
+  // 盘面上现存的牌张数（格子里的非空格）
+  const liveCount = function () {
+    return tiles().filter(function (t) { return !!t; }).length;
+  };
+  // D33 盘面快照：张数 / 池余量 / 已消张数 / 三不变量（与 utils/board.js checkInvariants 同口径）
+  const st = () => ev('(function(){var s=state.board,b=s.cells,occ={},pl=0,cont=true,even=true,live=0;' +
+    'for(var i=0;i<b.length;i++){if(b[i]){occ[b[i].id]=(occ[b[i].id]||0)+1;live++;}}' +
+    'for(var k in s.pool)pl+=s.pool[k];' +
+    'for(var c=0;c<s.cols;c++){var seenF=false;' +
+    'for(var r=0;r<s.rows;r++){var ii=r*s.cols+c;if(b[ii])seenF=true;else if(seenF)cont=false;}}' +
+    'for(var k2 in occ){if(occ[k2]%2!==0)even=false;}' +
+    'for(var k3 in s.pool){if(s.pool[k3]%2!==0)even=false;}' +
+    'return {live:live,poolLeft:pl,spent:s.spent,total:s.total,slots:s.slots,even:even,contig:cont,' +
+    'conserved:(live+pl+s.spent===s.total),onBoard:occ};})()');
   const findPair = function () {
     const t = tiles();
     const map = {};
     for (let i = 0; i < t.length; i++) {
-      if (t[i].state !== 'idle') continue;
+      if (!t[i] || t[i].state !== 'idle') continue;
       if (map[t[i].id] === undefined) map[t[i].id] = i;
       else return [map[t[i].id], i];
     }
@@ -178,13 +207,16 @@ function mockCtx(sink) {
   const findMismatch = function () {
     const t = tiles();
     let a = -1;
-    for (let i = 0; i < t.length; i++) { if (t[i].state === 'idle') { a = i; break; } }
-    for (let j = a + 1; j < t.length; j++) { if (t[j].state === 'idle' && t[j].id !== t[a].id) return [a, j]; }
+    for (let i = 0; i < t.length; i++) { if (t[i] && t[i].state === 'idle') { a = i; break; } }
+    if (a < 0) return null;
+    for (let j = a + 1; j < t.length; j++) {
+      if (t[j] && t[j].state === 'idle' && t[j].id !== t[a].id) return [a, j];
+    }
     return null;
   };
   const clickTile = async function (i) {
-    const el = doc.querySelector('#board .tile[data-index="' + i + '"]');
-    el.click();
+    const el = tileElAt(i);
+    if (el) el.click();
     await sleep(30);
   };
   // 障碍物判定（与 utils/obstacles.js 同规则，供配对查找时避开被罩住的牌）
@@ -197,16 +229,30 @@ function mockCtx(sink) {
   check('已选定金色特殊方块', typeof goldenId === 'string' && goldenId.length > 0, String(goldenId));
   check('金色方块已渲染 ✦', $$('#board .tile.golden .star').length > 0);
 
+  // D33 开局快照：初始盘面必须满铺（格数 = DOM 节点数），其余牌在池里
+  const t0 = st();
+  check('开局盘面满铺（在场张数 = 格数）', t0.live === t0.slots, t0.live + ' vs ' + t0.slots);
+  check('开局补充池非空且为偶数', t0.poolLeft > 0 && t0.poolLeft % 2 === 0, 'pool=' + t0.poolLeft);
+  check('开局已消 0 张', t0.spent === 0);
+  check('开局三不变量成立', t0.even === true && t0.conserved === true && t0.contig === true);
+  check('开局揭图进度 0%（盘面无一格清空）', ev('state.revealPct') === 0, 'pct=' + ev('state.revealPct'));
+
   /* ---------- 4. 首次配对 → 非阻塞文化卡（修复①③） ---------- */
   section('4. 首次配对与非阻塞文化卡');
   check('旧的阻塞式弹窗已移除', !$('#card-mask'));
 
   let pair = findPair();
+  const pairUids = [uidAt(pair[0]), uidAt(pair[1])];
+  const pairId = tiles()[pair[0]].id;
+  const liveBefore = liveCount();
   await clickTile(pair[0]);
   check('第一张牌进入 selected', tiles()[pair[0]].state === 'selected', tiles()[pair[0]].state);
   await clickTile(pair[1]);
   check('配对后进入 removing', tiles()[pair[0]].state === 'removing' && tiles()[pair[1]].state === 'removing');
   check('配对成功不再锁盘面（非阻塞）', ev('state.locked') === false);
+  check('消除已进入下落结算（队列或正在结算中）',
+    ev('state.draining') === true || ev('state.removeQueue.length') >= 1,
+    'draining=' + ev('state.draining') + ' queue=' + ev('state.removeQueue.length'));
 
   await sleep(400);
   check('首次发现滑动出现完整文化卡', $('#card-panel').classList.contains('show'));
@@ -232,15 +278,137 @@ function mockCtx(sink) {
   $('#card-x').click();
   await sleep(80);
   check('点 ✕ 后文化卡收起', !$('#card-panel').classList.contains('show'));
-  check('两张牌状态 = removed', tiles()[pair[0]].state === 'removed' && tiles()[pair[1]].state === 'removed');
+
+  /* ---------- 4e. 十关全量模拟（种子随机，确定性） ----------
+     为什么不用「边玩边数下落」：测试用贪心找对（总取最靠上的那对）恰好总是消列顶的牌，
+     列顶之上的牌本来就是空的 → 几何上压根不会发生位移，断言会假失败。
+     而真实玩家会消到列中段（上方压着牌）→ 必然下落。这里用种子随机的完整模拟来覆盖。 */
+  section('4e. 十关全量模拟：消完 + 池用尽 + 三不变量 + 真实下落');
+  const sim = ev('(function(){' +
+    'var seed=12345;function rnd(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296;}' +
+    'var mk=function(id,u){return {id:id,uid:u,state:"idle"};};' +
+    'var out=[];' +
+    'for(var L=0;L<LEVELS.length;L++){' +
+    '  var cfg=LEVELS[L];' +
+    '  var st=boardCreateLevel(cfg,mk,rnd);' +
+    '  var falls=0,spawns=0,pairs=0,floating=0,badEven=0,badCons=0,' +
+    '      startLive=boardCountTiles(st.cells),poolAll=0;' +
+    '  for(var k in st.pool)poolAll+=st.pool[k];' +
+    '  for(var round=0;round<400;round++){' +
+    '    var cands=[];' +
+    '    for(var i=0;i<st.cells.length;i++){' +
+    '      if(!st.cells[i])continue;' +
+    '      for(var j=i+1;j<st.cells.length;j++){' +
+    '        if(st.cells[j]&&st.cells[i].id===st.cells[j].id)cands.push([i,j]);' +
+    '      }' +
+    '    }' +
+    '    if(!cands.length)break;' +
+    '    var sel=cands[Math.floor(rnd()*cands.length)];' +
+    '    pairs++;' +
+    '    var nx=boardCollapse(st,sel,mk);' +
+    // 「真实下落」= 非补充牌的位移（补充牌的首帧本来就在盘外，不算下落）
+    '    var spIdx={};nx.spawned.forEach(function(s){spIdx[s.index]=1;});' +
+    '    nx.drops.forEach(function(d){if(!spIdx[d.index])falls++;});' +
+    '    spawns+=nx.spawned.length;' +
+    '    if(nx.floating.length)floating++;' +
+    '    st=nx;' +
+    '    var oc={};for(var q=0;q<st.cells.length;q++)if(st.cells[q])oc[st.cells[q].id]=(oc[st.cells[q].id]||0)+1;' +
+    '    for(var e1 in oc)if(oc[e1]%2!==0)badEven++;' +
+    '    for(var e2 in st.pool)if(st.pool[e2]%2!==0)badEven++;' +
+    '    var pl0=0;for(var e3 in st.pool)pl0+=st.pool[e3];' +
+    '    if(boardCountTiles(st.cells)+pl0+st.spent!==st.total)badCons++;' +
+    '    if(boardCountTiles(st.cells)===0&&pl0===0)break;' +
+    '  }' +
+    '  var pl=0;for(var kk in st.pool)pl+=st.pool[kk];' +
+    '  out.push({level:cfg.level,pairs:pairs,need:st.total/2,live:boardCountTiles(st.cells),' +
+    '    poolLeft:pl,spent:st.spent,total:st.total,falls:falls,spawns:spawns,' +
+    '    floating:floating,badEven:badEven,badCons:badCons,startLive:startLive,poolAll:poolAll});' +
+    '}' +
+    'return out;})()');
+  const simBad = sim.filter(function (r) {
+    return r.live !== 0 || r.poolLeft !== 0 || r.pairs !== r.need || r.spent !== r.total ||
+      r.floating !== 0 || r.badEven !== 0 || r.badCons !== 0 || r.startLive !== r.total - r.poolAll ||
+      r.spawns !== r.poolAll;
+  });
+  check('十关全部能消完（盘面 0 张 / 池 0 张 / 消够总对数）', simBad.length === 0,
+    JSON.stringify(simBad.slice(0, 3)));
+  check('十关全程三不变量零违反（偶不变 / 守恒 / 列连续）', sim.every(function (r) {
+    return r.badEven === 0 && r.badCons === 0 && r.floating === 0;
+  }));
+  check('十关开局满铺（在场 = 总数 − 池）', sim.every(function (r) {
+    return r.startLive === r.total - r.poolAll;
+  }));
+  check('十关补入的牌数恰好 = 池容量', sim.every(function (r) { return r.spawns === r.poolAll; }));
+  check('随机玩法下十关全都发生过真实下落位移（机制真的会动）',
+    sim.every(function (r) { return r.falls >= 1; }),
+    sim.map(function (r) { return 'L' + r.level + ':' + r.falls; }).join(' '));
+  check('下落次数随关数增加（盘面越大越常出现「上方压着牌」）',
+    sim[sim.length - 1].falls > sim[0].falls,
+    'L1=' + sim[0].falls + ' L10=' + sim[sim.length - 1].falls);
+
+  /* ---------- 4c. D33 下落 + 顶部补充（本轮新增机制） ---------- */
+  section('4c. 下落式消除：下落 + 顶部补充 + 三不变量（真实盘面）');
+  const after = st();
+  check('本对被消除（两张牌的 uid 已从盘面移除）',
+    indexOfUid(pairUids[0]) === -1 && indexOfUid(pairUids[1]) === -1);
+  check('补充池减少 2（消什么补什么）', after.poolLeft === t0.poolLeft - 2,
+    t0.poolLeft + ' → ' + after.poolLeft);
+  check('盘面张数不变（消 2 补 2，初始池充足）', after.live === liveBefore,
+    liveBefore + ' → ' + after.live);
+  check('已消除张数 = 2（总量守恒口径）', after.spent === 2, 'spent=' + after.spent);
+  check('不变量①偶数：每种元素在场张数与池余量都是偶数', after.even === true,
+    JSON.stringify(after.onBoard) + ' / 池 ' + after.poolLeft);
+  check('不变量②守恒：盘面 + 池 + 已消 = 关卡总数', after.conserved === true,
+    after.live + '+' + after.poolLeft + '+' + after.spent + ' vs ' + after.total);
+  check('不变量③连续：下落压缩后列内无悬空牌', after.contig === true);
+  check('补充牌渲染为独立节点（DOM 张数 = 盘面张数）',
+    $$('#board .tile').length === after.live, $$('#board .tile').length + ' vs ' + after.live);
+  check('开局池与总牌数符合「格数 + 池」口径', t0.slots + t0.poolLeft === t0.total,
+    t0.slots + ' + ' + t0.poolLeft + ' vs ' + t0.total);
   check('已消除对数 = 1', ev('state.matchedCount') === 1);
   check('积分已累加（≥10）', ev('state.score') >= 10, 'score=' + ev('state.score'));
+  check('盘面按 uid 稳定 key（节点 data-uid ↔ 牌 uid 一一对应）', (function () {
+    const els = $$('#board .tile');
+    if (!els.length) return false;
+    return els.every(function (e) { return indexOfUid(e.dataset.uid) >= 0; });
+  })());
+  check('坐标用百分比步进（相对牌自身，端点可换单位）',
+    ev('state.stepX') > 100 && ev('state.stepY') > 100,
+    'stepX=' + ev('state.stepX') + ' stepY=' + ev('state.stepY'));
 
   /* ---------- 4b. 配对成功朗读发音（新增要求） ---------- */
   section('4b. 配对成功朗读藏文发音');
-  check('成功配对后朗读了 1 次', ev('state.pronounceCount') === 1, 'count=' + ev('state.pronounceCount'));
-  check('朗读的是本次消除的元素', ev('state.lastPronounced') === tiles()[pair[0]].id,
-    'last=' + ev('state.lastPronounced') + ' 应为 ' + tiles()[pair[0]].id);
+  check('成功配对后已朗读（≥1 次）', ev('state.pronounceCount') >= 1, 'count=' + ev('state.pronounceCount'));
+  check('朗读的是本次消除的元素', ev('state.lastPronounced') === pairId,
+    'last=' + ev('state.lastPronounced') + ' 应为 ' + pairId);
+
+  /* ---------- 4d. 下落位移（确定性样例，不靠随机盘面） ----------
+     盘面是随机的，随机抓一对牌可能两张都在最底行（压不动）→ 会偶发假失败。
+     这里直接给 boardCollapse 一个手工盘面，断言「同列上方的牌下落 1 格 + 顶部补 1 张」。 */
+  section('4d. 下落位移（确定性样例）');
+  const cp = ev('(function(){' +
+    'var mk=function(id,u){return {id:id,uid:u,state:"idle"};};' +
+    // 3 列 × 4 行，三列各自「上空下满」：
+    //   col0 = idx3,6,9（row1..3）  col1 = idx1,4,7,10（满）  col2 = idx8,11（row2..3）
+    'var st={cols:3,rows:4,total:14,slots:12,nextUid:100,spent:0,' +
+    'pool:{"a":2},cells:[null,mk("a",9),null,' +
+    'mk("a",1),mk("a",7),null,' +
+    'mk("b",2),mk("c",8),mk("b",3),' +
+    'mk("c",4),mk("d",5),mk("d",6)]};' +
+    // 消掉 idx3（col0 row1）与 idx10（col1 row3）→ col1 上方三张都该下落
+    'var nx=boardCollapse(st,[3,10],mk);' +
+    'var got={};for(var i=0;i<nx.cells.length;i++)if(nx.cells[i])got[nx.cells[i].uid]=i;' +
+    'var c2h=0;for(var r=0;r<4;r++)if(nx.cells[r*3+2])c2h++;' +
+    'return {drops:nx.drops.length,spawned:nx.spawned.length,floating:nx.floating.length,' +
+    'a7from:4,a7to:got[7],col0Top:!!nx.cells[3],col0Row0:!!nx.cells[0],col2H:c2h' +
+    '};})()');
+  check('同列上方的牌下落了（产生 drop 记录）', cp.drops >= 1, 'drops=' + cp.drops);
+  check('从池里补进 2 张（消 2 补 2）', cp.spawned === 2, 'spawned=' + cp.spawned);
+  check('下落压缩后无悬空牌', cp.floating === 0, 'floating=' + cp.floating);
+  check('col1 上方那张确实掉到更低的格（格号变大）', cp.a7to > cp.a7from, cp.a7from + ' → ' + cp.a7to);
+  check('补充牌落在牌堆正上方（col0 填在 row1、不是浮到 row0）',
+    cp.col0Top === true && cp.col0Row0 === false, JSON.stringify([cp.col0Row0, cp.col0Top]));
+  check('未受影响的列不动（col2 仍 2 张）', cp.col2H === 2, 'h=' + cp.col2H);
 
   /* ---------- 5. 配对失败：无惩罚 ---------- */
   section('5. 配对失败不扣分');
@@ -319,18 +487,43 @@ function mockCtx(sink) {
   ev('startLevel(1)'); await sleep(80);
 
   /* ---------- 9. 通关 → 结算页 ---------- */
-  section('9. 通关与结算');
+  section('9. 通关与结算（D33：消完 15 对、盘面清空、揭图 100%）');
   const pronOnEnter = ev('state.pronounceCount');
+  const needPairs = ev('totalPairs()');
+  check('第 1 关总对数 = 15（30 张 = 24 格 + 6 池）', needPairs === 15, 'pairs=' + needPairs);
   let guard = 0;
-  while (ev('state.matchedCount') < 12 && guard++ < 40) {
+  let posMoved = 0;   // 仅供诊断输出（贪心玩法不会产生位移，见下方注释）
+  const posNow = function () {
+    return ev('(function(){var m={};var b=state.board.cells;' +
+      'for(var i=0;i<b.length;i++)if(b[i])m[b[i].uid]=i;return m;})()');
+  };
+
+  while (guard++ < 120) {
+    if (ev('state.matchedCount') >= needPairs && ev('state.removeQueue.length') === 0 &&
+        ev('state.draining') === false) break;
+    const before = posNow();
     const pr = findPair();
-    if (!pr) break;
+    if (!pr) { await sleep(150); continue; }
     await clickTile(pr[0]);
     await clickTile(pr[1]);
-    await sleep(340);
+    await sleep(420);
+    const aft = posNow();
+    Object.keys(before).forEach(function (u) {
+      if (aft[u] !== undefined && aft[u] !== before[u]) posMoved++;
+    });
   }
-  check('全部 12 对已消除', ev('state.matchedCount') === 12, 'matched=' + ev('state.matchedCount'));
-  check('本关 12 次配对 = 12 次朗读', ev('state.pronounceCount') - pronOnEnter === 12,
+  const fin = st();
+  check('全部 15 对已消除', ev('state.matchedCount') === 15, 'matched=' + ev('state.matchedCount'));
+  check('盘面已清空（在场 0 张）', fin.live === 0, 'live=' + fin.live);
+  check('补充池已用尽', fin.poolLeft === 0, 'pool=' + fin.poolLeft);
+  check('总量守恒到头：已消张数 = 关卡总数', fin.spent === fin.total, fin.spent + ' vs ' + fin.total);
+  // 注：这里刻意**不**断言「有牌换过格号」——测试用贪心找对（总取最靠上的那对），
+  //     恰好总是消掉列顶的牌，而列顶之上的牌本来就是空的 → 几何上不会发生位移。
+  //     真实玩家会消到列中段（上方压着牌）→ 必然下落。这条由 4e 的种子随机全量模拟负责。
+  check('DOM 与盘面同步收缩到 0（节点随牌一起消失）', $$('#board .tile').length === fin.live,
+    $$('#board .tile').length + ' vs ' + fin.live);
+  check('揭图进度 100%（全格曾清空）', ev('state.revealPct') === 100, 'pct=' + ev('state.revealPct'));
+  check('本关 15 次配对 = 15 次朗读', ev('state.pronounceCount') - pronOnEnter === 15,
     '增加 ' + (ev('state.pronounceCount') - pronOnEnter) + ' 次');
   check('通关瞬间不再弹出重复提示', !$('#toast').classList.contains('show'));
 
@@ -386,7 +579,7 @@ function mockCtx(sink) {
   ev('startLevel(10)');
   await sleep(90);
   check('第 10 关 6×8 = 48 张牌', $$('#board .tile').length === 48, '实际 ' + $$('#board .tile').length);
-  ev('state.matchedCount = 24; state.collected = ["letter_01","icon_03"]; state.score = 520; state.maxCombo = 6; finishLevel()');
+  ev('state.matchedCount = totalPairs(); state.collected = ["letter_01","icon_03"]; state.score = 520; state.maxCombo = 6; finishLevel()');
   await sleep(90);
   check('第 10 关结算出现祝福卡区块', doc.body.textContent.indexOf('扎西德勒！通关全部 10 关') > -1);
   check('无「下一关」按钮（已是最后一关）', $('#res-actions').textContent.indexOf('下一关') === -1,
@@ -402,15 +595,23 @@ function mockCtx(sink) {
   }
 
   /* ---------- 13. 数据还原（关卡配置） ---------- */
-  section('13. 关卡数据');
+  section('13. 关卡数据（D33 口径：总数 = 格数 + 补充池）');
   const levels = ev('LEVELS');
   let allOk = true;
+  const levelDetail = [];
   levels.forEach(function (c) {
     const total = c.elements.reduce(function (s, e) { return s + e[1]; }, 0);
-    if (total !== c.cols * c.rows) { allOk = false; }
-    if (!c.elements.every(function (e) { return e[1] % 2 === 0; })) { allOk = false; }
+    const slots = c.cols * c.rows;
+    // 池 = round2(格数/4)，与 utils/board.js 的 poolSize 同公式
+    const pool = Math.max(2, Math.ceil(slots / 4 / 2) * 2);
+    const evenAll = c.elements.every(function (e) { return e[1] % 2 === 0; });
+    if (total !== slots + pool || !evenAll) { allOk = false; }
+    levelDetail.push(c.level + ':' + slots + '+' + pool + '=' + total);
   });
-  check('10 关牌数 = 网格数 且每种为偶数', allOk);
+  check('10 关总牌数 = 格数 + 补充池，且每种配比为偶数', allOk, levelDetail.join(' '));
+  check('每关补充池非空（下落机制真的会发生）', levels.every(function (c) {
+    return Math.max(2, Math.ceil(c.cols * c.rows / 4 / 2) * 2) > 0;
+  }));
   check('元素库 12 项', ev('Object.keys(ELEMENTS).length') === 12);
   check('文化卡 12 张', ev('CARDS.length') === 12);
   check('藏文排序正确（ཀ ཁ ག ང ཅ ཆ ཇ ཉ）',
@@ -1152,9 +1353,20 @@ function mockCtx(sink) {
     ev('getStampCount()') >= 1, String(ev('getStampCount()')));
   ev('(function () { var p = getProgress(); if (p.stamps.indexOf("shigatse") === -1)' +
     ' { p.stamps.push("shigatse"); saveProgress(p); } })()');
-  ev('finishLevel()');
+  ev('renderResult()');
   check('反向：多一枚印章后结算页计数随之变化（证明未写死）',
     $('#res-stamp').textContent.indexOf('已收集 2 / 7 枚印章') > -1, $('#res-stamp').textContent);
+  // D33：通关庆祝与跳页只执行一次（finished 去重），但结算页内容可重复渲染
+  check('通关庆祝只执行一次（重复调 finishLevel 不重复播粒子）', (function () {
+    const before = $$('.fx-bit').length;
+    ev('finishLevel()');
+    return $$('.fx-bit').length === before;
+  })(), 'bits=' + $$('.fx-bit').length);
+  check('结算页渲染函数可重复调用（幂等）', (function () {
+    const a = $('#res-journey').innerHTML;
+    ev('renderResult()');
+    return $('#res-journey').innerHTML === a;
+  })());
 
   // 24.5 第 2 关必须与第 1 关形成机制差异
   ev('startLevel(2)'); await sleep(80);
@@ -1418,11 +1630,23 @@ function mockCtx(sink) {
     check('揭图进度初始 0%（不剧透名字）', $('#reveal-cap').textContent.indexOf('已揭开 0%') > -1
       && $('#reveal-cap').textContent.indexOf('雪山') === -1);
 
-    // 30.2 消除越多透出越多：模拟清掉 5 对（24 格中的 10 格）→ 5/12 = 42%
-    ev('(function(){for(var k=0;k<10;k++)state.tiles[k].state="removed";' +
-      'state.matchedCount=5; renderBoard(); updateRevealCap();})()');
-    check('消除越多透出越多（进度随配对推进到 42%）', $('#reveal-cap').textContent.indexOf('已揭开 42%') > -1,
-      $('#reveal-cap').textContent);
+    // 30.2 揭图进度口径（D33 改）：分母是**格数**，报的是「多少格曾清空过」。
+    //      有补充牌后盘面不会全空，所以不能再按「已消对数 / 总对数」算（会永远差一截）。
+    ev('(function(){for(var k=0;k<10;k++)state.freed[k]=true;' +
+      'state.matchedCount=5; renderBoard({phase:"settle"}); updateRevealCap();})()');
+    check('揭露进度按「曾清空的格 / 格数」推进（10/24 = 42%）',
+      $('#reveal-cap').textContent.indexOf('已揭开 42%') > -1, $('#reveal-cap').textContent);
+    // 只增不减：把 freed 清掉也不该回退（freedPct 只读 freed，不做减法）
+    ev('(function(){for(var k=0;k<10;k++)state.freed[k]=false; updateRevealCap();})()');
+    check('揭图进度可随 freed 收回（口径纯函数化，无隐藏累加）',
+      $('#reveal-cap').textContent.indexOf('已揭开 0%') > -1, $('#reveal-cap').textContent);
+
+    // 30.2b 通关时整幅揭晓：freed 全满 → 100%
+    ev('startLevel(1)');
+    await sleep(60);
+    check('新关开局揭图 0%（满铺无空格）', ev('state.revealPct') === 0, 'pct=' + ev('state.revealPct'));
+    ev('(function(){for(var k=0;k<state.freed.length;k++)state.freed[k]=true; updateRevealCap();})()');
+    check('全部格曾清空 = 揭图 100%（整幅揭晓）', ev('state.revealPct') === 100, 'pct=' + ev('state.revealPct'));
 
     // 30.3 数据契约：十关全覆盖 / 字段齐全 / 藏文排版 / D25
     check('REVEALS 无缝覆盖 1-10 关且图不重复', ev(

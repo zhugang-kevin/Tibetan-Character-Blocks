@@ -1,53 +1,64 @@
-// 临时脚本：往 preview/play.html 注入多场景验证跳屏（截图后删除或重建 play.html 即消失）
+// 临时脚本：D33 下落盘面截图/几何核验注入（截图后重建 play.html 即消失）
+// 用法：node scripts/_autonav-tmp.js  然后
+//   chrome --headless=new --dump-dom "file:///.../play.html?vt=d33geo"
 const fs = require('fs');
 let h = fs.readFileSync('preview/play.html', 'utf8');
 h = h.replace(/<script>\/\*__AUTONAV__\*\/[\s\S]*?<\/script>/, '');
-const s = '<script>/*__AUTONAV__*/(function(){var q=location.search;' +
-  'function closeGuide(){var n=document.getElementById("guide-next");if(n){n.click();n.click();n.click();}}' +
+
+const s = '<script>/*__AUTONAV__*/(function(){' +
+  'function closeGuide(){var n=document.getElementById("guide-next");if(n){n.click();n.click();n.click();}hideLampWindow();}' +
+  // 找到一对可点的牌（同 id、idle、未被罩住）
+  'function findPair(){var t=state.board.cells,map={};' +
+  'for(var i=0;i<t.length;i++){if(!t[i]||t[i].state!=="idle"||t[i].frost||t[i].crate>0)continue;' +
+  'if(map[t[i].id]===undefined)map[t[i].id]=i;else return [map[t[i].id],i];}return null;}' +
+  'function clickUid(u){var e=document.querySelector("#board .tile[data-uid=\\""+u+"\\"]");if(e)e.click();}' +
+  // 盘面几何：每张牌的 DOM 尺寸/位移 vs 期望值（jsdom 无布局，只能在真浏览器里验）
+  'function geo(){var b=document.getElementById("board");var els=b.querySelectorAll(".tile");' +
+  'var bad=0,out=[];var sw=state.stepX,sy=state.stepY;' +
+  'for(var i=0;i<state.board.cells.length;i++){var t=state.board.cells[i];if(!t)continue;' +
+  'var e=b.querySelector(".tile[data-uid=\\""+t.uid+"\\"]");' +
+  'if(!e){bad++;out.push("missing@"+i);continue;}' +
+  'var r=e.getBoundingClientRect();var br=b.getBoundingClientRect();' +
+  'var expX=br.left+((i%state.cols)*sw/100)*r.width;var expY=br.top+(Math.floor(i/state.cols)*sy/100)*r.height;' +
+  'if(Math.abs(r.width-state.tileW)>1.5)bad++;' +
+  'if(Math.abs(r.height-state.tileH)>1.5)bad++;' +
+  'if(Math.abs(r.left-expX)>2)bad++;' +
+  'if(Math.abs(r.top-expY)>2)bad++;}' +
+  'return {tiles:els.length,live:state.board.cells.filter(function(x){return !!x;}).length,' +
+  'bad:bad,bw:Math.round(b.getBoundingClientRect().width),bh:Math.round(b.getBoundingClientRect().height),' +
+  'tileW:state.tileW,tileH:state.tileH,cols:state.cols,rows:state.rows,stepX:Math.round(sw*100)/100,stepY:Math.round(sy*100)/100,' +
+  'inner:(function(){var n=0;for(var i=0;i<els.length;i++){var r=els[i].getBoundingClientRect();' +
+  'if(r.left<br.left-1||r.right>br.right+1||r.top<br.top-1||r.bottom>br.bottom+1)n++;}return n;})()' +
+  '};}' +
+  'function probe(o){document.body.setAttribute("data-probe",JSON.stringify(o));}' +
   'setTimeout(function(){try{' +
-  'if(q.indexOf("vt=game10")>-1){showScreen("game");startLevel(10);closeGuide();}' +
-  'else if(q.indexOf("vt=card")>-1){showScreen("game");startLevel(3);closeGuide();' +
-  'setTimeout(function(){try{showCard("letter_03");}catch(e){}},8800);}' +
-  'else if(q.indexOf("vt=result")>-1){showScreen("game");startLevel(10);closeGuide();finishLevel();' +
-  'setTimeout(function(){try{var b=document.getElementById("bless-name");if(b)b.value="卓玛";generateBlessing();}catch(e){}},200);}' +
-  // D32 对比度核验：补进度走 onLevelComplete 真实发证 → 证书页（宣纸米卡次级灰墨 + 档位色）
-  'else if(q.indexOf("vt=cert")>-1){' +
-  'var pc=getProgress();for(var L1=1;L1<=10;L1++){if(pc.completedLevels.indexOf(L1)===-1)pc.completedLevels.push(L1);pc.levelStats[L1]={bestAcc:1,clean:true,plays:1,lastAcc:1};}pc.unlockedLevel=10;saveProgress(pc);' +
-  'onLevelComplete(10,{matches:8,attempts:8});showScreen("cert");showCert(1);}' +
-  // D32 对比度核验：文化护照页（揭示图鉴 + 唐卡格）
-  'else if(q.indexOf("vt=pp")>-1){' +
-  'var pd=getProgress();for(var L2=1;L2<=10;L2++){if(pd.completedLevels.indexOf(L2)===-1)pd.completedLevels.push(L2);pd.levelStats[L2]={bestAcc:1,clean:true,plays:1,lastAcc:1};}pd.unlockedLevel=10;saveProgress(pd);' +
-  'showScreen("passport");showPassport();}' +
-  // D32 对比度核验：首页天梯带进度（节点徽章 / 万家灯火按钮）
-  'else if(q.indexOf("vt=home")>-1){' +
-  'var ph=getProgress();for(var L3=1;L3<=6;L3++){if(ph.completedLevels.indexOf(L3)===-1)ph.completedLevels.push(L3);ph.levelStats[L3]={bestAcc:1,clean:true,plays:1,lastAcc:1};}ph.unlockedLevel=7;saveProgress(ph);renderHome();}' +
-  // 万家灯火：light 后立即进入并点亮（截图用；lampLit 必须先判断，避免被 lamp 子串截胡）
-  'else if(q.indexOf("vt=lampLit")>-1){showLampWindow();' +
-  'setTimeout(function(){try{document.getElementById("lamp-btn").click();}catch(e){}},120);}' +
-  'else if(q.indexOf("vt=lamp")>-1){showLampWindow();}' +
-  // 天梯入场：定格在「台阶依次浮现」的中段（截图用）
-  'else if(q.indexOf("vt=enter")>-1){' +
-  'LADDER_FIRST=true;renderHome();' +
-  'setTimeout(function(){try{' +
-  'var m=document.getElementById("vine-map");m.classList.add("in");' +
-  'var nd=document.querySelectorAll(".level-item.node");' +
-  'for(var i=0;i<nd.length;i++){nd[i].style.animationPlayState="paused";nd[i].style.animationDelay=(i<3?"-0.6s":i*0.055+"s");}' +
-  'm.style.animationDelay="-1.02s";m.style.animationPlayState="paused";' +
-  '}catch(e){}},420);}' +
-  // 通关返回：新台阶莲花绽放（定格在爆发中段）
-  'else if(q.indexOf("vt=bloom")>-1){' +
-  'renderHome();' +
-  'var p=getProgress();var max=0;p.completedLevels.forEach(function(n){if(n>max)max=n;});' +
-  'var nx=max+1>10?10:max+1;if(p.completedLevels.indexOf(nx)===-1)p.completedLevels.push(nx);' +
-  'p.unlockedLevel=nx;saveProgress(p);renderHome();' +
-  'setTimeout(function(){try{' +
-  'var r=document.querySelector(".node-bloom");if(r){r.style.animationPlayState="paused";r.style.animationDelay="-0.52s";}' +
-  'var d=document.querySelector(".node-deco.pop");if(d){d.style.animationPlayState="paused";d.style.animationDelay="-0.5s";}' +
-  'var m2=document.getElementById("vine-map");m2.style.animation="none";' +
-  'var nd2=document.querySelectorAll(".level-item.node");' +
-  'for(var j=0;j<nd2.length;j++){nd2[j].style.animation="none";}' +
-  '}catch(e){}},420);}' +
-  '}catch(e){document.title="ERR:"+e.message;}},150);})();</' + 'script>';
+  // 初始盘面（第 1 关 6×4）
+  'if(location.search.indexOf("vt=d33geo")>-1 && location.search.indexOf("vt=g10")===-1){showScreen("game");startLevel(1);closeGuide();' +
+  'setTimeout(function(){var g=geo();g.screen="L1-init";probe(g);},1500);}' +
+  // 第 10 关（6×8，最大盘面）→ 横向居中 + 48 张牌不错位
+  'else if(location.search.indexOf("vt=g10")>-1){showScreen("game");startLevel(10);closeGuide();' +
+  'setTimeout(function(){var g=geo();g.screen="L10-init";probe(g);},1500);}' +
+  // 消 4 对后（下落 + 补充都发生过）→ 几何仍成立 + 空格透出揭图
+  'else if(location.search.indexOf("vt=d33after")>-1){showScreen("game");startLevel(1);closeGuide();' +
+  'var k=0;var iv=setInterval(function(){var p=findPair();if(!p||k>=4){clearInterval(iv);}' +
+  'else{k++;clickUid(state.board.cells[p[0]].uid);setTimeout(function(){var q=state.board.cells[p[1]];if(q)clickUid(q.uid);},40);}' +
+  '},520);' +
+  'setTimeout(function(){var g=geo();g.screen="L1-after4";g.matched=state.matchedCount;' +
+  'g.poolLeft=(function(){var n=0;for(var kk in state.board.pool)n+=state.board.pool[kk];return n;})();' +
+  'g.revealPct=state.revealPct;g.spawned=document.querySelectorAll("#board .tile").length;probe(g);},4200);}' +
+  // 下落中途：放慢过渡到 8s，消一对，在 1.2s 处暂停动画 → 定格在「正在下落」
+  'else if(location.search.indexOf("vt=d33mid")>-1){showScreen("game");startLevel(1);closeGuide();' +
+  'var ss=document.createElement("style");' +
+  'ss.textContent="#board .tile{transition:transform 8s linear !important}";' +
+  'document.head.appendChild(ss);' +
+  'setTimeout(function(){var p=findPair();if(!p)return;' +
+  'clickUid(state.board.cells[p[0]].uid);' +
+  'setTimeout(function(){var q=state.board.cells[p[1]];if(q)clickUid(q.uid);' +
+  'setTimeout(function(){var an=document.getAnimations?document.getAnimations():[];' +
+  'for(var i=0;i<an.length;i++){try{an[i].pause();}catch(e){}}' +
+  'probe({screen:"L1-midfall",paused:an.length,matched:state.matchedCount});},1500);},60);},300);}' +
+  '}catch(e){document.body.setAttribute("data-probe","ERR:"+e.message);}},150);})();</' + 'script>';
+
 h = h.replace('</body>', s + '</body>');
 fs.writeFileSync('preview/play.html', h);
-console.log('multi-scenario injected');
+console.log('D33 probe injected');

@@ -144,23 +144,30 @@
   .game-body { flex: 1 1 auto; display: flex; align-items: center; justify-content: center; min-height: 300px; }
   #screen-game.active { display: flex; flex-direction: column; min-height: calc(100vh - 60px); }
   .board-wrap { position: relative; width: 100%; display: flex; justify-content: center; }
-  .board { display: grid; margin: 0 auto; }
-  /* 秘境揭图（D31）：垫在牌层之下的整幅图，格子清空即透出（与小程序 .reveal-img 同构） */
-  #board { position: relative; z-index: 1; }
+  .board { margin: 0 auto; }
+  /* 秘境揭图（D31）：垫在牌层之下的整幅图，某格清空过就永久透出（与小程序 .reveal-img 同构） */
+  /* D33：盘面不再是 grid —— 方块绝对定位，坐标由 transform: translate(%, %) 给出。
+     overflow:hidden 让补充牌在盘外上方时被裁掉，像从边框里滑出来。 */
+  #board { position: relative; z-index: 1; overflow: hidden; border-radius: 10px; }
   .reveal-img { position: absolute; display: none; border-radius: 10px; pointer-events: none; }
   .reveal-cap { margin-top: 8px; text-align: center; font-size: 12px; letter-spacing: 1px;
     color: #C9BFA8; text-shadow: 0 1px 3px rgba(0,0,0,.6); }
   .tile {
-    position: relative; background: #fff; border: 2px solid var(--line); border-radius: 12px;
-    height: var(--tileH, 52px);
+    position: absolute; left: 0; top: 0;
+    background: #fff; border: 2px solid var(--line); border-radius: 12px;
+    width: var(--tileW, 46px); height: var(--tileH, 52px);
     display: flex; align-items: center; justify-content: center;
     cursor: pointer; overflow: hidden;
-    transition: transform .2s ease, opacity .2s ease, border-color .15s, background .2s;
+    /* 下落/补充的缓动带轻微过冲（1.16）→ 落到位时弹一下 */
+    transition: transform .3s cubic-bezier(.34,1.16,.64,1), opacity .18s ease, border-color .15s, background .2s;
+    will-change: transform;
   }
+  /* 补充牌首帧停在盘外上方且透明，下一帧落到位置 → 「从顶上掉下来」 */
+  .tile.fresh { opacity: 0; }
   .tile.selected { border-color: currentColor; box-shadow: 0 0 0 3px rgba(192,57,43,.10) inset; }
-  .tile.removing { transform: scale(.2); opacity: 0; }
-  .tile.removed { visibility: hidden; pointer-events: none; }
-  .tile.shake { animation: shake .42s ease; }
+  /* ⚠️ 抖动/消除动画一律作用在内层 .piece 上：.tile 的 transform 已被用作定位
+     （translate(tx%, ty%)），在 .tile 上写 transform 会让牌瞬间跳到盘面左上角 */
+  .tile.shake .piece { animation: shake .42s ease; }
   @keyframes shake {
     0%, 100% { transform: translateX(0); }
     20% { transform: translateX(-4px); } 40% { transform: translateX(4px); }
@@ -1120,7 +1127,7 @@
         <div class="combo-pill" id="status-combo">已消除 0/0 对</div>
       </div>
     </div>
-    <div class="game-body">
+    <div class="game-body" id="game-body">
       <div class="board-panel">
         <div class="board-outline">
           <div class="board-wrap" id="board-wrap">
@@ -1339,6 +1346,8 @@ CARDS.forEach(function (c) { CARD_BY_ID[c.id] = c; });
 
 const TIB_FONT = '"Noto Serif Tibetan","Microsoft Himalaya","Jomolhari","Kailasa",serif';
 const CARD_AUTO_MS = 5200;   // 文化卡自动收起时长
+// D33 下落式盘面：与 pages/game/game.js 的 SHATTER_MS 同值（碎裂动画 0.34s，留满再结算下落）
+const SHATTER_MS = 340;
 
 /* ---------------- 存储（对应 utils/storage.js） ---------------- */
 const SKEY = 'zangzi_progress';
@@ -1949,14 +1958,24 @@ const GUIDE = [
 ];
 
 const state = {
-  level: 1, cols: 6, rows: 4, tiles: [],
-  firstIndex: -1, matchedCount: 0, score: 0, combo: 0,
-  pendingRemove: [], locked: false, goldenId: null, guideStep: 0,
+  level: 1, cols: 6, rows: 4, tiles: [], board: null,
+  // ★ 配对按 uid 记，不按格号：牌会在下落中换格。
+  //   - firstUid：选中态跟着牌走（按格号记会把「选中」留在换下来的另一张牌上）
+  //   - removeQueue 里也存 uid：排队期间前面的下落已改变格号，格号到结算时就过期了
+  firstUid: null,
+  matchedCount: 0, score: 0, combo: 0,
+  // D33 下落式补充：removeQueue 逐对结算（连点不阻塞），freed 记录「曾清空过的格」，
+  // stepX/stepY 是 translate 的百分比步进（相对牌自身尺寸，所以不必写 px/rpx 单位）
+  removeQueue: [], draining: false, freed: [], fresh: {}, stepX: 100, stepY: 100,
+  // finished：通关只结算一次（连点时最后一对可能先于队列排空完成任务，必须去重）
+  finished: false,
+  screenToken: 0,       // 换屏计数器：作废「通关后延迟切结算页」这类待执行的跳转
+  locked: false, goldenId: null, guideStep: 0,
   collected: [], maxCombo: 0,
   pronounceCount: 0, lastPronounced: null,  // 朗读次数/最近朗读元素（供自动化测试断言）
   attempts: 0, matches: 0, misses: 0,       // 正确率统计（证书质量门槛）
   vibrateCount: 0,                          // 震动次数（情绪引擎，测试断言用）
-  // 障碍物（PRD 3.1）：冰霜 / 藏式木箱
+  // 障碍物（PRD 3.1）：冰霜 / 藏式木箱 —— 遮挡是**牌**的属性，随牌下落
   frostTotal: 0, crateTotal: 0, brokenCount: 0, cardId: null,
   speakLog: [],                             // 语音播放记录（tashi_delek / blessing_01）
   fxCount: 0,                               // 通关粒子数
@@ -1971,6 +1990,8 @@ const $ = function (id) { return document.getElementById(id); };
 
 /* ---------------- 屏幕切换 ---------------- */
 function showScreen(name) {
+  // 每次换屏都推进 token：用来作废「通关后延迟 1.2s 才切结算页」这类待执行的跳转
+  state.screenToken = (state.screenToken || 0) + 1;
   ['home', 'game', 'result', 'cert', 'passport', 'benefits'].forEach(function (n) {
     $('screen-' + n).classList.toggle('active', n === name);
   });
@@ -2604,18 +2625,223 @@ function renderHome() {
 }
 
 /* ---------------- 开始关卡 ---------------- */
+/* ---------------- 盘面模型（与 utils/board.js 同契约，体验版镜像 · D33） ----------------
+   初始铺满 cols×rows（开局无空洞 → 揭图从 0% 起步），其余牌进补充池；
+   消除后列内向下压缩、顶部从池补一对同元素的牌；池空后盘面收缩到空 → 通关。
+   不变量：盘面每种元素张数恒为偶数、池余量恒为偶数（零死局）、列内恒「上空下满」（无悬空牌）。 */
+const POOL_DIV = 4;
+function boardSum(o) { let s = 0; for (const k in o) if (Object.prototype.hasOwnProperty.call(o, k)) s += o[k]; return s; }
+function boardPoolSize(cols, rows) { return Math.max(2, Math.ceil(cols * rows / POOL_DIV / 2) * 2); }
+function boardPlanCounts(cfg) {
+  const ids = cfg.elements.map(function (e) { return e[0]; });
+  const quota = {}; let total = 0;
+  cfg.elements.forEach(function (e) { quota[e[0]] = e[1]; total += e[1]; });
+  const slots = cfg.cols * cfg.rows;
+  const give = {};
+  ids.forEach(function (id) { give[id] = 0; });
+  const baseBudget = Math.min(slots, 2 * ids.length);
+  ids.slice().sort(function (a, b) { return (quota[b] - quota[a]) || (ids.indexOf(a) - ids.indexOf(b)); })
+    .forEach(function (id) {
+      if (quota[id] < 2) return;
+      if (boardSum(give) + 2 > baseBudget) return;
+      give[id] = 2;
+    });
+  let guard = 0;
+  while (boardSum(give) + 2 <= slots && guard++ < 100000) {
+    let best = null;
+    ids.forEach(function (id) {
+      const room = quota[id] - give[id];
+      if (room < 2) return;
+      if (best === null) { best = id; return; }
+      const bRoom = quota[best] - give[best];
+      if (room > bRoom || (room === bRoom && give[id] < give[best])) best = id;
+    });
+    if (best === null) break;
+    give[best] += 2;
+  }
+  const pool = {};
+  ids.forEach(function (id) { pool[id] = quota[id] - give[id]; });
+  return { ids: ids, quota: quota, total: total, slots: slots, give: give, pool: pool };
+}
+function boardCreateLevel(cfg, create) {
+  const plan = boardPlanCounts(cfg);
+  const bag = [];
+  plan.ids.forEach(function (id) { for (let k = 0; k < plan.give[id]; k++) bag.push(id); });
+  for (let i = bag.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = bag[i]; bag[i] = bag[j]; bag[j] = tmp;
+  }
+  let uid = 1;
+  const cells = bag.map(function (id) { return create(id, uid++); });
+  while (cells.length < plan.slots) cells.push(null);
+  return { cols: cfg.cols, rows: cfg.rows, total: plan.total, slots: plan.slots,
+    pool: plan.pool, cells: cells, nextUid: uid, spent: 0 };
+}
+function boardColumnHeight(cells, cols, rows, c) {
+  let n = 0;
+  for (let r = 0; r < rows; r++) if (cells[r * cols + c]) n++;
+  return n;
+}
+function boardRefillColumns(cells, cols, rows, removedIndexes, n) {
+  const out = [], used = {}, first = [];
+  (removedIndexes || []).forEach(function (i) {
+    const c = i % cols;
+    if (first.indexOf(c) === -1) first.push(c);
+  });
+  first.sort(function (a, b) { return a - b; });
+  first.forEach(function (c) {
+    if (out.length >= n) return;
+    if (boardColumnHeight(cells, cols, rows, c) >= rows) return;   // 该列已满，没有空位
+    out.push(c); used[c] = 1;
+  });
+  while (out.length < n) {
+    let best = -1, bestH = Infinity;
+    for (let c = 0; c < cols; c++) {
+      if (used[c]) continue;
+      const h = boardColumnHeight(cells, cols, rows, c);
+      if (h >= rows) continue;
+      if (h < bestH) { bestH = h; best = c; }
+    }
+    if (best < 0) break;
+    out.push(best); used[best] = 1;
+  }
+  return out;
+}
+/* 规划「这 n 张补充牌分别落在哪个格号」——必须先整体规划再落子。
+   为什么不能边落边算：一对牌偶尔会竖着落在同一列（配对是任意两张同 id，没有相邻要求）。
+   此时「被消的列」只有 1 个，若按「take=2 但只有 1 列可用」硬落，只会落 1 张、池里却少 1 张
+   → 池余量变奇数 → **偶不变被打破 → 盘面出现零死局**（与 utils/board.js 同契约）。 */
+function boardPlanRefillCells(cells, cols, rows, removedIndexes, n) {
+  const order = boardRefillColumns(cells, cols, rows, removedIndexes, cols);
+  const out = [];
+  const perCol = {};
+  let guard = 0;
+  // 第一轮：每列放 1 张（尽量分开放）；第二轮：只有一列有空位时回到该列叠第 2 张
+  while (out.length < n && guard++ < cols * 2 + 4) {
+    let progressed = false;
+    for (let oi = 0; oi < order.length && out.length < n; oi++) {
+      const c = order[oi];
+      const used = perCol[c] || 0;
+      if (used >= 2) continue;
+      const row = rows - boardColumnHeight(cells, cols, rows, c) - 1;
+      if (row < 0) continue;
+      const gi = row * cols + c;
+      out.push(gi);
+      perCol[c] = used + 1;
+      cells[gi] = { id: '__pending__', uid: -1 };   // 占位，仅供高度计算
+      progressed = true;
+    }
+    if (!progressed) break;
+  }
+  out.forEach(function (gi) { cells[gi] = null; });
+  return out;
+}
+function boardCollapse(st, removedIndexes, create) {
+  const cols = st.cols, rows = st.rows;
+  const cells = st.cells.slice();
+  const pool = {};
+  for (const k in st.pool) if (Object.prototype.hasOwnProperty.call(st.pool, k)) pool[k] = st.pool[k];
+  let nextUid = st.nextUid;
+  const removed = (removedIndexes || []).slice();
+  removed.forEach(function (i) { cells[i] = null; });
+  const drops = [];
+  // ① 列内向下压缩
+  for (let c = 0; c < cols; c++) {
+    const stack = [];
+    for (let r = rows - 1; r >= 0; r--) {
+      const idx = r * cols + c;
+      if (cells[idx]) stack.push({ tile: cells[idx], from: r });
+    }
+    for (let t = 0; t < rows; t++) cells[t * cols + c] = null;
+    for (let s = 0; s < stack.length; s++) {
+      const to = rows - 1 - s;
+      cells[to * cols + c] = stack[s].tile;
+      if (to !== stack[s].from) drops.push({ index: to * cols + c, drop: to - stack[s].from });
+    }
+  }
+  // ② 从池补充：整对取、整对落（池里每种元素的余量恒为偶数，一次 2 张同 id 才维持得住）
+  const spawned = [];
+  const landings = boardPlanRefillCells(cells, cols, rows, removed, removed.length);
+  if (landings.length === removed.length) {
+    const ids = Object.keys(pool).filter(function (k) { return pool[k] >= 2; });
+    if (ids.length) {
+      const pickId = ids[Math.floor(Math.random() * ids.length)];
+      for (let h = 0; h < landings.length; h++) {
+        const gi = landings[h];
+        const tile = create(pickId, nextUid++);
+        cells[gi] = tile;
+        pool[pickId] -= 1;
+        drops.push({ index: gi, drop: Math.floor(gi / cols) + 1 });
+        spawned.push({ index: gi, id: pickId, uid: tile.uid });
+      }
+    }
+  }
+  // landings 不足（理论上不会发生：刚空出 2 格）：本回合不补，池保持偶数、盘面自行收缩
+  // ③ 防御性检查：列内不得出现悬空牌（重力向下 → 合法形态是「上空下满」）。
+  //    与 utils/board.js 的 collapse 同契约，正常流程恒为空。
+  const floating = [];
+  for (let cc = 0; cc < cols; cc++) {
+    let seenFilled = false;
+    for (let rr = 0; rr < rows; rr++) {
+      const ii = rr * cols + cc;
+      if (cells[ii]) seenFilled = true;
+      else if (seenFilled) floating.push(ii);
+    }
+  }
+  return { cols: cols, rows: rows, total: st.total, slots: st.slots, cells: cells, pool: pool,
+    nextUid: nextUid, spent: (st.spent || 0) + removed.length,
+    drops: drops, spawned: spawned, removed: removed, floating: floating };
+}
+function boardCountTiles(cells) {
+  let n = 0;
+  for (let i = 0; i < cells.length; i++) if (cells[i]) n++;
+  return n;
+}
+/* 造一张牌（含全部显示字段）。盘面模型只负责把它在格与格之间搬运。 */
+let occCount = {};   // 精灵表帧计数：同字母第 n 次出现 → 帧 floor(n/2)%4
+function makeTile(id, uid) {
+  const el = ELEMENTS[id];
+  const t = {
+    uid: uid, id: id, type: el.type,
+    tibetan: el.tibetan || '', color: el.color,
+    fallbackText: el.char || '',
+    golden: id === state.goldenId,
+    pieceStyle: pieceStyle(el.color),
+    frost: false, crate: 0, shatter: false, state: 'idle'
+  };
+  if (SPRITE_LETTERS[id]) {
+    const occ = occCount[id] || 0;
+    occCount[id] = occ + 1;
+    t.sprite = SPRITE_LETTERS[id];
+    t.variant = Math.floor(occ / 2) % 4;
+    t.pieceStyle = ''; // 质感烘在帧里，不用 CSS 渐变
+  }
+  return t;
+}
+/* 揭图透出格数：被消除过的格 + 当前仍为空的格（只增不减） */
+function freedPct() {
+  if (!state.board) return 0;
+  let n = 0;
+  for (let i = 0; i < state.freed.length; i++) if (state.freed[i]) n++;
+  return Math.round(n * 100 / state.board.slots);
+}
+function totalPairs() { return state.board ? state.board.total / 2 : 0; }
+
 function startLevel(level) {
   const cfg = LEVELS[level - 1];
   if (!cfg) return;
   state.level = level;
   state.cols = cfg.cols;
   state.rows = cfg.rows;
-  state.firstIndex = -1;
+  state.firstUid = null;
   state.matchedCount = 0;
   state.score = 0;
   state.combo = 0;
   state.maxCombo = 0;
-  state.pendingRemove = [];
+  state.removeQueue = [];
+  state.draining = false;
+  state.finished = false;
+  state.fresh = {};
   state.locked = false;
   state.collected = [];
   state.attempts = 0;
@@ -2627,52 +2853,32 @@ function startLevel(level) {
   state.revealPct = 0;
   updateRevealCap();
 
-  // 牌池 + Fisher-Yates 洗牌
-  const pool = [];
-  cfg.elements.forEach(function (pair) {
-    for (let k = 0; k < pair[1]; k++) pool.push(pair[0]);
-  });
-  for (let i = pool.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    const tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp;
-  }
-  const occCount = {}; // 精灵表配对同色计数：同字母第 n 次出现 → 帧 floor(n/2)%4
-  state.tiles = pool.map(function (id, idx) {
-    const el = ELEMENTS[id];
-    const t = {
-      uid: idx, id: id, type: el.type,
-      tibetan: el.tibetan || '', color: el.color,
-      fallbackText: el.char || '',
-      golden: id === state.goldenId,
-      pieceStyle: pieceStyle(el.color),
-      frost: false, crate: 0, blocked: false, shatter: false,
-      state: 'idle'
-    };
-    // 精灵表字母（试点 ཀ）：成对同色帧（同字母第 1、2 张同帧，第 3、4 张同帧……）
-    if (SPRITE_LETTERS[id]) {
-      const occ = occCount[id] || 0;
-      occCount[id] = occ + 1;
-      t.sprite = SPRITE_LETTERS[id];
-      t.variant = Math.floor(occ / 2) % 4;
-      t.pieceStyle = ''; // 质感烘在帧里，不用 CSS 渐变
-    }
-    return t;
-  });
-  // 障碍物布点（冰霜 / 藏式木箱）
-  planOverlays(cfg, pool).forEach(function (o) {
-    const t = state.tiles[o.index];
+  // D33 盘面：初始铺满 cols×rows（开局无空洞），其余牌进补充池
+  occCount = {};
+  state.board = boardCreateLevel(cfg, makeTile);
+  state.tiles = state.board.cells;
+  // 揭图透出标记：本关所有格开局都给牌，所以一格都没透出
+  state.freed = [];
+  for (let i = 0; i < state.board.slots; i++) state.freed.push(false);
+
+  // 障碍物布点（冰霜 / 藏式木箱）：入参用初始盘面的元素列表（满铺，长度 = 格数）
+  planOverlays(cfg, state.board.cells.map(function (t) { return t ? t.id : null; })).forEach(function (o) {
+    const t = state.board.cells[o.index];
     if (!t) return;
     if (o.kind === 'frost') t.frost = true; else t.crate = o.hp;
-    t.blocked = true;
   });
-  state.frostTotal = state.tiles.filter(function (t) { return t.frost; }).length;
-  state.crateTotal = state.tiles.filter(function (t) { return t.crate > 0; }).length;
+  state.frostTotal = state.board.cells.filter(function (t) { return t && t.frost; }).length;
+  state.crateTotal = state.board.cells.filter(function (t) { return t && t.crate > 0; }).length;
   state.brokenCount = 0;
 
   $('status-mid').textContent = '第 ' + level + ' 关';
-  renderBoard();
+  layoutBoard();
+  renderBoard({ phase: 'settle' });
   updateHud();
   showScreen('game');
+  // ⚠️ 必须换屏后再量一次：上面 layoutBoard() 执行时游戏页还是 display:none，
+  //    clientWidth = 0 → 牌宽会掉到 30px 下限。换屏后的下一帧才有真实宽度。
+  nextFrame(layoutBoard);
 
   if (!isOnboardDone()) {
     state.guideStep = 1;
@@ -2682,35 +2888,65 @@ function startLevel(level) {
 
 function updateHud() {
   $('status-score').textContent = state.score;
-  $('status-combo').textContent = '已消除 ' + state.matchedCount + '/' + (state.tiles.length / 2) + ' 对';
+  $('status-combo').textContent = '已消除 ' + state.matchedCount + '/' + totalPairs() + ' 对';
 }
 
 /* ---------------- 盘面布局：全关卡统一牌面尺寸 ----------------
    以 8 列为基准计算牌宽，各关只改变牌的数量，盘面居中。
-   这样第 1 关（6×4）和第 10 关（6×8）的牌一样大，观感统一。 */
+   这样第 1 关（6×4）和第 10 关（6×8）的牌一样大，观感统一。
+   D33：盘面改绝对定位。方块位置 = transform: translate(tx%, ty%)，
+   百分比相对元素自身宽高 → 同一份坐标字符串在小程序（rpx）与浏览器（px）两端都成立。 */
 const REF_COLS = 8;
 function layoutBoard() {
   const wrap = $('board-wrap');
-  if (!wrap) return;
-  const availW = wrap.clientWidth - 2 * 10 - 4;   // outline padding + border
+  const board = $('board');
+  if (!wrap || !board) return;
+  // ⚠️ 量的是 .game-body（不依赖牌宽），不是 #board-wrap：
+  //    .board-panel 在行向 flex 里是「按内容收缩」的，它的宽度由 #board 决定，
+  //    而 #board 的宽度又由这里算出来 → 量 wrap.clientWidth 会自我锁死在最小牌宽。
+  //    （旧实现就是这个毛病：浏览器体验版盘面一直停在 30px 下限。2026-10-06 查实并修）
+  const host = $('game-body');
+  const meas = (host && host.clientWidth) ? host.clientWidth : wrap.clientWidth;
+  const availW = meas - 2 * 10 - 4;               // outline padding + border
   const gap = 7;                                  // 固定间距：各关牌面尺寸完全一致
   const tile = Math.max(30, Math.floor((availW - gap * (REF_COLS - 1)) / REF_COLS));
   const tileH = Math.round(tile * 1.2);
 
-  const board = $('board');
-  board.style.gridTemplateColumns = 'repeat(' + state.cols + ', ' + tile + 'px)';
-  board.style.gap = gap + 'px';
-  board.style.width = (state.cols * tile + (state.cols - 1) * gap) + 'px';
-  board.style.setProperty('--tileH', tileH + 'px');
   state.tileW = tile;
   state.tileH = tileH;
   state.gap = gap;
+  state.glyphSize = Math.round(tile * 0.62);
+  // 位置步进（% of 元素自身宽高）：行列号 × step = 该牌要走的百分比位移
+  state.stepX = (tile + gap) / tile * 100;
+  state.stepY = (tileH + gap) / tileH * 100;
 
-  const glyphs = document.querySelectorAll('#board .glyph');
-  const gsize = Math.round(tile * 0.62);
-  glyphs.forEach(function (g) { g.style.fontSize = gsize + 'px'; });
+  board.style.setProperty('--tileW', tile + 'px');
+  board.style.setProperty('--tileH', tileH + 'px');
+  board.style.width = (state.cols * tile + (state.cols - 1) * gap) + 'px';
+  board.style.height = (state.rows * tileH + (state.rows - 1) * gap) + 'px';
 
+  board.querySelectorAll('.glyph').forEach(function (g) { g.style.fontSize = state.glyphSize + 'px'; });
+
+  layoutPieces();
   syncRevealBox();
+}
+
+/* 只改坐标、不动 DOM：牌的下落/换位全部交给 .tile 的 transition */
+function layoutPieces() {
+  const st = state.board;
+  if (!st) return;
+  for (let i = 0; i < st.cells.length; i++) {
+    const t = st.cells[i];
+    if (!t) continue;
+    const d = tileEls[t.uid];
+    if (d) setTilePos(d, i, st.cols);
+  }
+}
+
+function round2(n) { return Math.round(n * 100) / 100; }
+function setTilePos(d, index, cols) {
+  d.style.transform = 'translate(' + round2((index % cols) * state.stepX) + '%, ' +
+    round2(Math.floor(index / cols) * state.stepY) + '%)';
 }
 
 /* 秘境揭图（D31）：把揭示图精确对齐到牌区（消除格挡牌即透出） */
@@ -2727,59 +2963,145 @@ function syncRevealBox() {
   img.style.height = board.offsetHeight + 'px';
 }
 
-/* 揭图进度：只报百分比，不剧透名字（名字在通关揭晓时才出现） */
+/* 揭图进度（D33 改口径）：报的是「多少格曾经清空过」而不是「消了多少对」。
+   有补充牌后盘面不再全空，但一格只要清空过就永久透出 → 通关时仍是整幅揭晓（只增不减）。 */
 function updateRevealCap() {
   const cap = $('reveal-cap');
   if (!cap) return;
   if (!state.reveal) { cap.textContent = ''; return; }
-  state.revealPct = Math.round(state.matchedCount * 100 / (state.tiles.length / 2));
+  state.revealPct = freedPct();
   cap.textContent = '秘境图 · 已揭开 ' + state.revealPct + '%';
 }
 
-function renderBoard() {
-  const board = $('board');
-  board.innerHTML = '';
-
-  state.tiles.forEach(function (t, idx) {
-    const d = document.createElement('div');
-    d.className = 'tile' + (t.golden ? ' golden' : '') + (t.blocked ? ' blocked' : '') + (t.state !== 'idle' ? ' ' + t.state : '');
-    d.style.color = t.color;
-    d.dataset.index = idx;
-
-    // 第四层：3D 凸起方块容器（渐变/投影由内联样式给出；精灵表字母用帧图取代渐变）
-    let inner = '<div class="piece' + (t.sprite ? ' ka-sprite-piece' : '') + '" style="' + t.pieceStyle + '">';
-    if (t.sprite) {
-      inner += '<div class="ka-sprite ka-v' + t.variant + '"><img src="' + IMAGES.spriteKa + '" alt=""></div>';
-    } else if (t.type === 'letter') {
-      inner += '<span class="glyph tib">' + t.tibetan + '</span>';
-    } else {
-      inner += '<img class="icon-img" src="' + tileIconDataUrl(t.id, t.golden) + '" alt="">';
-    }
-    if (t.golden) inner += '<span class="star">✦</span>';
-    // 破碎粒子（消除瞬间播放）
-    if (t.shatter) {
-      inner += '<div class="bits">' + BIT_SLOTS.map(function (b) { return '<i class="bit ' + b + '"></i>'; }).join('') + '</div>';
-    }
-    inner += '</div>';
-    if (t.frost) inner += '<div class="frost">❄</div>';
-    if (t.crate > 0) inner += '<div class="crate">' + t.crate + '</div>';
-    d.innerHTML = inner;
-
-    d.addEventListener('click', function () { onTapTile(idx); });
-    board.appendChild(d);
-  });
-  layoutBoard();
-  window.requestAnimationFrame(layoutBoard);
+/* ---------------- 出图：按牌 uid 增量更新 ----------------
+   D33 关键：**不再 innerHTML 全清重建**。牌会下落换格，若每次重建成新节点，
+   CSS transition 的起始位置就丢了（动画直接跳变）。所以按 uid 缓存节点
+   （对应小程序 wx:key="uid"），只改 transform / class，内容变了才重建 innerHTML。 */
+const tileEls = {};        // uid → DOM 节点
+function tileInner(t) {
+  let inner = '<div class="piece' + (t.sprite ? ' ka-sprite-piece' : '') + '" style="' + t.pieceStyle + '">';
+  if (t.sprite) {
+    inner += '<div class="ka-sprite ka-v' + t.variant + '"><img src="' + IMAGES.spriteKa + '" alt=""></div>';
+  } else if (t.type === 'letter') {
+    inner += '<span class="glyph tib">' + t.tibetan + '</span>';
+  } else {
+    inner += '<img class="icon-img" src="' + tileIconDataUrl(t.id, t.golden) + '" alt="">';
+  }
+  if (t.golden) inner += '<span class="star">✦</span>';
+  // 破碎粒子（消除瞬间播放）
+  if (t.shatter) {
+    inner += '<div class="bits">' + BIT_SLOTS.map(function (b) { return '<i class="bit ' + b + '"></i>'; }).join('') + '</div>';
+  }
+  inner += '</div>';
+  if (t.frost) inner += '<div class="frost">❄</div>';
+  if (t.crate > 0) inner += '<div class="crate">' + t.crate + '</div>';
+  return inner;
 }
+/* 内容指纹：只有它变了才重建 innerHTML（位置/选中/抖动走热路径） */
+function tileSig(t) {
+  return t.id + '|' + (t.sprite || '') + '|' + (t.variant == null ? '' : t.variant) + '|' +
+    (t.golden ? 1 : 0) + '|' + (t.frost ? 1 : 0) + '|' + (t.crate || 0) + '|' + (t.shatter ? 1 : 0);
+}
+function tileClass(t, fresh) {
+  return 'tile' + (t.golden ? ' golden' : '') + (t.blocked ? ' blocked' : '') +
+    (t.state && t.state !== 'idle' ? ' ' + t.state : '') + (fresh ? ' fresh' : '');
+}
+function ensureTile(t) {
+  let d = tileEls[t.uid];
+  if (d) return d;
+  d = document.createElement('div');
+  d.dataset.uid = t.uid;
+  d.innerHTML = tileInner(t);
+  d._sig = tileSig(t);
+  tileEls[t.uid] = d;
+  $('board').appendChild(d);
+  return d;
+}
+
+/* phase='settle' 一次到位；phase='in' 让补充牌停在盘外上方 + 透明（首帧），
+   下一帧再 'settle' 落到位置 → 于是「从顶上掉下来」。 */
+function renderBoard(opts) {
+  const board = $('board');
+  const st = state.board;
+  if (!board || !st) return;
+  const phase = (opts && opts.phase) || 'settle';
+  const fresh = state.fresh || {};
+  const live = {};
+  for (let i = 0; i < st.cells.length; i++) {
+    const t = st.cells[i];
+    if (!t) continue;
+    live[t.uid] = 1;
+    const d = ensureTile(t);
+    const sig = tileSig(t);
+    if (d._sig !== sig) { d.innerHTML = tileInner(t); d._sig = sig; }
+    d.style.color = t.color;
+    d.className = tileClass(t, phase === 'in' && !!fresh[t.uid]);
+    const row = Math.floor(i / st.cols);
+    const dropRows = fresh[t.uid] || 0;
+    // phase='in'：补充牌从盘面上方 dropRows 格处出发
+    const ty = (phase === 'in' && dropRows) ? (row - dropRows) * state.stepY : row * state.stepY;
+    d.style.transform = 'translate(' + round2((i % st.cols) * state.stepX) + '%, ' + round2(ty) + '%)';
+  }
+  // 已从盘面移除的牌：节点一并撤掉（碎裂动画此时已播完）
+  Object.keys(tileEls).forEach(function (uid) {
+    if (live[uid]) return;
+    const d = tileEls[uid];
+    if (d && d.parentNode) d.parentNode.removeChild(d);
+    delete tileEls[uid];
+  });
+  board.querySelectorAll('.glyph').forEach(function (g) { g.style.fontSize = state.glyphSize + 'px'; });
+}
+
+/* 双 rAF：保证 'in' 那一帧真的被浏览器画过，下一帧改坐标才会触发 transition */
+function nextFrame(fn) {
+  window.requestAnimationFrame(function () { window.requestAnimationFrame(fn); });
+}
+
+/* 盘面变化后统一出图：有补充牌就分两帧（先盘外、再落下），否则一次到位 */
+function showBoard(freshMap) {
+  state.fresh = freshMap || {};
+  if (!Object.keys(state.fresh).length) { renderBoard({ phase: 'settle' }); return; }
+  renderBoard({ phase: 'in' });
+  nextFrame(function () {
+    state.fresh = {};
+    renderBoard({ phase: 'settle' });
+  });
+}
+
 window.addEventListener('resize', function () {
   if ($('screen-game').classList.contains('active')) layoutBoard();
 });
 
-/* ---------------- 点击逻辑（对应 game.js onTapTile） ---------------- */
+/* ---------------- 点击逻辑（对应 game.js onTapTile） ----------------
+   D33：盘面改绝对定位后牌会换格，所以点击用**事件委托**绑在盘面上一次，
+   再用 uid 反查当前格号 —— 不能把 idx 写死在节点上（牌一落就错位）。 */
+$('board').addEventListener('click', function (e) {
+  const d = e.target && e.target.closest ? e.target.closest('.tile') : null;
+  if (!d || d.dataset.uid == null) return;
+  const idx = indexOfUid(d.dataset.uid);
+  if (idx >= 0) onTapTile(idx);
+});
+
+function indexOfUid(uid) {
+  const st = state.board;
+  if (!st) return -1;
+  for (let i = 0; i < st.cells.length; i++) {
+    const t = st.cells[i];
+    if (t && String(t.uid) === String(uid)) return i;
+  }
+  return -1;
+}
+
+/* 改牌状态并出图（state 存在牌对象上，跟着牌走） */
+function setTileState(tile, st) {
+  if (tile) tile.state = st;
+  renderBoard({ phase: 'settle' });
+}
+
 function onTapTile(idx) {
   if (state.locked) return;
-  const tile = state.tiles[idx];
-  if (!tile || tile.state === 'removed' || tile.state === 'removing') return;
+  const tile = state.board && state.board.cells[idx];
+  if (!tile || tile.state === 'removing') return;
 
   // 障碍物：冰霜/木箱罩住的牌不能直接点（不计入正确率、不惩罚）
   if (obsBlocked(tile)) {
@@ -2787,81 +3109,51 @@ function onTapTile(idx) {
     return;
   }
 
-  // 再点已选中的牌 → 取消选中
-  if (state.firstIndex === idx) {
-    state.firstIndex = -1;
-    updateTile(idx, 'idle');
+  // 再点已选中的那张牌 → 取消选中（按 uid 认牌，不按格号）
+  if (state.firstUid !== null && state.firstUid === tile.uid) {
+    state.firstUid = null;
+    setTileState(tile, 'idle');
     return;
   }
 
   audio.tap();
 
-  if (state.firstIndex === -1) {
-    state.firstIndex = idx;
-    updateTile(idx, 'selected');
+  if (state.firstUid === null) {
+    state.firstUid = tile.uid;
+    setTileState(tile, 'selected');
     return;
   }
 
-  const first = state.firstIndex;
-  const second = idx;
-  state.firstIndex = -1;
+  const first = indexOfUid(state.firstUid);
+  state.firstUid = null;
+  const a = first >= 0 ? state.board.cells[first] : null;
+  const b = tile;
+  if (!a || !b) { renderBoard({ phase: 'settle' }); return; }
 
   // 一次配对尝试（成功或失败都算）——正确率 = matches / attempts
   state.attempts++;
 
-  if (state.tiles[first].id === state.tiles[second].id) {
+  if (a.id === b.id) {
     state.matches++;
-    handleMatch(first, second);
+    handleMatch(first, idx);
   } else {
     state.misses++;
-    handleMismatch(first, second);
+    handleMismatch(first, idx);
   }
 }
 
-function updateTile(idx, st) {
-  state.tiles[idx].state = st;
-  const d = document.querySelector('#board .tile[data-index="' + idx + '"]');
-  if (!d) return;
-  d.classList.remove('selected', 'removing', 'removed', 'shake');
-  if (st !== 'idle') d.classList.add(st);
-  // 破碎粒子：进入 removing 时注入，落定/复位时移除
-  const piece = d.querySelector('.piece');
-  if (piece) {
-    let bits = piece.querySelector('.bits');
-    if (st === 'removing') {
-      if (!bits) {
-        bits = document.createElement('div');
-        bits.className = 'bits';
-        bits.innerHTML = BIT_SLOTS.map(function (b) { return '<i class="bit ' + b + '"></i>'; }).join('');
-        piece.appendChild(bits);
-      }
-    } else if (bits) {
-      bits.parentNode.removeChild(bits);
-    }
-  }
-  refreshOverlay(d, state.tiles[idx]);
-}
+/* 障碍物罩层不再单独刷新：罩层由牌的 frost / crate 字段直接渲染，
+   所以只要 renderBoard 一次，冰霜/木箱/blocked 都会跟着牌一起动。 */
 
-/* 障碍物罩层与 blocked 类随状态刷新 */
-function refreshOverlay(d, t) {
-  if (!d || !t) return;
-  let frost = d.querySelector('.frost');
-  let crate = d.querySelector('.crate');
-  if (t.frost) {
-    if (!frost) { frost = document.createElement('div'); frost.className = 'frost'; frost.textContent = '❄'; d.appendChild(frost); }
-  } else if (frost) { frost.parentNode.removeChild(frost); }
-  if (t.crate > 0) {
-    if (!crate) { crate = document.createElement('div'); crate.className = 'crate'; d.appendChild(crate); }
-    crate.textContent = t.crate;
-  } else if (crate) { crate.parentNode.removeChild(crate); }
-  d.classList.toggle('blocked', obsBlocked(t));
-}
-
-/* 冰霜/木箱轻提示（非阻塞，不计入正确率） */
+/* 冰霜/木箱轻提示（非阻塞，不计入正确率）。⚠️ 复位要认「牌对象」而不是「格号」——
+   420ms 内牌可能已经下落换格，按格号复位会把状态写错牌。 */
 function blockedTip(idx, tile) {
-  updateTile(idx, 'shake');
+  setTileState(tile, 'shake');
   showTip(tile.frost ? '❄ 这块被冰霜罩住了 · 先消除旁边的牌' : ('📦 藏式木箱还剩 ' + tile.crate + ' 次 · 消除旁边的牌来敲开'));
-  setTimeout(function () { updateTile(idx, 'idle'); }, 420);
+  setTimeout(function () {
+    if (tile.state !== 'shake') return;
+    setTileState(tile, 'idle');
+  }, 420);
 }
 
 /* 破冰 / 破箱浮字 */
@@ -2875,36 +3167,40 @@ function showBreakFx(label) {
 }
 
 function handleMatch(i, j) {
-  state.pendingRemove = [i, j];
+  const a = state.board.cells[i];
+  const b = state.board.cells[j];
+  if (!a || !b) return;
+
   state.matchedCount++;
   state.combo++;
   state.maxCombo = Math.max(state.maxCombo, state.combo);
   recordCombo(state.combo);
 
-  const golden = state.tiles[i].golden;
-  state.score += 10 * (golden ? 2 : 1) + 2 * (state.combo - 1);
+  state.score += 10 * (a.golden ? 2 : 1) + 2 * (state.combo - 1);
 
-  // 消除立即生效，不再锁定盘面——玩家可以无缝继续
-  updateTile(i, 'removing');
-  updateTile(j, 'removing');
+  // 碎裂动画：两张牌先转 removing + shatter，SHATTER_MS 后才真正从盘面移除
+  a.state = 'removing'; a.shatter = true;
+  b.state = 'removing'; b.shatter = true;
+
+  // 障碍物结算：相邻冰霜解冻、相邻木箱扣耐久（⚠️ resolveMatch 返回副本，必须写回真实牌对象）
+  const settled = obsResolve(state.board.cells, [i, j], state.board.cols, state.board.rows);
+  const labels = [];
+  (settled.changed || []).forEach(function (c) {
+    const t = state.board.cells[c.index];
+    if (!t) return;
+    if (c.kind === 'frost') t.frost = false; else t.crate = c.hp;
+    if (c.broken) { labels.push(c.kind === 'frost' ? '破冰！' : '木箱破开！'); state.brokenCount++; }
+  });
+
+  // 消除立即生效，不再锁定盘面——玩家可以无缝继续（连点也不阻塞，见 drainQueue）
+  renderBoard({ phase: 'settle' });
   updateHud();
   updateRevealCap();
 
   // 轻震动（PRD 3.2：消除 = 铜铃音 + 机身轻震）
   haptic();
 
-  // 障碍物结算：相邻冰霜解冻、相邻木箱扣耐久
-  const settled = obsResolve(state.tiles, [i, j], state.cols, state.rows);
-  if (settled.changed.length) {
-    state.tiles = settled.tiles;
-    const labels = [];
-    settled.changed.forEach(function (c) {
-      const d = document.querySelector('#board .tile[data-index="' + c.index + '"]');
-      refreshOverlay(d, state.tiles[c.index]);
-      if (c.broken) { labels.push(c.kind === 'frost' ? '破冰！' : '木箱破开！'); state.brokenCount++; }
-    });
-    if (labels.length) showBreakFx(labels[0]);
-  }
+  if (labels.length) showBreakFx(labels[0]);
 
   if (state.combo >= 2) {
     audio.combo(state.combo);
@@ -2917,7 +3213,7 @@ function handleMatch(i, j) {
     audio.match();
   }
 
-  const id = state.tiles[i].id;
+  const id = a.id;
   if (state.collected.indexOf(id) === -1) state.collected.push(id);
 
   const firstTime = !isCardSeen(id);
@@ -2928,42 +3224,62 @@ function handleMatch(i, j) {
   clearTimeout(state._voiceTimer);
   state._voiceTimer = setTimeout(function () { pronounce(id); }, 300);
 
-  setTimeout(function () { finalizeMatch(); }, 230);
+  // 下落结算排队（连点不阻塞：玩家可以在下落动画期间继续配对）
+  // ★ 入队的是 uid：排队期间盘面会因前面的下落而变化，格号到结算时就过期了
+  state.removeQueue.push([a.uid, b.uid]);
+  drainQueue();
+
   setTimeout(function () {
-    if (state.matchedCount === state.tiles.length / 2) return; // 通关瞬间不再弹卡/提示，直接进结算
+    if (state.matchedCount === totalPairs()) return; // 通关瞬间不再弹卡/提示，直接进结算
     if (firstTime) showCard(id); else showToast(id);
-  }, 300);
+  }, 340);
 }
 
-/* 消除落定：牌面转为 removed；若是最后一对则进入结算 */
-function finalizeMatch() {
-  const pr = state.pendingRemove;
-  state.pendingRemove = [];
-  if (pr.length === 2) {
-    updateTile(pr[0], 'removed');
-    updateTile(pr[1], 'removed');
-  }
-  if (state.matchedCount === state.tiles.length / 2) {
-    hideCard();
-    hideToast();
-    audio.win();
-    celebrate();
-    setTimeout(function () { speak('tashi_delek'); }, 350);   // 通关藏语：扎西德勒
-    setTimeout(finishLevel, 1200);                            // 让粒子先飘一会儿
-  }
+/* 逐对结算：碎裂动画 → 下落 + 补充 → 出图 → 判断通关 */
+function drainQueue() {
+  if (state.draining || !state.removeQueue.length) return;
+  state.draining = true;
+  const uids = state.removeQueue.shift();
+  setTimeout(function () {
+    // 结算时才把 uid 解析成格号：排队期间前面的下落已经把牌挪过位置了。
+    // 这两张牌一定还在盘面上（只有它们自己的结算才会移走它们），所以必然找得到。
+    const pair = [indexOfUid(uids[0]), indexOfUid(uids[1])];
+    if (pair[0] < 0 || pair[1] < 0) { state.draining = false; drainQueue(); return; }
+    const next = boardCollapse(state.board, pair, makeTile);
+    state.board = next;
+    state.tiles = next.cells;               // 兼容别名（board 每次下落都是新对象）
+    const fresh = {};
+    (next.spawned || []).forEach(function (s) {
+      fresh[s.uid] = Math.floor(s.index / next.cols) + 1;   // 从盘面上方几格落下
+    });
+    // 揭图透出：本对被消除的格 + 收缩后仍为空的格（牌堆退潮露出来的位置）；只增不减
+    pair.forEach(function (i2) { state.freed[i2] = true; });
+    next.cells.forEach(function (t, i2) { if (!t) state.freed[i2] = true; });
+
+    showBoard(fresh);
+    updateRevealCap();
+    state.draining = false;
+    // 通关判定必须等队列排空：连点时「最后一对」可能先于之前的对结算完成
+    if (state.matchedCount === totalPairs() && !state.removeQueue.length) finishLevel();
+    drainQueue();
+  }, SHATTER_MS);
 }
 
 function handleMismatch(i, j) {
   audio.mismatch();
   state.combo = 0;
   state.locked = true;
-  updateTile(i, 'shake');
-  updateTile(j, 'shake');
+  const a = state.board.cells[i];
+  const b = state.board.cells[j];
+  if (a) a.state = 'shake';
+  if (b) b.state = 'shake';
   $('combo-fx').classList.remove('show');
+  renderBoard({ phase: 'settle' });
   setTimeout(function () {
-    updateTile(i, 'idle');
-    updateTile(j, 'idle');
+    if (a) a.state = 'idle';
+    if (b) b.state = 'idle';
     state.locked = false;
+    renderBoard({ phase: 'settle' });
   }, 440);
 }
 
@@ -3056,8 +3372,33 @@ $('guide-next').addEventListener('click', function () {
   }
 });
 
-/* ---------------- 结算 ---------------- */
+/* ---------------- 结算 ----------------
+   D33 拆成两段：
+     finishLevel()  —— 通关庆祝（音效/粒子/藏语/延迟切页），**只执行一次**（finished 去重）
+     renderResult() —— 结算页内容渲染，**可重复调用**（结算页内容随时可重算）
+   拆开的原因：庆祝与跳转绝不能重复，但结算页的重绘需要能被单独触发。 */
 function finishLevel() {
+  if (state.finished) return;
+  state.finished = true;
+  hideCard();
+  hideToast();
+  audio.win();
+  celebrate();
+  setTimeout(function () { speak('tashi_delek'); }, 350);   // 通关藏语：扎西德勒
+  // 最后一对消除后先播庆祝粒子，稍等再切结算页（原来是 finalizeMatch 里的 1200ms）。
+  // ⚠️ 用 screenToken 兜底：这 1200ms 里若已经跳到别的页面（证书/护照/权益/首页），
+  //    就不能再把画面抢回结算页（否则会覆盖用户刚打开的页面）。
+  const goResult = state.screenToken;
+  setTimeout(function () {
+    if (state.screenToken !== goResult) return;
+    showScreen('result');
+    // 舒缓祝福语：画卷展开时读一句（缺失录音静默回退）
+    setTimeout(function () { speak('blessing_01'); }, 650);
+  }, 1200);
+  renderResult();
+}
+
+function renderResult() {
   const level = state.level;
   const hadStamp = getProgress().stamps.indexOf('lhasa') > -1;
   completeLevel(level);
@@ -3257,10 +3598,7 @@ function finishLevel() {
   back.setAttribute('style', 'border:1.5px solid var(--line); border-radius:14px; padding:13px 0; width:100%; font-size:15px; font-weight:700; color:var(--ink); background:rgba(255,255,255,.9); margin-top:12px; cursor:pointer;');
   back.addEventListener('click', renderHome);
   actions.appendChild(back);
-
-  showScreen('result');
-  // 舒缓祝福语：画卷展开时读一句（缺失录音静默回退）
-  setTimeout(function () { speak('blessing_01'); }, 650);
+  // 跳转到结算页由 finishLevel 统一负责（延迟 1.2s 让庆祝粒子先飘完），此处只负责内容
 }
 
 /* ---------------- 祝福卡（Canvas 绘制） ---------------- */
@@ -3877,7 +4215,7 @@ function renderBenefits() {
 
 /* ---------------- 事件绑定 ---------------- */
 $('game-back').addEventListener('click', function () {
-  if (state.matchedCount > 0 && state.matchedCount < state.tiles.length / 2) {
+  if (state.matchedCount > 0 && state.matchedCount < totalPairs()) {
     if (!window.confirm('本关还没完成，确定要退出吗？')) return;
   }
   renderHome();
