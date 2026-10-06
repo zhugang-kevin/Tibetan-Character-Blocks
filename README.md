@@ -32,13 +32,13 @@
 ## 自检
 
 ```bash
-node scripts/validate.js         # 小程序静态自检：27 大类 610 项
+node scripts/validate.js         # 小程序静态自检：28 大类 619 项
 node scripts/test-tibetan.js     # 藏文排版规则：1392 项断言（无需依赖）
 ```
 
 ```bash
 # 浏览器体验版端到端测试（需 jsdom）
-NODE_PATH="<node_modules 路径>" node scripts/test-h5.js   # 403 项断言
+NODE_PATH="<node_modules 路径>" node scripts/test-h5.js   # 404 项断言
 ```
 
 ## 两种本地体验方式

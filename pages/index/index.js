@@ -576,5 +576,27 @@ Page({
   // 打开权益中心（双轨制到店权益，凭通关进度领取）
   openBenefits: function () {
     wx.navigateTo({ url: '/pages/benefits/benefits' });
+  },
+
+  // 把生成的祝福签卡直接分享给微信好友（官方图片分享面板，无需截屏）
+  // 分享的是卡片图片本身；不附带任何激励（滥用分享 ▶2 —— 分享获利即违规）
+  shareBlessingCard: function () {
+    if (!this.data.blessingImage) return;
+    if (!wx.showShareImageMenu) {
+      wx.showToast({ title: '当前微信版本不支持图片分享', icon: 'none' });
+      return;
+    }
+    wx.showShareImageMenu({
+      path: this.data.blessingImage,
+      fail: function () { /* 用户收起面板不提示 */ }
+    });
+  },
+
+  // 转发给微信好友：只带内容不带激励（滥用分享 ▶2 自查通过）
+  onShareAppMessage: function () {
+    return {
+      title: '藏字方块 · 玩方块，认藏文',
+      path: '/pages/index/index'
+    };
   }
 });

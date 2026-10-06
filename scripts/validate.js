@@ -1671,6 +1671,55 @@ section('27. 祝福签卡片（确定性抽取 + 零金额 + 两端同源）');
   else err('index.js 出现 wx.request —— 违反纯本地红线');
 }
 
+// ---------- 28. 微信生态分享守卫（分享不带激励 + 首页分享卡补全） ----------
+// 背景：外部报告主张「一键分享到各大平台 = 裂变」。事实核验：微信小程序无法跨 App 直分享
+//（所谓 uni.share = 在抖音/快手各建一套小程序，D29 已否决）；合法增量只有微信生态内两条：
+//   ① onShareAppMessage 自定义转发卡（此前结算/护照/证书三页有、最该被分享的首页反而没有）；
+//   ② 生成物图片走 wx.showShareImageMenu 官方面板（免截屏直发好友）。
+// 铁律：分享只带内容，不带任何激励（微信《滥用分享行为》▶2：被分享者仅需访问、分享者即获利 = 违规，
+// 处罚链 3 日整改 → 分享封禁 → 下架 → 封号）。本节机械锁死「分享文案不得含激励字样」。
+section('28. 微信生态分享守卫（分享不带激励 + 首页分享卡补全）');
+{
+  const ij28 = read('pages/index/index.js');
+  const iw28 = read('pages/index/index.wxml');
+  const tpl28 = read('preview/template.html');
+
+  // 28.1 首页分享卡补全（此前 result/passport/cert 有、index 没有）
+  if (ij28.indexOf('onShareAppMessage: function') > -1)
+    ok('首页补齐 onShareAppMessage 自定义转发卡');
+  else err('首页缺 onShareAppMessage（最该被分享的页面反而是空白）');
+  if (ij28.indexOf('showShareImageMenu') > -1 && ij28.indexOf('shareBlessingCard: function') > -1)
+    ok('祝福签卡可走官方图片分享面板（wx.showShareImageMenu，免截屏）');
+  else err('首页缺 shareBlessingCard / wx.showShareImageMenu');
+  if (iw28.indexOf('bindtap="shareBlessingCard"') > -1) ok('index.wxml 含「分享给朋友」按钮');
+  else err('index.wxml 缺「分享给朋友」按钮');
+
+  // 28.2 激励字样扫描：全项目所有 onShareAppMessage 函数体（含注释）不得承诺回报
+  const SHARE_REWARD_PAT = /分享[^'"\n]{0,10}(得|解锁|抽奖|返|赚)|返现|积分翻倍|奖励/;
+  const sharePages = ['pages/index/index.js', 'pages/result/result.js', 'pages/passport/passport.js', 'pages/cert/cert.js'];
+  sharePages.forEach(f => {
+    const src = read(f);
+    const i = src.indexOf('onShareAppMessage');
+    if (i === -1) { ok(f + ' 无分享函数（本轮不要求）'); return; }
+    const block = src.slice(i, i + 420);
+    const hitR = block.match(SHARE_REWARD_PAT);
+    const hitM = block.match(OFFER_DIGIT_PAT) || block.match(MONEY_UNIT_PAT);
+    if (!hitR && !hitM) ok(f + ' 分享文案只带内容不带激励');
+    else err(f + ' 分享文案出现激励/金额字样：' + (hitR || hitM)[0]);
+  });
+
+  // 28.3 反例自测：激励扫描必须真的拦得住
+  const SHARE_NEG = ['分享得 9 折卡', '分享解锁限定头像框', '分享抽奖赢积分翻倍'];
+  const slipped28 = SHARE_NEG.filter(s => !SHARE_REWARD_PAT.test(s) && !OFFER_DIGIT_PAT.test(s));
+  if (!slipped28.length) ok('反例自测通过：' + SHARE_NEG.length + ' 种分享激励写法全部被拦');
+  else err('分享激励守卫有缺口，以下写法能溜进来：' + slipped28.join(' | '));
+
+  // 28.4 体验版镜像：分享口径同步（H5 无原生分享，提示语与小程序动作一致）
+  if (tpl28.indexOf('分享给朋友') > -1)
+    ok('体验版提示语与小程序分享动作同口径（分享给朋友 · 无需截屏）');
+  else err('体验版缺分享口径提示（两端文案不同步）');
+}
+
 
 console.log('通过: ' + passed + ' | 错误: ' + errors.length + ' | 警告: ' + warnings.length);
 if (errors.length) { console.log('\x1b[31m存在错误，需修复后重试\x1b[0m'); process.exit(1); }

@@ -198,6 +198,7 @@
         <view class="entry-btn" bindtap="makeBlessingCard">生成今日祝福签卡片</view>
         <image wx:if="{{blessingImage}}" class="bless-img" src="{{blessingImage}}" mode="widthFix"></image>
         <view wx:if="{{blessingImage}}" class="entry-btn" bindtap="saveBlessingCard">保存到相册</view>
+        <view wx:if="{{blessingImage}}" class="entry-btn" bindtap="shareBlessingCard">分享给朋友</view>
         <view class="entry-note">卡片内容只来自本地日签：不设分享奖励、不含任何金额，可自由保存。</view>
       </block>
 

@@ -1378,6 +1378,9 @@ function mockCtx(sink) {
   await sleep(60);
   check('生成后出现卡片预览图', !!$('#bless-out img'), '缺 #bless-out img');
   check('提供 PNG 下载（保存到本地）', !!$('#bless-out .cert-dl'));
+  check('H5 提示语与小程序分享动作同口径（分享给朋友 · 无需截屏）',
+    $('#bless-out').textContent.indexOf('分享给朋友') > -1 &&
+    $('#bless-out').textContent.indexOf('无需截屏') > -1);
   check('画布上真的画了当日中文释义（不是空卡）', (function () {
     const cn = ev('pickDaily(DAILY.greetings, colDayNumber(colToday())).cn');
     return (win.__texts || []).slice(textsBefore).some(function (t) { return t.t === cn; });
