@@ -1398,6 +1398,74 @@ function mockCtx(sink) {
     return !/[¥￥]|元(?!音|素)/.test(s) && !/\d\s*折|\d\s*%\s*off|满\s*\d+\s*减\s*\d+/.test(s);
   })());
 
+  /* ---------- 30. 通关揭图（十关秘境图 · 消除透出 + 揭晓 + 图鉴，两端同源） ---------- */
+  section('30. 通关揭图（十关秘境图 · 消除透出 + 揭晓 + 图鉴，两端同源）');
+  {
+    // 重置到干净状态，保证断言可复现（前面各节已改动进度）
+    ev('(function(){var p=getProgress(); p.completedLevels=[]; saveProgress(p);})()');
+    ev('setOnboardDone(); startLevel(1)');
+
+    // 30.1 盘面垫层：进第 1 关即挂上图，且为内联 data URL
+    check('第 1 关揭图为雪山（与 data/reveals.js 同源）', ev('state.reveal && state.reveal.name') === '雪山');
+    check('揭图层已注入且为内联 data URL', (function () {
+      const i = $('#reveal-img');
+      return !!i && i.style.display === 'block' && String(i.getAttribute('src')).indexOf('data:image/png;base64,') === 0;
+    })());
+    check('揭图层精确对齐牌区（四向样式齐全）', (function () {
+      const s = $('#reveal-img').style;
+      return s.left !== '' && s.top !== '' && s.width !== '' && s.height !== '';
+    })());
+    check('揭图进度初始 0%（不剧透名字）', $('#reveal-cap').textContent.indexOf('已揭开 0%') > -1
+      && $('#reveal-cap').textContent.indexOf('雪山') === -1);
+
+    // 30.2 消除越多透出越多：模拟清掉 5 对（24 格中的 10 格）→ 5/12 = 42%
+    ev('(function(){for(var k=0;k<10;k++)state.tiles[k].state="removed";' +
+      'state.matchedCount=5; renderBoard(); updateRevealCap();})()');
+    check('消除越多透出越多（进度随配对推进到 42%）', $('#reveal-cap').textContent.indexOf('已揭开 42%') > -1,
+      $('#reveal-cap').textContent);
+
+    // 30.3 数据契约：十关全覆盖 / 字段齐全 / 藏文排版 / D25
+    check('REVEALS 无缝覆盖 1-10 关且图不重复', ev(
+      '(function(){for(var i=1;i<=10;i++){if(!REVEALS[i-1]||REVEALS[i-1].level!==i)return false;}' +
+      'var s={};for(var j=0;j<10;j++){if(s[REVEALS[j].img])return false;s[REVEALS[j].img]=1;}return true;})()') === true);
+    check('每条揭图都有 藏文/拉丁/中文名/释义',
+      ev('REVEALS.every(function(r){return r.tibetan&&r.roman&&r.name&&r.desc;})') === true);
+    check('揭图藏文名符合 tsheg 规范（无行首/行尾/连续 tsheg）',
+      ev('REVEALS.every(function(r){return !/་\\s*་|^་|་\\s*$/.test(r.tibetan);})') === true);
+    check('揭图数据层未出现 D25 待拍板符号', ev(
+      '(function(){var s=JSON.stringify(REVEALS);' +
+      'return s.indexOf("莲花")===-1&&s.indexOf("经幡")===-1&&s.indexOf("佛塔")===-1&&s.indexOf("酥油灯")===-1;})()') === true);
+
+    // 30.4 结算页揭晓（通关即整幅揭晓 + 承诺收入护照）
+    ev('finishLevel()');
+    check('结算页揭晓本关秘境图', $('#res-reveal .reveal-name') && $('#res-reveal .reveal-name').textContent === '雪山');
+    check('揭晓卡图为内联 data URL', String(($('#res-reveal .reveal-art') || {}).src !== undefined
+      ? $('#res-reveal .reveal-art').getAttribute('src') : '').indexOf('data:image/png;base64,') === 0);
+    check('藏文名 + 拉丁转写上屏', $('#res-reveal .rt-t').textContent === 'གངས་རི'
+      && $('#res-reveal .rt-roman').textContent === 'gangs ri');
+    check('揭晓卡承诺「已收入文化护照」且报图鉴进度 1 / 10',
+      $('#res-reveal .reveal-note').textContent.indexOf('已收入文化护照') > -1
+      && $('#res-reveal .reveal-note').textContent.indexOf('1 / 10') > -1);
+    check('揭晓卡文案无货币符号 / 让利数字', !/[¥￥]|元(?!音|素)/.test($('#res-reveal').textContent));
+
+    // 30.5 护照页「揭示图鉴」：解锁与否 = 是否通关（不剧透未解锁的名字）
+    ev('showPassport()');
+    check('护照页出现揭示图鉴（10 格）', doc.querySelectorAll('#pp-reveal-grid .rv-slot').length === 10);
+    check('图鉴解锁数 = 通关关卡数（第 1 关通关 → 1）',
+      doc.querySelectorAll('#pp-reveal-grid .rv-slot.got').length === 1
+      && $('#pp-reveal-count').textContent === '1 / 10');
+    check('已解锁格显示图与名字', !!doc.querySelector('#pp-reveal-grid .rv-slot.got .rv-img')
+      && doc.querySelector('#pp-reveal-grid .rv-slot.got .rv-name').textContent === '雪山');
+    check('未解锁格不剧透名字（只显示关号）',
+      doc.querySelector('#pp-reveal-grid .rv-slot.locked .rv-name').textContent.indexOf('第') === 0);
+
+    // 30.6 单一真相源：揭图状态不落库（派生自 completedLevels）
+    check('不新增存储字段（reveals 派生自 completedLevels）', ev('getProgress().reveals') === undefined);
+    ev('(function(){var p=getProgress(); p.completedLevels=[1,2,3]; saveProgress(p); showPassport();})()');
+    check('补通关 3 关后图鉴自动补齐（无需迁移数据）',
+      doc.querySelectorAll('#pp-reveal-grid .rv-slot.got').length === 3);
+  }
+
   /* ---------- 汇总 ---------- */
   check('全程无脚本运行时错误', errors.length === 0, errors[0]);
 

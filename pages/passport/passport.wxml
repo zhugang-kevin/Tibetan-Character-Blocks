@@ -82,6 +82,24 @@
       <view wx:else class="bar"><view class="bar-in" style="width: {{fragCount * 100 / 9}}%;"></view></view>
     </view>
 
+    <!-- 2.6 揭示图鉴（D31）：十关各一张秘境图，通关即揭晓收入 -->
+    <view class="section">
+      <view class="section-head">
+        <text class="section-title">揭示图鉴</text>
+        <text class="section-count">{{revealGot}} / {{revealTotal}}</text>
+      </view>
+      <view class="section-sub">每一关的棋盘下都垫着一张秘境图，消除越多透出越多，通关整幅揭晓。</view>
+      <view class="rv-grid">
+        <view wx:for="{{revealSlots}}" wx:key="level" class="rv-slot {{item.unlocked ? 'got' : 'locked'}}">
+          <view class="rv-frame">
+            <image wx:if="{{item.unlocked}}" class="rv-img" src="{{item.img}}" mode="aspectFill" />
+            <text wx:else class="rv-lock-mark">🔒</text>
+          </view>
+          <view class="rv-name">{{item.unlocked ? item.name : ('第 ' + item.level + ' 关')}}</view>
+        </view>
+      </view>
+    </view>
+
     <!-- 3. 地区印章 -->
     <view class="section">
       <view class="section-head">

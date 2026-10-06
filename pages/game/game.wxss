@@ -122,6 +122,35 @@
 .board {
   display: grid;
   margin: 0 auto;
+  position: relative;
+  z-index: 1;
+}
+
+/* 秘境揭图（D31）：垫在牌层之下的整幅图，格子清空即透出。
+   ⚠️ 必须用 <image> 组件（WXSS background-image 引本地路径真机不可靠），尺寸由 JS 精确对齐牌区 */
+.board-wrap {
+  position: relative;
+  margin: 0 auto;
+}
+
+.reveal-img {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 16rpx;
+  pointer-events: none;
+}
+
+/* 揭图进度：只报百分比不剧透名字，压在暗金底盘内 */
+.reveal-cap {
+  margin-top: 12rpx;
+  text-align: center;
+  font-size: 22rpx;
+  letter-spacing: 2rpx;
+  color: #C9BFA8;
+  text-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.6);
 }
 
 /* 第三层：槽位——比底盘更深 + inset 内阴影，视觉上像挖空的坑 */

@@ -7,6 +7,7 @@
 var levelsData = require('../../data/levels');
 var elements = require('../../data/elements');
 var cardsData = require('../../data/cards');
+var revealsData = require('../../data/reveals');
 var audio = require('../../utils/audio');
 var icons = require('../../utils/icons');
 var storage = require('../../utils/storage');
@@ -67,10 +68,14 @@ Page({
     tileH: 88,           // 统一牌高（rpx）
     glyphSize: 45,       // 藏文字号（rpx）
     boardW: 498,         // 盘面宽（rpx，随列数变化，居中）
+    boardH: 400,         // 盘面高（rpx，随行数变化，揭图层与牌区精确对齐）
     gap: 12,
     iconPaths: {},
     matchedPairs: 0,
     totalPairs: 0,
+    // 秘境揭图（D31）：reveal.img 为空表示本关无揭图；名字在通关前不出现（不剧透）
+    reveal: { img: '', name: '', tibetan: '', roman: '', desc: '' },
+    revealPct: 0,
     showCard: false,
     card: null,
     cardColor: '#C0392B',
@@ -132,6 +137,10 @@ Page({
     var tileW = Math.floor((AVAIL_W - gap * (REF_COLS - 1)) / REF_COLS);
     var tileH = Math.round(tileW * 1.2);
     var boardW = cfg.cols * tileW + (cfg.cols - 1) * gap;
+    var boardH = cfg.rows * tileH + (cfg.rows - 1) * gap;
+
+    // 秘境揭图（D31）：十关每关一张，程序绘制（scripts/make_reveals.py）
+    var rv = revealsData[level - 1] || null;
 
     this.setData({
       level: level,
@@ -143,7 +152,10 @@ Page({
       tileH: tileH,
       glyphSize: Math.round(tileW * 0.62),
       boardW: boardW,
-      gap: gap
+      boardH: boardH,
+      gap: gap,
+      reveal: rv ? { img: rv.img, name: rv.name, tibetan: rv.tibetan, roman: rv.roman, desc: rv.desc } : { img: '', name: '', tibetan: '', roman: '', desc: '' },
+      revealPct: 0
     });
     tracker.track('first_letter_seen');
     if (!storage.isOnboardDone()) {
@@ -289,6 +301,7 @@ Page({
       ['tiles[' + j + '].state']: 'removing',
       ['tiles[' + j + '].shatter']: true,
       matchedPairs: this.matchedCount,
+      revealPct: Math.round(this.matchedCount * 100 / this.data.totalPairs),
       score: this.data.score + gain,
       combo: this.comboVal,
       comboFx: this.comboVal >= 2 ? ('连击 ×' + this.comboVal) : ''

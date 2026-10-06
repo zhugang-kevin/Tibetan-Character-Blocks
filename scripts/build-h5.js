@@ -44,7 +44,9 @@ const DATA = {
   // 万家灯火祈福跳窗（展示数据固定写死，不接任何后端）
   lamp: require(path.join(ROOT, 'data', 'lamp')),
   // 「藏文可以组合」拼合预告（纯展示数据）
-  combo: require(path.join(ROOT, 'data', 'combo'))
+  combo: require(path.join(ROOT, 'data', 'combo')),
+  // 秘境揭图（D31）：十关各一张，程序绘制（scripts/make_reveals.py）
+  reveals: require(path.join(ROOT, 'data', 'reveals'))
 };
 
 // ---------- 2. 注入品牌与背景资产 ----------
@@ -60,6 +62,17 @@ const IMAGES = {
   // 精灵表字母（试点 ཀ）：全部该字母方块共用一张 2×2 四色帧图
   spriteKa: dataUrl('images/sprite_ka.png')
 };
+// 秘境揭图（D31）：十关各一张，base64 内联（体验版保持单文件，双击即可用）
+for (let i = 1; i <= 10; i++) {
+  const nn = String(i).padStart(2, '0');
+  IMAGES['reveal' + nn] = dataUrl('images/reveal_' + nn + '.png');
+}
+// 把揭图路径换成内联 data URL（data/reveals.js 里的 /images/... 是小程序路径）
+(DATA.reveals || []).forEach(function (r, i) {
+  const key = 'reveal' + String(i + 1).padStart(2, '0');
+  if (!IMAGES[key]) { console.error('✗ 缺少揭示图 images/reveal_' + String(i + 1).padStart(2, '0') + '.png'); process.exit(1); }
+  r.img = IMAGES[key];
+});
 
 let html = fs.readFileSync(TEMPLATE, 'utf8');
 

@@ -12,6 +12,9 @@ var collect = require('../../utils/collect');
 // 这样「哪一关讲解拼合」只写在数据文件里，页面不内联关卡号）
 var comboData = require('../../data/combo');
 
+// 秘境揭图（D31）：通关即整幅揭晓，结算页是揭晓的高光时刻
+var revealsData = require('../../data/reveals');
+
 // 祝福卡（750×1050）中段文案的基线位置。
 // ⚠️ 必须留在底部「Logo（y=855）」与「小程序码（y=850）」之**上**：
 //    中文按 1em/字估算，一长行会横跨到两侧的 Logo / 小程序码上（上一版就是这样重叠的）。
@@ -84,7 +87,11 @@ Page({
     pointsGained: 0,     // 本关积分
     fragmentNew: 0,      // 本关新得的唐卡碎片编号（1-9，0 = 无）
     fragmentCount: 0,    // 已收集碎片总数
-    fragmentDone: false  // 是否已拼成一幅完整唐卡
+    fragmentDone: false, // 是否已拼成一幅完整唐卡
+    // ---- 秘境揭图（D31）：本关揭晓的图 + 图鉴进度 ----
+    reveal: null,        // { name, tibetan, roman, img, desc }
+    revealGot: 0,        // 已揭晓图数（= 已通关关卡数，不新增存储字段）
+    revealTotal: 10
   },
 
   onLoad: function (query) {
@@ -187,6 +194,12 @@ Page({
       fragmentNew: fragRes.added ? storage.getFragments().slice(-1)[0] + 1 : 0,
       fragmentCount: fragList.length,
       fragmentDone: collect.fragmentComplete(fragList),
+      // 秘境揭图（D31）：completeLevel 已落库，此处揭晓本关的图 + 报图鉴进度
+      reveal: (function () {
+        var rv = revealsData[level - 1];
+        return rv ? { name: rv.name, tibetan: rv.tibetan, roman: rv.roman, img: rv.img, desc: rv.desc } : null;
+      })(),
+      revealGot: storage.getProgress().completedLevels.filter(function (n) { return n >= 1 && n <= 10; }).length,
       // 前 60 秒钩子：关卡锚 + 旅程天数 + 收藏进度
       totalLevels: storage.MAX_LEVEL,
       journeyDay: openLog.total || 1,

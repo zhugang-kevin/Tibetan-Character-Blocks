@@ -144,6 +144,11 @@
   #screen-game.active { display: flex; flex-direction: column; min-height: calc(100vh - 60px); }
   .board-wrap { position: relative; width: 100%; display: flex; justify-content: center; }
   .board { display: grid; margin: 0 auto; }
+  /* 秘境揭图（D31）：垫在牌层之下的整幅图，格子清空即透出（与小程序 .reveal-img 同构） */
+  #board { position: relative; z-index: 1; }
+  .reveal-img { position: absolute; display: none; border-radius: 10px; pointer-events: none; }
+  .reveal-cap { margin-top: 8px; text-align: center; font-size: 12px; letter-spacing: 1px;
+    color: #C9BFA8; text-shadow: 0 1px 3px rgba(0,0,0,.6); }
   .tile {
     position: relative; background: #fff; border: 2px solid var(--line); border-radius: 12px;
     height: var(--tileH, 52px);
@@ -898,6 +903,29 @@
   .tk-frame-note { margin-top: 10px; text-align: center; font-size: 12px; color: #8A6A12; }
   .tk-mark { font-size: 17px; color: #8A6A12; }
   .tk-mark.dim { color: #B9B1A0; }
+  /* 秘境揭图（D31）：结算揭晓卡 + 护照揭示图鉴（与小程序 .reveal-* / .rv-* 同构） */
+  .reveal-card { margin: 14px 0 4px; padding: 16px; border-radius: 14px; text-align: center;
+    background: linear-gradient(180deg, rgba(255,255,255,.94), rgba(252,246,232,.94));
+    border: 1px solid rgba(214,202,176,.9); box-shadow: 0 4px 14px rgba(96,78,44,.14); }
+  .reveal-head { display: flex; align-items: baseline; justify-content: center; gap: 10px; }
+  .reveal-tag { font-size: 11px; color: #fff; background: #B7950B; border-radius: 6px; padding: 2px 8px; letter-spacing: 1px; }
+  .reveal-name { font-size: 19px; font-weight: 800; color: #2C3E50; letter-spacing: 1px; }
+  .reveal-art { width: 62%; margin: 12px auto 0; display: block; border-radius: 10px; box-shadow: 0 4px 14px rgba(96,78,44,.2); }
+  .reveal-tib { margin-top: 10px; display: flex; align-items: baseline; justify-content: center; gap: 10px; }
+  .rt-t { font-size: 23px; color: #2C3E50; line-height: 1.5; }
+  .rt-roman { font-size: 13px; color: #8A8375; }
+  .reveal-desc { margin-top: 6px; font-size: 14px; color: #5B5343; line-height: 1.7; }
+  .reveal-note { margin-top: 10px; font-size: 12px; color: #B7950B; letter-spacing: 1px; }
+  .rv-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .rv-slot { width: calc((100% - 32px)/5); text-align: center; }
+  .rv-frame { width: 100%; height: 0; padding-bottom: 100%; position: relative; border-radius: 8px; overflow: hidden;
+    border: 1px solid rgba(183,149,11,.5); background: #0D2137; display: flex; align-items: center; justify-content: center; }
+  .rv-slot.got .rv-frame { border-color: #B7950B; box-shadow: 0 3px 9px rgba(183,149,11,.22); }
+  .rv-slot.locked .rv-frame { background: #F2EDE0; border-color: rgba(221,213,194,.9); }
+  .rv-img { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+  .rv-lock-mark { font-size: 17px; opacity: .6; }
+  .rv-name { margin-top: 5px; font-size: 11px; color: #2C3E50; line-height: 1.3; }
+  .rv-slot.locked .rv-name { color: #A79F8D; }
   .box-open { padding: 15px; border-radius: 13px; text-align: center; font-size: 15px; font-weight: 800; color: #fff; background: linear-gradient(135deg,#2471A3,#1B4F72); cursor: pointer; box-shadow: 0 5px 13px rgba(36,113,163,.32); }
   .box-text { margin-top: 10px; padding: 12px; border-radius: 11px; background: #FBF6E8; font-size: 13px; color: #4A4438; line-height: 1.7; }
   .shop-row { display: flex; align-items: center; gap: 10px; padding: 11px 0; border-bottom: 1px solid rgba(214,202,176,.6); }
@@ -1092,11 +1120,13 @@
       <div class="board-panel">
         <div class="board-outline">
           <div class="board-wrap" id="board-wrap">
+            <img class="reveal-img" id="reveal-img" alt="" aria-hidden="true">
             <div class="board" id="board"></div>
             <div class="combo-fx" id="combo-fx"></div>
             <div class="break-fx" id="break-fx"></div>
           </div>
         </div>
+        <div class="reveal-cap" id="reveal-cap"></div>
       </div>
     </div>
   </section>
@@ -1116,6 +1146,9 @@
 
     <!-- PRD v4：唐卡碎片掉落 + 积分入账 -->
     <div class="reward-row" id="res-rewards"></div>
+
+    <!-- 秘境揭图揭晓（D31）：通关即整幅揭晓，图收入护照「揭示图鉴」 -->
+    <div id="res-reveal"></div>
 
     <!-- 前 60 秒钩子：结算决策点上的进度锚（关卡 / 旅程天数 / 收藏槽位） -->
     <div id="res-journey" class="journey"></div>
@@ -1178,6 +1211,16 @@
       <div class="pp-sub">每通关一关掉落一片唐卡碎片；集齐 9 片回首页「唐卡拼图」面板点「合成唐卡」。</div>
       <div class="tk-grid" id="pp-frag-grid"></div>
       <div id="pp-frag-note"></div>
+    </div>
+
+    <!-- 揭示图鉴（D31）：十关各一张秘境图，通关即揭晓收入 -->
+    <div class="pp-section">
+      <div class="pp-head">
+        <span class="pp-h-title">揭示图鉴</span>
+        <span class="pp-h-count" id="pp-reveal-count">0 / 10</span>
+      </div>
+      <div class="pp-sub">每一关的棋盘下都垫着一张秘境图，消除越多透出越多，通关整幅揭晓。</div>
+      <div class="rv-grid" id="pp-reveal-grid"></div>
     </div>
 
     <div class="pp-section">
@@ -1284,6 +1327,7 @@ const IMAGES = /*__IMAGES__*/;
 const ELEMENTS = DATA.elements;
 const CARDS = DATA.cards;
 const LEVELS = DATA.levels;
+const REVEALS = DATA.reveals;   // 秘境揭图（D31）：十关各一张，程序绘制
 const STAGES = DATA.stages;
 const Merchants = DATA.merchants;   // 权益中心（双轨制到店权益）
 const CARD_BY_ID = {};
@@ -1909,7 +1953,9 @@ const state = {
   fxCount: 0,                               // 通关粒子数
   // 权益中心（双轨制）可断言状态
   benefitMode: '', benefitCity: 'lhasa', benefitDone: 0,
-  benefitClaimable: 0, benefitGot: 0, lastBenefitCode: ''
+  benefitClaimable: 0, benefitGot: 0, lastBenefitCode: '',
+  reveal: null,                             // 秘境揭图（D31）：当前关的揭示图元数据
+  revealPct: 0
 };
 
 const $ = function (id) { return document.getElementById(id); };
@@ -2563,6 +2609,10 @@ function startLevel(level) {
   state.matches = 0;
   state.misses = 0;
   state.goldenId = cfg.elements[Math.floor(Math.random() * cfg.elements.length)][0];
+  // 秘境揭图（D31）：本关的揭示图（十关各一张；名字通关前不出现，不剧透）
+  state.reveal = REVEALS[level - 1] || null;
+  state.revealPct = 0;
+  updateRevealCap();
 
   // 牌池 + Fisher-Yates 洗牌
   const pool = [];
@@ -2646,6 +2696,31 @@ function layoutBoard() {
   const glyphs = document.querySelectorAll('#board .glyph');
   const gsize = Math.round(tile * 0.62);
   glyphs.forEach(function (g) { g.style.fontSize = gsize + 'px'; });
+
+  syncRevealBox();
+}
+
+/* 秘境揭图（D31）：把揭示图精确对齐到牌区（消除格挡牌即透出） */
+function syncRevealBox() {
+  const img = $('reveal-img');
+  const board = $('board');
+  if (!img || !board) return;
+  if (!state.reveal) { img.style.display = 'none'; return; }
+  img.src = state.reveal.img;
+  img.style.display = 'block';
+  img.style.left = board.offsetLeft + 'px';
+  img.style.top = board.offsetTop + 'px';
+  img.style.width = board.offsetWidth + 'px';
+  img.style.height = board.offsetHeight + 'px';
+}
+
+/* 揭图进度：只报百分比，不剧透名字（名字在通关揭晓时才出现） */
+function updateRevealCap() {
+  const cap = $('reveal-cap');
+  if (!cap) return;
+  if (!state.reveal) { cap.textContent = ''; return; }
+  state.revealPct = Math.round(state.matchedCount * 100 / (state.tiles.length / 2));
+  cap.textContent = '秘境图 · 已揭开 ' + state.revealPct + '%';
 }
 
 function renderBoard() {
@@ -2800,6 +2875,7 @@ function handleMatch(i, j) {
   updateTile(i, 'removing');
   updateTile(j, 'removing');
   updateHud();
+  updateRevealCap();
 
   // 轻震动（PRD 3.2：消除 = 铜铃音 + 机身轻震）
   haptic();
@@ -3004,6 +3080,21 @@ function finishLevel() {
     '<div class="reward-box"><div class="rw-v">+' + state.score + '</div><div class="rw-k">积分入账</div></div>' +
     '<div class="reward-box"><div class="rw-v">' + (fragRes.added ? ('第 ' + (fragRes.index + 1) + ' 片') : '已集齐') + '</div>' +
     '<div class="rw-k">' + (fragDone ? '唐卡已拼成' : ('唐卡碎片 ' + fragList.length + '/' + FRAGMENT_TOTAL)) + '</div></div>';
+
+  // 秘境揭图揭晓（D31）：通关即整幅揭晓，图收入护照「揭示图鉴」
+  const rvItem = REVEALS[level - 1] || null;
+  const rvGot = getProgress().completedLevels.filter(function (n) { return n >= 1 && n <= 10; }).length;
+  $('res-reveal').innerHTML = rvItem ? (
+    '<div class="reveal-card">' +
+      '<div class="reveal-head"><span class="reveal-tag">秘境图揭晓</span>' +
+        '<span class="reveal-name">' + rvItem.name + '</span></div>' +
+      '<img class="reveal-art" src="' + rvItem.img + '" alt="">' +
+      '<div class="reveal-tib"><span class="rt-t tib">' + rvItem.tibetan + '</span>' +
+        '<span class="rt-roman">' + rvItem.roman + '</span></div>' +
+      '<div class="reveal-desc">' + rvItem.desc + '</div>' +
+      '<div class="reveal-note">已收入文化护照 · 揭示图鉴 ' + rvGot + ' / ' + REVEALS.length + '</div>' +
+    '</div>'
+  ) : '';
 
   // 前 60 秒钩子：把收藏进度从护照页前置到结算决策点（「要不要再来一关」就在此刻决定）
   const cp = cardProgress(CARD_ORDER, getSeenCards());
@@ -3311,6 +3402,23 @@ function showPassport() {
   $('pp-frag-note').innerHTML = tkDone
     ? '<div class="tk-frame-note">唐卡已合成 · 你的第一幅完整唐卡</div>'
     : '<div class="pp-bar"><i style="width:' + Math.round(tk.got / FRAGMENT_TOTAL * 100) + '%"></i></div>';
+
+  // 揭示图鉴（D31）：解锁与否 = 是否通关该关（不新增存储字段，避免第二真相源）
+  const rvSlots = REVEALS.map(function (r) {
+    return {
+      level: r.level, name: r.name, img: r.img,
+      unlocked: p.completedLevels.indexOf(r.level) > -1
+    };
+  });
+  const rvOwned = rvSlots.filter(function (s) { return s.unlocked; }).length;
+  $('pp-reveal-count').textContent = rvOwned + ' / ' + REVEALS.length;
+  $('pp-reveal-grid').innerHTML = rvSlots.map(function (s) {
+    return '<div class="rv-slot ' + (s.unlocked ? 'got' : 'locked') + '">' +
+      '<div class="rv-frame">' + (s.unlocked
+        ? '<img class="rv-img" src="' + s.img + '" alt="">'
+        : '<span class="rv-lock-mark">🔒</span>') + '</div>' +
+      '<div class="rv-name">' + (s.unlocked ? s.name : ('第 ' + s.level + ' 关')) + '</div></div>';
+  }).join('');
 
   $('pp-stamp-count').textContent = p.stamps.length + ' / ' + STAMP_TOTAL;
   $('pp-stamps').innerHTML = p.stamps.length

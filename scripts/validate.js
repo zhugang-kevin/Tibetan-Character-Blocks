@@ -1724,6 +1724,150 @@ section('28. 微信生态分享守卫（分享不带激励 + 首页分享卡补�
   else err('体验版缺分享口径提示（两端文案不同步）');
 }
 
+// ---------- 29. 通关揭图（十关秘境图 · 程序绘制 · 零金额 · 两端同构） ----------
+// 背景：D31「通关揭图」试点。三条红线机械锁死：
+//   ① D25 待拍板 → 揭图**不得新增** 莲花 / 经幡（吉祥八宝只取另外 7 个 + 3 个自然/生活题）；
+//   ② 图与文案不承载金额 / 让利（和 data/daily.js 同一把尺）；
+//   ③ **不新增存储字段**：解锁与否 = completedLevels（避免第二真相源，也就没有「三处同步」的坑）。
+section('29. 通关揭图（十关秘境图 · 零金额 · 不新增存储字段 · 两端同构）');
+{
+  const rvRaw29 = read('data/reveals.js');
+  const gw29 = read('pages/game/game.wxml');
+  const gj29 = read('pages/game/game.js');
+  const gx29 = read('pages/game/game.wxss');
+  const rw29 = read('pages/result/result.wxml');
+  const rj29 = read('pages/result/result.js');
+  const pw29 = read('pages/passport/passport.wxml');
+  const pj29 = read('pages/passport/passport.js');
+  const tpl29 = read('preview/template.html');
+  const bh29 = read('scripts/build-h5.js');
+
+  // 29.1 数据层：十关全覆盖、一一对应、无重复图
+  let rvList29 = null;
+  try { rvList29 = require(path.join(ROOT, 'data', 'reveals.js')); } catch (e) { /* 走下面 err */ }
+  if (Array.isArray(rvList29) && rvList29.length === 10)
+    ok('data/reveals.js 共 10 条（每关一张）');
+  else err('data/reveals.js 应为 10 条，实际 ' + (rvList29 && rvList29.length));
+  if (Array.isArray(rvList29)) {
+    const lv29 = rvList29.map(r => r.level);
+    const seqOk = lv29.every((n, i) => n === i + 1);
+    if (seqOk) ok('揭图关卡区间无缝覆盖 1-10 关（顺序一致，无跳号）');
+    else err('揭图关卡序号必须严格为 1..10，实际 ' + JSON.stringify(lv29));
+    const imgs29 = rvList29.map(r => r.img);
+    if (new Set(imgs29).size === 10) ok('十张揭图路径互不重复');
+    else err('揭图路径有重复：' + JSON.stringify(imgs29));
+    const noTib = rvList29.filter(r => !r.tibetan || !r.roman || !r.name || !r.desc);
+    if (!noTib.length) ok('每条揭图都有 藏文名 + 拉丁转写 + 中文名 + 释义');
+    else err('揭图缺字段：' + noTib.map(r => r.level).join(','));
+    // 藏文排版铁律：音节后跟 tsheg，末音节不带 tsheg（不得出现行首 tsheg / 双 tsheg）
+    const badTib = rvList29.filter(r => /་\s*་|^་|་\s*$/.test(r.tibetan || ''));
+    if (!badTib.length) ok('揭图藏文名符合 tsheg 规范（无行首/行尾/连续 tsheg）');
+    else err('揭图藏文名 tsheg 用法可疑：' + badTib.map(r => r.name).join('/'));
+  }
+
+  // 29.2 图片资产：存在 + 单张体积预算（主包 2MB 硬约束）
+  let rvBytes29 = 0;
+  for (let i = 1; i <= 10; i++) {
+    const nn = String(i).padStart(2, '0');
+    const rel = 'images/reveal_' + nn + '.png';
+    if (!exists(rel)) { err('缺少揭示图 ' + rel); continue; }
+    const b = fs.statSync(path.join(ROOT, rel)).size;
+    rvBytes29 += b;
+    if (b > 45 * 1024) err(rel + ' 超出单张 45KB 预算（' + Math.round(b / 1024) + 'KB）');
+  }
+  if (rvBytes29 > 0 && rvBytes29 <= 450 * 1024)
+    ok('十张揭示图合计 ' + Math.round(rvBytes29 / 1024) + 'KB（≤450KB 预算，主包安全）');
+  else if (rvBytes29 > 450 * 1024)
+    err('十张揭示图合计 ' + Math.round(rvBytes29 / 1024) + 'KB 超预算（450KB）');
+  if (exists('scripts/make_reveals.py')) ok('scripts/make_reveals.py 存在（揭示图可零美术成本复现）');
+  else err('缺 scripts/make_reveals.py（揭示图必须可由脚本复现，不靠手绘资产）');
+
+  // 29.3 D25 红线：揭图不得新增 莲花 / 经幡（等拍板；这两个符号只能出现在既有 4 个可消除牌面里）
+  //      只扫「非注释行」：文件头注释里要写清楚这条红线本身，不能自己绊倒自己。
+  const rvCode29 = rvRaw29.split('\n').filter(l => l.trim().indexOf('//') !== 0).join('\n');
+  const D25_PAT29 = /莲花|lotus|经幡|风马旗|佛塔|酥油灯/g;
+  const hit25 = rvCode29.match(D25_PAT29) || [];
+  if (!hit25.length) ok('data/reveals.js 数据层未出现 D25 待拍板符号（莲花/经幡/佛塔/酥油灯）');
+  else err('data/reveals.js 出现 D25 待拍板符号：' + hit25.join('/'));
+  // 元素库不得被顺手扩充（ religious symbols 只能以「装饰纹样」存在，不能变成可消除牌面）
+  const elCount29 = (read('data/elements.js').match(/type:\s*'(letter|icon)'/g) || []).length;
+  if (elCount29 === 12) ok('元素库仍为 12 个元素（揭图没有顺手进元素库）');
+  else err('元素库元素数变了（' + elCount29 + ' ≠ 12）：新增元素需另行拍板，不得随揭图夹带');
+
+  // 29.4 金额守卫：图鉴文案不承载金额 / 让利 / 结算字段
+  if (!moneyFieldHit(rvRaw29).length && !OFFER_DIGIT_PAT.test(rvRaw29) && !MONEY_UNIT_PAT.test(rvRaw29))
+    ok('data/reveals.js 无金额字段 / 让利数字 / 货币符号');
+  else err('data/reveals.js 出现金额 / 让利 / 结算字样（图鉴只能是「图 + 名 + 释义」）');
+  // 反例自测：这把尺必须真的拦得住
+  const RV_NEG29 = ['{ price: 9.9 }', '满100减20', '奖励 5 元'];
+  const slipped29 = RV_NEG29.filter(s => !moneyFieldHit(s).length && !OFFER_DIGIT_PAT.test(s) && !MONEY_UNIT_PAT.test(s));
+  if (!slipped29.length) ok('反例自测通过：' + RV_NEG29.length + ' 种金额写法全部被拦');
+  else err('揭图金额守卫有缺口：' + slipped29.join(' | '));
+
+  // 29.5 游戏页：揭图垫层 + 进度文案（只报百分比，不剧透名字）
+  [['class="reveal-img"', '揭图层 <image>'], ['class="board-wrap"', '牌区精确对齐容器'], ['reveal-cap', '揭图进度文案']]
+    .forEach(([k, label]) => {
+      if (gw29.indexOf(k) > -1) ok('game.wxml 含 ' + label);
+      else err('game.wxml 缺 ' + label);
+    });
+  if (gj29.indexOf("require('../../data/reveals')") > -1) ok('game.js 引入 data/reveals（同源数据）');
+  else err('game.js 未引入 data/reveals');
+  if (gj29.indexOf('revealPct: Math.round(this.matchedCount * 100 / this.data.totalPairs)') > -1)
+    ok('game.js 揭图进度按「已配对数 / 总对数」实时推进');
+  else err('game.js 缺 revealPct 计算（揭图不会随消除推进）');
+  if (gj29.indexOf('boardH: boardH') > -1 && gj29.indexOf('cfg.rows * tileH + (cfg.rows - 1) * gap') > -1)
+    ok('game.js 计算 boardH（揭图层与牌区精确对齐）');
+  else err('game.js 缺 boardH 计算（揭图层会错位）');
+  if (gx29.indexOf('.reveal-img') > -1 && gx29.indexOf('position: absolute') > -1)
+    ok('game.wxss 揭图层为绝对定位（垫在牌层之下）');
+  else err('game.wxss 缺 .reveal-img 绝对定位');
+  if (gx29.indexOf('.board') > -1 && /z-index:\s*1/.test(gx29.match(/\.board\s*\{[^}]*\}/)[0]))
+    ok('game.wxss .board 提升 z-index（牌层盖住揭图层）');
+  else err('game.wxss .board 未提升 z-index（揭图会盖住牌面）');
+  if (!/秘境图[^\n'"]{0,8}(元|¥|折)/.test(gw29)) ok('揭图进度文案无金额字样');
+  else err('揭图进度文案出现金额字样');
+
+  // 29.6 结算页揭晓 + 护照图鉴（跨文件契约：结算页说「已收入护照」，护照就必须真有）
+  if (rj29.indexOf("require('../../data/reveals')") > -1) ok('result.js 引入 data/reveals');
+  else err('result.js 未引入 data/reveals');
+  ['reveal-card', 'reveal-art', 'reveal-tib', '已收入文化护照'].forEach(k => {
+    if (rw29.indexOf(k) > -1) ok('result.wxml 含 ' + k);
+    else err('result.wxml 缺 ' + k);
+  });
+  const promised29 = rw29.indexOf('已收入文化护照') > -1;
+  const delivered29 = pw29.indexOf('揭示图鉴') > -1 && pw29.indexOf('rv-grid') > -1;
+  if (promised29 && delivered29)
+    ok('跨文件契约成立：结算页「已收入文化护照」→ 护照页真有「揭示图鉴」板块');
+  else if (promised29 && !delivered29)
+    err('空头承诺：结算页说「已收入文化护照」，但 passport.wxml 无「揭示图鉴」板块');
+  else ok('两端未承诺揭图收入护照（一致）');
+  if (pj29.indexOf('p.completedLevels.indexOf(r.level) > -1') > -1)
+    ok('护照页图鉴解锁判定走 completedLevels（不新增存储字段）');
+  else err('护照页图鉴解锁判定未走 completedLevels');
+
+  // 29.7 存储层负向断言：揭图状态**不落库**（与 D31 决策一致，防止将来出现两份真相）
+  if (read('utils/storage.js').indexOf('reveals') === -1)
+    ok('utils/storage.js 未新增 reveals 字段（揭图状态 = 通关状态，单一真相源）');
+  else err('utils/storage.js 出现 reveals 字段：揭图状态应派生自 completedLevels，不要落第二份');
+
+  // 29.8 体验版镜像同构（H5 必须有同一套揭图能力）
+  ['id="reveal-img"', 'function syncRevealBox', 'function updateRevealCap',
+   'id="res-reveal"', 'id="pp-reveal-grid"', 'const REVEALS = DATA.reveals',
+   'state.reveal = REVEALS[level - 1]'].forEach(k => {
+    if (tpl29.indexOf(k) > -1) ok('体验版镜像含 ' + k);
+    else err('体验版镜像缺 ' + k);
+  });
+  if (bh29.indexOf("require(path.join(ROOT, 'data', 'reveals'))") > -1)
+    ok('build-h5.js 注入 data/reveals（与小程序同源）');
+  else err('build-h5.js 未注入 data/reveals');
+  if (bh29.indexOf("IMAGES['reveal' + nn] = dataUrl('images/reveal_' + nn + '.png')") > -1)
+    ok('build-h5.js 内联十张揭示图（体验版保持单文件）');
+  else err('build-h5.js 未内联揭示图（体验版会引用到不存在的相对路径）');
+  if (bh29.indexOf('r.img = IMAGES[key]') > -1)
+    ok('build-h5.js 把揭图路径换写为 data URL（/images/... 是小程序路径）');
+  else err('build-h5.js 未换写揭图路径（H5 会拿到小程序路径而裂图）');
+}
+
 
 console.log('通过: ' + passed + ' | 错误: ' + errors.length + ' | 警告: ' + warnings.length);
 if (errors.length) { console.log('\x1b[31m存在错误，需修复后重试\x1b[0m'); process.exit(1); }

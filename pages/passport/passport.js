@@ -6,6 +6,7 @@ var certificate = require('../../utils/certificate');
 var storage = require('../../utils/storage');
 var collect = require('../../utils/collect');
 var cardsData = require('../../data/cards');
+var revealsData = require('../../data/reveals');
 var tracker = require('../../utils/tracker');
 
 // 印记定义（v0 仅拉萨；后续扩展七地市）
@@ -31,7 +32,11 @@ Page({
     // 唐卡收藏（兑现 index 页「完整图收入文化护照」的承诺，2026-10-05 补齐）
     thangkaCells: [],
     fragCount: 0,
-    thangkaDone: false
+    thangkaDone: false,
+    // 揭示图鉴（D31）：解锁与否 = 是否通关该关（不新增存储字段，避免第二真相源）
+    revealSlots: [],
+    revealGot: 0,
+    revealTotal: 10
   },
 
   onShow: function () {
@@ -54,6 +59,16 @@ Page({
     // 唐卡收藏：九宫格视图模型走与首页同一个纯函数（两端/两页同源）
     var tk = collect.thangkaGrid(p.fragments);
 
+    // 揭示图鉴（D31）：通关即揭晓，图与名都来自 data/reveals.js
+    var revealSlots = revealsData.map(function (r) {
+      return {
+        level: r.level,
+        name: r.name,
+        img: r.img,
+        unlocked: p.completedLevels.indexOf(r.level) > -1
+      };
+    });
+
     this.setData({
       certs: list,
       owned: owned,
@@ -67,7 +82,10 @@ Page({
       levelsDone: p.completedLevels.length,
       thangkaCells: tk.cells,
       fragCount: tk.got,
-      thangkaDone: !!(p.thangkaDone && tk.done)
+      thangkaDone: !!(p.thangkaDone && tk.done),
+      revealSlots: revealSlots,
+      revealGot: revealSlots.filter(function (s) { return s.unlocked; }).length,
+      revealTotal: revealsData.length
     });
   },
 

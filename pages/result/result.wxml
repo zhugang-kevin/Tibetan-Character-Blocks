@@ -40,6 +40,21 @@
     </view>
   </view>
 
+  <!-- 秘境揭图揭晓（D31）：通关即整幅揭晓，图收入护照「揭示图鉴」 -->
+  <view wx:if="{{reveal}}" class="reveal-card">
+    <view class="reveal-head">
+      <text class="reveal-tag">秘境图揭晓</text>
+      <text class="reveal-name">{{reveal.name}}</text>
+    </view>
+    <image class="reveal-art" src="{{reveal.img}}" mode="widthFix" />
+    <view class="reveal-tib">
+      <text class="rt-t tibetan">{{reveal.tibetan}}</text>
+      <text class="rt-roman">{{reveal.roman}}</text>
+    </view>
+    <view class="reveal-desc">{{reveal.desc}}</view>
+    <view class="reveal-note">已收入文化护照 · 揭示图鉴 {{revealGot}} / {{revealTotal}}</view>
+  </view>
+
   <!-- 前 60 秒钩子：在「要不要再来一关」的决策点上摆出进度与悬念 -->
   <view class="journey">
     <view class="j-head">

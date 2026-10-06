@@ -27,37 +27,43 @@
   <view class="game-body">
     <view class="board-panel">
       <view class="board-outline">
-        <view class="board"
-          style="grid-template-columns: repeat({{cols}}, {{tileW}}rpx); gap: {{gap}}rpx; width: {{boardW}}rpx;">
-          <view
-            wx:for="{{tiles}}"
-            wx:key="uid"
-            class="tile {{item.state}} {{item.blocked ? 'blocked' : ''}}"
-            style="width: {{tileW}}rpx; height: {{tileH}}rpx;"
-            data-index="{{index}}"
-            bindtap="onTapTile"
-          >
-            <!-- 第四层：凸起方块（渐变底色 + 底部投影 + 顶部高光；精灵表字母用帧图取代渐变） -->
-            <view class="piece {{item.sprite ? 'ka-sprite-piece' : ''}}" style="{{item.pieceStyle}}">
-              <view wx:if="{{item.sprite}}" class="ka-sprite ka-v{{item.variant}}">
-                <image src="{{item.spriteSrc}}" mode="scaleToFill" />
+        <!-- 秘境揭图（D31）：垫在牌层之下，消除掉一格牌就露出一格，通关整幅揭晓 -->
+        <view class="board-wrap" style="width: {{boardW}}rpx; height: {{boardH}}rpx;">
+          <image wx:if="{{reveal.img}}" class="reveal-img" src="{{reveal.img}}" mode="scaleToFill" aria-hidden="true" />
+          <view class="board"
+            style="grid-template-columns: repeat({{cols}}, {{tileW}}rpx); gap: {{gap}}rpx; width: {{boardW}}rpx;">
+            <view
+              wx:for="{{tiles}}"
+              wx:key="uid"
+              class="tile {{item.state}} {{item.blocked ? 'blocked' : ''}}"
+              style="width: {{tileW}}rpx; height: {{tileH}}rpx;"
+              data-index="{{index}}"
+              bindtap="onTapTile"
+            >
+              <!-- 第四层：凸起方块（渐变底色 + 底部投影 + 顶部高光；精灵表字母用帧图取代渐变） -->
+              <view class="piece {{item.sprite ? 'ka-sprite-piece' : ''}}" style="{{item.pieceStyle}}">
+                <view wx:if="{{item.sprite}}" class="ka-sprite ka-v{{item.variant}}">
+                  <image src="{{item.spriteSrc}}" mode="scaleToFill" />
+                </view>
+                <text wx:elif="{{item.type === 'letter'}}" class="glyph tibetan" style="font-size: {{glyphSize}}rpx;">{{item.tibetan}}</text>
+                <image wx:elif="{{iconPaths[item.id]}}" class="glyph-img" src="{{iconPaths[item.id]}}" mode="aspectFit" />
+                <text wx:else class="glyph-fallback">{{item.fallbackText}}</text>
+                <view wx:if="{{item.golden}}" class="gold-star">✦</view>
+                <!-- 破碎粒子：金粉 / 风马旗碎片（消除瞬间播放） -->
+                <view wx:if="{{item.shatter}}" class="bits">
+                  <view wx:for="{{bitSlots}}" wx:for-item="b" wx:key="*this" class="bit {{b}}"></view>
+                </view>
               </view>
-              <text wx:elif="{{item.type === 'letter'}}" class="glyph tibetan" style="font-size: {{glyphSize}}rpx;">{{item.tibetan}}</text>
-              <image wx:elif="{{iconPaths[item.id]}}" class="glyph-img" src="{{iconPaths[item.id]}}" mode="aspectFit" />
-              <text wx:else class="glyph-fallback">{{item.fallbackText}}</text>
-              <view wx:if="{{item.golden}}" class="gold-star">✦</view>
-              <!-- 破碎粒子：金粉 / 风马旗碎片（消除瞬间播放） -->
-              <view wx:if="{{item.shatter}}" class="bits">
-                <view wx:for="{{bitSlots}}" wx:for-item="b" wx:key="*this" class="bit {{b}}"></view>
-              </view>
+              <!-- 障碍物：冰霜（半透明蓝罩 + 白边高光） -->
+              <view wx:if="{{item.frost}}" class="frost"><text class="frost-mark">❄</text></view>
+              <!-- 障碍物：藏式木箱（木纹 + 金色剩余耐久） -->
+              <view wx:if="{{item.crate > 0}}" class="crate"><text class="crate-num">{{item.crate}}</text></view>
             </view>
-            <!-- 障碍物：冰霜（半透明蓝罩 + 白边高光） -->
-            <view wx:if="{{item.frost}}" class="frost"><text class="frost-mark">❄</text></view>
-            <!-- 障碍物：藏式木箱（木纹 + 金色剩余耐久） -->
-            <view wx:if="{{item.crate > 0}}" class="crate"><text class="crate-num">{{item.crate}}</text></view>
           </view>
         </view>
       </view>
+      <!-- 揭图进度：只报百分比，不剧透名字（名字在通关揭晓时才出现） -->
+      <view wx:if="{{reveal.img}}" class="reveal-cap">秘境图 · 已揭开 {{revealPct}}%</view>
     </view>
   </view>
 

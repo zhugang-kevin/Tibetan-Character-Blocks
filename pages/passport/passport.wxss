@@ -298,6 +298,55 @@
   color: #8A8375;
 }
 
+/* ============ 揭示图鉴（D31）：十关秘境图，5 列方格 ============ */
+.rv-grid {
+  margin-top: 18rpx;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14rpx;
+}
+.rv-slot {
+  width: calc((100% - 56rpx) / 5);
+  text-align: center;
+}
+.rv-frame {
+  width: 100%;
+  height: 0;
+  padding-bottom: 100%;
+  position: relative;
+  border-radius: 12rpx;
+  overflow: hidden;
+  box-sizing: border-box;
+  border: 2rpx solid rgba(183, 149, 11, 0.5);
+  background: #0D2137;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.rv-slot.got .rv-frame {
+  border-color: #B7950B;
+  box-shadow: 0 4rpx 12rpx rgba(183, 149, 11, 0.24);
+}
+.rv-slot.locked .rv-frame {
+  background: #F3EFE3;
+  border-color: #DDD5C2;
+}
+.rv-img {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+}
+.rv-lock-mark { font-size: 30rpx; opacity: 0.6; }
+.rv-name {
+  margin-top: 8rpx;
+  font-size: 20rpx;
+  color: #2C3E50;
+  line-height: 1.3;
+}
+.rv-slot.locked .rv-name { color: #A79F8D; }
+
 /* ============ 底部 ============ */
 .home-btn {
   margin-top: 10rpx;
