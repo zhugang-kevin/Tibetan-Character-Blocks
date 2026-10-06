@@ -319,6 +319,29 @@
   text-shadow: 0 2rpx 0 rgba(0, 0, 0, 0.6);
 }
 
+/* 绳结（D40）：双股绳十字缠裹，深色底保证剩余股数的金字对比度达标（D32 同款深底 + #FFD98A） */
+.rope {
+  position: absolute;
+  left: 0; top: 0; right: 0; bottom: 0;
+  border-radius: 12rpx;
+  background:
+    linear-gradient(45deg, rgba(0, 0, 0, 0) 40%, #C08A4E 40%, #8A5A2B 50%, #C08A4E 60%, rgba(0, 0, 0, 0) 60%),
+    linear-gradient(135deg, rgba(0, 0, 0, 0) 40%, #C08A4E 40%, #8A5A2B 50%, #C08A4E 60%, rgba(0, 0, 0, 0) 60%),
+    rgba(48, 28, 10, 0.82);
+  border: 2rpx solid rgba(96, 60, 24, 0.9);
+  box-shadow: inset 0 3rpx 0 rgba(255, 220, 160, 0.30), inset 0 -5rpx 10rpx rgba(0, 0, 0, 0.40), 0 3rpx 8rpx rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.rope-num {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #FFD98A;
+  text-shadow: 0 2rpx 0 rgba(0, 0, 0, 0.7);
+}
+
 /* 选中态：槽位内圈金环 + 方块轻微抬起 */
 .tile.selected {
   box-shadow: inset 0 0 0 4rpx rgba(255, 217, 138, 0.85), inset 0 5rpx 9rpx rgba(0, 0, 0, 0.6);

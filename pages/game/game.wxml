@@ -70,6 +70,8 @@
               </view>
               <!-- 障碍物：冰霜（半透明蓝罩 + 白边高光）——遮挡跟随方块下落（D33） -->
               <view wx:if="{{item.frost}}" class="frost"><text class="frost-mark">❄</text></view>
+              <!-- 障碍物：绳结（双股绳十字缠裹 + 剩余股数，D40 世俗皮肤，来历见 docs/DECISIONS.md） -->
+              <view wx:if="{{item.rope > 0}}" class="rope"><text class="rope-num">{{item.rope}}</text></view>
               <!-- 障碍物：藏式木箱（木纹 + 金色剩余耐久） -->
               <view wx:if="{{item.crate > 0}}" class="crate"><text class="crate-num">{{item.crate}}</text></view>
             </view>

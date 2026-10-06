@@ -194,6 +194,7 @@ Page({
       var t = that.board.cells[o.index];
       if (!t) return;
       if (o.kind === 'frost') t.frost = true;
+      else if (o.kind === 'rope') t.rope = o.hp;
       else t.crate = o.hp;
     });
 
@@ -279,6 +280,7 @@ Page({
       golden: id === this.goldenId,
       pieceStyle: pieceStyle(el.color),
       frost: false,
+      rope: 0,
       crate: 0,
       shatter: false,
       state: 'idle' // idle | selected | removing
@@ -329,8 +331,9 @@ Page({
         variant: t.variant,
         spriteSrc: t.spriteSrc,
         frost: t.frost,
+        rope: t.rope,
         crate: t.crate,
-        blocked: !!(t.frost || t.crate > 0),
+        blocked: !!(t.frost || t.rope > 0 || t.crate > 0),
         shatter: t.shatter,
         state: t.state
       });
@@ -444,7 +447,7 @@ Page({
     a.state = 'removing'; a.shatter = true;
     b.state = 'removing'; b.shatter = true;
 
-    // 障碍物结算：相邻冰霜解冻、相邻木箱扣耐久
+    // 障碍物结算：相邻冰霜解冻、相邻绳结松一股、相邻木箱扣耐久
     // ⚠️ resolveMatch 返回的是**副本**，必须把 changed 写回真实牌对象
     var settled = obstacles.resolveMatch(this.board.cells, [i, j], this.board.cols, this.board.rows);
     var brokeLabels = [];
@@ -452,8 +455,9 @@ Page({
       var t = this.board.cells[c.index];
       if (!t) return;
       if (c.kind === 'frost') t.frost = false;
+      else if (c.kind === 'rope') t.rope = c.hp;
       else t.crate = c.hp;
-      if (c.broken) brokeLabels.push(c.kind === 'frost' ? '破冰！' : '木箱破开！');
+      if (c.broken) brokeLabels.push(c.kind === 'frost' ? '破冰！' : (c.kind === 'rope' ? '绳结解开！' : '木箱破开！'));
     }, this);
 
     this.setData({ score: this.data.score + gain });
@@ -727,10 +731,12 @@ Page({
     this.setData({
       toastShow: true,
       toastIsIcon: false,
-      toastGlyph: tile.frost ? '❄' : '📦',
+      toastGlyph: tile.frost ? '❄' : (tile.rope > 0 ? '🪢' : '📦'),
       toastIcon: '',
-      toastText: tile.frost ? '这块被冰霜罩住了 · 先消除旁边的牌' : ('藏式木箱还剩 ' + tile.crate + ' 次 · 消除旁边的牌来敲开'),
-      toastColor: tile.frost ? '#2471A3' : '#8A5A2B'
+      toastText: tile.frost ? '这块被冰霜罩住了 · 先消除旁边的牌'
+        : (tile.rope > 0 ? ('绳结还缠着 ' + tile.rope + ' 股 · 消除旁边的牌来解开')
+          : ('藏式木箱还剩 ' + tile.crate + ' 次 · 消除旁边的牌来敲开')),
+      toastColor: tile.frost ? '#2471A3' : (tile.rope > 0 ? '#8A6A12' : '#8A5A2B')
     });
     setTimeout(function () {
       if (tile.state !== 'shake') return;

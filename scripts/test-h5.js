@@ -222,7 +222,7 @@ function mockCtx(sink) {
   // 障碍物判定（与 utils/obstacles.js 同规则，供配对查找时避开被罩住的牌）
   const obsIsBlockedInTest = function (i) {
     const t = tiles()[i];
-    return !!(t && (t.frost || t.crate > 0));
+    return !!(t && (t.frost || (t.rope && t.rope > 0) || (t.crate && t.crate > 0)));
   };
 
   const goldenId = ev('state.goldenId');
@@ -898,6 +898,7 @@ function mockCtx(sink) {
   await sleep(60);
   check('第 1 关无冰霜（不打扰新手）', ev('state.frostTotal') === 0, 'frostTotal=' + ev('state.frostTotal'));
   check('第 1 关无木箱', ev('state.crateTotal') === 0, 'crateTotal=' + ev('state.crateTotal'));
+  check('第 1 关无绳结', ev('state.ropeTotal') === 0, 'ropeTotal=' + ev('state.ropeTotal'));
   check('第 1 关 DOM 无冰霜罩层', $$('#board .frost').length === 0);
 
   // 四层物理层次：每张牌都有独立的 3D 凸起方块层（渐变 + 投影；精灵表字母用帧图）
@@ -1009,6 +1010,58 @@ function mockCtx(sink) {
       crateHpBefore + ' → ' + hpAfter);
     check('木箱破开后 DOM 罩层移除', hpAfter > 0 ? true : !doc.querySelector('#board .tile[data-index="' + crateIdx + '"] .crate'));
     if (hpAfter === 0) check('破箱计数增加', ev('state.brokenCount') > brokenBefore, 'brokenCount=' + ev('state.brokenCount'));
+  }
+
+  // 绳结关（第 9 关，D40）：双股绳显示剩余股数，相邻消除松一股，两股全松才算解开
+  ev('startLevel(9)');
+  await sleep(60);
+  check('第 9 关有 2 个绳结（难度曲线：冰霜 L2 → 木箱 L6 → 绳结 L9）',
+    ev('state.ropeTotal') === 2, 'ropeTotal=' + ev('state.ropeTotal'));
+  check('DOM 绳结数量一致', $$('#board .rope').length === 2, '实际 ' + $$('#board .rope').length);
+  const ropeIdx = tiles().findIndex(function (t) { return t.rope > 0; });
+  const ropeHpBefore = tiles()[ropeIdx].rope;
+  check('绳结初始为双股（hp = 2）', ropeHpBefore === 2, 'hp=' + ropeHpBefore);
+  await clickTile(ropeIdx);
+  check('绳结牌点不动（不进入 selected）', tiles()[ropeIdx].state !== 'selected', tiles()[ropeIdx].state);
+  check('绳结提示文案含「绳结」', $('#toast-text').textContent.indexOf('绳结') > -1, $('#toast-text').textContent);
+  const ropeNbs = ev('obsNeighbors(' + ropeIdx + ', state.cols, state.rows)');
+  let ropePair = null;
+  for (let n = 0; n < ropeNbs.length && !ropePair; n++) {
+    const nb = ropeNbs[n];
+    if (!tiles()[nb] || obsIsBlockedInTest(nb)) continue;
+    for (let j = 0; j < tiles().length; j++) {
+      if (j === nb || tiles()[j].id !== tiles()[nb].id) continue;
+      if (tiles()[j].state !== 'idle' || obsIsBlockedInTest(j)) continue;
+      ropePair = [nb, j]; break;
+    }
+  }
+  if (ropePair) {
+    await clickTile(ropePair[0]);
+    await clickTile(ropePair[1]);
+    await sleep(400);
+    const ropeHpAfter = tiles()[ropeIdx].rope;
+    check('相邻消除一次松一股（2 → 1）', ropeHpAfter === ropeHpBefore - 1,
+      ropeHpBefore + ' → ' + ropeHpAfter);
+    // 再消一对相邻的：第二股也松开 → DOM 罩层移除
+    let ropePair2 = null;
+    for (let n = 0; n < ropeNbs.length && !ropePair2; n++) {
+      const nb = ropeNbs[n];
+      if (!tiles()[nb] || obsIsBlockedInTest(nb)) continue;
+      for (let j = 0; j < tiles().length; j++) {
+        if (j === nb || tiles()[j].id !== tiles()[nb].id) continue;
+        if (tiles()[j].state !== 'idle' || obsIsBlockedInTest(j)) continue;
+        ropePair2 = [nb, j]; break;
+      }
+    }
+    if (ropePair2 && ropeHpAfter === 1) {
+      await clickTile(ropePair2[0]);
+      await clickTile(ropePair2[1]);
+      await sleep(400);
+      const ropeHpFinal = tiles()[ropeIdx].rope;
+      check('第二次相邻消除后绳结解开（hp = 0）', ropeHpFinal === 0, 'hp=' + ropeHpFinal);
+      check('解开后 DOM 罩层移除',
+        !doc.querySelector('#board .tile[data-index="' + ropeIdx + '"] .rope'));
+    }
   }
 
   // 文化卡：藏纸卷轴形态（卷轴杆 + 喇叭 + 知道了）

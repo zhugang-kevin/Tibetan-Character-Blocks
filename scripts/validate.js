@@ -3124,6 +3124,115 @@ section('34. 背景音乐（PRD 3.3：程序合成 · 无缝循环 · 开关三�
   else err('缺 3×3 画布 + 裁正中（边缘列会不周期）');
 })();
 
+// ---------- 36. 绳结障碍（D40：金刚结的世俗皮肤 · 双股绳 · 两端同构） ----------
+// PRD 3.1 的「金刚结锁链」按 D25 宗教符号红线换世俗皮肤 = 绳结。机制复用多段破坏
+// （同木箱），难度曲线 = 冰霜(L2) → 木箱(L6) → 绳结(L9)。行为断言直接跑纯函数，不做字符串表演。
+(function () {
+  section('36. 绳结障碍（D40）');
+  const obs = require(path.join(ROOT, 'utils', 'obstacles'));
+  const levels = require(path.join(ROOT, 'data', 'levels'));
+
+  // 36.1 行为：布点数量与默认股数
+  const plan = obs.planOverlays({ cols: 4, rows: 4, obstacles: { rope: 2 } },
+    new Array(16).fill('letter_01'));
+  const ropes = plan.filter(p => p.kind === 'rope');
+  if (ropes.length === 2) ok('planOverlays 按配置布 2 个绳结');
+  else err('绳结布点数量不对：' + ropes.length);
+  if (ropes.length && ropes.every(p => p.hp === 2))
+    ok('绳结默认 2 股（双股绳：相邻消除两次才解开）');
+  else err('绳结股数应为 2，实际 ' + JSON.stringify(ropes.map(p => p.hp)));
+  if (plan.filter(p => p.kind === 'frost').length === 0) ok('未配置冰霜就不会布冰霜');
+  else err('未配置的障碍物出现在布点计划里');
+
+  // 36.2 行为：三种障碍同屏时布点不重叠（share 一个 used 表）
+  const mixed = obs.planOverlays({ cols: 6, rows: 6, obstacles: { frost: 3, rope: 3, crate: 3 } },
+    new Array(36).fill('letter_01'));
+  const idxs36 = mixed.map(p => p.index);
+  if (new Set(idxs36).size === idxs36.length) ok('冰霜/绳结/木箱同屏布点零重叠（' + mixed.length + ' 处）');
+  else err('障碍物布点出现重叠：' + idxs36.join(','));
+
+  // 36.2b 行为：配置的障碍物数量必须足额布出（撞位静默缺额是真实踩过的坑：
+  // 第 9 关 frost 的 34 号位撞掉 rope 的 34 号位 → 配 2 实布 1，test-h5 抓到后才修）
+  levels.filter(l => l.obstacles).forEach(l => {
+    const o = l.obstacles;
+    const ids = new Array(l.cols * l.rows).fill(l.elements[0][0]);
+    const p = obs.planOverlays({ cols: l.cols, rows: l.rows, obstacles: o }, ids);
+    ['frost', 'rope', 'crate'].forEach(k => {
+      if (!o[k]) return;
+      const got = p.filter(x => x.kind === k).length;
+      if (got === o[k]) ok('第 ' + l.level + ' 关 ' + k + ' 配 ' + o[k] + ' 实布 ' + got + '（足额）');
+      else err('第 ' + l.level + ' 关 ' + k + ' 配 ' + o[k] + ' 实布 ' + got + '（撞位缺额）');
+    });
+  });
+
+  // 36.3 行为：isBlocked 覆盖绳结（缠住阻挡 / 松开放行 / 空牌安全）
+  if (obs.isBlocked({ rope: 2 }) && !obs.isBlocked({ rope: 0 }) && !obs.isBlocked(null))
+    ok('isBlocked：绳结 > 0 阻挡，松开后放行，空牌安全');
+  else err('isBlocked 未覆盖绳结');
+
+  // 36.4 行为：相邻消除一次松一股，两次全解开；且纯函数不改动入参
+  const grid = [];
+  for (let i = 0; i < 9; i++) grid.push({ id: 'a', rope: 0, crate: 0, state: 'idle' });
+  grid[4].rope = 2; // 中心格被缠住；消除 1（上中）会波及 0/2/4，消除 7（下中）波及 4/6/8
+  const r1 = obs.resolveMatch(grid, [1], 3, 3);
+  const c1 = r1.changed.filter(c => c.index === 4 && c.kind === 'rope');
+  if (c1.length === 1 && c1[0].hp === 1 && c1[0].broken === false)
+    ok('第一次相邻消除：松一股（2 → 1，未破）');
+  else err('第一次消除后绳结状态不对：' + JSON.stringify(r1.changed));
+  const r2 = obs.resolveMatch(r1.tiles, [7], 3, 3);
+  const c2 = r2.changed.filter(c => c.index === 4 && c.kind === 'rope');
+  if (c2.length === 1 && c2[0].hp === 0 && c2[0].broken === true)
+    ok('第二次相邻消除：解开（1 → 0，broken）');
+  else err('第二次消除后绳结状态不对：' + JSON.stringify(r2.changed));
+  if (grid[4].rope === 2) ok('resolveMatch 是纯函数（入参盘面未被改动）');
+  else err('resolveMatch 改动了入参盘面（违反纯函数约定）');
+
+  // 36.5 关卡曲线：绳结必须在木箱之后登场，且各关总遮挡不破 D23 的 25%
+  const firstRope = Math.min.apply(null, levels.filter(l => l.obstacles && l.obstacles.rope).map(l => l.level));
+  const firstCrate = Math.min.apply(null, levels.filter(l => l.obstacles && l.obstacles.crate).map(l => l.level));
+  if (isFinite(firstRope) && isFinite(firstCrate) && firstRope > firstCrate)
+    ok('绳结在木箱之后登场（难度曲线：冰霜 L2 → 木箱 L6 → 绳结 L' + firstRope + '）');
+  else err('绳结登场顺序不对（应晚于木箱）');
+  levels.filter(l => l.obstacles && l.obstacles.rope).forEach(l => {
+    const o = l.obstacles;
+    const tot = (o.frost || 0) + (o.rope || 0) + (o.crate || 0);
+    const cap = Math.floor(l.cols * l.rows * 0.25);
+    if (tot <= cap) ok('第 ' + l.level + ' 关总遮挡 ' + tot + ' ≤ 25% 上限（' + cap + '）');
+    else err('第 ' + l.level + ' 关总遮挡 ' + tot + ' 超过 25% 上限（' + cap + '）');
+  });
+  const l1c = levels.filter(l => l.level === 1)[0];
+  if (!l1c.obstacles || !l1c.obstacles.rope) ok('第 1 关无绳结（D26 前 60 秒不打扰新手）');
+  else err('第 1 关出现了绳结');
+
+  // 36.6 两端同构 + 页面接线（字符串层：两端逐个关键点都要在）
+  const tpl36 = read('preview/template.html');
+  [['utils/obstacles.js', "take(cfgObs.rope, 'rope', cfgObs.ropeHp || 2)"],
+    ['utils/obstacles.js', 'kind: \'rope\', hp: t.rope'],
+    ['preview/template.html', "take(o.rope, 'rope', o.ropeHp || 2)"],
+    ['preview/template.html', "kind: 'rope', hp: t.rope"],
+    ['pages/game/game.wxml', 'item.rope > 0'],
+    ['pages/game/game.wxss', '.rope {'],
+    ['pages/game/game.wxss', '.rope-num {'],
+    ['preview/template.html', '#board .rope {'],
+    ['pages/game/game.js', "'绳结解开！'"],
+    ['preview/template.html', "'绳结解开！'"]
+  ].forEach(p => {
+    if (read(p[0]).indexOf(p[1]) > -1) ok(p[0] + ' 含 ' + p[1].slice(0, 30));
+    else err(p[0] + ' 缺少 ' + p[1]);
+  });
+  if (/tileSig[\s\S]{0,200}t\.rope \|\| 0/.test(tpl36))
+    ok('体验版内容指纹含 rope（罩层变化才会重绘，漏了会显示旧股数）');
+  else err('体验版 tileSig 未含 rope');
+
+  // 36.7 D25 合规：障碍物的对外名字必须是世俗的「绳结」，宗教名不得进代码与文案
+  const secular = ['pages/game/game.js', 'pages/game/game.wxml', 'pages/game/game.wxss',
+    'data/levels.js', 'utils/obstacles.js', 'preview/template.html'].map(read).join('\n');
+  ['金刚结', '锁链'].forEach(w => {
+    if (secular.indexOf(w) === -1) ok('代码与文案无宗教名「' + w + '」（世俗皮肤 = 绳结）');
+    else err('宗教名「' + w + '」出现在代码里（D25：只许世俗皮肤）');
+  });
+})();
+
 console.log('通过: ' + passed + ' | 错误: ' + errors.length + ' | 警告: ' + warnings.length);
 if (errors.length) { console.log('\x1b[31m存在错误，需修复后重试\x1b[0m'); process.exit(1); }
 console.log('\x1b[32m全部自检通过 ✓\x1b[0m');

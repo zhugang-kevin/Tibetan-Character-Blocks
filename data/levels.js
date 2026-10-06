@@ -1,7 +1,9 @@
 // data/levels.js — 10关配置
 // elements: [元素ID, 出现次数]，每种次数均为偶数（保证可两两配对）
-// obstacles（可选）: { frost: 冰霜数量, crate: 木箱数量, crateHp: 木箱耐久 }
-//   冰霜：相邻消除一次破冰；木箱：相邻消除一次扣 1 点耐久，归零破开
+// obstacles（可选）: { frost: 冰霜数量, rope: 绳结数量, ropeHp: 绳股数, crate: 木箱数量, crateHp: 木箱耐久 }
+//   冰霜：相邻消除一次破冰；绳结：相邻消除一次松一股（默认 2 股），全松开才解开；
+//   木箱：相邻消除一次扣 1 点耐久，归零破开
+//   障碍物难度曲线 = 冰霜(L2) → 木箱(L6) → 绳结(L9)，逐关只加一种新机制
 //   遮挡位置由 utils/obstacles.js 确定性生成，不超过总格数 25%
 //
 // ⚠️ D33 起：**总牌数 ≠ 格数**，这是刻意的。
@@ -33,8 +35,8 @@ module.exports = [
   // 第8关：6×8 网格（48 格 / 60 张牌），7个字母，木箱需破两次
   { level: 8, cols: 6, rows: 8, elements: [['letter_01', 8], ['letter_02', 8], ['letter_03', 8], ['letter_04', 8], ['letter_05', 10], ['letter_06', 10], ['letter_07', 8]], obstacles: { frost: 6, crate: 3, crateHp: 2 } },
   // 第9关：6×8 网格（48 格 / 60 张牌），全部8个字母 + 2个图标
-  { level: 9, cols: 6, rows: 8, elements: [['letter_01', 6], ['letter_02', 6], ['letter_03', 6], ['letter_04', 6], ['letter_05', 6], ['letter_06', 6], ['letter_07', 6], ['letter_08', 6], ['icon_01', 6], ['icon_02', 6]], obstacles: { frost: 6, crate: 2, crateHp: 2 } },
+  { level: 9, cols: 6, rows: 8, elements: [['letter_01', 6], ['letter_02', 6], ['letter_03', 6], ['letter_04', 6], ['letter_05', 6], ['letter_06', 6], ['letter_07', 6], ['letter_08', 6], ['icon_01', 6], ['icon_02', 6]], obstacles: { frost: 6, crate: 2, crateHp: 2, rope: 2 } },
   // 第10关（最终关）：6×8 网格（48 格 / 60 张牌），全部8个字母 + 4个图标
   //   12 种元素 × 最少 4 张 → 单种元素密度全关最低，找对最难；补充池 12 张也是全关最多
-  { level: 10, cols: 6, rows: 8, elements: [['letter_01', 6], ['letter_02', 6], ['letter_03', 6], ['letter_04', 6], ['letter_05', 6], ['letter_06', 6], ['letter_07', 4], ['letter_08', 4], ['icon_01', 4], ['icon_02', 4], ['icon_03', 4], ['icon_04', 4]], obstacles: { frost: 8, crate: 4, crateHp: 2 } }
+  { level: 10, cols: 6, rows: 8, elements: [['letter_01', 6], ['letter_02', 6], ['letter_03', 6], ['letter_04', 6], ['letter_05', 6], ['letter_06', 6], ['letter_07', 4], ['letter_08', 4], ['icon_01', 4], ['icon_02', 4], ['icon_03', 4], ['icon_04', 4]], obstacles: { frost: 8, crate: 2, crateHp: 2, rope: 2 } }
 ];

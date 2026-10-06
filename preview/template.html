@@ -744,7 +744,19 @@
     display: flex; align-items: center; justify-content: center; pointer-events: none;
     font-size: 18px; font-weight: 700; color: #FFD98A; text-shadow: 0 1px 0 rgba(0,0,0,.6);
   }
-  #board .bits, #board .frost, #board .crate { z-index: 3; }
+  /* 障碍物三：绳结（D40 世俗皮肤：双股绳十字缠裹 + 剩余股数） */
+  #board .rope {
+    position: absolute; left: 0; top: 0; right: 0; bottom: 0; border-radius: 7px;
+    background:
+      linear-gradient(45deg, rgba(0,0,0,0) 40%, #C08A4E 40%, #8A5A2B 50%, #C08A4E 60%, rgba(0,0,0,0) 60%),
+      linear-gradient(135deg, rgba(0,0,0,0) 40%, #C08A4E 40%, #8A5A2B 50%, #C08A4E 60%, rgba(0,0,0,0) 60%),
+      rgba(48,28,10,.82);
+    border: 1.5px solid rgba(96,60,24,.9);
+    box-shadow: inset 0 2px 0 rgba(255,220,160,.30), inset 0 -3px 7px rgba(0,0,0,.40), 0 2px 6px rgba(0,0,0,.45);
+    display: flex; align-items: center; justify-content: center; pointer-events: none;
+    font-size: 18px; font-weight: 700; color: #FFD98A; text-shadow: 0 1px 0 rgba(0,0,0,.7);
+  }
+  #board .bits, #board .frost, #board .rope, #board .crate { z-index: 3; }
   .break-fx {
     position: absolute; left: 50%; top: 42%; transform: translate(-50%,-50%);
     background: rgba(36,113,163,.94); color: #FFF6DC; font-size: 17px; font-weight: 800;
@@ -2251,7 +2263,7 @@ const state = {
   attempts: 0, matches: 0, misses: 0,       // 正确率统计（证书质量门槛）
   vibrateCount: 0,                          // 震动次数（情绪引擎，测试断言用）
   // 障碍物（PRD 3.1）：冰霜 / 藏式木箱 —— 遮挡是**牌**的属性，随牌下落
-  frostTotal: 0, crateTotal: 0, brokenCount: 0, cardId: null,
+  frostTotal: 0, ropeTotal: 0, crateTotal: 0, brokenCount: 0, cardId: null,
   speakLog: [],                             // 语音播放记录（tashi_delek / blessing_01）
   fxCount: 0,                               // 通关粒子数
   // 权益中心（双轨制）可断言状态
@@ -2348,21 +2360,31 @@ function planOverlays(cfg, tileIds) {
   Object.keys(quota).forEach(function (id) { quota[id] = Math.max(0, quota[id] - 2); });
   const budget = Math.floor(total * 0.25);
   function take(count, kind, hpFirst) {
-    obsSpread(total, count, kind === 'frost' ? 0 : 1).forEach(function (idx) {
-      if (plan.length >= budget || used[idx]) return;
-      const id = (tileIds || [])[idx];
-      if (id !== undefined && quota[id] <= 0) return;
-      used[idx] = true;
-      if (id !== undefined) quota[id] -= 1;
-      plan.push({ index: idx, kind: kind, hp: kind === 'crate' ? (hpFirst || 1) : 0 });
-    });
+    // 与 utils/obstacles.js 同一套偏移：冰霜 0 / 绳结 2 / 木箱 1（确定性布点且互不错开）
+    const off = kind === 'frost' ? 0 : (kind === 'rope' ? 2 : 1);
+    let placed = 0;
+    function place(idxs) {
+      idxs.forEach(function (idx) {
+        if (placed >= count || plan.length >= budget || used[idx]) return;
+        const id = (tileIds || [])[idx];
+        if (id !== undefined && quota[id] <= 0) return;
+        used[idx] = true;
+        if (id !== undefined) quota[id] -= 1;
+        plan.push({ index: idx, kind: kind, hp: kind === 'frost' ? 0 : (hpFirst || 1) });
+        placed += 1;
+      });
+    }
+    place(obsSpread(total, count, off));
+    // 足额补偿：撞位被跳过时从加长候选补足（见 utils/obstacles.js 同注释）
+    if (placed < count) place(obsSpread(total, Math.min(total, count * 4 + 2), off));
   }
   if (o.frost) take(o.frost, 'frost', 0);
+  if (o.rope) take(o.rope, 'rope', o.ropeHp || 2);
   if (o.crate) take(o.crate, 'crate', o.crateHp || 1);
   return plan;
 }
 function obsBlocked(tile) {
-  return !!(tile && (tile.frost || (tile.crate && tile.crate > 0)));
+  return !!(tile && (tile.frost || (tile.rope && tile.rope > 0) || (tile.crate && tile.crate > 0)));
 }
 function obsResolve(tiles, matched, cols, rows) {
   const next = tiles.map(function (t) { return Object.assign({}, t); });
@@ -2374,6 +2396,7 @@ function obsResolve(tiles, matched, cols, rows) {
       const t = next[ni];
       if (!t || t.state === 'removed' || t.state === 'removing') return;
       if (t.frost) { t.frost = false; seen[ni] = true; changed.push({ index: ni, kind: 'frost', hp: 0, broken: true }); }
+      else if (t.rope > 0) { t.rope -= 1; seen[ni] = true; changed.push({ index: ni, kind: 'rope', hp: t.rope, broken: t.rope === 0 }); }
       else if (t.crate > 0) { t.crate -= 1; seen[ni] = true; changed.push({ index: ni, kind: 'crate', hp: t.crate, broken: t.crate === 0 }); }
     });
   });
@@ -3241,7 +3264,7 @@ function makeTile(id, uid) {
     fallbackText: el.char || '',
     golden: id === state.goldenId,
     pieceStyle: pieceStyle(el.color),
-    frost: false, crate: 0, shatter: false, state: 'idle'
+    frost: false, rope: 0, crate: 0, shatter: false, state: 'idle'
   };
   if (SPRITE_LETTERS[id]) {
     const occ = occCount[id] || 0;
@@ -3307,14 +3330,17 @@ function startLevel(level) {
   state.freed = [];
   for (let i = 0; i < state.board.slots; i++) state.freed.push(false);
 
-  // 障碍物布点（冰霜 / 藏式木箱）：入参用初始盘面的元素列表（满铺，长度 = 格数）
+  // 障碍物布点（冰霜 / 绳结 / 藏式木箱）：入参用初始盘面的元素列表（满铺，长度 = 格数）
   planOverlays(cfg, state.board.cells.map(function (t) { return t ? t.id : null; })).forEach(function (o) {
     const t = state.board.cells[o.index];
     if (!t) return;
-    if (o.kind === 'frost') t.frost = true; else t.crate = o.hp;
+    if (o.kind === 'frost') t.frost = true;
+    else if (o.kind === 'rope') t.rope = o.hp;
+    else t.crate = o.hp;
   });
   state.frostTotal = state.board.cells.filter(function (t) { return t && t.frost; }).length;
   state.crateTotal = state.board.cells.filter(function (t) { return t && t.crate > 0; }).length;
+  state.ropeTotal = state.board.cells.filter(function (t) { return t && t.rope > 0; }).length;
   state.brokenCount = 0;
 
   $('status-mid').textContent = '第 ' + level + ' 关';
@@ -3440,13 +3466,14 @@ function tileInner(t) {
   }
   inner += '</div>';
   if (t.frost) inner += '<div class="frost">❄</div>';
+  if (t.rope > 0) inner += '<div class="rope">' + t.rope + '</div>';
   if (t.crate > 0) inner += '<div class="crate">' + t.crate + '</div>';
   return inner;
 }
 /* 内容指纹：只有它变了才重建 innerHTML（位置/选中/抖动走热路径） */
 function tileSig(t) {
   return t.id + '|' + (t.sprite || '') + '|' + (t.variant == null ? '' : t.variant) + '|' +
-    (t.golden ? 1 : 0) + '|' + (t.frost ? 1 : 0) + '|' + (t.crate || 0) + '|' + (t.shatter ? 1 : 0);
+    (t.golden ? 1 : 0) + '|' + (t.frost ? 1 : 0) + '|' + (t.rope || 0) + '|' + (t.crate || 0) + '|' + (t.shatter ? 1 : 0);
 }
 function tileClass(t, fresh) {
   return 'tile' + (t.golden ? ' golden' : '') + (t.blocked ? ' blocked' : '') +
@@ -3595,7 +3622,9 @@ function onTapTile(idx) {
    420ms 内牌可能已经下落换格，按格号复位会把状态写错牌。 */
 function blockedTip(idx, tile) {
   setTileState(tile, 'shake');
-  showTip(tile.frost ? '❄ 这块被冰霜罩住了 · 先消除旁边的牌' : ('📦 藏式木箱还剩 ' + tile.crate + ' 次 · 消除旁边的牌来敲开'));
+  showTip(tile.frost ? '❄ 这块被冰霜罩住了 · 先消除旁边的牌'
+    : (tile.rope > 0 ? ('🪢 绳结还缠着 ' + tile.rope + ' 股 · 消除旁边的牌来解开')
+      : ('📦 藏式木箱还剩 ' + tile.crate + ' 次 · 消除旁边的牌来敲开')));
   setTimeout(function () {
     if (tile.state !== 'shake') return;
     setTileState(tile, 'idle');
@@ -3690,8 +3719,13 @@ function handleMatch(i, j) {
   (settled.changed || []).forEach(function (c) {
     const t = state.board.cells[c.index];
     if (!t) return;
-    if (c.kind === 'frost') t.frost = false; else t.crate = c.hp;
-    if (c.broken) { labels.push(c.kind === 'frost' ? '破冰！' : '木箱破开！'); state.brokenCount++; }
+    if (c.kind === 'frost') t.frost = false;
+    else if (c.kind === 'rope') t.rope = c.hp;
+    else t.crate = c.hp;
+    if (c.broken) {
+      labels.push(c.kind === 'frost' ? '破冰！' : (c.kind === 'rope' ? '绳结解开！' : '木箱破开！'));
+      state.brokenCount++;
+    }
   });
 
   // 消除立即生效，不再锁定盘面——玩家可以无缝继续（连点也不阻塞，见 drainQueue）
