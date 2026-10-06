@@ -107,7 +107,12 @@
 | 排行榜 / 社交红线（D6/D3） | 无排行榜、无账号体系、无手机号收集 |
 | 教育/文化 payload 真实 | 34 张文化卡（30 辅音 + 4 图标，2026-10-07 扩充）+ 12 阶段成长阶梯 + 证书体系 + 藏文排版规范 |
 | 进度纯本地（D3） | `utils/storage.js` 本地存储，无网络请求 |
-| 四套门禁全绿 | validate 1129 项 / test-tibetan 1392 项 / test-h5 574 项 / 体验版构建 OK |
+| 四套门禁全绿 | validate **1164** 项 / test-tibetan 1392 项 / test-h5 574 项 / 体验版构建 OK |
+| **主包体积受控** | `project.config.json` 的 `packOptions.ignore` 已排除 preview/docs/scripts/node_modules/.workbuddy/README.md；**实测 1344KB ≤ 2MB 上限**（留 24% 余量），由 validate §38.2 机械测算 |
+| **隐私保护指引前置** | 3 处保存相册全部走 `utils/privacy.js`（validate §38.3 逐处锁接线：引入 / ensurePrivacy / explainSaveFailure） |
+| **工程配置** | `app.json` 开启 `lazyCodeLoading: requiredComponents`；`getSystemInfoSync` 改为优先 `getWindowInfo`（§38.4） |
+| **存储健壮性** | `utils/storage.js` / `utils/tracker.js` 读写全部 try/catch + 脏数据兜底，存储异常不会白屏（§38.5） |
+| **朋友圈分享** | 首页补 `onShareTimeline`（无推荐流入口的小程序，朋友圈是唯一零成本曝光面；仍只带内容不带激励，§28.2 双入口扫描） |
 | 传播组件 | 分享海报（真实数据）、祝福卡、护照/证书 Canvas 生成均就绪 |
 
 ### B. 代码侧 —— 待办（均不阻塞开发，但阻塞提审）
@@ -130,6 +135,15 @@
 4. **ICP 备案**（免费，1-20 个工作日，境内必备）
 5. **软件著作权**（1-2 个月，约 800-1500 元）—— 建议第 1 步同时启动，两条线并行
 6. 完成上方 B1/B2 后提审「**教育 - 素质教育 / 文化**」类目
+
+### C-2. 上线前必须在公众平台配置（否则功能被拒）
+
+1. **《小程序用户隐私保护指引》**：本项目用到 `wx.saveImageToPhotosAlbum`（保存证书 / 祝福卡 / 祝福签到相册），
+   属平台「受保护接口」。未配置隐私指引、或未在调用前取得用户同意，接口会直接失败。
+   代码侧已完成前置（`utils/privacy.js` 统一走 `wx.getPrivacySetting` → `wx.requirePrivacyAuthorize`），
+   **后台配置必须由你完成**：公众平台 → 设置 → 服务内容声明 → 用户隐私保护指引 → 勾选「相册（写入）」并提交审核。
+2. **类目**先定死为「教育 - 素质教育 / 文化」（类目不可逆，见 §3）。
+3. **字体域名白名单**：若配置了 `TIBETAN_FONT_URL`，该域名需加入「downloadFile 合法域名」。
 
 ### D. 提审后
 

@@ -1019,6 +1019,16 @@ function mockCtx(sink) {
     ev('state.ropeTotal') === 2, 'ropeTotal=' + ev('state.ropeTotal'));
   check('DOM 绳结数量一致', $$('#board .rope').length === 2, '实际 ' + $$('#board .rope').length);
   const ropeIdx = tiles().findIndex(function (t) { return t.rope > 0; });
+  // ⚠️ 必须按 **uid** 追踪绳结牌，不能按格号：消除后上方方块下落 + 顶部补充，
+  // 牌会换格（D33 起障碍是「牌属性」），原来的格号上坐着的已经是另一张牌了。
+  // 用格号读数会偶发得到 0（读到别处已解开的绳结），测试表现为随机失败。
+  const ropeUid = tiles()[ropeIdx].uid;
+  const ropeOf = function (uid) {
+    return tiles().filter(function (t) { return t.uid === uid; })[0] || null;
+  };
+  const ropeIdxOf = function (uid) {
+    return tiles().findIndex(function (t) { return t.uid === uid; });
+  };
   const ropeHpBefore = tiles()[ropeIdx].rope;
   check('绳结初始为双股（hp = 2）', ropeHpBefore === 2, 'hp=' + ropeHpBefore);
   await clickTile(ropeIdx);
@@ -1039,7 +1049,8 @@ function mockCtx(sink) {
     await clickTile(ropePair[0]);
     await clickTile(ropePair[1]);
     await sleep(400);
-    const ropeHpAfter = tiles()[ropeIdx].rope;
+    const ropeNow = ropeOf(ropeUid);
+    const ropeHpAfter = ropeNow ? ropeNow.rope : -1;
     check('相邻消除一次松一股（2 → 1）', ropeHpAfter === ropeHpBefore - 1,
       ropeHpBefore + ' → ' + ropeHpAfter);
     // 再消一对相邻的：第二股也松开 → DOM 罩层移除
@@ -1057,10 +1068,11 @@ function mockCtx(sink) {
       await clickTile(ropePair2[0]);
       await clickTile(ropePair2[1]);
       await sleep(400);
-      const ropeHpFinal = tiles()[ropeIdx].rope;
+      const ropeFinal = ropeOf(ropeUid);
+      const ropeHpFinal = ropeFinal ? ropeFinal.rope : -1;
       check('第二次相邻消除后绳结解开（hp = 0）', ropeHpFinal === 0, 'hp=' + ropeHpFinal);
       check('解开后 DOM 罩层移除',
-        !doc.querySelector('#board .tile[data-index="' + ropeIdx + '"] .rope'));
+        !doc.querySelector('#board .tile[data-index="' + ropeIdxOf(ropeUid) + '"] .rope'));
     }
   }
 

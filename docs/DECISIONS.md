@@ -111,6 +111,8 @@
 
 | **D41** | 「去游戏化」文案改造（business-model-v2 §3.1 八项映射，教育/文化类目提审的最高优先级前置项）一直挂在待办上，本轮要不要落？ | ✅ **全量落地（2026-10-07 用户拍板）**：第 N 关→第 N 课、积分→学习得分、连击→连续正确、金色方块（双倍积分）→重点字（双倍练习）、如何消除→如何使用、Slogan「玩方块，认藏文」→「认藏文，从方块开始」、闯关/通关→完成课程/完成、印章→文化收藏口径，共 **143 处**用户可见文案（6 页 wxml/js + data/daily.js + data/stages.js + 体验版镜像；注释与代码标识符不动）。**新门禁 validate §37**：剥注释（HTML/CSS/JS 三种）后扫描「积分/连击/通关/关卡/玩方块/如何消除/闯关」七词清零 + 反例自测（字符串命中 / 注释豁免）。**坑**：①「学习单元」的「元」字撞 §17 金额字符扫描，改用「课程」；②「文案 关 / 音乐 关」开关里的「关」不是量词，替换必须用上下文精确匹配，不能全局替换；③ test-h5 十余处旧文案断言同步（祝福卡「完成全部 10 课」等）。门禁 1129 → **1132 项 / 37 大类**、test-h5 574（不变） | **事实核对**：改造前审计实测「第 N 关/通关/积分/连击」遍布 6 页（release-and-monetization §七 B1）。标题「藏字方块」按 §3.1 判定为中性，保留 |
 
+| **D42** | 生产上线前的「能跑但上线会炸」三类问题要不要现在修？① `packOptions.ignore` 为空 → 20MB 开发资产进 2MB 主包；② `saveImageToPhotosAlbum` 未过《用户隐私保护指引》前置；③ `lazyCodeLoading` 未开、`getSystemInfoSync` 已弃用、`utils/storage.js` 裸调存储无 try/catch。另：测试偶发失败（绳结 2→0）是真 bug 还是测试 bug？ | ✅ **全部修复（2026-10-07 用户拍板「按生产级查全」）**：① ignore 排除 preview/docs/scripts/node_modules/.workbuddy/README.md，主包实测 **1344KB**（门禁 §38.2 按 ignore 规则真实测算，≤1843KB 预算）；② 新建 `utils/privacy.js`（getPrivacySetting → requirePrivacyAuthorize → explainSaveFailure），3 处保存相册统一接线；③ app.json 加 `lazyCodeLoading`、视口高度改走 `getWindowInfo`（保留旧版回退）、storage/tracker 读写加 try/catch + 脏数据类型校验。**新增 validate §38 生产上线守卫**（5 小节 + 3 组反例自测）。**顺带修掉的三个真实缺陷**：A. `finishLevel` 的 1.2s 延迟跳转**没有页面存活守卫**——用户在庆祝动画期间点返回，会被硬推到结算页（新增 `this._alive`）；B. 另 3 处匿名定时器在 unload 后仍回调 setData；C. 首页缺 `onShareTimeline`（朋友圈曝光为零）。门禁 1132 → **1164 项 / 38 大类**、test-h5 574（不变） | **绳结 flaky 的判定**：先用 `utils/obstacles.js` 单测证明「一次消除只松一股」（两个待消牌都相邻也只减 1，靠 `seen` 去重），**产品逻辑正确**；真因是 test-h5 §21 用**格号**追踪绳结牌，而下落+补充会让牌换格（D33 起障碍是牌属性）→ 读到别的格得到 0。改按 **uid** 追踪，连跑三次 574/0 稳定。教训：**先证明产品无罪再改测试**，否则就是用改测试掩盖 bug |
+
 ---
 
 ## 三、待拍板

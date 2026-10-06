@@ -10,6 +10,19 @@ var lamp = require('../../utils/lamp');
 var regionsData = require('../../data/regions');
 var dailyData = require('../../data/daily');
 var lampData = require('../../data/lamp');
+// 用户隐私保护指引（utils/privacy.js）：保存相册是受保护接口，必须先过授权关卡
+var privacy = require('../../utils/privacy');
+
+// 视口高度：优先用 wx.getWindowInfo（基础库 2.20.1+），旧设备回退 getSystemInfoSync，
+// 两者都取不到时用 667 兜底。getSystemInfoSync 已标记不再维护，不再作为首选路径。
+function viewportHeight() {
+  try {
+    if (typeof wx.getWindowInfo === 'function') {
+      return wx.getWindowInfo().windowHeight || 667;
+    }
+    return wx.getSystemInfoSync().windowHeight || 667;
+  } catch (e) { return 667; }
+}
 
 // 印记定义（v0 仅拉萨；后续扩展七地市）
 var STAMPS = {
@@ -240,8 +253,7 @@ Page({
         var rect = res && res[0];
         var off = res && res[1];
         if (!rect || !rect.height) return;
-        var vh = 667;
-        try { vh = wx.getSystemInfoSync().windowHeight || 667; } catch (e) { /* 取不到时用默认视口高 */ }
+        var vh = viewportHeight();
         var plan = ladder.buildPlan({
           mapTop: rect.top + ((off && off.scrollTop) || 0),
           mapHeight: rect.height,
@@ -527,19 +539,21 @@ Page({
     });
   },
 
-  // 保存祝福签卡片到相册（权限拒绝时只做 toast 指引：首页遵循「不打扰」约束，不弹阻塞式弹窗）
+  // 保存祝福签卡片到相册（受保护接口：先走 utils/privacy.js 的统一前置）
+  // 首页遵循「不打扰」约束：失败只给轻量 toast，不弹阻塞式弹窗
   saveBlessingCard: function () {
+    var that = this;
     if (!this.data.blessingImage) return;
-    wx.saveImageToPhotosAlbum({
-      filePath: this.data.blessingImage,
-      success: function () { wx.showToast({ title: '已保存到相册', icon: 'success' }); },
-      fail: function (e) {
-        if (e.errMsg && e.errMsg.indexOf('auth') > -1) {
-          wx.showToast({ title: '需要相册权限：请在右上角设置中允许', icon: 'none' });
-        } else {
+    privacy.ensurePrivacy(function (ok) {
+      if (!ok) return;
+      wx.saveImageToPhotosAlbum({
+        filePath: that.data.blessingImage,
+        success: function () { wx.showToast({ title: '已保存到相册', icon: 'success' }); },
+        fail: function (e) {
+          if (privacy.explainSaveFailure(e)) return;
           wx.showToast({ title: '保存失败，请再试一次', icon: 'none' });
         }
-      }
+      });
     });
   },
 
@@ -611,6 +625,16 @@ Page({
     return {
       title: '藏字方块 · 认藏文，从方块开始',
       path: '/pages/index/index'
+    };
+  },
+
+  // 分享到朋友圈（D41 后的增长补口）：小程序无推荐流入口，朋友圈是唯一「零成本曝光面」。
+  // 同样只带内容不带激励；imageUrl 用现成的品牌 Logo，不额外占包体。
+  onShareTimeline: function () {
+    return {
+      title: '藏字方块 · 认藏文，从方块开始',
+      query: 'from=timeline',
+      imageUrl: '/images/logo-144.png'
     };
   }
 });

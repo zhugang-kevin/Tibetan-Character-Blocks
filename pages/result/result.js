@@ -7,6 +7,8 @@ var tibText = require('../../utils/tibetan-text');
 var certificate = require('../../utils/certificate');
 var audio = require('../../utils/audio');
 var collect = require('../../utils/collect');
+// 用户隐私保护指引（utils/privacy.js）：保存相册是受保护接口，必须先过授权关卡
+var privacy = require('../../utils/privacy');
 
 // 「藏文可以组合」预告的数据源（纯展示；由页面注入 utils/collect.js 的纯判据函数，
 // 这样「哪一关讲解拼合」只写在数据文件里，页面不内联关卡号）
@@ -441,29 +443,23 @@ Page({
     ]).then(paint);
   },
 
-  // 保存到相册
+  // 保存到相册（受保护接口：先走 utils/privacy.js 的统一前置，同意后立即继续保存）
   saveToAlbum: function () {
     var that = this;
     if (!this.data.imagePath) return;
-    wx.saveImageToPhotosAlbum({
-      filePath: this.data.imagePath,
-      success: function () {
-        wx.showToast({ title: '已保存到相册', icon: 'success' });
-      },
-      fail: function (e) {
-        if (e.errMsg && e.errMsg.indexOf('auth') > -1) {
-          wx.showModal({
-            title: '需要相册权限',
-            content: '请在设置中允许保存图片到相册',
-            confirmText: '去设置',
-            success: function (res) {
-              if (res.confirm) wx.openSetting();
-            }
-          });
-        } else {
+    privacy.ensurePrivacy(function (ok) {
+      if (!ok) return;                     // 用户未同意：提示已在 ensurePrivacy 内给出
+      wx.saveImageToPhotosAlbum({
+        filePath: that.data.imagePath,
+        success: function () {
+          wx.showToast({ title: '已保存到相册', icon: 'success' });
+        },
+        fail: function (e) {
+          // 隐私未同意 / 相册权限未开由 privacy 模块给正确指引；其余按原逻辑兜底
+          if (privacy.explainSaveFailure(e)) return;
           wx.showToast({ title: '保存失败，请再试一次', icon: 'none' });
         }
-      }
+      });
     });
   },
 

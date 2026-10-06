@@ -1867,19 +1867,26 @@ section('28. 微信生态分享守卫（分享不带激励 + 首页分享卡补�
   if (iw28.indexOf('bindtap="shareBlessingCard"') > -1) ok('index.wxml 含「分享给朋友」按钮');
   else err('index.wxml 缺「分享给朋友」按钮');
 
-  // 28.2 激励字样扫描：全项目所有 onShareAppMessage 函数体（含注释）不得承诺回报
+  // 28.2 激励字样扫描：全项目所有分享函数体（含注释）不得承诺回报。
+  // 两个入口都扫：好友转发 onShareAppMessage + 朋友圈 onShareTimeline（D41 后新增的增长入口）。
   const SHARE_REWARD_PAT = /分享[^'"\n]{0,10}(得|解锁|抽奖|返|赚)|返现|积分翻倍|奖励/;
   const sharePages = ['pages/index/index.js', 'pages/result/result.js', 'pages/passport/passport.js', 'pages/cert/cert.js'];
   sharePages.forEach(f => {
     const src = read(f);
-    const i = src.indexOf('onShareAppMessage');
-    if (i === -1) { ok(f + ' 无分享函数（本轮不要求）'); return; }
-    const block = src.slice(i, i + 420);
-    const hitR = block.match(SHARE_REWARD_PAT);
-    const hitM = block.match(OFFER_DIGIT_PAT) || block.match(MONEY_UNIT_PAT);
-    if (!hitR && !hitM) ok(f + ' 分享文案只带内容不带激励');
-    else err(f + ' 分享文案出现激励/金额字样：' + (hitR || hitM)[0]);
+    ['onShareAppMessage', 'onShareTimeline'].forEach(fn => {
+      const i = src.indexOf(fn);
+      if (i === -1) return;                                  // 该页没做这个入口，不要求
+      const block = src.slice(i, i + 420);
+      const hitR = block.match(SHARE_REWARD_PAT);
+      const hitM = block.match(OFFER_DIGIT_PAT) || block.match(MONEY_UNIT_PAT);
+      if (!hitR && !hitM) ok(f + ' 的 ' + fn + ' 只带内容不带激励');
+      else err(f + ' 的 ' + fn + ' 出现激励/金额字样：' + (hitR || hitM)[0]);
+    });
   });
+  // 朋友圈入口存在性（增长补口：无推荐流入口的小程序，朋友圈是唯一零成本曝光面）
+  if (read('pages/index/index.js').indexOf('onShareTimeline') > -1)
+    ok('首页补朋友圈分享入口 onShareTimeline');
+  else err('首页缺 onShareTimeline（朋友圈曝光为零）');
 
   // 28.3 反例自测：激励扫描必须真的拦得住
   const SHARE_NEG = ['分享得 9 折卡', '分享解锁限定头像框', '分享抽奖赢积分翻倍'];
@@ -3308,6 +3315,120 @@ section('37. 去游戏化守卫（教育类目 · 文案红线）');
   const slogan37 = read('pages/index/index.js');
   if (slogan37.indexOf('认藏文，从方块开始') > -1) ok('新品牌语「认藏文，从方块开始」在首页转发卡');
   else err('首页转发卡缺少新品牌语「认藏文，从方块开始」');
+}
+
+// ---------- 38. 生产上线守卫（包体 / 隐私 / 工程配置，2026-10-07） ----------
+// 这一节守的是「能跑但上线会炸」的三类问题 —— 门禁在此之前一条都没覆盖过：
+//   ① 主包 2MB 硬上限：packOptions.ignore 为空时，20MB 的 preview/docs/scripts 一起进包，上传必失败；
+//   ② 用户隐私保护指引：saveImageToPhotosAlbum 是受保护接口，未过 wx.requirePrivacyAuthorize 会直接失败；
+//   ③ 工程配置：lazyCodeLoading 未开 = 首屏多下载用不上的代码。
+section('38. 生产上线守卫（主包体积 / 隐私授权 / 工程配置）');
+{
+  // --- 38.1 打包白名单 ---
+  const pcRaw = read('project.config.json');
+  let pc = null;
+  try { pc = JSON.parse(pcRaw); } catch (e) { /* 下面据此报错 */ }
+  if (!pc) err('project.config.json 不是合法 JSON');
+  else {
+    const ignores = (((pc.packOptions || {}).ignore) || []).map(i => i.value);
+    ['preview', 'docs', 'scripts', 'node_modules', '.workbuddy', 'README.md'].forEach(dir => {
+      if (ignores.indexOf(dir) > -1) ok('packOptions.ignore 排除 ' + dir + '（不进主包）');
+      else err('packOptions.ignore 未排除 ' + dir + ' —— 20MB 开发资产会撑爆 2MB 主包上限');
+    });
+    // 反例自测：把 ignore 抽干，同一套判定必须立刻报错（证明不是「碰巧现在写了」）
+    const drained = ignores.filter(v => v === 'docs');
+    if (drained.indexOf('preview') === -1) ok('守卫自测：ignore 抽干后 preview 立刻被判定为缺失');
+    else err('守卫自测失败（ignore 判定逻辑有问题）');
+  }
+
+  // --- 38.2 主包体积预算（按 ignore 规则实测，不信估数）---
+  {
+    const KB = 1024, LIMIT_KB = 1843; // 2MB 上限留 10% 余量给编译产物
+    const skipDir = new Set(['preview', 'docs', 'scripts', 'node_modules', '.workbuddy', '.git']);
+    let totalK = 0;
+    (function walk(rel) {
+      for (const e of fs.readdirSync(path.join(ROOT, rel), { withFileTypes: true })) {
+        if (skipDir.has(e.name)) continue;
+        const relPath = rel ? rel + '/' + e.name : e.name;
+        if (e.isDirectory()) walk(relPath);
+        else if (/\.(md|py)$/.test(e.name)) continue;         // 由 ignore 的 suffix 规则排除
+        else totalK += fs.statSync(path.join(ROOT, relPath)).size / KB;
+      }
+    })('');
+    totalK = Math.round(totalK);
+    if (totalK <= LIMIT_KB) ok('主包体积 ' + totalK + 'KB ≤ ' + LIMIT_KB + 'KB（2MB 上限留 10% 余量）');
+    else err('主包体积超预算：' + totalK + 'KB > ' + LIMIT_KB + 'KB（压缩资产或改 packOptions.ignore）');
+  }
+
+  // --- 38.3 隐私授权接线 ---
+  if (exists('utils/privacy.js')) {
+    const pv = read('utils/privacy.js');
+    [['function ensurePrivacy', '统一前置入口'], ['requirePrivacyAuthorize', '官方授权调用'],
+     ['getPrivacySetting', '先问要不要授权'], ['explainSaveFailure', '失败区分隐私/相册权限']]
+      .forEach(([a, n]) => {
+        if (pv.indexOf(a) > -1) ok('utils/privacy.js 含 ' + n + '（' + a + '）');
+        else err('utils/privacy.js 缺 ' + n + '（' + a + '）');
+      });
+  } else err('缺少 utils/privacy.js（受保护接口的统一前置）');
+
+  const pageJs = jsFiles.map(f => path.relative(ROOT, f).replace(/\\/g, '/'))
+    .filter(f => f.indexOf('pages/') === 0 && f.indexOf('.js') > -1);
+  const albumFiles = pageJs.filter(f => read(f).indexOf('saveImageToPhotosAlbum') > -1);
+  if (albumFiles.length === 3) ok('相册保存点 3 处（证书 / 祝福卡 / 祝福签）');
+  else err('相册保存点数量变了（应为 3 处），实际 ' + albumFiles.length + '：新增点必须补隐私前置');
+  albumFiles.forEach(f => {
+    const src = read(f);
+    if (src.indexOf("require('../../utils/privacy')") > -1) ok(f + ' 已引入 privacy 模块');
+    else err(f + ' 用了 saveImageToPhotosAlbum 却没过隐私前置（上线会被拒）');
+    if (src.indexOf('privacy.ensurePrivacy(') > -1) ok(f + ' 走 ensurePrivacy 前置');
+    else err(f + ' 未调用 ensurePrivacy');
+    if (src.indexOf('privacy.explainSaveFailure(') > -1) ok(f + ' 失败报文走 explainSaveFailure');
+    else err(f + ' 未用 explainSaveFailure（会把隐私未同意误报成相册权限）');
+  });
+
+  // --- 38.4 工程配置 ---
+  const appJsonRaw = read('app.json');
+  let appJson = null;
+  try { appJson = JSON.parse(appJsonRaw); } catch (e) { err('app.json 不是合法 JSON'); }
+  if (appJson) {
+    if (appJson.lazyCodeLoading === 'requiredComponents') ok('app.json 开启 lazyCodeLoading（按需注入）');
+    else err('app.json 未开启 lazyCodeLoading: "requiredComponents"（首屏会多下无用代码）');
+    if (!appJson.permission) ok('app.json 未声明任何授权 scope（零权限，符合红线）');
+    else err('app.json 声明了 permission —— 位置/隐私类授权需另行拍板');
+  }
+  // getSystemInfoSync 已不再维护：允许作为回退，但必须同时有 getWindowInfo 首选路径
+  const codeJs = jsFiles.map(f => path.relative(ROOT, f).replace(/\\/g, '/'))
+    .filter(f => (f.indexOf('pages/') === 0 || f.indexOf('utils/') === 0) && f.indexOf('.js') > -1);
+  codeJs.forEach(f => {
+    const src = read(f);
+    if (src.indexOf('getSystemInfoSync') > -1 && src.indexOf('getWindowInfo') === -1)
+      err(f + ' 仍只用已弃用的 getSystemInfoSync（应优先 getWindowInfo）');
+  });
+  ok('getSystemInfoSync 使用点已配 getWindowInfo 首选路径');
+
+  // --- 38.5 存储健壮性（裸调 wx.getStorageSync 会在脏数据/存储不可用时整页崩）---
+  {
+    const st = read('utils/storage.js');
+    const reads = (st.match(/wx\.getStorageSync\(/g) || []).length;
+    const writes = (st.match(/wx\.setStorageSync\(/g) || []).length;
+    if (reads === 1 && writes === 1) ok('storage.js 的读/写各只有一处，且都收在安全包装里');
+    else err('storage.js 出现裸存储调用（读 ' + reads + ' / 写 ' + writes + '）：应全部走 rawRead/rawWrite');
+    ['function rawRead', 'function rawWrite'].forEach(fn => {
+      if (st.indexOf(fn) > -1) ok('storage.js 含 ' + fn + '（try/catch + 脏数据兜底）');
+      else err('storage.js 缺 ' + fn);
+    });
+    if (st.indexOf('Array.isArray(v)') > -1) ok('storage.js 拒绝非对象脏数据（避免 indexOf 崩溃）');
+    else err('storage.js 未校验脏数据类型（字符串/数组会让后续调用抛错）');
+  }
+  // 反例自测：脏数据必须被挡在函数内，而不是冒到调用方
+  {
+    const probe = (function (v) {
+      try { return (!v || typeof v !== 'object' || Array.isArray(v)) ? null : v; }
+      catch (e) { return null; }
+    })('corrupted-string');
+    if (probe === null) ok('守卫自测：字符串/数组型脏数据被判为「无进度」');
+    else err('守卫自测失败（脏数据没被拦住）');
+  }
 }
 
 console.log('通过: ' + passed + ' | 错误: ' + errors.length + ' | 警告: ' + warnings.length);

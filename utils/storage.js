@@ -15,8 +15,26 @@ var MAX_LEVEL = 10;
 // 下一次 save 会打上标记，之后只按新口径累计。
 var COMBO_MODEL = 'window';
 
+// 存储读写的安全包装（生产加固）：
+//   wx.getStorageSync 在「存储被清 / 数据损坏 / 极端机型限制」下会抛异常，
+//   直接裸调会让 onShow 里的第一个调用点把整页带崩——用户看到的是白屏而不是游戏。
+//   读失败 = 当成全新用户（进度丢失但游戏能玩），写失败 = 静默（本局照常进行）。
+function rawRead() {
+  try {
+    var v = wx.getStorageSync(KEY);
+    // 脏数据（字符串 / 数组 / 别的版本写的东西）一律按「没有进度」处理，
+    // 否则后面 p.completedLevels.indexOf 这类调用会直接抛 TypeError。
+    if (!v || typeof v !== 'object' || Array.isArray(v)) return null;
+    return v;
+  } catch (e) { return null; }
+}
+
+function rawWrite(p) {
+  try { wx.setStorageSync(KEY, p); return true; } catch (e) { return false; }
+}
+
 function getProgress() {
-  var p = wx.getStorageSync(KEY);
+  var p = rawRead();
   var comboCurrent = !!p && p.comboModel === COMBO_MODEL;
   return {
     unlockedLevel: (p && p.unlockedLevel) || 1,
@@ -58,7 +76,7 @@ function getProgress() {
 function save(p) {
   // 落库时打上连击口径标记：从此这次写入的 bestCombo 就是新口径的值（见 COMBO_MODEL 注释）
   if (p && typeof p === 'object') p.comboModel = COMBO_MODEL;
-  wx.setStorageSync(KEY, p);
+  return rawWrite(p);
 }
 
 // 通关第 n 关：记录完成 + 解锁下一关

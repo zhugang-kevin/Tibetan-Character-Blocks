@@ -1,7 +1,18 @@
 {
-  "description": "藏字方块 — 玩方块，认藏文（配对消除休闲小游戏）",
+  "description": "藏字方块 — 认藏文，从方块开始（配对消除式藏文启蒙小程序）",
   "packOptions": {
-    "ignore": [],
+    "ignore": [
+      { "type": "folder", "value": "preview" },
+      { "type": "folder", "value": "docs" },
+      { "type": "folder", "value": "scripts" },
+      { "type": "folder", "value": "node_modules" },
+      { "type": "folder", "value": ".workbuddy" },
+      { "type": "folder", "value": ".git" },
+      { "type": "file", "value": "README.md" },
+      { "type": "file", "value": ".gitignore" },
+      { "type": "suffix", "value": ".py" },
+      { "type": "suffix", "value": ".md" }
+    ],
     "include": []
   },
   "setting": {

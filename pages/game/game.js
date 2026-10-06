@@ -175,6 +175,8 @@ Page({
       return;
     }
     var that = this;
+    // 页面存活守卫：unload 之后到期的定时器不再回调，避免在已销毁的页面上 setData
+    this._alive = true;
     this.goldenId = cfg.elements[Math.floor(Math.random() * cfg.elements.length)][0];
     this.occCount = {};
     this.collected = {};
@@ -493,6 +495,7 @@ Page({
     this.drainQueue();
 
     setTimeout(function () {
+      if (!that._alive) return;   // 页面已销毁：不再回调
       if (that.matchedCount === that.data.totalPairs) return;
       if (firstTime) that.showCard(id); else that.showToastTip(id);
     }, 320);
@@ -552,6 +555,7 @@ Page({
     this.draining = true;
     var uids = this.removeQueue.shift();
     setTimeout(function () {
+      if (!that._alive) return;   // 页面已销毁：结算队列停止排空
       // 结算时才把 uid 解析成格号：排队期间前面的下落已经把牌挪过位置了。
       // 这两张牌一定还在盘面上（只有它们自己的结算才会移走它们），所以必然找得到。
       var pair = [that.indexOfUid(uids[0]), that.indexOfUid(uids[1])];
@@ -602,6 +606,8 @@ Page({
     this.celebrate();
     this.tashiTimer = setTimeout(function () { audio.tashiDelek(); }, 350);
     setTimeout(function () {
+      // 用户在这 1.2 秒里点了返回/退出：页面已销毁，不能再把他硬推到结算页
+      if (!that._alive) return;
       wx.redirectTo({
         url: '/pages/result/result?level=' + that.data.level +
           '&pairs=' + that.data.totalPairs +
@@ -660,6 +666,7 @@ Page({
     this.setData({ locked: true });
     this.applyPieces('settle');
     setTimeout(function () {
+      if (!that._alive) return;   // 页面已销毁：不必再重置抖动状态
       if (a) a.state = 'idle';
       if (b) b.state = 'idle';
       that.setData({ locked: false });
@@ -772,6 +779,7 @@ Page({
 
   onUnload: function () {
     audio.bgmStop();
+    this._alive = false;
     if (this.cardTimer) clearTimeout(this.cardTimer);
     if (this.toastTimer) clearTimeout(this.toastTimer);
     if (this.comboTimer) clearTimeout(this.comboTimer);

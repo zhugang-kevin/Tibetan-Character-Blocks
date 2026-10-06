@@ -6,6 +6,8 @@ var certificate = require('../../utils/certificate');
 var storage = require('../../utils/storage');
 var tracker = require('../../utils/tracker');
 var tibText = require('../../utils/tibetan-text');
+// 用户隐私保护指引（utils/privacy.js）：保存相册是受保护接口，必须先过授权关卡
+var privacy = require('../../utils/privacy');
 
 // 证书顶部的藏文装饰语：བོད་ཡིག་སློབ་སྦྱོང（藏文学习）
 var CERT_TIB = 'བོད་ཡིག་སློབ་སྦྱོང';
@@ -263,23 +265,20 @@ Page({
     });
   },
 
+  // 保存到相册（受保护接口：先走 utils/privacy.js 的统一前置，同意后立即继续保存）
   saveToAlbum: function () {
+    var that = this;
     if (!this.data.imagePath) return;
-    wx.saveImageToPhotosAlbum({
-      filePath: this.data.imagePath,
-      success: function () { wx.showToast({ title: '已保存到相册', icon: 'success' }); },
-      fail: function (e) {
-        if (e.errMsg && e.errMsg.indexOf('auth') > -1) {
-          wx.showModal({
-            title: '需要相册权限',
-            content: '请在设置中允许保存图片到相册',
-            confirmText: '去设置',
-            success: function (res) { if (res.confirm) wx.openSetting(); }
-          });
-        } else {
+    privacy.ensurePrivacy(function (ok) {
+      if (!ok) return;
+      wx.saveImageToPhotosAlbum({
+        filePath: that.data.imagePath,
+        success: function () { wx.showToast({ title: '已保存到相册', icon: 'success' }); },
+        fail: function (e) {
+          if (privacy.explainSaveFailure(e)) return;
           wx.showToast({ title: '保存失败，请再试一次', icon: 'none' });
         }
-      }
+      });
     });
   },
 

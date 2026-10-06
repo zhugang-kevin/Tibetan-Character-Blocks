@@ -18,7 +18,13 @@
 var KEY = 'milestones';
 
 function load() {
-  var d = wx.getStorageSync(KEY);
+  // 与 utils/storage.js 同一口径：读失败 / 脏数据一律当成「还没有埋点数据」，
+  // 埋点是诊断用的，绝不能因为它抛异常影响游戏主流程。
+  var d = null;
+  try {
+    var v = wx.getStorageSync(KEY);
+    d = (v && typeof v === 'object' && !Array.isArray(v)) ? v : null;
+  } catch (e) { d = null; }
   return (d && d.startedAt && d.events) ? d : { startedAt: 0, events: {} };
 }
 
