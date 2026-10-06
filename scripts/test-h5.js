@@ -135,8 +135,10 @@ function mockCtx(sink) {
   check('10 个关卡按钮', btns.length === 10, '实际 ' + btns.length);
   check('第 1 关可点击（非 locked）', !btns[0].classList.contains('locked'));
   check('第 2-10 关锁定', btns.slice(1).every(function (b) { return b.classList.contains('locked'); }));
-  check('Logo 已加载（base64 内联）', ($('#hero-logo') || {}).src && $('#hero-logo').src.indexOf('data:image/png') === 0);
-  check('slogan 显示「玩方块，认藏文」', doc.body.textContent.indexOf('玩方块，认藏文') > -1);
+  check('首页已移除品牌行（2026-10-06 用户拍板：视觉重心交给朝圣天梯）',
+    !$('#hero-logo') && !$('.hero-title') && !$('.hero-slogan'));
+  check('品牌语仍保留在证书 / 祝福签绘制与转发口径中（不是消失）',
+    fs.readFileSync(HTML, 'utf8').indexOf('玩方块，认藏文') > -1);
 
   /* ---------- 2. 藏文化背景层（修复②：背景不单调） ---------- */
   section('2. 藏文化背景层');

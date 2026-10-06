@@ -16,14 +16,6 @@
     <view class="res-item"><text class="res-ico">🖼</text><text class="res-val">{{fragCount}}/9</text><text class="res-cap">唐卡</text></view>
   </view>
 
-  <view class="hero">
-    <image class="hero-logo" src="/images/logo-200.png" mode="aspectFit" />
-    <view class="hero-txt">
-      <view class="hero-title">藏字方块</view>
-      <view class="hero-slogan">玩方块，认藏文</view>
-    </view>
-  </view>
-
   <!-- 我的档案：护照印记 + 最高连击 -->
   <view wx:if="{{stamps.length || bestCombo > 1}}" class="profile-row">
     <view class="profile-stamps">

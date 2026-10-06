@@ -71,16 +71,7 @@
   }
 
   /* ---------- 首页 ---------- */
-  /* Hero：紧凑品牌行（首页视觉重心是藤蔓地图，品牌只占顶部一行） */
-  .hero { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 4px 0 14px; }
-  .hero-logo { width: 40px; height: 40px; border-radius: 9px; filter: drop-shadow(0 3px 8px rgba(150, 40, 24, .22)); }
-  .hero-txt { text-align: left; }
-  .hero-title { font-size: 18px; font-weight: 800; letter-spacing: 2px; color: #F5E9CF; text-shadow: 0 2px 10px rgba(0,0,0,.55); }
-  .hero-slogan {
-    margin-top: 2px; display: inline-block; font-size: 12px; color: var(--red);
-    border: 1px solid rgba(192,57,43,.35); border-radius: 999px; padding: 2px 9px;
-    background: rgba(255,255,255,.55);
-  }
+  /* 品牌行已移除（2026-10-06 用户拍板）：首页视觉重心交给朝圣天梯，品牌语保留在分享卡与证书 */
 
   .profile-row { display: flex; justify-content: space-between; align-items: center; margin: 6px 0 18px; padding: 0 2px; }
   .profile-stamps { display: flex; gap: 8px; align-items: center; }
@@ -91,8 +82,9 @@
   }
   .stamp-empty { font-size: 13px; color: var(--muted); background: rgba(255,255,255,.6); border-radius: 999px; padding: 5px 12px; }
   .profile-combo {
-    font-size: 13px; font-weight: 700; color: var(--yellow);
-    background: rgba(255,255,255,.8); border: 1px solid var(--line); border-radius: 999px; padding: 6px 13px;
+    font-size: 13px; font-weight: 700; color: #FFFFFF;
+    text-shadow: 0 0 5px rgba(255,255,255,.75), 0 0 11px rgba(255,214,140,.5);
+    background: rgba(26,20,40,.78); border: 1px solid rgba(212,175,55,.55); border-radius: 999px; padding: 6px 13px;
   }
 
   .level-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
@@ -740,10 +732,10 @@
   .level-grid.vine { display: block; position: relative; height: 100%; }
   .level-item.node { position: absolute; width: 68px; transform: translate(-50%,-50%); display: flex; flex-direction: column; align-items: center; gap: 3px; background: none; border: 0; padding: 0; cursor: pointer; }
   .node-deco { font-size: 18px; line-height: 1; margin-bottom: -2px; filter: drop-shadow(0 0 4px rgba(241,196,15,.85)); }
-  .node-badge { width: 58px; height: 33px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 800; color: #4A3B12; background: linear-gradient(180deg, #E8EBEE, #D5D8DC 46%, #A9B2B9); border: 2px solid #D4AF37; box-shadow: 0 4px 9px rgba(50,56,62,.35), inset 0 2px 4px rgba(255,255,255,.75), inset 0 -3px 5px rgba(127,140,141,.45); }
+  .node-badge { width: 58px; height: 33px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 800; color: #4A3B12; background: linear-gradient(180deg, #E8C96A, #D4AF37 46%, #9C7A0A); border: 2px solid #B7950B; box-shadow: 0 4px 9px rgba(50,56,62,.35), inset 0 2px 4px rgba(255,246,220,.7), inset 0 -3px 5px rgba(122,90,0,.45); }
   .level-item.open .node-badge { background: linear-gradient(180deg, #F7DE8B, #F1C40F 44%, #B7950B); border-color: #FFE9A8; color: #3D2E05; animation: nodePulse 1.8s ease-in-out infinite; }
-  .level-item.done .node-badge { border-color: #D4AF37; box-shadow: 0 4px 10px rgba(241,196,15,.4), inset 0 2px 4px rgba(255,255,255,.75), inset 0 -3px 5px rgba(127,140,141,.45); }
-  .level-item.locked .node-badge { background: linear-gradient(180deg, #B4AFA5, #9A9384 50%, #7F8C8D); border-color: rgba(127,140,141,.7); color: #F0EBDD; }
+  .level-item.done .node-badge { background: linear-gradient(180deg, #B03A2E, #8B241C 55%, #641E16); border-color: #D4AF37; color: #FFE9A8; box-shadow: 0 4px 10px rgba(241,196,15,.4), inset 0 2px 4px rgba(255,200,160,.25), inset 0 -3px 5px rgba(40,8,4,.55); }
+  .level-item.locked .node-badge { background: linear-gradient(180deg, #C9A96B, #A8862E 52%, #7A5F10); border-color: rgba(183,149,11,.8); color: #FFF8E1; opacity: .92; }
   @keyframes nodePulse {
     0%, 100% { box-shadow: 0 4px 9px rgba(50,56,62,.35), 0 0 6px rgba(241,196,15,.35), inset 0 2px 4px rgba(255,255,255,.7); }
     50% { box-shadow: 0 5px 14px rgba(181,137,0,.5), 0 0 17px rgba(241,196,15,.65), inset 0 2px 4px rgba(255,255,255,.85); }
@@ -916,8 +908,18 @@
   .shop-desc { margin-top: 3px; font-size: 11px; color: #8A8375; }
   .shop-btn { padding: 7px 12px; border-radius: 999px; background: linear-gradient(180deg,#B7950B,#8A6A12); color: #FFF6DC; font-size: 11px; font-weight: 800; cursor: pointer; }
   .rank-row { display: flex; align-items: center; justify-content: space-between; padding: 11px 0; border-bottom: 1px solid rgba(214,202,176,.6); }
-  .rank-k { font-size: 13px; color: #6B6455; }
-  .rank-v { font-size: 16px; font-weight: 800; color: #C0392B; }
+  /* 排行榜（本地成绩单）：暗红经幡底条 + 白色发光数字 */
+  .rank-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 9px 13px; margin-bottom: 7px;
+    background: linear-gradient(90deg, #5A1A12, #8B241C);
+    border: 1px solid rgba(212,175,55,.45); border-radius: 9px;
+  }
+  .rank-k { font-size: 13px; color: #F5E9CF; }
+  .rank-v {
+    font-size: 16px; font-weight: 800; color: #FFFFFF;
+    text-shadow: 0 0 6px rgba(255,255,255,.8), 0 0 13px rgba(255,214,140,.55);
+  }
   .tree-art { font-size: 62px; text-align: center; }
   .winter-card { padding: 11px 0; border-bottom: 1px solid rgba(214,202,176,.6); }
   .wc-title { font-size: 14px; font-weight: 800; color: #2C3E50; }
@@ -965,14 +967,6 @@
       <div class="res-item"><span class="res-ico">🪔</span><span class="res-val" id="res-oil">0</span><span class="res-cap">灯油</span></div>
       <div class="res-item"><span class="res-ico">✧</span><span class="res-val" id="res-points">0</span><span class="res-cap">积分</span></div>
       <div class="res-item"><span class="res-ico">🖼</span><span class="res-val" id="res-frag">0/9</span><span class="res-cap">唐卡</span></div>
-    </div>
-
-    <div class="hero">
-      <img id="hero-logo" class="hero-logo" alt="藏字方块">
-      <div class="hero-txt">
-        <div class="hero-title">藏字方块</div>
-        <div><span class="hero-slogan">玩方块，认藏文</span></div>
-      </div>
     </div>
 
     <div class="profile-row">
@@ -2484,7 +2478,6 @@ function ladderPressBind() {
 
 function renderHome() {
   const p = getProgress();
-  $('hero-logo').src = IMAGES.logo200;
 
   const stampsEl = $('profile-stamps');
   if (p.stamps.length) {

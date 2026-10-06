@@ -158,10 +158,14 @@ try {
   if (appJsonBrand.window.navigationBarTitleText === '藏字方块') ok('品牌名「藏字方块」已应用于导航栏');
   else err('导航栏标题应为「藏字方块」');
 } catch (e) { err('无法读取 app.json 品牌名'); }
-if (read('pages/index/index.wxml').includes('玩方块，认藏文')) ok('Slogan「玩方块，认藏文」已上首页');
-else warn('首页缺少 Slogan');
-if (read('pages/index/index.wxml').includes('logo-200.png')) ok('首页使用 Logo（200px 完整方块版）');
-else warn('首页未引用 Logo');
+// 品牌行已从首页移除（2026-10-06 用户拍板：首页视觉重心交给朝圣天梯）。
+// 品牌语的法定载体改为：转发卡（onShareAppMessage）+ 证书绘制 + 祝福签绘制。
+const brandWxml = read('pages/index/index.wxml');
+const brandJs = read('pages/index/index.js');
+if (brandJs.includes('玩方块，认藏文')) ok('Slogan「玩方块，认藏文」保留在首页转发卡（onShareAppMessage）');
+else err('品牌语丢失：首页转发卡应含 Slogan「玩方块，认藏文」');
+if (brandWxml.includes('logo-200.png')) ok('首页使用 Logo（200px 完整方块版）');
+else ok('首页品牌行已按拍板移除（Logo 保留在证书 / 护照等载体）');
 const brandAssets = ['images/logo-144.png', 'images/logo-200.png', 'images/logo-80.png', 'images/logo-watermark.png', 'images/logo-master.png'];
 brandAssets.forEach(f => { if (exists(f)) ok(f + ' 存在'); else err('品牌资产缺失: ' + f); });
 // 品牌规范：文字不用纯黑
