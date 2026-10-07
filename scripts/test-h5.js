@@ -2099,12 +2099,15 @@ function mockCtx(sink) {
   /* ---------- 34. 背景音乐（PRD 3.3：进游戏页响 / 离开停 / 开关落库） ---------- */
   section('34. 背景音乐（PRD 3.3：进游戏页响 · 离开停 · 开关落库 · 不越界）');
   {
-    // 34.1 体验版常量与音符表（与 scripts/make_bgm.py 同一段旋律，validate §34.5 逐字比对）
-    check('体验版含循环常量与 16 音旋律表',
-      ev('BGM_LOOP_LEN') === 2.8 && ev('BGM_MEL.length') === 16 && ev('BGM_MEL_AMP.length') === 16);
+    // 34.1 体验版常量与音符表（v2 柔化：7 音 / 3.36s；与 scripts/make_bgm.py 同一段旋律，validate §34.5 逐字比对）
+    check('体验版含循环常量与 7 音柔和旋律表',
+      ev('BGM_LOOP_LEN') === 3.36 && ev('BGM_MEL.length') === 7 && ev('BGM_MEL_AMP.length') === 7 &&
+      ev('BGM_MEL_AT.length') === 7);
     check('每个音名都能解析到频率（表与音名一一对应）',
       ev('BGM_MEL.every(function(n){return typeof BGM_F[n]==="number";})') === true);
-    check('BGM 音量与小程序同值 0.35（明显低于音效）', ev('BGM_VOLUME') === 0.35);
+    check('v2 柔化三要素在体验版就位（软起音 90ms / 长衰减 0.75 / 谐波仅 1·2·3 层）',
+      ev('BGM_TONE_ATTACK') === 0.09 && ev('BGM_TONE_TAU') === 0.75 && ev('BGM_PARTIALS.length') === 3);
+    check('BGM 音量与小程序同值 0.28（v2 柔化：明显低于音效）', ev('BGM_VOLUME') === 0.28);
 
     // 34.2 HUD 开关存在，默认「音乐 开」
     check('HUD 上有音乐开关且默认「音乐 开」', (function () {

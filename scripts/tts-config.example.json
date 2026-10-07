@@ -1,0 +1,23 @@
+{
+  "_说明": "复制本文件为 scripts/tts-config.json 并填入你的接口信息。tts-config.json 已在 .gitignore 里（含密钥，绝不入库）。推荐：天翼 AI 开放平台「卫藏实时超自然语音合成」（详见 docs/release-and-monetization.md §八）。",
+  "_步骤": [
+    "1. 在天翼 AI 开放平台（teleai.com.cn）控制台创建应用，开通「卫藏实时超自然语音合成」",
+    "2. 在该产品文档的 API 参考里抄下 TTS 接口的 URL 与鉴权头（通常是 Authorization + X-APP-ID）",
+    "3. 把下面四项改成你的真实值，然后：python scripts/gen_voice.py --only letter_01（先试一条）",
+    "4. 试听满意后全量：python scripts/gen_voice.py"
+  ],
+  "url": "https://把这里换成天翼TTS接口地址",
+  "method": "POST",
+  "headers": {
+    "Authorization": "把这里换成你的鉴权信息",
+    "X-APP-ID": "把这里换成你控制台的应用 AppID"
+  },
+  "bodyTemplate": {
+    "text": "{text}",
+    "format": "mp3"
+  },
+  "bodyExtra": {
+    "speed": 1.0
+  },
+  "responseMode": "raw"
+}

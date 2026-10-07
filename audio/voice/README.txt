@@ -24,3 +24,27 @@ tashi_delek 在通关铜铃后播放，blessing_01 在结算页画卷展开时�
 缺失时游戏自动静默回退（audio.pronounce 的 onError），不影响运行。
 
 录音完成后即作为 Gate 2（母语者发音审核）的证据材料。
+
+==================================
+怎么拿到这些录音（三选一，2026-10-07 更新）
+==================================
+① 真人录音（质量最高，Gate 2 母语者审校的原始素材）
+   邀请藏语母语者按上面的命名逐条录制，安静环境、手机录音机即可。
+
+② TTS 预生成（推荐先用它把 36 条补齐，游戏里马上有发音播报）
+   用第三方藏语 TTS 一次性离线生成 —— 推荐天翼 AI 开放平台
+   「卫藏实时超自然语音合成」（teleai.com.cn，民族语言专区）：
+     a. 控制台创建应用、开通该服务，抄下接口地址与鉴权头（Authorization + X-APP-ID）；
+     b. 复制 scripts/tts-config.example.json → scripts/tts-config.json，填入你抄到的信息；
+     c. 先试一条：python scripts/gen_voice.py --only letter_01
+     d. 全量生成：python scripts/gen_voice.py     （幂等：已存在的自动跳过）
+   流水线自测（不联网）：python scripts/gen_voice.py --self-test
+   ⚠️ 预生成 = 静态资产，运行时零请求 —— 不触碰「纯本地 / 不建后端」红线。
+   ⚠️ TTS 产物建议仍过一遍母语者耳朵（尤其 ཞ/ཤ、ཟ/ས 这类近音字）。
+
+③ 天翼控制台手动导出（不想用脚本时）
+   在控制台调试窗逐条输入文本（见 python scripts/gen_voice.py --dry-run 的清单），
+   下载音频后按命名放入本目录。
+
+放好文件后：小程序内无需改任何代码，配对成功即朗读；
+浏览器体验版跑一次 node scripts/build-h5.js 会把语音内联进去。

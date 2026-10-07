@@ -2468,7 +2468,9 @@ section('31. 下落式盘面模型（D33：下落 + 顶部补充 + 三条不变�
   try {
     // 与 build-h5 同一套抽取方式（非贪婪匹配内联块），并且**必须先填占位符**：
     // 模板里是 `const DATA = /*__DATA__*/;`，不替换就是 `const DATA = ;` → 语法报错。
-    const filled31 = tpl31.replace('/*__DATA__*/', 'null').replace('/*__IMAGES__*/', 'null');
+    // ⚠️ 占位符清单必须与 build-h5.js 的替换清单保持一致（新增占位符时两处都要加）。
+    const filled31 = tpl31.replace('/*__DATA__*/', 'null').replace('/*__IMAGES__*/', 'null')
+      .replace('/*__VOICES__*/', 'null');
     const m31 = filled31.match(/<script>([\s\S]*?)<\/script>/);
     if (!m31) throw new Error('未找到内联 <script> 块');
     new Function(m31[1]);
@@ -3013,7 +3015,7 @@ section('34. 背景音乐（PRD 3.3：程序合成 · 无缝循环 · 开关三�
       }
       const jump = Math.abs(first - last);
       if (jump < peak * 0.1)
-        ok('循环点连续：首尾采样跳变 ' + jump + ' ≪ 峰值 ' + peak + '（2.8s 一循环不会「咔」）');
+        ok('循环点连续：首尾采样跳变 ' + jump + ' ≪ 峰值 ' + peak + '（一循环不会「咔」）');
       else err('循环点不连续：跳变 ' + jump + ' 对峰值 ' + peak + ' 偏大，循环处会有爆点');
       if (peak > 0 && peak < 20000) ok('峰值 ' + peak + '（留足余量，手机小喇叭不削波）');
       else err('峰值 ' + peak + ' 过高 / 为 0，可能削波或文件为空');
@@ -3032,8 +3034,8 @@ section('34. 背景音乐（PRD 3.3：程序合成 · 无缝循环 · 开关三�
   if (au34.indexOf("src = '/audio/bgm.wav'") > -1 && au34.indexOf('loop = true') > -1)
     ok('BGM 走独立 InnerAudioContext 且 loop = true');
   else err('BGM 未挂 loop 或未用独立 ctx（会与音效互相 stop）');
-  if (/BGM_VOLUME\s*=\s*0\.35\s*;/.test(au34) && au34.indexOf('volume = BGM_VOLUME') > -1)
-    ok('BGM 音量压到 0.35（明显低于音效，不与配对提示抢注意力）');
+  if (/BGM_VOLUME\s*=\s*0\.28\s*;/.test(au34) && au34.indexOf('volume = BGM_VOLUME') > -1)
+    ok('BGM 音量压到 0.28（v2 柔化：明显低于音效，不与配对提示抢注意力）');
   else err('BGM 音量未压低或 BGM_VOLUME 被改动');
   // BGM 不得混进 play() 的瞬时通道（否则每次消除都会把 BGM 掐掉重放）
   const playFn34 = (au34.match(/function play\(name\)[\s\S]*?\n\}/) || [''])[0];
@@ -3083,7 +3085,8 @@ section('34. 背景音乐（PRD 3.3：程序合成 · 无缝循环 · 开关三�
   else err('体验版 BGM 未绑到游戏页（会漏到首页 / 结算页）');
   // 常量两端同值
   const pySrc34 = read('scripts/make_bgm.py');
-  [['LOOP_LEN', 2.8, 'BGM_LOOP_LEN'], ['BEAT', 0.35, 'BGM_BEAT']].forEach(([pk, val, hk]) => {
+  [['LOOP_LEN', 3.36, 'BGM_LOOP_LEN'], ['BEAT', 0.42, 'BGM_BEAT'],
+   ['TONE_ATTACK', 0.09, 'BGM_TONE_ATTACK'], ['TONE_TAU', 0.75, 'BGM_TONE_TAU']].forEach(([pk, val, hk]) => {
     // ⚠️ 不要用 \s*$ 收尾：make_bgm.py 的值后面跟着行内注释（`LOOP_LEN = 2.8      # …`）
     const py = new RegExp('(?:^|\\n)' + pk + '\\s*=\\s*' + String(val).replace('.', '\\.') + '\\b').test(pySrc34);
     const h5 = new RegExp(hk + '\\s*=\\s*' + String(val).replace('.', '\\.')).test(tpl34);
@@ -3095,8 +3098,20 @@ section('34. 背景音乐（PRD 3.3：程序合成 · 无缝循环 · 开关三�
   const pyMel = (pySrc34.match(/MELODY\s*=\s*\[([\s\S]*?)\]/) || [])[1];
   const h5Mel = (tpl34.match(/BGM_MEL\s*=\s*\[([\s\S]*?)\]/) || [])[1];
   if (pyMel && h5Mel && normTokens(pyMel).join() === normTokens(h5Mel).join())
-    ok('旋律音符表两端逐字一致（16 个八分音符：' + normTokens(h5Mel).join(' ') + '）');
+    ok('旋律音符表两端逐字一致（' + normTokens(h5Mel).length + ' 个柔和旋律音：' + normTokens(h5Mel).join(' ') + '）');
   else err('旋律音符表两端不一致：py=' + (pyMel && normTokens(pyMel).join(' ')) + ' / h5=' + (h5Mel && normTokens(h5Mel).join(' ')));
+  // v2 柔化核心：疏（音数）、软（起音）、长（衰减）三张表也必须两端同值
+  const pyAt = (pySrc34.match(/MELODY_AT\s*=\s*\[([\s\S]*?)\]/) || [])[1];
+  const h5At = (tpl34.match(/BGM_MEL_AT\s*=\s*\[([\s\S]*?)\]/) || [])[1];
+  if (pyAt && h5At && normTokens(pyAt).join() === normTokens(h5At).join())
+    ok('旋律起拍表两端一致（' + normTokens(h5At).length + ' 个位置：疏而不均）');
+  else err('旋律起拍表两端不一致：py=' + (pyAt && normTokens(pyAt).join(' ')) + ' / h5=' + (h5At && normTokens(h5At).join(' ')));
+  const normParts = s => s.replace(/[\s\(\)\[\]'"]/g, '');
+  const pyParts = (pySrc34.match(/PARTIALS\s*=\s*\[([\s\S]*?)\]\n/) || [])[1];
+  const h5Parts = (tpl34.match(/BGM_PARTIALS\s*=\s*(\[[\s\S]*?\]);/) || [])[1];
+  if (pyParts && h5Parts && normParts(pyParts) === normParts(h5Parts))
+    ok('谐波配比两端一致（' + normParts(h5Parts) + '：接近纯正弦的「软」）');
+  else err('谐波配比两端不一致：py=' + (pyParts && normParts(pyParts)) + ' / h5=' + (h5Parts && normParts(h5Parts)));
   const pyAmp = (pySrc34.match(/MELODY_AMP\s*=\s*\[([\s\S]*?)\]/) || [])[1];
   const h5Amp = (tpl34.match(/BGM_MEL_AMP\s*=\s*\[([\s\S]*?)\]/) || [])[1];
   if (pyAmp && h5Amp && normTokens(pyAmp).join() === normTokens(h5Amp).join())
@@ -3106,8 +3121,18 @@ section('34. 背景音乐（PRD 3.3：程序合成 · 无缝循环 · 开关三�
   if (h5Mel && normTokens(pyMel.replace(/D4/, 'E4', 1)).join() !== normTokens(h5Mel).join())
     ok('反例自测：任一端改一个音，逐字比对即失败（这把尺是真的在比内容）');
   else err('音符表比对尺失效：改了一个音仍判相等');
-  if (/BGM_VOLUME\s*=\s*0\.35/.test(tpl34)) ok('体验版 BGM_VOLUME = 0.35（与 audio.js 同值）');
+  if (/BGM_VOLUME\s*=\s*0\.28/.test(tpl34)) ok('体验版 BGM_VOLUME = 0.28（与 audio.js 同值）');
   else err('体验版 BGM_VOLUME 与小程序不一致');
+  // v2 反向锁：v1 的「忙碌弹拨」特征不得回流（16 音 / 四谐波 / 4ms 硬起音）
+  if (normTokens(pyMel).length <= 8) ok('旋律密度 ≤ 8 音/循环（v1 是 16，密度是「狂躁感」的第一来源）');
+  else err('旋律又变密了（' + normTokens(pyMel).length + ' 音/循环）：柔化不可回退');
+  const partialNums = (pyParts.match(/\((\d),/g) || []).map(m => Number(m[1]));
+  if (partialNums.length && Math.max.apply(null, partialNums) <= 3)
+    ok('谐波只留 1/2/3 层（v1 的 4 层高次谐波是「亮/刺」的来源）');
+  else err('谐波层数回退（出现第 4 层及以上高次谐波）');
+  const pyAttack = parseFloat((pySrc34.match(/TONE_ATTACK\s*=\s*([0-9.]+)/) || [])[1] || '0');
+  if (pyAttack >= 0.09) ok('起音 ' + pyAttack + 's ≥ 0.09s（软起音；v1 的 4ms 硬起音是「打点感」的来源）');
+  else err('起音又变硬了（' + pyAttack + 's < 0.09s）：狂躁感回流');
   // 合成脚本必须写明回绕（无缝循环的实现手段），否则后人删掉就退化
   if (pySrc34.indexOf('% total') > -1 && pySrc34.indexOf('回绕') > -1)
     ok('make_bgm.py 用回绕写入实现无缝循环（音符尾巴接回开头）');
@@ -3608,6 +3633,55 @@ section('38. 生产上线守卫（主包体积 / 隐私授权 / 工程配置）'
     // 反例自测：探针字符串必须被同一正则命中
     if (netPat.test('wx.request({url:""})')) ok('守卫自测：wx.request 可被检出');
     else err('守卫自测失败（网络调用判定逻辑有问题）');
+  }
+
+  // --- 38.10 语音注入链三处同步（模板声明 / build-h5 注入 / validate 语法检查）---
+  // 2026-10-07 实测踩坑：加了 /*__VOICES__*/ 占位符但漏改 validate 的替换表 →
+  // 语法检查把 `const VOICES = /*__VOICES__*/;` 当成 `const VOICES = ;` 误报。
+  {
+    const tplV = read('preview/template.html');
+    const bldV = read('scripts/build-h5.js');
+    const valV = read('scripts/validate.js');
+    const trio = [
+      [tplV.indexOf('const VOICES = /*__VOICES__*/') > -1, '模板声明 const VOICES = /*__VOICES__*/'],
+      [bldV.indexOf("replace('/*__VOICES__*/'") > -1, 'build-h5 注入替换'],
+      [valV.indexOf("replace('/*__VOICES__*/'") > -1, 'validate 占位符替换表']
+    ];
+    const missingV = trio.filter(t => !t[0]).map(t => t[1]);
+    if (!missingV.length) ok('语音注入链三处同步（模板 / build-h5 / validate）');
+    else err('语音注入链漂移，缺：' + missingV.join(' / '));
+    // 体验版语音播放必须走注入表（相对路径在单文件体验版里必然 404）
+    if (/if \(VOICES\[id\]\) playVoice\(VOICES\[id\]\)/.test(tplV) && /if \(VOICES\[name\]\) playVoice\(VOICES\[name\]\)/.test(tplV))
+      ok('体验版 pronounce / speak 走 VOICES 注入表（不再依赖相对路径）');
+    else err('体验版语音未走注入表（会 404 静默）');
+  }
+
+  // --- 38.11 TTS 预生成流水线（D45）：脚本在、零依赖、密钥不入库、文本来自单一真相源 ---
+  {
+    if (exists('scripts/gen_voice.py')) ok('scripts/gen_voice.py 存在（发音可批量预生成）');
+    else err('缺 scripts/gen_voice.py（34 条发音没有批量生成路径）');
+    const gv = read('scripts/gen_voice.py');
+    if (gv.indexOf('data/cards.js') > -1 || gv.indexOf("'cards.js'") > -1)
+      ok('gen_voice.py 的发音文本来自 data/cards.js（单一真相源，不另起一份词表）');
+    else err('gen_voice.py 未从 data/cards.js 取文本（会出现第二份词表）');
+    if (!/^\s*(import|from)\s+(requests|httpx|aiohttp|pydub|numpy)/m.test(gv) && gv.indexOf('urllib.request') > -1)
+      ok('gen_voice.py 只用标准库（urllib），不引入第三方依赖');
+    else err('gen_voice.py 引入了非标准库依赖（应为零安装可跑）');
+    if (gv.indexOf('--self-test') > -1 && gv.indexOf('HTTPServer') > -1)
+      ok('gen_voice.py 带本地假接口自测（不联网验证整条流水线）');
+    else err('gen_voice.py 缺自测路径（流水线无法离线验证）');
+    if (exists('scripts/tts-config.example.json')) {
+      let cfgOk = false;
+      try { const c = JSON.parse(read('scripts/tts-config.example.json')); cfgOk = !!(c.url && c.responseMode && c.bodyTemplate); } catch (e) { }
+      if (cfgOk) ok('tts-config.example.json 是合法配置模板（url / responseMode / bodyTemplate）');
+      else err('tts-config.example.json 不是合法模板');
+    } else err('缺 scripts/tts-config.example.json（用户不知道要填什么）');
+    const gi = exists('.gitignore') ? read('.gitignore') : '';
+    if (gi.indexOf('scripts/tts-config.json') > -1) ok('.gitignore 已屏蔽 tts-config.json（密钥不入库）');
+    else err('.gitignore 未屏蔽 scripts/tts-config.json（鉴权信息可能被提交）');
+    if (exists('audio/voice/README.txt') && read('audio/voice/README.txt').indexOf('gen_voice.py') > -1)
+      ok('audio/voice/README.txt 写明 TTS 预生成路径');
+    else err('audio/voice/README.txt 未提及生成脚本（录音者/用户找不到路径）');
   }
 }
 

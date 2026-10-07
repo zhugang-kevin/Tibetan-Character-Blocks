@@ -1949,53 +1949,61 @@ const audio = {
    开关只动这条链，绝不混进 playSound 的瞬时抢占。
    state.bgmPlaying 是**可断言的语义状态**（与是否真的能出声解耦）：
    无头环境没有 AudioContext 时 Web Audio 部分是尽力而为，但「该不该在响」必须确定。 */
-const BGM_LOOP_LEN = 2.8, BGM_BEAT = 0.35, BGM_EIGHTH = BGM_BEAT / 2, BGM_VOLUME = 0.35;
-const BGM_F = { A2: 110.00, D3: 146.83, D4: 293.66, E4: 329.63, Fs4: 369.99,
-                A4: 440.00, B4: 493.88, D5: 587.33, A5: 880.00, D6: 1174.66 };
-const BGM_MEL = ['D4', 'Fs4', 'A4', 'D5', 'B4', 'A4', 'Fs4', 'A4',
-                 'E4', 'Fs4', 'A4', 'B4', 'A4', 'Fs4', 'E4', 'D4'];
-const BGM_MEL_AMP = [0.30, 0.18, 0.24, 0.20, 0.26, 0.18, 0.22, 0.18,
-                     0.28, 0.18, 0.24, 0.20, 0.26, 0.18, 0.22, 0.18];
+/* v2 柔化重设计（2026-10-07，用户反馈「太狂躁」）：与 make_bgm.py v2 逐条对应 ——
+   一循环 7 个音（v1 是 16 个）、软起音 90ms（v1 是 4ms）、谐波 3 层且第 2 层只剩 0.10、
+   τ 0.75s（v1 是 0.12）、音量 0.28（v1 是 0.35）。改一处必须同步 make_bgm.py 与常量表。 */
+const BGM_LOOP_LEN = 3.36, BGM_BEAT = 0.42, BGM_VOLUME = 0.28;
+const BGM_TONE_ATTACK = 0.09, BGM_TONE_TAU = 0.75, BGM_TONE_DUR = 1.5;
+const BGM_PARTIALS = [[1, 1.00], [2, 0.10], [3, 0.03]];
+const BGM_F = { A2: 110.00, D3: 146.83, D4: 293.66, Fs4: 369.99,
+                A4: 440.00, B4: 493.88, D5: 587.33, A5: 880.00 };
+const BGM_MEL = ['D4', 'Fs4', 'A4', 'B4', 'A4', 'Fs4', 'D4'];
+const BGM_MEL_AT = [0.00, 0.84, 1.26, 1.68, 2.10, 2.52, 2.94];
+const BGM_MEL_AMP = [0.22, 0.15, 0.18, 0.14, 0.15, 0.12, 0.16];
 let bgmGain = null, bgmTimer = null, bgmCycleAt = 0;
 
-function bgmPluck(t, freq, amp, tau, dur) {
+/* 柔和音：软起音（余弦斜坡，无「哒」的爆点）+ 指数衰减，谐波只留很轻的第 2/3 层 */
+function bgmTone(t, freq, amp, tau, dur) {
   const c = audioCtx(); if (!c || !bgmGain) return;
-  [[1, 1.00], [2, 0.34], [3, 0.16], [4, 0.09]].forEach(function (p) {
+  const atk = Math.min(BGM_TONE_ATTACK, dur * 0.5);
+  BGM_PARTIALS.forEach(function (p) {
     const o = c.createOscillator();
     o.type = 'sine';
     o.frequency.value = freq * p[0];
     const g = c.createGain();
     g.gain.setValueAtTime(0.0001, t);
-    g.gain.linearRampToValueAtTime(amp * p[1], t + 0.004);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    g.gain.linearRampToValueAtTime(amp * p[1], t + atk);   // 软起音
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);  // 长衰减
     o.connect(g); g.connect(bgmGain);
     o.start(t); o.stop(t + dur + 0.03);
   });
 }
-function bgmPad(t, freq, amp, dur) {
+function bgmPad(t, freq, amp, dur, attack) {
   const c = audioCtx(); if (!c || !bgmGain) return;
   const o = c.createOscillator();
   o.type = 'sine';
   o.frequency.value = freq;
   const g = c.createGain();
   g.gain.setValueAtTime(0.0001, t);
-  g.gain.linearRampToValueAtTime(amp, t + dur * 0.5);
-  g.gain.linearRampToValueAtTime(0.0001, t + dur);
+  g.gain.linearRampToValueAtTime(amp, t + attack);          // 慢起音铺底
+  g.gain.setValueAtTime(amp, t + dur - attack);
+  g.gain.linearRampToValueAtTime(0.0001, t + dur);          // 慢释放
   o.connect(g); g.connect(bgmGain);
   o.start(t); o.stop(t + dur + 0.03);
 }
-/* 排一整轮（与 make_bgm.py 的音符表逐条对应） */
+/* 排一整轮（与 make_bgm.py v2 的音符表逐条对应） */
 function bgmScheduleCycle(base) {
-  bgmPad(base, BGM_F.D4, 0.055, BGM_LOOP_LEN);   // 铺底：主音
-  bgmPad(base, BGM_F.A4, 0.038, BGM_LOOP_LEN);   // 铺底：纯五度
-  bgmPluck(base + 0.000, BGM_F.D3, 0.30, 0.20, 1.20);  // 低音
-  bgmPluck(base + 1.400, BGM_F.A2, 0.26, 0.18, 0.60);
-  bgmPluck(base + 2.100, BGM_F.D3, 0.24, 0.18, 0.60);
-  BGM_MEL.forEach(function (n, k) {               // 16 个八分音符旋律
-    bgmPluck(base + k * BGM_EIGHTH, BGM_F[n], BGM_MEL_AMP[k], 0.12, 0.34);
+  bgmPad(base, BGM_F.D4, 0.045, BGM_LOOP_LEN, 0.90);   // 铺底：主音
+  bgmPad(base, BGM_F.A4, 0.032, BGM_LOOP_LEN, 1.10);   // 铺底：纯五度
+  bgmPad(base, BGM_F.D3, 0.055, BGM_LOOP_LEN, 0.70);   // 铺底：低八度长音
+  bgmTone(base + 0.00, BGM_F.D3, 0.18, 1.10, 2.10);    // 低音：主音 → 属 → 主音
+  bgmTone(base + 1.68, BGM_F.A2, 0.15, 0.90, 1.40);
+  bgmTone(base + 2.52, BGM_F.D3, 0.13, 0.90, 1.00);
+  BGM_MEL.forEach(function (n, k) {                    // 7 个柔和旋律音（疏、软、长）
+    bgmTone(base + BGM_MEL_AT[k], BGM_F[n], BGM_MEL_AMP[k], BGM_TONE_TAU, BGM_TONE_DUR);
   });
-  bgmPluck(base + 0.000, BGM_F.D6, 0.06, 0.30, 1.10);  // 每小节首拍一颗轻钟音
-  bgmPluck(base + 1.400, BGM_F.A5, 0.05, 0.30, 1.10);
+  bgmTone(base + 0.42, BGM_F.D5, 0.040, 1.20, 2.20);   // 泛光：极轻的高八度
+  bgmTone(base + 2.10, BGM_F.A5, 0.032, 1.20, 2.00);
 }
 function bgmStart() {
   state.bgmPlaying = true;                 // 语义状态先落定（无头环境也能断言）
@@ -2032,6 +2040,9 @@ function bgmStop() {
    浏览器体验版不带真人录音（音频资产只在小程序包内），这里保持与小程序
    一致的调用时机与「单声部」策略，并统计次数供自动化测试断言。
    无录音文件时静默回退，不阻塞游戏。 */
+/* 语音资产由 scripts/build-h5.js 从 audio/voice/*.mp3 内联注入（base64）。
+   缺文件时为空表 = 静默（与小程序 pronounce 的 onError 静默同口径）。 */
+const VOICES = /*__VOICES__*/;
 let activeVoice = null;
 function playVoice(src) {
   try {
@@ -2045,14 +2056,14 @@ function playVoice(src) {
 function pronounce(id) {
   state.pronounceCount++;
   state.lastPronounced = id;
-  playVoice('audio/voice/' + id + '.mp3');
+  if (VOICES[id]) playVoice(VOICES[id]);   // 有录音/TTS 就播报；没有则静默（计数照记，测试用）
   return true;
 }
 /* 情绪语音（与小程序 utils/audio.js 的 speak 同口径）：
    复用同一声部但不计入元素朗读次数。 */
 function speak(name) {
   state.speakLog.push(name);
-  playVoice('audio/voice/' + name + '.mp3');
+  if (VOICES[name]) playVoice(VOICES[name]);
   return true;
 }
 

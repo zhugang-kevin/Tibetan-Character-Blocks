@@ -5,3 +5,6 @@ node_modules/
 Thumbs.db
 .idea/
 .vscode/
+
+# TTS 密钥配置（含鉴权信息，绝不入库）
+scripts/tts-config.json
