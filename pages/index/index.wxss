@@ -15,6 +15,15 @@
   pointer-events: none;
   overflow: hidden;
 }
+/* 真实场景照片层（D47）：铺满页面，位于底图之上、纹样/剪影/色罩之下。
+   照片的「去艳与压暗」在 scripts/prepare-assets.py --scene 加工时烘进图里，
+   运行时再叠既有夜色罩（.sc-night），不需要 CSS filter（真机兼容更稳）。 */
+.sc-photo {
+  position: absolute;
+  left: 0; top: 0; width: 100%; height: 100%;
+  object-fit: cover;
+}
+
 .sc-bg {
   position: absolute;
   left: 0; top: 0; width: 100%; height: 100%;

@@ -10,6 +10,8 @@ var lamp = require('../../utils/lamp');
 var regionsData = require('../../data/regions');
 var dailyData = require('../../data/daily');
 var lampData = require('../../data/lamp');
+// 真实场景照片清单（D47）：空 = 不启用照片层，保持现有渐变底
+var photoAssets = require('../../data/photo-assets');
 // 用户隐私保护指引（utils/privacy.js）：保存相册是受保护接口，必须先过授权关卡
 var privacy = require('../../utils/privacy');
 
@@ -101,6 +103,7 @@ Page({
     pot: 0,
     winterItems: [],
     // 万家灯火祈福跳窗（每次进入首页前展示，每天仅一次；纯本地，无任何网络请求）
+    scenePhoto: photoAssets.home || '',   // 首页场景照片（清单驱动，空则不渲染）
     lampShow: false,
     lampLit: false,
     lampTotal: lampData.total,

@@ -19,6 +19,7 @@ var audio = require('../../utils/audio');
 var icons = require('../../utils/icons');
 var praise = require('../../utils/praise');
 var storage = require('../../utils/storage');
+var photoAssets = require('../../data/photo-assets');   // D47 场景照片层（空 = 不渲染）
 var tracker = require('../../utils/tracker');
 var obstacles = require('../../utils/obstacles');
 var board = require('../../utils/board');
@@ -81,6 +82,7 @@ function nextFrame(fn) {
 
 Page({
   data: {
+    scenePhoto: photoAssets.game || '',
     level: 1,
     cols: 6,
     rows: 4,

@@ -46,6 +46,7 @@
     width: 100%; max-width: 430px;
     z-index: 0; pointer-events: none; overflow: hidden;
   }
+  .sc-photo { position: absolute; left: 0; top: 0; width: 100%; height: 100%; object-fit: cover; }
   .sc-bg {
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
     object-fit: cover;
@@ -1107,6 +1108,8 @@
   <!-- ============ 藏文化背景（三层） ============ -->
   <div class="scenery" aria-hidden="true">
     <img class="sc-bg" id="sc-bg" alt="">
+    <!-- 真实场景照片层（清单驱动 build-h5 注入；无照片时移除） -->
+    <img class="sc-photo" id="sc-photo" alt="">
     <div class="sc-pattern" id="sc-pattern"></div>
     <img class="sc-ground" id="sc-ground" alt="">
     <img class="sc-sky" id="sc-sky" alt="">
@@ -1487,6 +1490,8 @@
    ================================================================ */
 const DATA = /*__DATA__*/;
 const IMAGES = /*__IMAGES__*/;
+/* 真实场景照片（build-h5 注入 images/scene/*；空 = 不启用照片层） */
+const PHOTO = /*__PHOTO__*/;
 
 const ELEMENTS = DATA.elements;
 const CARDS = DATA.cards;
@@ -4958,6 +4963,12 @@ $('lamp-close').addEventListener('click', closeLampWin);
 
 /* ---------------- 启动 ---------------- */
 $('sc-bg').src = IMAGES.bgGlobal;
+// D47 场景照片层：清单有则铺在底图之上（其上去艳与压暗已烘进图片；色罩层继续生效）
+(function () {
+  const sp = $('sc-photo');
+  if (sp && PHOTO.home) sp.src = PHOTO.home;
+  else if (sp) sp.parentNode.removeChild(sp);
+})();
 $('sc-sky').src = IMAGES.bgSky;
 $('sc-ground').src = IMAGES.bgGround;
 document.documentElement.style.setProperty('--pat', 'url("' + IMAGES.pattern + '")');

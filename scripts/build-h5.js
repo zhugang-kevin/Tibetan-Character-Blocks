@@ -81,8 +81,9 @@ for (let i = 1; i <= 10; i++) {
 let html = fs.readFileSync(TEMPLATE, 'utf8');
 
 if (html.indexOf('/*__DATA__*/') === -1 || html.indexOf('/*__IMAGES__*/') === -1 ||
-    html.indexOf('/*__VOICES__*/') === -1 || html.indexOf('/*__ICON_ART__*/') === -1) {
-  console.error('✗ 模板缺少 /*__DATA__*/ / /*__IMAGES__*/ / /*__VOICES__*/ / /*__ICON_ART__*/ 占位符');
+    html.indexOf('/*__VOICES__*/') === -1 || html.indexOf('/*__ICON_ART__*/') === -1 ||
+    html.indexOf('/*__PHOTO__*/') === -1) {
+  console.error('✗ 模板缺少 /*__DATA__*/ / /*__IMAGES__*/ / /*__VOICES__*/ / /*__ICON_ART__*/ / /*__PHOTO__*/ 占位符');
   process.exit(1);
 }
 
@@ -128,6 +129,22 @@ const ICON_ART = {};
   });
 })();
 html = html.replace('/*__ICON_ART__*/', JSON.stringify(ICON_ART));
+
+// ---------- 2.7 注入真实场景照片（images/scene/home.jpg 等，D47） ----------
+const PHOTO = {};
+(function () {
+  const dir = path.join(ROOT, 'images', 'scene');
+  if (!fs.existsSync(dir)) return;
+  fs.readdirSync(dir).forEach(function (f) {
+    const mm = /^(home|game)\.(jpe?g|png|webp)$/i.exec(f);
+    if (!mm) return;
+    const ext = mm[2].toLowerCase();
+    const mime = ext === 'png' ? 'image/png' : (ext === 'webp' ? 'image/webp' : 'image/jpeg');
+    PHOTO[mm[1]] = 'data:' + mime + ';base64,' + fs.readFileSync(path.join(dir, f)).toString('base64');
+  });
+})();
+html = html.replace('/*__PHOTO__*/', JSON.stringify(PHOTO));
+console.log('  场景照片注入：' + Object.keys(PHOTO).length + ' 张（images/scene/*' + (Object.keys(PHOTO).length ? '' : ' 暂无，保持渐变底') + '）');
 console.log('  真实图标注入：' + Object.keys(ICON_ART).length + ' 个（images/icons/*' +
   (Object.keys(ICON_ART).length ? '' : ' 暂无，走程序线稿') + '）');
 console.log('  语音注入：' + Object.keys(VOICES).length + ' 条（audio/voice/*.wav' +

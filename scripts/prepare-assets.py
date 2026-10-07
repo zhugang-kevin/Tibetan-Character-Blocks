@@ -12,6 +12,7 @@
   python scripts/prepare-assets.py --reveals      # 只处理 B 组揭图（10 张）
   python scripts/prepare-assets.py --bg           # 只处理 C 组背景
   python scripts/prepare-assets.py --logo         # 只处理 D 组品牌（从 logo-master 派生）
+  python scripts/prepare-assets.py --scene        # 只处理 G 组场景照片（首页/游戏页底图）
   python scripts/prepare-assets.py --report       # 只打印当前资产与预算对账，不写文件
 
 输入目录（不存在则跳过该组）：
@@ -36,7 +37,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(ROOT, 'assets-src')
 IMAGES = os.path.join(ROOT, 'images')
 ICON_DIR = os.path.join(IMAGES, 'icons')
+SCENE_DIR = os.path.join(IMAGES, 'scene')
 ASSETS_JS = os.path.join(ROOT, 'data', 'icon-assets.js')
+PHOTO_JS = os.path.join(ROOT, 'data', 'photo-assets.js')
 
 KB = 1024
 # 预算表（与规格书 §七 一致）
@@ -50,6 +53,7 @@ BUDGET = {
     'grain': 10 * KB,
     'logo_master': 150 * KB,
     'logo_200': 12 * KB,
+    'scene': 95 * KB,     # 单张场景照片（首页/游戏页底图）
 }
 
 ICON_ALIAS = [
@@ -206,6 +210,48 @@ def do_bg():
             note(target + '.png', out, budget, how)
 
 
+def do_scene():
+    """G 组：真实场景照片（首页/游戏页底图）。加工口径（用户要求「照片上走一层颜色」的另一半）：
+    · 降饱和到 82%（照片不艳丽）· 压暗 8%（夜色色罩上仍有细节）· 竖向铺满压缩到 ≤95KB。
+    色罩本身由前端既有 .sc-night 层负责，这里只负责「照片那一半」。"""
+    files = src_files('scene')
+    if not files:
+        print('  （assets-src/scene/ 为空，跳过）')
+        return
+    os.makedirs(SCENE_DIR, exist_ok=True)
+    made = {}
+    for path in files:
+        base = os.path.basename(path).lower()
+        key = 'home' if 'home' in base or 'index' in base or '首' in base else ('game' if 'game' in base or '游' in base else None)
+        if not key:
+            print('  - 跳过 %s（文件名需含 home 或 game）' % os.path.basename(path))
+            continue
+        img = Image.open(path).convert('RGB')
+        # 降饱和：与灰度混合 18%
+        gray = img.convert('L').convert('RGB')
+        img = Image.blend(img, gray, 0.18)
+        # 压暗 8%
+        from PIL import ImageEnhance
+        img = ImageEnhance.Brightness(img).enhance(0.92)
+        # 竖向铺满：宽度 ≥1170，必要时等比放大
+        if img.width < 1170:
+            img = img.resize((1170, int(img.height * 1170 / img.width)), Image.LANCZOS)
+        out = os.path.join(SCENE_DIR, key + '.jpg')
+        how = save_jpeg_under_budget(img, out, BUDGET['scene'], max_w=1170)
+        note('scene/' + key + '.jpg', out, BUDGET['scene'], how + '（已降饱和82%·压暗8%）')
+        made[key] = out
+    # 重写清单（只写已产出的键；未产出的保持空字符串）
+    keys = ['home', 'game']
+    lines = ['// data/photo-assets.js — 真实场景照片清单（由 scripts/prepare-assets.py --scene 自动生成）',
+             '// 空字符串 = 该页不启用照片层（保持现有渐变底，零回归）。',
+             'module.exports = {']
+    for k in keys:
+        lines.append("  %s: %s," % (k, ("'/images/scene/%s.jpg'" % k) if k in made or os.path.exists(os.path.join(SCENE_DIR, k + '.jpg')) else "''"))
+    lines.append('};')
+    open(PHOTO_JS, 'w', encoding='utf-8').write('\n'.join(lines) + '\n')
+    print('  → 已更新 data/photo-assets.js')
+
+
 def do_logo():
     files = src_files('logo')
     master = None
@@ -242,9 +288,10 @@ def main():
     ap.add_argument('--reveals', action='store_true')
     ap.add_argument('--bg', action='store_true')
     ap.add_argument('--logo', action='store_true')
+    ap.add_argument('--scene', action='store_true')
     ap.add_argument('--report', action='store_true')
     args = ap.parse_args()
-    if not any([args.all, args.icons, args.reveals, args.bg, args.logo, args.report]):
+    if not any([args.all, args.icons, args.reveals, args.bg, args.logo, args.scene, args.report]):
         args.report = True
 
     if not os.path.isdir(SRC) and not args.report:
@@ -263,6 +310,9 @@ def main():
     if args.all or args.logo:
         print('\n[D 组] 品牌派生（从 logo-master）')
         do_logo()
+    if args.all or args.scene:
+        print('\n[G 组] 真实场景照片（降饱和/压暗/压缩 → images/scene/）')
+        do_scene()
     do_report()
     over = [r for r in report if not r[3]]
     if over:

@@ -2471,7 +2471,8 @@ section('31. 下落式盘面模型（D33：下落 + 顶部补充 + 三条不变�
     // 模板里是 `const DATA = /*__DATA__*/;`，不替换就是 `const DATA = ;` → 语法报错。
     // ⚠️ 占位符清单必须与 build-h5.js 的替换清单保持一致（新增占位符时两处都要加）。
     const filled31 = tpl31.replace('/*__DATA__*/', 'null').replace('/*__IMAGES__*/', 'null')
-      .replace('/*__VOICES__*/', 'null').replace('/*__ICON_ART__*/', 'null');
+      .replace('/*__VOICES__*/', 'null').replace('/*__ICON_ART__*/', 'null')
+      .replace('/*__PHOTO__*/', 'null');
     const m31 = filled31.match(/<script>([\s\S]*?)<\/script>/);
     if (!m31) throw new Error('未找到内联 <script> 块');
     new Function(m31[1]);
@@ -3647,7 +3648,8 @@ section('38. 生产上线守卫（主包体积 / 隐私授权 / 工程配置）'
       [tplV.indexOf('const VOICES = /*__VOICES__*/') > -1, '模板声明 const VOICES = /*__VOICES__*/'],
       [bldV.indexOf("replace('/*__VOICES__*/'") > -1, 'build-h5 注入替换'],
       [valV.indexOf("replace('/*__VOICES__*/'") > -1, 'validate 占位符替换表'],
-      [tplV.indexOf('const ICON_ART = /*__ICON_ART__*/') > -1 && bldV.indexOf("replace('/*__ICON_ART__*/'") > -1 && valV.indexOf("replace('/*__ICON_ART__*/'") > -1, '图标注入链（模板+build-h5+validate）']
+      [tplV.indexOf('const ICON_ART = /*__ICON_ART__*/') > -1 && bldV.indexOf("replace('/*__ICON_ART__*/'") > -1 && valV.indexOf("replace('/*__ICON_ART__*/'") > -1, '图标注入链（模板+build-h5+validate）'],
+      [tplV.indexOf('const PHOTO = /*__PHOTO__*/') > -1 && bldV.indexOf("replace('/*__PHOTO__*/'") > -1 && valV.indexOf("replace('/*__PHOTO__*/'") > -1, '场景照片注入链（模板+build-h5+validate）']
     ];
     const missingV = trio.filter(t => !t[0]).map(t => t[1]);
     if (!missingV.length) ok('语音注入链三处同步（模板 / build-h5 / validate）');
@@ -3740,6 +3742,61 @@ section('38. 生产上线守卫（主包体积 / 隐私授权 / 工程配置）'
     if (tp2.indexOf('const ICON_ART = /*__ICON_ART__*/') > -1 && tp2.indexOf('if (ICON_ART[id])') > -1)
       ok('体验版 iconDataUrl 真实图优先');
     else err('体验版未接真实图优先逻辑');
+  }
+
+  // --- 38.13 场景照片层链路（D47）：清单 / 照片存在性 / 两端插槽 / 加工能力 / 规格书 ---
+  {
+    let manifest = null;
+    if (exists('data/photo-assets.js')) {
+      try {
+        // eslint-disable-next-line no-eval
+        manifest = eval('(' + read('data/photo-assets.js').replace(/^[\s\S]*?module\.exports\s*=\s*/, '').replace(/;\s*$/, '') + ')');
+      } catch (e) { manifest = null; }
+    }
+    if (manifest && typeof manifest === 'object' && !Array.isArray(manifest)) {
+      const keys = Object.keys(manifest);
+      const badKeys = keys.filter(k => ['home', 'game'].indexOf(k) === -1);
+      if (!badKeys.length) ok('data/photo-assets.js 合法（键 ⊆ {home, game}，当前 ' + keys.filter(k => manifest[k]).length + ' 张启用）');
+      else err('photo-assets.js 出现未知键：' + badKeys.join(','));
+      // 清单启用的照片必须真的存在
+      const missing = keys.filter(k => manifest[k] && !exists(manifest[k].replace(/^\//, '')));
+      if (!missing.length) ok('清单启用的照片文件都存在（启用项 ' + keys.filter(k => manifest[k]).length + '）');
+      else err('清单启用了不存在的照片：' + missing.map(k => k + '→' + manifest[k]).join(' / '));
+    } else err('缺 data/photo-assets.js 或不是合法清单');
+    // 反例自测：不存在的路径必须会被上面同一套 exists 判定抓出
+    if (!exists('images/scene/__probe_missing__.jpg')) ok('守卫自测：清单空/缺图可被检出');
+    else err('守卫自测失败（照片存在性判定有问题）');
+    // 两端插槽
+    const iwv = read('pages/index/index.wxml');
+    const gwv = read('pages/game/game.wxml');
+    const ixv = read('pages/index/index.wxss');
+    const gxv = read('pages/game/game.wxss');
+    if (/wx:if="\{\{scenePhoto\}\}"[^>]*class="sc-photo"/.test(iwv) && /wx:if="\{\{scenePhoto\}\}"[^>]*class="sc-photo"/.test(gwv))
+      ok('小程序两端都有场景照片插槽（wx:if scenePhoto）');
+    else err('小程序缺场景照片插槽（首页/游戏页）');
+    if (ixv.indexOf('.sc-photo {') > -1 && gxv.indexOf('.sc-photo {') > -1)
+      ok('两端 .sc-photo 样式在案');
+    else err('.sc-photo 样式缺失');
+    const ijv = read('pages/index/index.js');
+    const gjv = read('pages/game/game.js');
+    if (ijv.indexOf("photoAssets.home") > -1 && gjv.indexOf('photoAssets.game') > -1)
+      ok('两端 JS 从清单取照片（空则不渲染）');
+    else err('页面 JS 未接照片清单');
+    // 体验版：常量 + 节点 + 无照片时移除
+    const tpV3 = read('preview/template.html');
+    if (tpV3.indexOf('const PHOTO = /*__PHOTO__*/') > -1 && tpV3.indexOf('id="sc-photo"') > -1 &&
+        tpV3.indexOf('sp.parentNode.removeChild(sp)') > -1)
+      ok('体验版照片层：常量 + 节点 + 无照片回退全在');
+    else err('体验版照片层接线不全');
+    // 加工脚本与规格书
+    const pav = read('scripts/prepare-assets.py');
+    if (pav.indexOf('def do_scene') > -1 && pav.indexOf("'scene':") > -1 && pav.indexOf('photo-assets.js') > -1)
+      ok('prepare-assets.py 支持 --scene（降饱和/压暗/清单写入）');
+    else err('prepare-assets.py 缺场景照片加工能力');
+    if (exists('docs/asset-spec-images.md') && read('docs/asset-spec-images.md').indexOf('G 组') > -1 &&
+        read('docs/asset-spec-images.md').indexOf('色罩') > -1)
+      ok('规格书含 G 组照片指令与色罩规范');
+    else err('规格书缺 G 组（照片指令）或色罩规范');
   }
 }
 
