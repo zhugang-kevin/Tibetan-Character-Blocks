@@ -2471,7 +2471,7 @@ section('31. 下落式盘面模型（D33：下落 + 顶部补充 + 三条不变�
     // 模板里是 `const DATA = /*__DATA__*/;`，不替换就是 `const DATA = ;` → 语法报错。
     // ⚠️ 占位符清单必须与 build-h5.js 的替换清单保持一致（新增占位符时两处都要加）。
     const filled31 = tpl31.replace('/*__DATA__*/', 'null').replace('/*__IMAGES__*/', 'null')
-      .replace('/*__VOICES__*/', 'null');
+      .replace('/*__VOICES__*/', 'null').replace('/*__ICON_ART__*/', 'null');
     const m31 = filled31.match(/<script>([\s\S]*?)<\/script>/);
     if (!m31) throw new Error('未找到内联 <script> 块');
     new Function(m31[1]);
@@ -3646,7 +3646,8 @@ section('38. 生产上线守卫（主包体积 / 隐私授权 / 工程配置）'
     const trio = [
       [tplV.indexOf('const VOICES = /*__VOICES__*/') > -1, '模板声明 const VOICES = /*__VOICES__*/'],
       [bldV.indexOf("replace('/*__VOICES__*/'") > -1, 'build-h5 注入替换'],
-      [valV.indexOf("replace('/*__VOICES__*/'") > -1, 'validate 占位符替换表']
+      [valV.indexOf("replace('/*__VOICES__*/'") > -1, 'validate 占位符替换表'],
+      [tplV.indexOf('const ICON_ART = /*__ICON_ART__*/') > -1 && bldV.indexOf("replace('/*__ICON_ART__*/'") > -1 && valV.indexOf("replace('/*__ICON_ART__*/'") > -1, '图标注入链（模板+build-h5+validate）']
     ];
     const missingV = trio.filter(t => !t[0]).map(t => t[1]);
     if (!missingV.length) ok('语音注入链三处同步（模板 / build-h5 / validate）');
@@ -3695,6 +3696,50 @@ section('38. 生产上线守卫（主包体积 / 隐私授权 / 工程配置）'
     if (exists('audio/voice/README.txt') && read('audio/voice/README.txt').indexOf('gen_voice.py') > -1)
       ok('audio/voice/README.txt 写明 TTS 预生成路径');
     else err('audio/voice/README.txt 未提及生成脚本（录音者/用户找不到路径）');
+  }
+
+  // --- 38.12 真实图片资产管线（D46）：规格书 / 加工脚本 / 清单 / 投放区隔离 ---
+  {
+    if (exists('docs/asset-spec-images.md')) {
+      const spec = read('docs/asset-spec-images.md');
+      const specOk = spec.indexOf('圆形徽章') > -1 && spec.indexOf('透明') > -1 &&
+                     spec.indexOf('#C0392B') > -1 && spec.indexOf('≤30KB') > -1;
+      if (specOk) ok('docs/asset-spec-images.md 在案（含徽章构图 / 透明要求 / 色板 / 体积上限）');
+      else err('图片规格书缺关键章节（构图/透明/色板/预算）');
+    } else err('缺 docs/asset-spec-images.md（真实图片的生产指令）');
+    if (exists('scripts/prepare-assets.py')) {
+      const pa = read('scripts/prepare-assets.py');
+      if (pa.indexOf('ImageDraw') > -1 && pa.indexOf('BUDGET') > -1 && pa.indexOf('icon-assets.js') > -1)
+        ok('prepare-assets.py 在案（蒙版 / 预算表 / 清单写入）');
+      else err('prepare-assets.py 缺关键能力（蒙版/预算/清单）');
+    } else err('缺 scripts/prepare-assets.py（生成图无法一键加工接入）');
+    if (exists('data/icon-assets.js')) {
+      let manifestOk = false, n = 0;
+      try {
+        // eslint-disable-next-line no-eval
+        const m = eval('(' + read('data/icon-assets.js').replace(/^[\s\S]*?module\.exports\s*=\s*/, '').replace(/;\s*$/, '') + ')');
+        manifestOk = m && typeof m === 'object' && !Array.isArray(m);
+        n = Object.keys(m || {}).length;
+      } catch (e) { }
+      if (manifestOk) ok('data/icon-assets.js 是合法清单（当前 ' + n + ' 项真实图标；0 项 = 全走程序线稿）');
+      else err('data/icon-assets.js 不是合法清单');
+    } else err('缺 data/icon-assets.js（真实图标没有接入清单）');
+    const pc2 = JSON.parse(read('project.config.json'));
+    const ign2 = ((pc2.packOptions || {}).ignore || []).map(i => i.value);
+    if (ign2.indexOf('assets-src') > -1) ok('assets-src 已排除出主包（原材料不占 2MB 预算）');
+    else err('packOptions 未排除 assets-src（大图会进包）');
+    const gi2 = read('.gitignore');
+    if (gi2.indexOf('assets-src/*/') > -1) ok('.gitignore 已屏蔽 assets-src 子目录（大图不入库）');
+    else err('.gitignore 未屏蔽 assets-src');
+    // 两端接入点：清单命中时优先真实图，未命中回退线稿
+    const ic = read('utils/icons.js');
+    if (ic.indexOf("require('../data/icon-assets')") > -1 && ic.indexOf('iconArt[ids[r]]') > -1)
+      ok('小程序 icons.js 真实图优先 + 线稿回退');
+    else err('小程序 icons.js 未接真实图优先逻辑');
+    const tp2 = read('preview/template.html');
+    if (tp2.indexOf('const ICON_ART = /*__ICON_ART__*/') > -1 && tp2.indexOf('if (ICON_ART[id])') > -1)
+      ok('体验版 iconDataUrl 真实图优先');
+    else err('体验版未接真实图优先逻辑');
   }
 }
 

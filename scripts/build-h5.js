@@ -81,8 +81,8 @@ for (let i = 1; i <= 10; i++) {
 let html = fs.readFileSync(TEMPLATE, 'utf8');
 
 if (html.indexOf('/*__DATA__*/') === -1 || html.indexOf('/*__IMAGES__*/') === -1 ||
-    html.indexOf('/*__VOICES__*/') === -1) {
-  console.error('✗ 模板缺少 /*__DATA__*/ / /*__IMAGES__*/ / /*__VOICES__*/ 占位符');
+    html.indexOf('/*__VOICES__*/') === -1 || html.indexOf('/*__ICON_ART__*/') === -1) {
+  console.error('✗ 模板缺少 /*__DATA__*/ / /*__IMAGES__*/ / /*__VOICES__*/ / /*__ICON_ART__*/ 占位符');
   process.exit(1);
 }
 
@@ -108,6 +108,28 @@ const VOICES = {};
   });
 })();
 html = html.replace('/*__VOICES__*/', JSON.stringify(VOICES));
+
+// ---------- 2.6 注入真实图标图片（images/icons/*，D45 后续：替换程序线稿） ----------
+// 文件名 = 元素 id（icon_01.png）或别名（icon_knot.png → 按 data/icon-assets.js 的映射）。
+// 清单为空 = 全部走程序线稿（当前默认），放图 + 跑 prepare-assets.py 即自动切换。
+const ICON_ART = {};
+(function () {
+  const dir = path.join(ROOT, 'images', 'icons');
+  if (!fs.existsSync(dir)) return;
+  const alias = { icon_knot: 'icon_01', icon_barley: 'icon_02', icon_mountain: 'icon_03', icon_yak: 'icon_04' };
+  fs.readdirSync(dir).forEach(function (f) {
+    const mm = /^(.+)\.(png|webp|jpg)$/i.exec(f);
+    if (!mm) return;
+    let id = mm[1];
+    if (alias[id]) id = alias[id];
+    if (!/^icon_\d{2}$/.test(id)) return;
+    const mime = mm[2].toLowerCase() === 'png' ? 'image/png' : (mm[2].toLowerCase() === 'webp' ? 'image/webp' : 'image/jpeg');
+    ICON_ART[id] = 'data:' + mime + ';base64,' + fs.readFileSync(path.join(dir, f)).toString('base64');
+  });
+})();
+html = html.replace('/*__ICON_ART__*/', JSON.stringify(ICON_ART));
+console.log('  真实图标注入：' + Object.keys(ICON_ART).length + ' 个（images/icons/*' +
+  (Object.keys(ICON_ART).length ? '' : ' 暂无，走程序线稿') + '）');
 console.log('  语音注入：' + Object.keys(VOICES).length + ' 条（audio/voice/*.wav' +
   (Object.keys(VOICES).length ? '' : ' 尚未录制，体验版静默') + '）');
 

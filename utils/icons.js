@@ -1,6 +1,12 @@
 // utils/icons.js — 文化图标绘制（简笔线条风格）
 // 用离屏 Canvas 绘制后导出为临时图片，供 <image> 组件展示。
+//
+// 2026-10-07（用户反馈「线稿认不出」）：引入**真实图片优先**——
+//   data/icon-assets.js 清单里登记的元素直接用静态图片（三态键共用同一张），
+//   未登记的回退到下方的程序线稿。两套共存，替换是渐进的、可回滚的。
 var elements = require('../data/elements');
+var iconArt = null;
+try { iconArt = require('../data/icon-assets'); } catch (e) { iconArt = null; }
 
 function roundRectPath(ctx, x, y, w, h, r) {
   ctx.beginPath();
@@ -202,6 +208,20 @@ function renderIcons(elementIds) {
       }
     }
     var out = {};
+    // 真实图片优先：清单命中的图标直接返回静态路径（三个墨色变体共用同一张）
+    if (iconArt) {
+      var rest = [];
+      for (var r = 0; r < ids.length; r++) {
+        if (iconArt[ids[r]]) {
+          out[ids[r]] = iconArt[ids[r]];
+          out[ids[r] + '|lite'] = iconArt[ids[r]];
+          out[ids[r] + '|gold'] = iconArt[ids[r]];
+        } else {
+          rest.push(ids[r]);
+        }
+      }
+      ids = rest;
+    }
     if (!ids.length || !wx.createOffscreenCanvas) {
       resolve(out);
       return;

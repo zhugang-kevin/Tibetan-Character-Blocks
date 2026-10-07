@@ -8,3 +8,8 @@ Thumbs.db
 
 # TTS 密钥配置（含鉴权信息，绝不入库）
 scripts/tts-config.json
+
+# 真实图片原材料（大图不入库；README 除外）
+assets-src/*/
+generated-images/
+.workbuddy/icon-src/

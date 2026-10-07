@@ -33,7 +33,7 @@
 ## 自检
 
 ```bash
-node scripts/validate.js         # 小程序静态自检：38 大类 1208 项（含 §17.8 D25 元素库宗教符号清零、§31 盘面模型真跑模拟、§33 藏地密码、§34 BGM、§35 纹样砖完整性、§36 绳结障碍、30 辅音基线、§37 去游戏化守卫（含量词「关」单字扫描）、§38 生产上线守卫：主包体积/隐私授权/工程配置/存储健壮性/资产引用/语音生命周期/零网络）
+node scripts/validate.js         # 小程序静态自检：38 大类 1215 项（含 §17.8 D25 元素库宗教符号清零、§31 盘面模型真跑模拟、§33 藏地密码、§34 BGM、§35 纹样砖完整性、§36 绳结障碍、30 辅音基线、§37 去游戏化守卫（含量词「关」单字扫描）、§38 生产上线守卫：主包体积/隐私授权/工程配置/存储健壮性/资产引用/语音生命周期/零网络）
 node scripts/test-tibetan.js     # 藏文排版规则：1392 项断言（无需依赖）
 ```
 
@@ -94,6 +94,7 @@ node scripts/build-h5.js        # 重新生成（改了 data/ 或 images/ 之后
 | [`docs/DECISIONS.md`](docs/DECISIONS.md) | 🟢 **唯一真相源** | **决策台账**：文档状态表 + 已拍板结论 + 待拍板项 + 下一步唯一动作 |
 | [`docs/run-local.md`](docs/run-local.md) | 🟢 有效 | 本地体验指南（两种方式 + 常见问题） |
 | [`docs/certificate-system.md`](docs/certificate-system.md) | 🟢 有效 | 藏文成长阶梯 · 证书体系（阶梯 / 等级门槛 / 编号 / 与护照关系） |
+| [`docs/asset-spec-images.md`](docs/asset-spec-images.md) | 🟢 有效 | **图片资产规格书**（真实图片生成指令：构图/尺寸/体积/色板/提示词 + 交付接入流程） |
 | [`docs/tibetan-typography.md`](docs/tibetan-typography.md) | 🟢 有效 | 藏文排版规范（tsheg / shad 断行规则） |
 | [`docs/monetization-v3.md`](docs/monetization-v3.md) | 🟢 有效 | **商业化方案 v3**（虚拟支付通道更正 + 五条变现引擎 + 资金流架构） |
 | [`docs/merchant-system-v2.md`](docs/merchant-system-v2.md) | 🟢 有效 | **商家与核销系统 v2**（把评审的问题逐条变成可落地的替代设计） |

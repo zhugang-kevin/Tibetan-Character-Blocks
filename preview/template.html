@@ -2224,6 +2224,8 @@ const iconCache = {};
 function iconDataUrl(id, ink) {
   const key = id + (ink ? '|' + ink : '');
   if (iconCache[key]) return iconCache[key];
+  // 真实图片优先（D45 后续：用户反馈线稿认不出）——清单命中直接返回，三态共用同一张
+  if (ICON_ART[id]) { iconCache[key] = ICON_ART[id]; return iconCache[key]; }
   const el = ELEMENTS[id];
   const S = 160;
   const cv = document.createElement('canvas');
@@ -2238,6 +2240,8 @@ function iconDataUrl(id, ink) {
   iconCache[key] = cv.toDataURL();
   return iconCache[key];
 }
+/* 真实图片图标（由 build-h5 从 images/icons/* 内联注入；空表 = 全部走程序线稿） */
+const ICON_ART = /*__ICON_ART__*/;
 // 牌面用墨：普通牌奶白（与字母同墨）、金块牌深墨；其余场景（奖章/徽章/集卡）用元素本色
 function tileIconDataUrl(id, golden) {
   return iconDataUrl(id, golden ? TILE_GOLD_INK : TILE_LITE_INK);
