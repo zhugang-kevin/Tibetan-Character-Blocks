@@ -545,7 +545,7 @@ function mockCtx(sink) {
     'speakLog=' + JSON.stringify(ev('state.speakLog')));
   await sleep(400);
   check('粒子层已自动清除', !$('#fx-layer'), 'fx-layer 仍在');
-  check('显示「第 1 关完成！」', ($('#res-title') || {}).textContent === '第 1 关完成！');
+  check('显示「第 1 课完成！」', ($('#res-title') || {}).textContent === '第 1 课完成！');
   check('显示积分/连击/文化卡统计', $('#res-score').textContent !== '0' || ev('state.score') === 0);
   check('授予「拉萨」印记横幅', ($('#res-stamp').textContent || '').indexOf('拉萨') > -1);
   check('文化卡列表去重后 2 张', $$('#res-chips .chip').length === 2, 'chips=' + $$('#res-chips .chip').length);
@@ -1428,8 +1428,8 @@ function mockCtx(sink) {
   check('已收藏槽位显示真实字形', $$('#res-journey .j-slot.got').map(function (n) {
     return n.textContent.trim();
   }).join('') === 'ཀཁ', $$('#res-journey .j-slot.got').map(function (n) { return n.textContent; }).join('|'));
-  check('进度锚有关卡锚点（第 1 / 10 关）',
-    ($('#res-journey .j-step') || {}).textContent === '第 1 / 10 关',
+  check('进度锚有课程锚点（第 1 / 10 课）',
+    ($('#res-journey .j-step') || {}).textContent === '第 1 / 10 课',
     ($('#res-journey .j-step') || {}).textContent);
   check('进度锚有旅程天数', /旅行第 \d+ 天/.test($('#res-journey .j-day').textContent),
     $('#res-journey .j-day').textContent);

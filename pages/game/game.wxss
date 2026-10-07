@@ -71,10 +71,13 @@
 .status-level {
   font-weight: 700;
   color: #FFD98A;
+  /* nowrap：flex 行内被挤压时「第 N 课」会在两个字之间断行（实测窄屏复现） */
+  white-space: nowrap;
 }
 
 .status-pairs {
   color: #B9C7D6;
+  white-space: nowrap;
 }
 
 .status-score {
@@ -547,7 +550,8 @@
 .toast {
   position: fixed;
   left: 50%;
-  bottom: 60rpx;
+  /* 底部安全区：全面屏上 60rpx 会落进 Home Indicator 条 */
+  bottom: calc(60rpx + env(safe-area-inset-bottom));
   transform: translateX(-50%) translateY(20rpx);
   display: flex;
   align-items: center;
@@ -600,6 +604,8 @@
   transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
   z-index: 50;
   overflow: hidden;
+  /* 刘海屏 / 全面屏底部安全区（D42 生产加固）：卡片内容不被 Home Indicator 压住 */
+  padding-bottom: env(safe-area-inset-bottom);
   box-shadow: 0 -12rpx 40rpx rgba(60, 44, 16, 0.28);
 }
 

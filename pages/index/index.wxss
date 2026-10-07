@@ -838,7 +838,7 @@ page,
   font-weight: 700;
 }
 
-/* 排行榜（本地成绩单）：暗红经幡底条 + 白色发光数字 */
+/* 我的成绩（本地成绩单）：暗红经幡底条 + 白色发光数字 */
 .rank-row {
   display: flex;
   align-items: center;

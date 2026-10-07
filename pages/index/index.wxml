@@ -144,7 +144,7 @@
   <!-- 底部大平层 -->
   <view class="dock">
     <view class="dock-btn" data-panel="shop" bindtap="openPanel"><text class="dock-ico">🧰</text><text class="dock-txt">道具铺</text></view>
-    <view class="dock-btn" data-panel="rank" bindtap="openPanel"><text class="dock-ico">🏔</text><text class="dock-txt">排行榜</text></view>
+    <view class="dock-btn" data-panel="rank" bindtap="openPanel"><text class="dock-ico">🏔</text><text class="dock-txt">我的成绩</text></view>
     <view class="dock-btn" data-panel="tree" bindtap="openPanel"><text class="dock-ico">🌳</text><text class="dock-txt">菩提树</text></view>
     <view class="dock-btn" data-panel="winter" bindtap="openPanel"><text class="dock-ico">❄</text><text class="dock-txt">冬游西藏</text></view>
   </view>
@@ -227,7 +227,7 @@
         <view class="entry-note">道具用学习得分兑换：全程不涉及支付，也不含广告。</view>
       </block>
 
-      <!-- 雪域排行榜（本地记录） -->
+      <!-- 我的成绩（本地记录） -->
       <block wx:elif="{{panel === 'rank'}}">
         <view class="rank-row"><text class="rank-k">累计学习得分</text><text class="rank-v">{{points}}</text></view>
         <view class="rank-row"><text class="rank-k">最高连续正确</text><text class="rank-v">×{{bestCombo}}</text></view>

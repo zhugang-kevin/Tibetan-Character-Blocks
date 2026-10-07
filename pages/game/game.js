@@ -779,6 +779,7 @@ Page({
 
   onUnload: function () {
     audio.bgmStop();
+    audio.stopVoice();   // 元素发音 / 扎西德勒语音不追着用户跑到别的页面
     this._alive = false;
     if (this.cardTimer) clearTimeout(this.cardTimer);
     if (this.toastTimer) clearTimeout(this.toastTimer);

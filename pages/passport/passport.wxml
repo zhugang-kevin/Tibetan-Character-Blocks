@@ -88,7 +88,7 @@
         <text class="section-title">揭示图鉴</text>
         <text class="section-count">{{revealGot}} / {{revealTotal}}</text>
       </view>
-      <view class="section-sub">每一关的棋盘下都垫着一张秘境图，消除越多透出越多，完成后整幅揭晓。</view>
+      <view class="section-sub">每一课的棋盘下都垫着一张秘境图，消除越多透出越多，完成后整幅揭晓。</view>
       <view class="rv-grid">
         <view wx:for="{{revealSlots}}" wx:key="level" class="rv-slot {{item.unlocked ? 'got' : 'locked'}}">
           <view class="rv-frame">

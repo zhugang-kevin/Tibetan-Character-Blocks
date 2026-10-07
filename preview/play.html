@@ -121,8 +121,11 @@
   .back-btn {
     border: 1px solid var(--line); background: #fff; border-radius: 10px; padding: 6px 11px;
     font-size: 14px; color: var(--ink); cursor: pointer;
+    white-space: nowrap;   /* 窄屏上「← 返回」会被 flex 挤成竖排两字（实测 390px 复现） */
+    flex-shrink: 0;
   }
-  .status-mid { flex: 1; text-align: center; font-size: 14px; font-weight: 700; }
+  /* nowrap：flex:1 的中间标题在窄屏会被挤到 29px 宽，「第 9 课」会断成两行（实测 390px 复现） */
+  .status-mid { flex: 1; text-align: center; font-size: 14px; font-weight: 700; white-space: nowrap; }
   .status-right { font-size: 13px; color: var(--gold); font-weight: 700; text-align: right; min-width: 82px; }
   .status-right .sc { color: var(--ink); }
   .combo-pill { font-size: 11px; color: var(--muted); font-weight: 400; }
@@ -1042,7 +1045,7 @@
   .shop-desc { margin-top: 3px; font-size: 11px; color: #6E6759; }
   .shop-btn { padding: 7px 12px; border-radius: 999px; background: linear-gradient(180deg,#8A6A12,#6E5608); color: #FFF6DC; font-size: 11px; font-weight: 800; cursor: pointer; }
   .rank-row { display: flex; align-items: center; justify-content: space-between; padding: 11px 0; border-bottom: 1px solid rgba(214,202,176,.6); }
-  /* 排行榜（本地成绩单）：暗红经幡底条 + 白色发光数字 */
+  /* 我的成绩（本地成绩单）：暗红经幡底条 + 白色发光数字 */
   .rank-row {
     display: flex; align-items: center; justify-content: space-between;
     padding: 9px 13px; margin-bottom: 7px;
@@ -1156,7 +1159,7 @@
   <!-- 底部大平层（首页专用） -->
   <div class="dock" id="dock">
     <div class="dock-btn" data-panel="shop"><span class="dock-ico">🧰</span><span class="dock-txt">道具铺</span></div>
-    <div class="dock-btn" data-panel="rank"><span class="dock-ico">🏔</span><span class="dock-txt">排行榜</span></div>
+    <div class="dock-btn" data-panel="rank"><span class="dock-ico">🏔</span><span class="dock-txt">我的成绩</span></div>
     <div class="dock-btn" data-panel="tree"><span class="dock-ico">🌳</span><span class="dock-txt">菩提树</span></div>
     <div class="dock-btn" data-panel="winter"><span class="dock-ico">❄</span><span class="dock-txt">冬游西藏</span></div>
   </div>
@@ -1217,7 +1220,7 @@
     <div class="sc-night" aria-hidden="true"></div>
     <div class="statusbar">
       <button class="back-btn" id="game-back">← 返回</button>
-      <div class="status-mid" id="status-mid">第 1 关</div>
+      <div class="status-mid" id="status-mid">第 1 课</div>
       <div class="status-right">
         <div><span class="sc" id="status-score">0</span> 分</div>
         <div class="combo-pill" id="status-combo">已消除 0/0 对</div>
@@ -1260,7 +1263,7 @@
       <div class="roller roller-top" aria-hidden="true"></div>
     <div class="result-hero">
       <div class="result-check">✓</div>
-      <div class="result-title" id="res-title">第 1 关完成！</div>
+      <div class="result-title" id="res-title">第 1 课完成！</div>
       <div class="result-sub" id="res-sub">共消除 0 对</div>
       <div class="result-acc" id="res-acc"></div>
       <!-- PRD v4：本关星级评价（只增不减） -->
@@ -1345,7 +1348,7 @@
         <span class="pp-h-title">揭示图鉴</span>
         <span class="pp-h-count" id="pp-reveal-count">0 / 10</span>
       </div>
-      <div class="pp-sub">每一关的棋盘下都垫着一张秘境图，消除越多透出越多，完成后整幅揭晓。</div>
+      <div class="pp-sub">每一课的棋盘下都垫着一张秘境图，消除越多透出越多，完成后整幅揭晓。</div>
       <div class="rv-grid" id="pp-reveal-grid"></div>
     </div>
 
@@ -1598,9 +1601,9 @@ function addFragment(idx) {
    等级是质量门槛（金 > 银 > 普通），编号 ZWFK-YYYY-NNNN，可保存 / 分享。 */
 const CERT_PREFIX = 'ZWFK';
 const TIERS = {
-  gold: { key: 'gold', label: '金质证书', seal: '金', color: '#8A6A12', minAccuracy: 0.95, requireClean: true, rule: '完成 10 关 · 正确率 ≥ 95% · 全程无失误' },
-  silver: { key: 'silver', label: '银质证书', seal: '银', color: '#5D6D7E', minAccuracy: 0.80, requireClean: false, rule: '完成 10 关 · 正确率 ≥ 80%' },
-  bronze: { key: 'bronze', label: '普通证书', seal: '普', color: '#C0392B', minAccuracy: 0, requireClean: false, rule: '完成 10 关' }
+  gold: { key: 'gold', label: '金质证书', seal: '金', color: '#8A6A12', minAccuracy: 0.95, requireClean: true, rule: '完成 10 课 · 正确率 ≥ 95% · 全程无失误' },
+  silver: { key: 'silver', label: '银质证书', seal: '银', color: '#5D6D7E', minAccuracy: 0.80, requireClean: false, rule: '完成 10 课 · 正确率 ≥ 80%' },
+  bronze: { key: 'bronze', label: '普通证书', seal: '普', color: '#C0392B', minAccuracy: 0, requireClean: false, rule: '完成 10 课' }
 };
 const TIER_RANK = { bronze: 1, silver: 2, gold: 3 };
 
@@ -2423,7 +2426,7 @@ const REGIONS = DATA.regions || [];
 const DAILY = DATA.daily || { greetings: [], signInRewards: [], trivia: [], shop: [], tree: { water: 12 }, winter: { items: [] } };
 const PANEL_TITLES = {
   journal: '雪域游记', lamp: '祈福长明灯', daily: '雪域日签', thangka: '唐卡拼图',
-  box: '非遗盲盒', shop: '藏式道具铺', rank: '雪域排行榜', tree: '菩提树',
+  box: '非遗盲盒', shop: '藏式道具铺', rank: '我的成绩', tree: '菩提树',
   winter: '冬游西藏', market: '八廓街集市'
 };
 function colDayNumber(dateStr) {
@@ -3915,6 +3918,9 @@ function finishLevel() {
   state.finished = true;
   hideCard();
   hideToast();
+  // 新手引导若还开着（自动化脚本强行通关时才可能），一并收起，别把它带到结算页
+  const gm = document.getElementById('guide-mask');
+  if (gm) gm.classList.remove('show');
   audio.win();
   celebrate();
   setTimeout(function () { speak('tashi_delek'); }, 350);   // 通关藏语：扎西德勒
@@ -3945,7 +3951,7 @@ function renderResult() {
   });
   const p = getProgress();
 
-  $('res-title').textContent = '第 ' + level + ' 关完成！';
+  $('res-title').textContent = '第 ' + level + ' 课完成！';
   $('res-sub').textContent = '共消除 ' + state.matchedCount + ' 对 · 最高连续正确 ×' + state.maxCombo;
   $('res-acc').textContent = '本课正确率 ' + certRes.accuracy + '%' +
     (state.misses === 0 ? ' · 全程无失误 ✦' : '');
@@ -4008,7 +4014,7 @@ function renderResult() {
   }).join('');
   const jHead = '已认识 ' + cp.got + ' / ' + cp.total + ' 个藏文字母与文化元素';
   $('res-journey').innerHTML =
-    '<div class="j-head"><span class="j-step">第 ' + level + ' / ' + MAX_LEVEL + ' 关</span>' +
+    '<div class="j-head"><span class="j-step">第 ' + level + ' / ' + MAX_LEVEL + ' 课</span>' +
     '<span class="j-day">旅行第 ' + (openLog.total || 1) + ' 天</span></div>' +
     '<div class="j-bar"><div class="j-bar-in" style="width:' +
     (cp.total ? Math.round(cp.got * 100 / cp.total) : 0) + '%"></div></div>' +
@@ -4269,7 +4275,7 @@ function showPassport() {
       ? '<div class="slot-tier" style="background:' + it.tierColor + ';">' + it.tierLabel + '</div>' +
         '<div class="slot-no">' + it.cert.no + '</div>'
       : '<div class="slot-lock">🔒</div>' +
-        '<div class="slot-progress">' + it.progress + '/' + it.total + ' 关</div>';
+        '<div class="slot-progress">' + it.progress + '/' + it.total + ' 课</div>';
     return '<div class="cert-slot ' + (it.unlocked ? 'got' : 'locked') + '" data-stage="' + it.stage + '">' +
       '<div class="slot-top">第 ' + it.stage + ' 阶段</div>' +
       '<div class="slot-name">' + it.name + '</div>' + inner + '</div>';
@@ -4282,7 +4288,7 @@ function showPassport() {
   list.forEach(function (it) { if (!next && it.open && !it.unlocked) next = it; });
   $('pp-next').innerHTML = next
     ? ('下一张：第 ' + next.stage + ' 阶段 · ' + next.name +
-      '<b>还差 ' + (next.total - next.progress) + ' 关</b>')
+      '<b>还差 ' + (next.total - next.progress) + ' 课</b>')
     : (owned ? '已集齐当前已开放阶段的全部证书' : '');
 
   $('pp-cards-count').textContent = p.seenCards.length + ' / ' + CARDS.length;
@@ -4399,7 +4405,7 @@ function showCert(stage) {
       '<div class="ic">🔒</div>' +
       '<div class="t">第 ' + info.stage + ' 阶段 · ' + info.name + '</div>' +
       '<div class="s">' + info.goal + '</div>' +
-      '<div class="p">当前进度 ' + (slot ? slot.progress : 0) + ' / ' + (slot ? slot.total : 10) + ' 关</div>' +
+      '<div class="p">当前进度 ' + (slot ? slot.progress : 0) + ' / ' + (slot ? slot.total : 10) + ' 课</div>' +
       '<div class="r">完成第 ' + info.from + '-' + info.to + ' 课，即可获得「' + info.name + '」证书</div>' +
       '</div>' +
       '<div class="tier-box"><div class="tt">证书等级（质量门槛）</div>' +
@@ -4754,7 +4760,7 @@ function renderBenefits() {
       '<div class="bc-foot"><div class="bc-need' + (unlocked ? ' ok' : '') + '">完成第 ' + m.need + ' 课可领</div>' +
       (rec ? '<div class="bc-code">' + rec.code + '</div>'
         : (unlocked ? '<div class="bc-btn" data-mid="' + m.id + '">领取凭证</div>'
-          : '<div class="bc-lock">还差 ' + (m.need - done) + ' 关</div>')) +
+          : '<div class="bc-lock">还差 ' + (m.need - done) + ' 课</div>')) +
       '</div></div>';
   }).join('');
   state.benefitClaimable = claimable;
@@ -4771,7 +4777,7 @@ function renderBenefits() {
 /* ---------------- 事件绑定 ---------------- */
 $('game-back').addEventListener('click', function () {
   if (state.matchedCount > 0 && state.matchedCount < totalPairs()) {
-    if (!window.confirm('本关还没完成，确定要退出吗？')) return;
+    if (!window.confirm('本课还没完成，确定要退出吗？')) return;
   }
   renderHome();
 });

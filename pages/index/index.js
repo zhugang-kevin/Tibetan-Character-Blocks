@@ -36,7 +36,7 @@ var PANEL_TITLES = {
   thangka: '唐卡拼图',
   box: '非遗盲盒',
   shop: '藏式道具铺',
-  rank: '雪域排行榜',
+  rank: '我的成绩',
   tree: '菩提树',
   winter: '冬游西藏',
   market: '八廓街集市'

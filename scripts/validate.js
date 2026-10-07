@@ -3294,7 +3294,9 @@ section('37. 去游戏化守卫（教育类目 · 文案红线）');
   const copyFiles37 = walkPages('pages', [])
     .concat(fs.readdirSync(path.join(ROOT, 'data')).filter(f => f.endsWith('.js')).map(f => 'data/' + f))
     .concat(['preview/template.html']);
-  const FORBIDDEN37 = ['积分', '连击', '通关', '关卡', '玩方块', '如何消除', '闯关'];
+  // 「排行」类词与 §33 藏地密码禁令同尺：D6 已拍板不做排行榜（替代 = 本地「我的成绩」），
+  // 且「排行榜」字眼本身就会被 §33/§25 判违禁——两个尺子必须一致，不能一个禁一个用。
+  const FORBIDDEN37 = ['积分', '连击', '通关', '关卡', '玩方块', '如何消除', '闯关', '排行榜', '排行'];
   let hit37 = null;
   copyFiles37.forEach(f => {
     const s = stripCopyComments(read(f));
@@ -3311,6 +3313,34 @@ section('37. 去游戏化守卫（教育类目 · 文案红线）');
   if (stripCopyComments('x = "积分"').indexOf('积分') > -1 && stripCopyComments('// 注释里的积分不算').indexOf('积分') === -1)
     ok('守卫自测：字符串命中 / 注释豁免 均成立');
   else err('去游戏化守卫自测失败（注释剥离或命中逻辑坏了）');
+
+  // 37.2 量词「关」单字漏网（2026-10-07 实测抓到 15 处：'第 ' + level + ' 关完成！' 这类
+  // 拼接形态不落在任何单词表里，躲过了首轮扫描）。逐个「关」出现判定：
+  //   · 后面跟 键/闭/注/怀/于/系/联/税/机/头/卡/切/照/掉/灯/门/节/口 → 合法词（关于/关闭/关键…）
+  //   · 出现在「文案 关 / 音乐 关」开关语境 → 合法（不是量词）
+  //   · 其余一律判违规（第 N 关 / 每一关 / 还差 N 关 …）
+  const LEGIT_GUAN = /关(键|闭|注|怀|于|系|联|税|机|头|卡|切|照|掉|灯|门|节|口)/;
+  function findStrayGuan(text) {
+    const lines = text.split('\n');
+    for (let li = 0; li < lines.length; li++) {
+      const l = lines[li];
+      if (/文案 关|音乐 关|文案关|音乐关/.test(l)) continue;   // 开关语境整行豁免
+      let idx = -1;
+      while ((idx = l.indexOf('关', idx + 1)) !== -1) {
+        if (!LEGIT_GUAN.test(l.slice(idx))) {
+          return 'line ' + (li + 1) + ': …' + l.slice(Math.max(0, idx - 16), idx + 16).trim() + '…';
+        }
+      }
+    }
+    return null;
+  }
+  let strayGuan = null;
+  copyFiles37.forEach(f => { const hit = findStrayGuan(stripCopyComments(read(f))); if (hit && !strayGuan) strayGuan = f + ' ' + hit; });
+  if (!strayGuan) ok('无量词「关」残留（第 N 关 / 每一关 等拼接形态全部清零）');
+  else err('量词「关」残留（去游戏化漏网）：' + strayGuan);
+  if (findStrayGuan('x = "第 3 关完成！"') && !findStrayGuan('a ? "文案 关" : "文案 开"'))
+    ok('守卫自测：拼接「关」可检出 / 开关语境正确豁免');
+  else err('量词「关」判定自测失败');
   // 新品牌语基线
   const slogan37 = read('pages/index/index.js');
   if (slogan37.indexOf('认藏文，从方块开始') > -1) ok('新品牌语「认藏文，从方块开始」在首页转发卡');
@@ -3428,6 +3458,117 @@ section('38. 生产上线守卫（主包体积 / 隐私授权 / 工程配置）'
     })('corrupted-string');
     if (probe === null) ok('守卫自测：字符串/数组型脏数据被判为「无进度」');
     else err('守卫自测失败（脏数据没被拦住）');
+  }
+
+  // --- 38.6 资产引用完整性：代码里引用的每个 /images 与 /audio 文件都必须真的在 ---
+  // 少一张图 = 运行时白块 / 分享卡缺图；少一个音频 = 静默（可接受），但图必须齐。
+  {
+    const refFiles = jsFiles.map(f => path.relative(ROOT, f).replace(/\\/g, '/'))
+      .concat(['app.json']);
+    const missingAssets = [];
+    const seenAsset = {};
+    refFiles.forEach(f => {
+      const src = read(f);
+      const refs = src.match(/\/images\/[A-Za-z0-9_\-]+\.(png|jpg|jpeg|webp|gif)/g) || [];
+      refs.forEach(r => {
+        const rel = r.slice(1); // 去掉开头的 /
+        if (seenAsset[rel]) return;
+        seenAsset[rel] = true;
+        if (!exists(rel)) missingAssets.push(f + ' → ' + r);
+      });
+    });
+    if (!missingAssets.length) ok('全部图片引用都能在磁盘找到（' + Object.keys(seenAsset).length + ' 个唯一引用）');
+    else err('存在悬空图片引用：' + missingAssets.join(' | '));
+    // 反例自测：编一个不存在的引用，必须被同一套判定抓出
+    if (!exists('images/__gate_probe__.png')) ok('守卫自测：不存在的图片引用可被检出');
+    else err('守卫自测失败（悬空引用判定逻辑有问题）');
+  }
+
+  // --- 38.7 语音生命周期：全局单声道语音必须在离开页面时停下 ---
+  // 元素发音 0.5-1.5s、结算祝福 2-3s；语音通道是模块级单例，
+  // 不清理 = 用户离开页面后声音还追着他播（游戏页 / 结算页两个出口都要清）。
+  {
+    const aud = read('utils/audio.js');
+    if (aud.indexOf('function stopVoice') > -1 && /module\.exports[\s\S]*stopVoice:\s*stopVoice/.test(aud))
+      ok('utils/audio.js 提供 stopVoice（语音通道的停止出口）');
+    else err('utils/audio.js 缺 stopVoice —— 语音没有停止出口');
+    const res = read('pages/result/result.js');
+    if (/onUnload:\s*function[\s\S]{0,200}stopVoice\(\)/.test(res) && /onHide:\s*function[\s\S]{0,200}stopVoice\(\)/.test(res))
+      ok('结算页 onUnload / onHide 都停语音（祝福语不追着用户走）');
+    else err('结算页缺语音清理（祝福语 2-3 秒，离开页面必须停）');
+    if (res.indexOf('blessTimer') > -1 && /clearTimeout\(this\.blessTimer\)/.test(res))
+      ok('结算页祝福语定时器可取消（650ms 内返回不再出声）');
+    else err('结算页祝福语定时器未命名，无法取消');
+    const gj = read('pages/game/game.js');
+    if (/onUnload:\s*function[\s\S]{0,160}stopVoice\(\)/.test(gj))
+      ok('游戏页 onUnload 停语音（元素发音 / 扎西德勒不跨页）');
+    else err('游戏页 onUnload 未停语音');
+  }
+
+  // --- 38.8 静态引用完整性：wxml 绑定 / require 路径 / wx:for key ---
+  // 这三类错误在开发者工具里是「点一下才炸」或者「悄悄变慢」，
+  // 上线前必须一次性全量核对，不能靠手点。
+  {
+    const pageNames = ['index', 'game', 'result', 'cert', 'passport', 'benefits'];
+    let bindTotal = 0, bindMissing = [];
+    let keyTotal = 0, keyMissing = [];
+    pageNames.forEach(p => {
+      const wxml = read('pages/' + p + '/' + p + '.wxml');
+      const js = read('pages/' + p + '/' + p + '.js');
+      const handlers = new Set();
+      const re = /(?:bind|catch)(?::)?(?:tap|change|longpress|input|confirm|scroll|load|error|animationend|submit)="([A-Za-z_$][\w$]*)"/g;
+      let m;
+      while ((m = re.exec(wxml)) !== null) handlers.add(m[1]);
+      handlers.forEach(h => {
+        bindTotal++;
+        if (!new RegExp('\\b' + h + '\\s*:\\s*function').test(js) && !new RegExp('\\b' + h + '\\s*\\(').test(js))
+          bindMissing.push(p + ' → ' + h);
+      });
+      const fre = /wx:for="\{\{[^}]+\}\}"/g;
+      while ((m = fre.exec(wxml)) !== null) {
+        keyTotal++;
+        if (wxml.slice(m.index, m.index + 320).indexOf('wx:key') === -1)
+          keyMissing.push(p + ':' + (wxml.slice(0, m.index).split('\n').length));
+      }
+    });
+    if (!bindMissing.length) ok('wxml 事件绑定全部有对应处理函数（' + bindTotal + ' 个）');
+    else err('wxml 绑定了不存在的处理函数：' + bindMissing.join(' | '));
+    if (!keyMissing.length) ok('wx:for 列表全部带 wx:key（' + keyTotal + ' 处）');
+    else err('wx:for 缺 wx:key（渲染性能与状态错乱风险）：' + keyMissing.join(' | '));
+
+    // require 路径全部可解析
+    const reqFiles = jsFiles.map(f => path.relative(ROOT, f).replace(/\\/g, '/'))
+      .filter(f => f.indexOf('pages/') === 0 || f.indexOf('utils/') === 0).concat(['app.js']);
+    const badReq = [];
+    let reqTotal = 0;
+    reqFiles.forEach(f => {
+      const src = read(f);
+      const re = /require\(['"](\.[^'"]+)['"]\)/g; let m;
+      while ((m = re.exec(src)) !== null) {
+        reqTotal++;
+        const target = path.resolve(ROOT, path.dirname(f), m[1]);
+        if (!fs.existsSync(target) && !fs.existsSync(target + '.js') && !fs.existsSync(path.join(target, 'index.js')))
+          badReq.push(f + ' → ' + m[1]);
+      }
+    });
+    if (!badReq.length) ok('require 路径全部可解析（' + reqTotal + ' 条）');
+    else err('存在无法解析的 require：' + badReq.join(' | '));
+  }
+
+  // --- 38.9 零网络证明：无后端是 D3/D13 的硬拍板，必须机械可证 ---
+  {
+    const netPat = /wx\.(request|downloadFile|uploadFile|connectSocket|createUDPSocket|createTCPSocket)\s*\(/;
+    const offenders = [];
+    jsFiles.forEach(f => {
+      const rel = path.relative(ROOT, f).replace(/\\/g, '/');
+      if (rel.indexOf('pages/') !== 0 && rel.indexOf('utils/') !== 0 && rel !== 'app.js') return;
+      if (netPat.test(read(rel))) offenders.push(rel);
+    });
+    if (!offenders.length) ok('全项目零网络调用（无 wx.request / downloadFile / uploadFile / socket）');
+    else err('出现网络调用（违 D3 / D13）：' + offenders.join(' | '));
+    // 反例自测：探针字符串必须被同一正则命中
+    if (netPat.test('wx.request({url:""})')) ok('守卫自测：wx.request 可被检出');
+    else err('守卫自测失败（网络调用判定逻辑有问题）');
   }
 }
 

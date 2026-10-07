@@ -60,6 +60,17 @@ function speak(name) {
   return pronounce(name);
 }
 
+// 停止当前发音（离开页面 / 切后台时调用）。
+// 为什么必须有：语音通道是模块级单例（activeVoice），元素发音约 0.5-1.5 秒、
+// 结算祝福 2-3 秒——页面走了而语音还在响，是会把「离开」变成「追着播」的真实缺陷。
+// 只停语音，不动 BGM（那是 bgmStop 的职责）。
+function stopVoice() {
+  try {
+    if (activeVoice) { activeVoice.stop(); activeVoice = null; }
+    return true;
+  } catch (e) { return false; }
+}
+
 // ---- 档位音效：一档一音 ----
 // 等级 1 复用既有的铜铃（match）；等级 2/3/4+ 依次是手鼓 / 法号 / 欢呼，
 // 三条新音由 scripts/make_praise_audio.py 程序合成（与既有 4 条同规格、同响度口径，
@@ -119,6 +130,7 @@ module.exports = {
   play: play,
   pronounce: pronounce,
   speak: speak,
+  stopVoice: stopVoice,
   tier: tier,
   TIER_SOUND: TIER_SOUND,
   BGM_VOLUME: BGM_VOLUME,

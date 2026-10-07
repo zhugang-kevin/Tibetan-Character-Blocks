@@ -227,8 +227,24 @@ Page({
       stampCount: storage.getStampCount()
     });
 
-    // 舒缓祝福语（PRD 4.1）：画卷展开时读一句藏语祝福，缺失录音静默回退
-    setTimeout(function () { audio.blessing(); }, 650);
+    // 舒缓祝福语（PRD 4.1）：画卷展开时读一句藏语祝福，缺失录音静默回退。
+    // 定时器必须可取消：用户在 650ms 内返回时不能再出声（onUnload 清理），
+    // 录音就绪后这句话有 2-3 秒，离开页面也要立刻停（onUnload / onHide 停语音）。
+    var that = this;
+    this.blessTimer = setTimeout(function () { audio.blessing(); }, 650);
+  },
+
+  // 离开结算页：撤掉未播放的定时器 + 立刻停掉正在播的祝福语音。
+  // 语音通道是全局单声道（utils/audio.js 的 activeVoice），不清理会播到别的页面去。
+  onUnload: function () {
+    if (this.blessTimer) { clearTimeout(this.blessTimer); this.blessTimer = null; }
+    audio.stopVoice();
+  },
+
+  // 切到后台（锁屏 / 离开小程序）：同样不该继续播
+  onHide: function () {
+    if (this.blessTimer) { clearTimeout(this.blessTimer); this.blessTimer = null; }
+    audio.stopVoice();
   },
 
   goHome: function () {
