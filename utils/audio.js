@@ -23,7 +23,8 @@ function play(name) {
 }
 
 // ---- 藏文发音（Gate 1 P0：每次配对成功都朗读该元素）----
-// 真人录音放置于 audio/voice/{元素id}.mp3（letter_01..08 / icon_01..04）。
+// 发音音频放置于 audio/voice/{元素id}.wav（letter_01..30 / icon_01..04；
+// 由 scripts/gen_voice.py 的 TTS 预生成或真人录音，规格 16kHz 单声道 16bit WAV）。
 // 文件缺失时静默回退（onError 忽略），不阻塞游戏流程。
 // 录音规格：单声道、128kbps、每条 0.5-1.5s。
 //
@@ -36,7 +37,7 @@ function pronounce(id) {
   try {
     if (!voiceCtx[id]) {
       var c = wx.createInnerAudioContext();
-      c.src = '/audio/voice/' + id + '.mp3';
+      c.src = '/audio/voice/' + id + '.wav';
       c.obeyMuteSwitch = true;
       c.onError(function () { /* 无录音文件，静默 */ });
       voiceCtx[id] = c;
@@ -54,7 +55,7 @@ function pronounce(id) {
   }
 }
 
-// 复用单声部发音通道播放指定语音文件（audio/voice/{name}.mp3）
+// 复用单声部发音通道播放指定语音文件（audio/voice/{name}.wav）
 // 新发音会打断旧发音；文件缺失时静默回退
 function speak(name) {
   return pronounce(name);

@@ -576,9 +576,10 @@ section('15. 通关情绪引擎（粒子 / 震动 / 藏语语音 / 唐卡画卷 
     ok('audio.js 提供 speak / tashiDelek / blessing 通道');
   else err('audio.js 缺 speak / tashiDelek / blessing');
   var voiceReadme = read('audio/voice/README.txt');
-  if (voiceReadme.indexOf('tashi_delek.mp3') > -1 && voiceReadme.indexOf('blessing_01.mp3') > -1)
-    ok('录音清单含情绪语音（tashi_delek.mp3 / blessing_01.mp3）');
-  else err('voice README 缺 tashi_delek.mp3 / blessing_01.mp3 条目');
+  // D45：语音改为 .wav（TTS 预生成产物），命名口径以 README 为准
+  if (voiceReadme.indexOf('tashi_delek.wav') > -1 && voiceReadme.indexOf('blessing_01.wav') > -1)
+    ok('录音清单含情绪语音（tashi_delek.wav / blessing_01.wav）');
+  else err('voice README 缺 tashi_delek.wav / blessing_01.wav 条目');
 
   // 15.3 结算页：唐卡画卷展开
   if (rw.indexOf('unfurl') > -1 && rw.indexOf('roller-top') > -1 && rw.indexOf('roller-bottom') > -1)
@@ -3667,13 +3668,25 @@ section('38. 生产上线守卫（主包体积 / 隐私授权 / 工程配置）'
     if (!/^\s*(import|from)\s+(requests|httpx|aiohttp|pydub|numpy)/m.test(gv) && gv.indexOf('urllib.request') > -1)
       ok('gen_voice.py 只用标准库（urllib），不引入第三方依赖');
     else err('gen_voice.py 引入了非标准库依赖（应为零安装可跑）');
-    if (gv.indexOf('--self-test') > -1 && gv.indexOf('HTTPServer') > -1)
+    // 自测：D45 起主通道是 WS（天翼），自测用的是本地假 WS 服务（FakeWS），不再用 HTTPServer
+    if (gv.indexOf('--self-test') > -1 && (gv.indexOf('FakeWS') > -1 || gv.indexOf('HTTPServer') > -1))
       ok('gen_voice.py 带本地假接口自测（不联网验证整条流水线）');
     else err('gen_voice.py 缺自测路径（流水线无法离线验证）');
+    // 签名算法必须与官方《签名认证方式》一致（HMAC-SHA256 两段式 + teleai-cloud-auth-v1 前缀）
+    if (gv.indexOf('teleai-cloud-auth-v1') > -1 && gv.indexOf('hmac.new') > -1 && gv.indexOf('CanonicalRequest') > -1)
+      ok('gen_voice.py 内置天翼签名算法（auth-v1 前缀 / HMAC-SHA256 两段式）');
+    else err('gen_voice.py 缺天翼签名实现（WS 通道会 401）');
+    if (gv.indexOf('openapi.teleagi.cn') > -1) ok('gen_voice.py 默认指向天翼 WS 网关（openapi.teleagi.cn）');
+    else err('gen_voice.py 未指向天翼网关');
     if (exists('scripts/tts-config.example.json')) {
       let cfgOk = false;
-      try { const c = JSON.parse(read('scripts/tts-config.example.json')); cfgOk = !!(c.url && c.responseMode && c.bodyTemplate); } catch (e) { }
-      if (cfgOk) ok('tts-config.example.json 是合法配置模板（url / responseMode / bodyTemplate）');
+      try {
+        const c = JSON.parse(read('scripts/tts-config.example.json'));
+        // 两种形态任一即可：teleai-ws（appId/appKey/endpoint）或 custom-http（url/responseMode）
+        cfgOk = !!(c.provider === 'teleai-ws' && c.appId && c.appKey && c.endpoint) ||
+                !!(c.url && c.responseMode);
+      } catch (e) { }
+      if (cfgOk) ok('tts-config.example.json 是合法配置模板（teleai-ws 或 custom-http 形态）');
       else err('tts-config.example.json 不是合法模板');
     } else err('缺 scripts/tts-config.example.json（用户不知道要填什么）');
     const gi = exists('.gitignore') ? read('.gitignore') : '';

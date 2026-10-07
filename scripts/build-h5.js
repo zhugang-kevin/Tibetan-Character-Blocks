@@ -89,20 +89,26 @@ if (html.indexOf('/*__DATA__*/') === -1 || html.indexOf('/*__IMAGES__*/') === -1
 html = html.replace('/*__DATA__*/', JSON.stringify(DATA));
 html = html.replace('/*__IMAGES__*/', JSON.stringify(IMAGES));
 
-// ---------- 2.5 注入藏文发音（audio/voice/*.mp3 → base64；缺文件时注入空表 = 静默） ----------
+// ---------- 2.5 注入藏文发音（audio/voice/*.wav（TTS 产物）与 *.mp3（旧录音）→ base64；缺文件 = 空表静默） ----------
 // 体验版的 play.html 是单文件（双击即玩），相对路径取不到语音；把录音/TTS 产物内联进来，
 // 一次构建后浏览器里也能听到发音播报。文件未录制时 VOICES = {}，行为与现在一致（静默不报错）。
 const VOICES = {};
 (function () {
   const dir = path.join(ROOT, 'audio', 'voice');
   if (!fs.existsSync(dir)) return;
-  fs.readdirSync(dir).filter(function (f) { return /\.mp3$/i.test(f); }).forEach(function (f) {
+  const pick = {};
+  fs.readdirSync(dir).forEach(function (f) {
+    const mm = /^(.*)\.(wav|mp3)$/i.exec(f);
+    if (!mm) return;
+    const id = mm[1], ext = mm[2].toLowerCase();
+    if (pick[id] === 'wav') return;                       // wav（TTS 产物）优先于 mp3
+    pick[id] = ext;
     const buf = fs.readFileSync(path.join(dir, f));
-    VOICES[f.replace(/\.mp3$/i, '')] = 'data:audio/mpeg;base64,' + buf.toString('base64');
+    VOICES[id] = (ext === 'wav' ? 'data:audio/wav;base64,' : 'data:audio/mpeg;base64,') + buf.toString('base64');
   });
 })();
 html = html.replace('/*__VOICES__*/', JSON.stringify(VOICES));
-console.log('  语音注入：' + Object.keys(VOICES).length + ' 条（audio/voice/*.mp3' +
+console.log('  语音注入：' + Object.keys(VOICES).length + ' 条（audio/voice/*.wav' +
   (Object.keys(VOICES).length ? '' : ' 尚未录制，体验版静默') + '）');
 
 // ---------- 3. 内联脚本语法自检 ----------

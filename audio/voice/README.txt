@@ -1,21 +1,22 @@
 发音录音清单（Gate 1 P0）
 ==================================
 命名：与元素 ID 一致 ——
-  字母：letter_01.mp3 ~ letter_30.mp3（三十个辅音，按字母表传统顺序：
+  字母：letter_01.wav ~ letter_30.wav（三十个辅音，按字母表传统顺序：
         ཀ ཁ ག ང ཅ ཆ ཇ ཉ ཏ ཐ ད ན པ ཕ བ མ ཙ ཚ ཛ ཝ ཞ ཟ འ ཡ ར ལ ཤ ས ཧ ཨ）
-  图标：icon_01.mp3 ~ icon_04.mp3（吉祥结 དཔལ་བེའུ / 青稞 ནས / 雪山 གངས་རི / 牦牛 གཡག）
+  图标：icon_01.wav ~ icon_04.wav（吉祥结 དཔལ་བེའུ / 青稞 ནས / 雪山 གངས་རི / 牦牛 གཡག）
   共 34 条。
 
 情绪引擎语音（PRD 4.1 / 4.2）：
-  tashi_delek.mp3 —— 通关藏语「བཀྲ་ཤིས་བདེ་ལེགས（扎西德勒）」，
+  tashi_delek.wav —— 通关藏语「བཀྲ་ཤིས་བདེ་ལེགས（扎西德勒）」，
                       明快愉悦，0.8-1.2 秒；通关铜铃后约 350ms 播放。
-  blessing_01.mp3 —— 结算页舒缓祝福语（如
+  blessing_01.wav —— 结算页舒缓祝福语（如
                       « སེམས་ཁྲལ་མེད་པར་སྤྲོ་པོ་ཡོང་བར་ཤོག / 愿你无忧无虑，心生欢喜 »），
                       女声或童声，2-3 秒；进入结算页约 650ms 后播放。
-  后续扩为 blessing_01~07.mp3 做「每日一句」轮换（二期）。
+  后续扩为 blessing_01~07.wav 做「每日一句」轮换（二期）。
 
 内容：对应元素的标准拉萨音单读（图标读其藏语名称）。
-规格：单声道 / 128kbps / 每条 0.5-1.5 秒 / 首尾静音约 50ms。
+规格：单声道 WAV（16kHz / 16bit 推荐）/ 每条 0.5-1.5 秒 / 首尾静音约 50ms。
+（TTS 预生成由 scripts/gen_voice.py 自动完成上述规格与静音裁剪）
 来源建议：邀请藏语母语者用手机自带录音机录制，安静环境即可。
 
 播放时机：**每次配对成功后朗读**该元素的发音（见 utils/audio.js 的 pronounce）；
@@ -32,12 +33,12 @@ tashi_delek 在通关铜铃后播放，blessing_01 在结算页画卷展开时�
    邀请藏语母语者按上面的命名逐条录制，安静环境、手机录音机即可。
 
 ② TTS 预生成（推荐先用它把 36 条补齐，游戏里马上有发音播报）
-   用第三方藏语 TTS 一次性离线生成 —— 推荐天翼 AI 开放平台
-   「卫藏实时超自然语音合成」（teleai.com.cn，民族语言专区）：
-     a. 控制台创建应用、开通该服务，抄下接口地址与鉴权头（Authorization + X-APP-ID）；
-     b. 复制 scripts/tts-config.example.json → scripts/tts-config.json，填入你抄到的信息；
-     c. 先试一条：python scripts/gen_voice.py --only letter_01
-     d. 全量生成：python scripts/gen_voice.py     （幂等：已存在的自动跳过）
+   用天翼 AI 开放平台「卫藏实时超自然语音合成」一次性离线生成（WS 协议）：
+     a. 控制台「应用及 API Key」里复制 AppID 与 AppKey；
+     b. 填进 scripts/tts-config.json（模板见 .example.json）；
+     c. 验鉴权：python scripts/gen_voice.py --probe
+     d. 先试一条：python scripts/gen_voice.py --only letter_01（听完再全量）
+     e. 全量生成：python scripts/gen_voice.py     （幂等：已存在的自动跳过）
    流水线自测（不联网）：python scripts/gen_voice.py --self-test
    ⚠️ 预生成 = 静态资产，运行时零请求 —— 不触碰「纯本地 / 不建后端」红线。
    ⚠️ TTS 产物建议仍过一遍母语者耳朵（尤其 ཞ/ཤ、ཟ/ས 这类近音字）。

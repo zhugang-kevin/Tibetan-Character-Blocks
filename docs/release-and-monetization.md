@@ -172,17 +172,25 @@ D36⑥ 否决的是**运行时云函数调 TTS**（每播一个音都要联网 +
 | **离线预生成（本方案）** | ✅ 推荐：一次生成、永久缓存、零运行时成本 |
 | 真人录音 | ✅ 质量天花板，作为后续 Gate 2 素材 |
 
-### 8.2 推荐服务：天翼 AI 开放平台「卫藏实时超自然语音合成」
+### 8.2 推荐服务：天翼 AI 开放平台「卫藏实时超自然语音合成」（已接入，WS 协议）
 
 - 平台：`teleai.com.cn`（民族语言大模型专区），中国电信运营，国内节点；
 - 方言：卫藏（拉萨）——与本项目「标准拉萨音单读」的口径一致；
+- 接口：`wss://openapi.teleagi.cn:443/aipaas/voice/v1/tts/supernaturalrt`（WebSocket 流式，
+  输出 PCM 16bit 单声道，base64 分片 + `is_end` 收尾；单次 ≤500 字符；30 种音色可换）；
+- 鉴权：`Authorization = teleai-cloud-auth-v1/{AppID}/{region}/{ts}/{exp}/{signedHeaders}/{sig}`，
+  `SigningKey = HMAC-SHA256-HEX(AppKey, prefix)`、`Signature = HMAC-SHA256-HEX(SigningKey, CanonicalRequest)`；
+  签名算法已按官方《签名认证方式》文档在 `scripts/gen_voice.py` 内实现（零第三方依赖）；
+- **路径已实测**（2026-10-07）：用占位 Key 探测真实服务器返回 `HTTP 401 {"code":"10010004","message":"签名认证失败"}`
+  —— 证明网络 / TLS / WS 握手 / 签名头 / 接口路径全部正确，只差真实 AppKey；
 - 步骤：
-  1. 注册并实名 → 控制台创建应用 → 开通「卫藏实时超自然语音合成」；
-  2. 在产品文档「API 参考」里抄下 **接口地址** 与 **鉴权头**（通常为 `Authorization` + `X-APP-ID`）；
-  3. `scripts/tts-config.example.json` → 复制为 `scripts/tts-config.json`，填入上述信息
-     （该文件已被 `.gitignore` 屏蔽，密钥不会入库）；
-  4. 先试一条：`python scripts/gen_voice.py --only letter_01`——**听完再全量**；
+  1. 控制台「应用及 API Key」打开该应用（如 APP-00006447），复制 **AppID 与 AppKey**；
+  2. 填进 `scripts/tts-config.json`（该文件已被 `.gitignore` 屏蔽，密钥不会入库）；
+  3. 验鉴权：`python scripts/gen_voice.py --probe`（期望输出「✓ 鉴权通过（101 success）」）；
+  4. 先试一条：`python scripts/gen_voice.py --only letter_01`——**试听后再全量**；
   5. 全量：`python scripts/gen_voice.py`（幂等，已存在的自动跳过；失败单条不影响整批）。
+- 产物：`audio/voice/*.wav`（16kHz 单声道 16bit，脚本自动静音裁剪；游戏端已按 `.wav` 接线，
+  体验版的 `__VOICES__` 注入链同时兼容 `.wav`（优先）与 `.mp3`）。
 
 ### 8.3 生成清单（36 条，脚本自动从 data/cards.js 取文本）
 

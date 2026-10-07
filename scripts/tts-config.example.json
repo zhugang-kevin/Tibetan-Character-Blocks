@@ -1,23 +1,22 @@
 {
-  "_说明": "复制本文件为 scripts/tts-config.json 并填入你的接口信息。tts-config.json 已在 .gitignore 里（含密钥，绝不入库）。推荐：天翼 AI 开放平台「卫藏实时超自然语音合成」（详见 docs/release-and-monetization.md §八）。",
-  "_步骤": [
-    "1. 在天翼 AI 开放平台（teleai.com.cn）控制台创建应用，开通「卫藏实时超自然语音合成」",
-    "2. 在该产品文档的 API 参考里抄下 TTS 接口的 URL 与鉴权头（通常是 Authorization + X-APP-ID）",
-    "3. 把下面四项改成你的真实值，然后：python scripts/gen_voice.py --only letter_01（先试一条）",
-    "4. 试听满意后全量：python scripts/gen_voice.py"
+  "_说明": "复制本文件为 scripts/tts-config.json 并填入你的值（该文件已被 .gitignore 屏蔽，密钥绝不入库）。",
+  "_获取步骤": [
+    "1. teleai.com.cn 控制台 → 应用及 API Key → 打开「卫藏实时超自然语音合成」应用",
+    "2. 复制 AppID 和 AppKey 两列的值（AppID 是一串 32 位十六进制；AppKey 是密钥）",
+    "3. 填到下面对应字段后：python scripts/gen_voice.py --probe（验证鉴权）",
+    "4. 通过后先试一条：python scripts/gen_voice.py --only letter_01",
+    "5. 试听满意再全量：python scripts/gen_voice.py"
   ],
-  "url": "https://把这里换成天翼TTS接口地址",
-  "method": "POST",
-  "headers": {
-    "Authorization": "把这里换成你的鉴权信息",
-    "X-APP-ID": "把这里换成你控制台的应用 AppID"
-  },
-  "bodyTemplate": {
-    "text": "{text}",
-    "format": "mp3"
-  },
-  "bodyExtra": {
-    "speed": 1.0
-  },
-  "responseMode": "raw"
+  "provider": "teleai-ws",
+  "appId": "把这里换成你的 AppID",
+  "appKey": "把这里换成你的 AppKey（密钥，注意不要外发）",
+  "region": "QG",
+  "endpoint": "wss://openapi.teleagi.cn:443/aipaas/voice/v1/tts/supernaturalrt",
+  "voice": "surennv",
+  "sampleRate": 16000,
+  "speechRate": 0.9,
+  "volume": 60,
+
+  "_备选音色": "surennv / surengnan 疑为藏语（苏仁）音色；若听着不像藏语，依次试 surengnv、cixingnan 等，用 --only letter_01 快速对比。",
+  "_custom-http说明": "若换用其他 TTS 服务：provider 改 custom-http，填 url / headers / bodyTemplate / responseMode。"
 }

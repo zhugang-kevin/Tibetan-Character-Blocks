@@ -2040,7 +2040,7 @@ function bgmStop() {
    浏览器体验版不带真人录音（音频资产只在小程序包内），这里保持与小程序
    一致的调用时机与「单声部」策略，并统计次数供自动化测试断言。
    无录音文件时静默回退，不阻塞游戏。 */
-/* 语音资产由 scripts/build-h5.js 从 audio/voice/*.mp3 内联注入（base64）。
+/* 语音资产由 scripts/build-h5.js 从 audio/voice/*.wav（TTS 产物）内联注入（base64）。
    缺文件时为空表 = 静默（与小程序 pronounce 的 onError 静默同口径）。 */
 const VOICES = /*__VOICES__*/;
 let activeVoice = null;
