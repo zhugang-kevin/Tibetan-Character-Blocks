@@ -896,7 +896,22 @@
   .lamp-mask { position: fixed; left: 0; right: 0; top: 0; bottom: 0; z-index: 90; display: none; align-items: center; justify-content: center; padding: 20px 16px;
     background: radial-gradient(circle at 50% 26%, rgba(241,196,15,.22) 0%, rgba(241,196,15,0) 46%), linear-gradient(180deg, rgba(74,21,21,.86), rgba(11,30,54,.94)); }
   .lamp-mask.show { display: flex; }
-  .lamp-card { position: relative; width: 100%; max-width: 320px; max-height: 88vh; overflow: hidden; padding: 20px 16px 14px; border-radius: 18px;
+  /* 三段式：可滚动中部 + 固定底栏（375×667 实测旧版把 CTA 裁出屏幕，见 D44） */
+  .lamp-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 20px 16px 6px; }
+  .lamp-actions { flex: 0 0 auto; padding: 8px 16px 14px; border-top: 1px solid rgba(212,175,55,.28);
+    background: linear-gradient(180deg, rgba(22,20,40,.2), rgba(22,20,40,.75)); }
+  .lamp-x { position: absolute; top: 9px; right: 11px; z-index: 3; width: 30px; height: 30px; line-height: 30px;
+    text-align: center; font-size: 15px; color: #E8D9A8; border-radius: 50%;
+    background: rgba(0,0,0,.28); border: 1px solid rgba(212,175,55,.45); cursor: pointer; }
+  .lamp-close { display: none; margin-top: 9px; padding: 13px 0; border-radius: 999px; text-align: center;
+    font-size: 15px; font-weight: 800; letter-spacing: 1px; color: #FFF6DC; cursor: pointer;
+    background: linear-gradient(180deg, #C0392B, #8E2A20);
+    box-shadow: 0 6px 13px rgba(140,32,24,.5), inset 0 2px 0 rgba(255,255,255,.28); }
+  .lamp-close.show { display: block; }
+  .lamp-skip.hide { display: none; }
+  .lamp-btn.hide { display: none; }
+  .lamp-card { position: relative; width: 100%; max-width: 320px; max-height: 88vh; overflow: hidden; padding: 0;
+    display: flex; flex-direction: column; border-radius: 18px;
     background: linear-gradient(180deg, rgba(46,26,18,.94), rgba(22,20,40,.94)); border: 1px solid rgba(212,175,55,.75);
     box-shadow: 0 12px 30px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,233,168,.35); }
   .lamp-halo { position: absolute; left: 50%; top: -22%; width: 120%; height: 62%; transform: translateX(-50%); border-radius: 50%; pointer-events: none;
@@ -967,7 +982,6 @@
   .lotus-cell.pink .lotus-v { color: #F2B6C6; }
   .lamp-btn { margin-top: 13px; padding: 13px 0; border-radius: 999px; text-align: center; font-size: 16px; font-weight: 800; letter-spacing: 1px; color: #3D2E05;
     background: linear-gradient(180deg, #FFE9A8, #F1C40F 46%, #B7950B); box-shadow: 0 6px 13px rgba(181,137,0,.45), inset 0 2px 0 rgba(255,255,255,.6); cursor: pointer; }
-  .lamp-btn.lit { background: linear-gradient(180deg, #8A6218, #7A560F 46%, #6B4A10); color: #FFF6DC; box-shadow: inset 0 2px 0 rgba(255,255,255,.4); }
   .lamp-tip { margin-top: 9px; text-align: center; font-size: 13px; color: #FFE9A8; text-shadow: 0 1px 5px rgba(241,196,15,.45); display: none; }
   .lamp-tip.show { display: block; }
   .lamp-skip { display: block; margin-top: 10px; text-align: center; font-size: 12px; color: #6E6759; cursor: pointer; }
@@ -1180,40 +1194,49 @@
   <div class="lamp-mask" id="lamp-mask">
     <div class="lamp-card">
       <div class="lamp-halo"></div>
-      <div class="lamp-title" id="lamp-title">万家灯火</div>
-      <div class="lamp-total" id="lamp-total"></div>
-      <div class="lamp-sub" id="lamp-sub"></div>
-      <div class="lamp-flame">
-        <div class="flame-glow"></div>
-        <div class="flame f1"></div>
-        <div class="flame f2"></div>
-        <div class="flame f3"></div>
-        <div class="lamp-body">
-          <div class="lamp-cup"></div>
-          <div class="lamp-foot"></div>
+      <!-- 右上角 ✕：任何时候都可关（此前唯一出口是底部文字链，内容一超高就够不着） -->
+      <div class="lamp-x" id="lamp-x">✕</div>
+      <!-- 中部可滚动：内容再长也不裁切（此前 overflow:hidden 把 CTA 直接裁出屏幕） -->
+      <div class="lamp-scroll" id="lamp-scroll">
+        <div class="lamp-title" id="lamp-title">万家灯火</div>
+        <div class="lamp-total" id="lamp-total"></div>
+        <div class="lamp-sub" id="lamp-sub"></div>
+        <div class="lamp-flame">
+          <div class="flame-glow"></div>
+          <div class="flame f1"></div>
+          <div class="flame f2"></div>
+          <div class="flame f3"></div>
+          <div class="lamp-body">
+            <div class="lamp-cup"></div>
+            <div class="lamp-foot"></div>
+          </div>
+          <div class="sparks" id="lamp-sparks"></div>
         </div>
-        <div class="sparks" id="lamp-sparks"></div>
+        <div class="lamp-sec">各地灯火</div>
+        <div class="lamp-list" id="lamp-list"></div>
+        <div class="lamp-home" id="lamp-home"></div>
+        <div class="lamp-sec">两色莲花</div>
+        <div class="lamp-lotus">
+          <div class="lotus-cell gold">
+            <span class="lotus-ico">🪷</span>
+            <span class="lotus-k">金色莲花</span>
+            <span class="lotus-v" id="lamp-lotus-gold"></span>
+          </div>
+          <div class="lotus-cell pink">
+            <span class="lotus-ico">🌸</span>
+            <span class="lotus-k">粉色莲花</span>
+            <span class="lotus-v" id="lamp-lotus-pink"></span>
+          </div>
+        </div>
       </div>
-      <div class="lamp-sec">各地灯火</div>
-      <div class="lamp-list" id="lamp-list"></div>
-      <div class="lamp-home" id="lamp-home"></div>
-      <div class="lamp-sec">两色莲花</div>
-      <div class="lamp-lotus">
-        <div class="lotus-cell gold">
-          <span class="lotus-ico">🪷</span>
-          <span class="lotus-k">金色莲花</span>
-          <span class="lotus-v" id="lamp-lotus-gold"></span>
-        </div>
-        <div class="lotus-cell pink">
-          <span class="lotus-ico">🌸</span>
-          <span class="lotus-k">粉色莲花</span>
-          <span class="lotus-v" id="lamp-lotus-pink"></span>
-        </div>
+      <!-- 固定底栏：CTA 与关闭按钮永远在屏幕内 -->
+      <div class="lamp-actions">
+        <div class="lamp-btn" id="lamp-btn">点亮我的一盏灯</div>
+        <div class="lamp-tip" id="lamp-tip"></div>
+        <div class="lamp-close" id="lamp-close">收下灯火 · 关闭</div>
+        <span class="lamp-skip" id="lamp-skip">今天先不点灯</span>
+        <div class="lamp-note" id="lamp-note"></div>
       </div>
-      <div class="lamp-btn" id="lamp-btn">点亮我的一盏灯</div>
-      <div class="lamp-tip" id="lamp-tip"></div>
-      <span class="lamp-skip" id="lamp-skip">今天先不点灯</span>
-      <div class="lamp-note" id="lamp-note"></div>
     </div>
   </div>
 
@@ -4887,8 +4910,11 @@ function lightLamp() {
   $('lamp-sub').textContent = lampFill(LAMP.subTemplate, { total: lampFormat(lamp.total) });
   $('lamp-total').classList.add('pop');
   $('lamp-sub').classList.add('pop');
-  $('lamp-btn').classList.add('lit');
+  $('lamp-btn').classList.add('hide');   // 点亮后 CTA 收起（不留死按钮），元素保留仅为守卫测试可点
   $('lamp-tip').classList.add('show');
+  // 点亮之后：出现显著关闭按钮；未点亮态的安静出口（今天先不点灯）让位
+  $('lamp-close').classList.add('show');
+  $('lamp-skip').classList.add('hide');
   const sp = $('lamp-sparks');
   sp.innerHTML = '';
   for (let i = 0; i < 12; i++) sp.appendChild(document.createElement('div')).className = 'spark';
@@ -4904,12 +4930,16 @@ function maybeShowLamp() {
   showLampWindow();
 }
 $('lamp-btn').addEventListener('click', lightLamp);
-$('lamp-skip').addEventListener('click', function () {
+// 三个出口共用同一收尾：右上角 ✕（任何状态可关）/ 点亮后的显著关闭按钮 / 未点亮时的安静文字链
+function closeLampWin() {
   const p = getProgress();
   p.lampDay = colToday();
   saveProgress(p);
   hideLampWindow();
-});
+}
+$('lamp-skip').addEventListener('click', closeLampWin);
+$('lamp-x').addEventListener('click', closeLampWin);
+$('lamp-close').addEventListener('click', closeLampWin);
 
 /* ---------------- 启动 ---------------- */
 $('sc-bg').src = IMAGES.bgGlobal;

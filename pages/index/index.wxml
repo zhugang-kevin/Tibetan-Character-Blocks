@@ -266,6 +266,11 @@
   <view wx:if="{{lampShow}}" class="lamp-mask">
     <view class="lamp-card">
       <view class="lamp-halo"></view>
+      <!-- 右上角 ✕：任何时候都可关（此前唯一出口是底部文字链，内容一超高就够不着） -->
+      <view class="lamp-x" bindtap="closeLampWindow">✕</view>
+
+      <!-- 中部可滚动：内容再长也不裁切（此前 overflow:hidden 把 CTA 直接裁出屏幕） -->
+      <scroll-view class="lamp-scroll" scroll-y>
       <view class="lamp-title">{{lampTitle}}</view>
       <!-- 主数字走万/亿口径（12.85万）；精确值在下一行的句子里（128,457 盏灯） -->
       <view class="lamp-total {{lampTotalPop ? 'pop' : ''}}">{{lampTotalText}}<text class="lamp-unit">盏</text></view>
@@ -315,11 +320,19 @@
           <text class="lotus-v">{{lampLotus.pinkText}}</text>
         </view>
       </view>
+      </scroll-view>
 
-      <view class="lamp-btn {{lampLit ? 'lit' : ''}}" bindtap="onLightLamp">{{lampButtonText}}</view>
-      <view wx:if="{{lampLit}}" class="lamp-tip">{{lampTip}}</view>
-      <text class="lamp-skip" bindtap="closeLampWindow">今天先不点灯</text>
-      <view class="lamp-note">{{lampOnceNote}}</view>
+      <!-- 固定底栏：不随内容滚动，CTA 与关闭按钮永远可见 -->
+      <view class="lamp-actions">
+        <!-- 未点亮：CTA。点亮后收起（不留下一个「再点也没反应」的死按钮） -->
+        <view wx:if="{{!lampLit}}" class="lamp-btn" bindtap="onLightLamp">{{lampButtonText}}</view>
+        <view wx:if="{{lampLit}}" class="lamp-tip">{{lampTip}}</view>
+        <!-- 点亮之后：显著关闭按钮（收下灯火 · 关闭），不再让人找不到出口 -->
+        <view wx:if="{{lampLit}}" class="lamp-close" bindtap="closeLampWindow">收下灯火 · 关闭</view>
+        <!-- 未点亮时：安静的次级出口 -->
+        <text wx:if="{{!lampLit}}" class="lamp-skip" bindtap="closeLampWindow">今天先不点灯</text>
+        <view class="lamp-note">{{lampOnceNote}}</view>
+      </view>
     </view>
   </view>
 

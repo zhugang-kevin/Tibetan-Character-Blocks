@@ -1125,6 +1125,45 @@ section('17. 留存系统与首页重构（PRD v4）');
   if (iwm9.indexOf('class="lamp-item"') > -1 && tpl9.indexOf('class="lamp-item"') > -1)
     ok('两端跳窗灯火行都用 .lamp-item');
   else err('跳窗灯火行未统一为 .lamp-item');
+
+  // 19.13 跳窗出口与可达性（D44，2026-10-07 用户实测反馈：CTA 被裁出屏幕、点灯后找不到关闭）
+  //   三件套：① 中部可滚动（内容再长不裁切）② 固定底栏（CTA/关闭永远在屏内）③ 右上角 ✕ + 点亮后显著关闭按钮
+  const lampHas = (t, k) => t.indexOf(k) > -1;
+  const reach = [['lamp-scroll', '中部滚动区'], ['lamp-actions', '固定底栏'], ['lamp-x', '右上角 ✕'], ['lamp-close', '点亮后关闭按钮']];
+  reach.forEach(([k, n]) => {
+    if (lampHas(iw2, k) && lampHas(iws9, '.' + k.slice(0)) && lampHas(tpl9, k)) ok('两端齐备：' + n + '（' + k + '）');
+    else if (lampHas(iw2, k) && lampHas(tpl9, k)) ok('两端结构齐备：' + n + '（' + k + '）');
+    else err('跳窗缺少 ' + n + '（' + k + '）：' + [["index.wxml", iw2], ["index.wxss", iws9], ["体验版", tpl9]]
+      .filter(p => !lampHas(p[1], k)).map(p => p[0]).join(' / '));
+  });
+  if (lampHas(iws9, '.lamp-scroll') && /\.lamp-scroll\s*\{[^}]*flex:/.test(iws9) && /\.lamp-scroll\s*\{[^}]*min-height:\s*0/.test(iws9))
+    ok('index.wxss 的 .lamp-scroll 为弹性滚动区（flex + min-height: 0）');
+  else err('index.wxss 的 .lamp-scroll 不是弹性滚动区（内容仍会被裁切）');
+  const footPin = /\.lamp-actions\s*\{[^}]*flex:\s*0\s+0\s+auto/;
+  if (footPin.test(iws9) && footPin.test(tpl9)) ok('两端 .lamp-actions 不被压缩（CTA 永远在屏内）');
+  else err('.lamp-actions 缺少 flex: 0 0 auto（会被滚动区压扁）：' +
+    [['index.wxss', iws9], ['体验版', tpl9]].filter(p => !footPin.test(p[1])).map(p => p[0]).join(' / '));
+  // 点亮后 CTA 收起（不留死按钮）：小程序 wx:if="{{!lampLit}}"；体验版 .lamp-btn.hide
+  if (/wx:if="\{\{!lampLit\}\}"\s+class="lamp-btn"/.test(iw2)) ok('小程序点亮后收起 CTA（wx:if="{{!lampLit}}"）');
+  else err('小程序点亮后未收起 CTA（会留下「再点没反应」的死按钮）');
+  if (lampHas(tpl9, '.lamp-btn.hide') && /lamp-btn'\)\.classList\.add\('hide'\)/.test(tpl9))
+    ok('体验版点亮后收起 CTA（.lamp-btn.hide + classList.add）');
+  else err('体验版点亮后未收起 CTA');
+  const closeBind = (iw2.match(/bindtap="closeLampWindow"/g) || []).length;
+  if (closeBind >= 3) ok('小程序跳窗有三个关闭出口（✕ / 显著关闭 / 未点亮文字链），共 ' + closeBind + ' 处绑定');
+  else err('小程序跳窗关闭出口不足（应为 ✕ + 关闭按钮 + 文字链，实际 ' + closeBind + ' 处）');
+  ['lamp-x', 'lamp-close'].forEach(id => {
+    if (new RegExp("\\$\\('" + id + "'\\)\\.addEventListener\\('click'").test(tpl9)) ok('体验版已绑定 #' + id + ' 点击');
+    else err('体验版未绑定 #' + id + ' 点击');
+  });
+  if (lampHas(tpl9, '.lamp-close.show') && lampHas(tpl9, '.lamp-skip.hide'))
+    ok('体验版有「点亮后显示关闭 / 隐藏文字链」的样式开关');
+  else err('体验版缺少点亮后的显隐样式（.lamp-close.show / .lamp-skip.hide）');
+  // 反例自测：把关键样式类从样例文本里抽掉，同一套判定必须能报错
+  const probeTpl = tpl9.replace('.lamp-close.show', '.lamp-close');
+  if (!lampHas(probeTpl, '.lamp-close.show') && lampHas(tpl9, '.lamp-close.show'))
+    ok('守卫自测：显隐样式缺失可被检出');
+  else err('守卫自测失败（显隐样式判定逻辑有问题）');
 })();
 
 // ---------- 20. 朝圣天梯动效（入场升起 / 台阶错峰 / 莲花绽放 / 点击回弹） ----------

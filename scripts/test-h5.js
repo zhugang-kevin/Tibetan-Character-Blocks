@@ -1178,6 +1178,11 @@ function mockCtx(sink) {
   check('两色莲花数字写死', $('#lamp-lotus-gold').textContent === '32,000' && $('#lamp-lotus-pink').textContent === '45,000',
     $('#lamp-lotus-gold').textContent + '|' + $('#lamp-lotus-pink').textContent);
   check('反向：未点亮前不显示祝福语', !$('#lamp-tip').classList.contains('show'));
+  // D44：CTA 可达性三件套 —— 固定底栏 + 中部滚动 + 右上角 ✕（375×667 实测旧版把 CTA 裁出屏幕）
+  check('跳窗有右上角 ✕（任何状态都可关）', !!$('#lamp-x') && $('#lamp-x').textContent === '✕');
+  check('跳窗为「滚动区 + 固定底栏」结构（CTA 不会被裁出屏幕）', !!$('#lamp-scroll') && !!$('.lamp-actions'));
+  check('反向：未点亮时不显示显著关闭按钮', !$('#lamp-close').classList.contains('show'));
+  check('未点亮时保留安静出口（今天先不点灯）', $('.lamp-actions #lamp-skip').textContent.indexOf('不点灯') > -1);
   $('#lamp-btn').click();
   await sleep(60);
   check('点亮后总灯数 +1（128,456 → 128,457）', $('#lamp-sub').textContent.indexOf('128,457') > -1,
@@ -1199,9 +1204,17 @@ function mockCtx(sink) {
     String((JSON.parse(win.localStorage.getItem('zangzi_progress')) || {}).lampDay));
   check('反向：跳窗文案无竞争性/营销字眼',
     !/排行|名次|金币|优惠券|广告|折扣|返现/.test($('#lamp-mask').textContent));
-  $('#lamp-skip').click();
+  // D44：点亮之后出口必须显著且唯一 —— 出现「收下灯火 · 关闭」，安静的「今天先不点灯」让位
+  check('点亮后出现显著关闭按钮（收下灯火 · 关闭）',
+    $('#lamp-close').classList.contains('show') && $('#lamp-close').textContent.indexOf('关闭') > -1,
+    $('#lamp-close').className + '|' + $('#lamp-close').textContent);
+  check('点亮后 CTA 收起（不留「再点没反应」的死按钮）',
+    $('#lamp-btn').classList.contains('hide'), $('#lamp-btn').className);
+  check('点亮后未点亮态的安静出口隐藏（不出现两个关闭出口）',
+    $('#lamp-skip').classList.contains('hide'));
+  $('#lamp-close').click();
   await sleep(40);
-  check('关闭后跳窗消失', !$('#lamp-mask').classList.contains('show'));
+  check('点显著关闭按钮后跳窗消失', !$('#lamp-mask').classList.contains('show'));
   ev('maybeShowLamp()');
   await sleep(40);
   check('反向：同一天再次进入不再弹出', !$('#lamp-mask').classList.contains('show'));
