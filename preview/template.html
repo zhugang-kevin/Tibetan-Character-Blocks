@@ -114,7 +114,9 @@
   /* ---------- 游戏页 ---------- */
   #screen-game { padding-bottom: 24px; }
   .statusbar {
-    display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px;
+    display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 12px;
+    /* 换行兜底：375px 宽实测「音乐 开」药丸溢出右缘 13px（被裁切），允许换行更稳 */
+    flex-wrap: wrap; row-gap: 6px;
     background: rgba(255,255,255,.72); border: 1px solid rgba(228,220,200,.8);
     border-radius: 14px; padding: 9px 12px; backdrop-filter: blur(3px);
   }
@@ -1219,7 +1221,7 @@
   <section id="screen-game" class="screen">
     <div class="sc-night" aria-hidden="true"></div>
     <div class="statusbar">
-      <button class="back-btn" id="game-back">← 返回</button>
+      <button class="back-btn" id="game-back" title="返回首页" aria-label="返回首页">←</button>
       <div class="status-mid" id="status-mid">第 1 课</div>
       <div class="status-right">
         <div><span class="sc" id="status-score">0</span> 分</div>

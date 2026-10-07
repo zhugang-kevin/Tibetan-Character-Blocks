@@ -58,6 +58,9 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  /* 换行兜底：窄屏（375px 实测）上 5 个分项 + 长昵称分数会挤爆一行，
+     允许换行比裁切或缩小字号更稳（每个分项 margin 4rpx 防止两行贴在一起） */
+  flex-wrap: wrap;
   padding: 14rpx 22rpx;
   margin-bottom: 14rpx;
   font-size: 29rpx;
@@ -66,6 +69,10 @@
   border-radius: 16rpx;
   box-shadow: 0 6rpx 18rpx rgba(0, 0, 0, 0.45);
   color: #EAF2FA;
+}
+
+.statusbar > text {
+  margin: 4rpx 0;
 }
 
 .status-level {
