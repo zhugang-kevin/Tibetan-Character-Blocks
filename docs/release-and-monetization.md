@@ -176,8 +176,9 @@ D36⑥ 否决的是**运行时云函数调 TTS**（每播一个音都要联网 +
 
 - 平台：`teleai.com.cn`（民族语言大模型专区），中国电信运营，国内节点；
 - 方言：卫藏（拉萨）——与本项目「标准拉萨音单读」的口径一致；
-- 接口：`wss://openapi.teleagi.cn:443/aipaas/voice/v1/tts/supernaturalrt`（WebSocket 流式，
-  输出 PCM 16bit 单声道，base64 分片 + `is_end` 收尾；单次 ≤500 字符；30 种音色可换）；
+- 接口：`wss://openapi.teleagi.cn:443/aipaas/voice/v1/weizStreamingSuperTts/streaming`（WebSocket 流式，
+  输出 PCM 16bit 单声道，base64 分片 + `is_end` 收尾；单次 ≤500 字符；音色 `zhuoma`（卫藏方言）；
+  ⚠️ 本产品 `Device-Uuid` 必填——见下方 8.5 排障）；
 - 鉴权：`Authorization = teleai-cloud-auth-v1/{AppID}/{region}/{ts}/{exp}/{signedHeaders}/{sig}`，
   `SigningKey = HMAC-SHA256-HEX(AppKey, prefix)`、`Signature = HMAC-SHA256-HEX(SigningKey, CanonicalRequest)`；
   签名算法已按官方《签名认证方式》文档在 `scripts/gen_voice.py` 内实现（零第三方依赖）；
@@ -199,6 +200,14 @@ D36⑥ 否决的是**运行时云函数调 TTS**（每播一个音都要联网 +
 - `tashi_delek`：བཀྲ་ཤིས་བདེ་ལེགས（通关语音）；
 - `blessing_01`：སེམས་ཁྲལ་མེད་པར་སྤྲོ་པོ་ཡོང་བར་ཤོག（结算祝福语）。
 - 预览清单：`python scripts/gen_voice.py --dry-run`；流水线自测：`--self-test`（不联网）。
+
+### 8.5 排障（2026-10-07 实测记录）
+- **验签对照**：占位 Key → `HTTP 401 {"code":"10010004","message":"签名认证失败"}`；真实 Key → `101 Switching Protocols`。
+  两者对照可证明签名算法正确（本仓库实现已与此一致）。
+- **101 后立即被关（close 1002 "Protocol error"）** = 网关验签通过、**服务后端拒绝**。客户端侧已穷尽 8 类变体排除，
+  按顺序核对三件事：① 该能力是否已「开通服务 / 下单购买」（免费额度也要走一次开通）② 本产品 X-APP-ID 文档口径为
+  「买家中心-已购能力」，确认与「应用管理」的 AppID 一致 ③ 「设备管理」里登记的设备 uuid 是否已填入配置。
+- `python scripts/gen_voice.py --probe` 会打印 **Trace-Id** 与上述三步指引，可直接转天翼客服定位。
 
 ### 8.4 质量把关（不能省）
 

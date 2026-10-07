@@ -41,6 +41,7 @@ import time
 import urllib.parse
 import urllib.request
 import urllib.error
+import uuid
 import wave
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -54,7 +55,7 @@ EMOTION_TEXTS = {
 }
 
 # 天翼默认参数（可在 tts-config.json 里覆盖）
-TELEAI_ENDPOINT = 'wss://openapi.teleagi.cn:443/aipaas/voice/v1/tts/supernaturalrt'
+TELEAI_ENDPOINT = 'wss://openapi.teleagi.cn:443/aipaas/voice/v1/weizStreamingSuperTts/streaming'   # 卫藏专属（8005200036）
 TELEAI_ORIGIN = 'teleai-cloud-auth-v1'   # 公网鉴权头部（内网为 eop-auth-v1）
 
 # 静音裁剪：首尾的静音按阈值裁掉，各留 30ms 垫（16kHz 下 480 样本）
@@ -94,8 +95,11 @@ def load_config():
                 sys.exit(2)
         cfg.setdefault('endpoint', TELEAI_ENDPOINT)
         cfg.setdefault('region', 'QG')
-        cfg.setdefault('voice', 'surennv')
+        cfg.setdefault('voice', 'zhuoma')     # 卫藏方言音色（该产品唯一/默认音色）
         cfg.setdefault('sampleRate', 16000)
+        if not cfg.get('deviceUuid'):
+            cfg['deviceUuid'] = uuid.uuid4().hex
+            print('  提示：未配置 deviceUuid，本次自动生成 %s…（若鉴权被拒，请到控制台-设备管理复制设备 uuid 填进 tts-config.json）' % cfg['deviceUuid'][:8])
         cfg.setdefault('speechRate', 0.9)     # 单字朗读稍慢一点更清楚
         cfg.setdefault('volume', 60)
     else:
@@ -147,7 +151,29 @@ class WSClient(object):
         head_text = head.decode('utf-8', 'replace')
         if ' 101 ' not in head_text.split('\r\n')[0]:
             raise IOError('WebSocket 握手失败：\n' + head_text)
+        # 记录网关的 Trace-Id（排障时给客服，他们能直接定位这次请求）
+        mm = re.search(r'(?:Trace-Id|X-Cloud-Gateway-Request-Id):\s*(\S+)', head_text, re.I)
+        self.trace_id = mm.group(1) if mm else '(无)'
         self._buf = rest
+
+    def recv_raw(self, timeout=12):
+        """读**一帧**原始数据 → (opcode, payload)；连接关闭返回 None。供 probe 用。"""
+        self.sock.settimeout(timeout)
+        while True:
+            b1, b2 = self._recv_exact(2)
+            fin, opcode = b1 & 0x80, b1 & 0x0F
+            length = b2 & 0x7F
+            if length == 126:
+                length = struct.unpack('>H', self._recv_exact(2))[0]
+            elif length == 127:
+                length = struct.unpack('>Q', self._recv_exact(8))[0]
+            payload = self._recv_exact(length) if length else b''
+            if opcode == 0x9:                       # ping：回 pong 后继续等
+                mask = os.urandom(4)
+                self.sock.sendall(bytes([0x8A, 0x80 | len(payload)]) + mask +
+                                  bytes(b ^ mask[i % 4] for i, b in enumerate(payload)))
+                continue
+            return (opcode, payload)
 
     def send_text(self, text):
         payload = text.encode('utf-8')
@@ -211,6 +237,7 @@ def teleai_synthesize(cfg, text, timeout=45):
     ws = WSClient(cfg['endpoint'], {
         'Content-Type': 'application/json',
         'X-APP-ID': cfg['appId'],
+        'Device-Uuid': cfg.get('deviceUuid', ''),
         'Authorization': auth,
     }, timeout=timeout)
     try:
@@ -343,28 +370,55 @@ def run(targets, texts, cfg, force, quiet=False):
 
 
 def probe(cfg):
-    """只做一次握手：验证 网络 / 签名 / AppID 是否被服务端接受。"""
+    """只做一次握手 + 读第一帧：把排障需要的每一步都打印出来。
+    三种结果对应三件不同的事：
+      · 非 101（如 401）        → 签名/网络问题（AppKey、region、系统时间）
+      · 101 + {"message":"success"} → 一切正常，可以开始生成
+      · 101 + 立即被关（1002 Protocol error）→ 网关验签已通过，是**账号/服务侧**问题：
+        常见原因按顺序排查：① 该能力未「开通服务/下单购买」（文档四步：实名→下单→建应用→调用）
+        ② X-APP-ID 应取自「买家中心-已购能力」而非应用管理 ③ 设备管理里的 设备uuid 尚未登记。
+        把下面的 Trace-Id 一并给天翼客服，他们能直接定位该请求。"""
     auth = build_authorization(cfg['appId'], cfg['appKey'], cfg['region'], 'GET',
                                urllib.parse.urlparse(cfg['endpoint']).path)
     print('握手中：%s（region=%s，AppID=%s…）' % (cfg['endpoint'], cfg['region'], str(cfg['appId'])[:8]))
+    ws = None
     try:
         ws = WSClient(cfg['endpoint'], {
-            'Content-Type': 'application/json', 'X-APP-ID': cfg['appId'], 'Authorization': auth,
+            'Content-Type': 'application/json', 'X-APP-ID': cfg['appId'],
+            'Device-Uuid': cfg.get('deviceUuid', ''), 'Authorization': auth,
         }, timeout=20)
     except Exception as e:
-        print('✗ 握手失败：%s' % e)
-        print('  · 若为 101 之外的状态码：多为签名/网络问题；检查 system 时间是否准确（签名含时间戳）')
+        print('✗ 握手失败（非 101）：%s' % e)
+        print('  · 多为签名/网络问题：核对 AppKey / region，并确认本机时间准确（签名含时间戳）')
         return 1
+    print('Trace-Id: %s（排障时提供给天翼客服）' % ws.trace_id)
     try:
-        msg = ws.recv_message()
-        print('服务端应答：%s' % (msg or '(连接关闭)'))
-        if msg and 'success' in msg:
-            print('✓ 鉴权通过（101 success）——可以开始生成')
-            return 0
-        print('✗ 鉴权未通过：对照提示修正 tts-config.json（4001=签名失败，检查 AppKey/region/系统时间）')
+        raw = ws.recv_raw(timeout=12)
+        if raw is None:
+            print('（连接关闭，未收到任何帧）')
+            return 1
+        op, payload = raw
+        if op == 0x8:
+            code = struct.unpack('>H', payload[:2])[0] if len(payload) >= 2 else 0
+            reason = payload[2:].decode('utf-8', 'replace')
+            print('✗ 网关已验签通过（101），但服务后端拒绝了连接：close code=%d reason=%r' % (code, reason))
+            print('  → 这是账号/服务侧问题，不是本脚本的问题。请在控制台核对三件事：')
+            print('    ① 该能力是否已「开通服务 / 下单购买」（免费额度也要走一次开通）')
+            print('    ② 本产品文档写明 X-APP-ID 取自「买家中心-已购能力」，确认它与应用管理的 AppID 一致')
+            print('    ③ 「设备管理」里是否已登记设备 uuid（本配置当前用的是 %s…）' % str(cfg.get('deviceUuid'))[:8])
+            print('  若三项都确认无误，把这行的 Trace-Id 发给天翼客服即可定位。')
+            return 1
+        if op in (0x1, 0x0):
+            txt = payload.decode('utf-8', 'replace')
+            print('服务端应答：%s' % txt[:200])
+            if 'success' in txt:
+                print('✓ 鉴权通过（101 success）——可以开始生成')
+                return 0
+        print('✗ 未知帧：op=%d payload=%r' % (op, payload[:120]))
         return 1
     finally:
-        ws.close()
+        if ws:
+            ws.close()
 
 
 # ---------------------------------------------------------------- 自测（本地假 WS 服务）

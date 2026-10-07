@@ -11,12 +11,14 @@
   "appId": "把这里换成你的 AppID",
   "appKey": "把这里换成你的 AppKey（密钥，注意不要外发）",
   "region": "QG",
-  "endpoint": "wss://openapi.teleagi.cn:443/aipaas/voice/v1/tts/supernaturalrt",
-  "voice": "surennv",
+  "endpoint": "wss://openapi.teleagi.cn:443/aipaas/voice/v1/weizStreamingSuperTts/streaming",
+  "voice": "zhuoma",
+  "deviceUuid": "",
   "sampleRate": 16000,
   "speechRate": 0.9,
   "volume": 60,
 
-  "_备选音色": "surennv / surengnan 疑为藏语（苏仁）音色；若听着不像藏语，依次试 surengnv、cixingnan 等，用 --only letter_01 快速对比。",
+  "_Device-Uuid": "该产品为必填。先留空脚本会自动生成；若被拒，到控制台「设备管理」复制设备 uuid 填到这里。",
+  "_音色": "该产品音色为 zhuoma（卫藏方言，默认）。",
   "_custom-http说明": "若换用其他 TTS 服务：provider 改 custom-http，填 url / headers / bodyTemplate / responseMode。"
 }
