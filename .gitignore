@@ -13,3 +13,4 @@ scripts/tts-config.json
 assets-src/*/
 generated-images/
 .workbuddy/icon-src/
+.workbuddy/tmp/
