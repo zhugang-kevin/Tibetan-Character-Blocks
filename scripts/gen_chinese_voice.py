@@ -64,8 +64,12 @@ SECRETS = {
 
 ITEMS = dict(PRAISE)
 ITEMS.update(SECRETS)
+# 燃灯播报（D50，用户点名）：点亮酥油灯后播《嗡 嘛 呢 叭 咪 吽》。
+# 字与字之间留空格 → 逐字庄重；走 RATE_SECRET（-8% 慢速）。6 字短句 24kbps 足够。
+ITEMS['mantra'] = ('嗡 嘛 呢 叭 咪 吽', 24)
 # 单条体积上限（KB）：讲解 22KB；激励 8KB
 LIMIT = {k: (8 if k.startswith('praise') else 22) for k in ITEMS}
+LIMIT['mantra'] = 18
 
 
 def synth_one(key, text, kbps):

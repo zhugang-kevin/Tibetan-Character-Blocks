@@ -19,6 +19,9 @@ module.exports = {
   subTemplate: '今日全国共点亮 {total} 盏灯',
   homeTemplate: '你的家乡 · {name} 已有 {count} 盏灯',
   buttonText: '点亮我的一盏灯',
+  // D50（用户点名文案）：点亮后的致谢按钮 + 关闭按钮（致谢按钮点击同为收下灯火，不留死按钮）
+  thanksText: '感谢您为世界和平祈福',
+  closeText: '点击关闭',
   tip: '感恩您的善念，今日之光已汇聚。',
   onceNote: '每天首次打开时，与远方的灯火同明一次。'
 };

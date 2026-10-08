@@ -928,6 +928,12 @@
     background: linear-gradient(180deg, #C0392B, #8E2A20);
     box-shadow: 0 6px 13px rgba(140,32,24,.5), inset 0 2px 0 rgba(255,255,255,.28); }
   .lamp-close.show { display: block; }
+  /* D50（用户点名文案）：点亮后的第一按钮——致谢（点击同为收下灯火，不留死按钮） */
+  .lamp-thanks { display: none; margin-top: 13px; padding: 12px 0; border-radius: 999px; text-align: center;
+    font-size: 15px; font-weight: 800; letter-spacing: 1px; color: #3D2E05; cursor: pointer;
+    background: linear-gradient(180deg, #FFE9A8, #F1C40F 46%, #B7950B);
+    box-shadow: 0 6px 13px rgba(181,137,0,.45), inset 0 2px 0 rgba(255,255,255,.6); }
+  .lamp-thanks.show { display: block; }
   .lamp-skip.hide { display: none; }
   .lamp-btn.hide { display: none; }
   .lamp-card { position: relative; width: 100%; max-width: 320px; max-height: 88vh; overflow: hidden; padding: 0;
@@ -949,26 +955,35 @@
   .glow-3 { opacity: .72; box-shadow: 0 0 6px rgba(255,217,138,.66); }
   .glow-4 { opacity: .92; box-shadow: 0 0 9px rgba(255,217,138,.82); }
   @keyframes lampGlow { 0%, 100% { transform: scale(.86); } 50% { transform: scale(1.12); } }
-  .lamp-flame { position: relative; height: 106px; margin: 13px 0 4px; }
-  .flame-glow { position: absolute; left: 50%; top: 2px; width: 130px; height: 100px; transform: translateX(-50%); border-radius: 50%; animation: lampBreathe 2.6s ease-in-out infinite;
-    background: radial-gradient(ellipse at center, rgba(255,206,84,.55), rgba(241,196,15,.14) 48%, transparent 76%); }
-  .flame { position: absolute; left: 50%; border-radius: 50% 50% 46% 46% / 62% 62% 38% 38%; transform-origin: 50% 100%; }
-  .flame.f1 { bottom: 46px; width: 23px; height: 48px; margin-left: -11.5px; background: linear-gradient(180deg, #FFF3C4, #FFC24B 52%, #E9711F); box-shadow: 0 0 13px rgba(255,176,46,.75); animation: flicker 1.5s ease-in-out infinite; }
-  .flame.f2 { bottom: 48px; width: 13px; height: 30px; margin-left: -6.5px; background: linear-gradient(180deg, #FFF, #FFE9A8 60%, #FFB43C); opacity: .92; animation: flicker 1.1s ease-in-out infinite reverse; }
-  .flame.f3 { bottom: 45px; width: 38px; height: 20px; margin-left: -19px; border-radius: 50%; background: radial-gradient(ellipse at center, rgba(255,196,70,.55), transparent 70%); animation: lampBreathe 2.2s ease-in-out infinite; }
-  @keyframes flicker {
-    0%, 100% { transform: scaleY(1) scaleX(1) translateY(0); }
-    32% { transform: scaleY(1.14) scaleX(.94) translateY(-2px); }
-    66% { transform: scaleY(.92) scaleX(1.05) translateY(1px); }
+  .lamp-flame { position: relative; height: 240px; margin: 10px 0 4px; }
+  /* D50：释迦牟尼底图 + 色罩（图内已烘一层，这里只做轻罩）；装饰层不参与交互 */
+  .lamp-buddha { position: absolute; left: 0; top: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
+  .lamp-veil { position: absolute; left: 0; top: 0; right: 0; bottom: 0; z-index: 0; pointer-events: none;
+    background: linear-gradient(180deg, rgba(11,30,54,.38), rgba(74,21,21,.30)); }
+  .lamp-scroll, .lamp-actions { position: relative; z-index: 2; }
+  /* 鎏金酥油灯（真实图片）+ 写实火苗：未点亮完全静态，.lit 挂三层异相动画 */
+  .lamp-img { position: absolute; left: calc(50% - 87px); bottom: 0; width: 150px; height: 212px; }
+  .flame-halo { position: absolute; left: calc(50% - 65px); bottom: 138px; width: 130px; height: 100px; border-radius: 50%;
+    background: radial-gradient(ellipse at center, rgba(255,206,84,.28), rgba(241,196,15,.08) 48%, transparent 76%); }
+  .flame-img { position: absolute; width: 46px; height: 80px; }
+  .fi-outer { left: calc(50% - 23px); bottom: 165px; transform-origin: 50% 96%; }
+  .fi-core { left: calc(50% - 14px); bottom: 168px; width: 28px; height: 49px; opacity: .92; transform-origin: 50% 96%; }
+  .lit .fi-outer { animation: flameSway 1.7s ease-in-out infinite; }
+  .lit .fi-core { animation: flameDance 1.13s ease-in-out infinite; }
+  .lit .flame-halo { animation: haloBreathe 2.3s ease-in-out infinite; }
+  @keyframes flameSway {
+    0%, 100% { transform: scale(1,1) skewX(0deg); }
+    28% { transform: scale(.94,1.08) skewX(2.4deg); }
+    55% { transform: scale(1.04,.94) skewX(-1.8deg); }
+    78% { transform: scale(.97,1.04) skewX(1.2deg); }
   }
-  @keyframes lampBreathe { 0%, 100% { opacity: .72; } 50% { opacity: 1; } }
-  .lamp-body { position: absolute; left: 50%; bottom: 0; width: 110px; height: 46px; transform: translateX(-50%); }
-  .lamp-cup { position: absolute; left: 0; right: 0; top: 0; height: 31px; border-radius: 0 0 50% 50% / 0 0 78% 78%;
-    background: linear-gradient(180deg, #F2CE5C, #C9971B 52%, #7E5C10); box-shadow: inset 0 4px 6px rgba(255,245,200,.6), 0 5px 10px rgba(0,0,0,.42); }
-  .lamp-cup::after { content: ''; position: absolute; left: 7px; right: 7px; top: 3px; height: 8px; border-radius: 50%; background: linear-gradient(180deg, rgba(255,236,168,.85), rgba(255,200,90,.1)); }
-  .lamp-foot { position: absolute; left: 50%; bottom: 0; width: 65px; height: 20px; transform: translateX(-50%); border-radius: 0 0 13px 13px;
-    background: linear-gradient(180deg, #C9971B, #6E5010); box-shadow: 0 4px 8px rgba(0,0,0,.4); }
-  .sparks { position: absolute; left: 50%; bottom: 75px; width: 0; height: 0; }
+  @keyframes flameDance {
+    0%, 100% { transform: scale(1,1) skewX(0deg); }
+    36% { transform: scale(1.1,.9) skewX(-2.6deg); }
+    64% { transform: scale(.9,1.12) skewX(2.2deg); }
+  }
+  @keyframes haloBreathe { 0%, 100% { opacity: .55; transform: scale(.94); } 50% { opacity: 1; transform: scale(1.06); } }
+  .sparks { position: absolute; left: 50%; bottom: 178px; width: 0; height: 0; }
   .spark { position: absolute; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%;
     background: radial-gradient(circle, #FFF6D0, #F1C40F 58%, rgba(241,196,15,0)); animation: sparkFly .9s cubic-bezier(.2,.8,.3,1) forwards; }
   .spark:nth-child(1) { --dx: 0px; --dy: -110px; }
@@ -1215,6 +1230,9 @@
   <!-- 万家灯火：进入主界面前的静态祈福跳窗（每天首次打开一次；展示数据全部写死在 data/lamp.js，无网络请求） -->
   <div class="lamp-mask" id="lamp-mask">
     <div class="lamp-card">
+      <!-- D50：坐着的释迦牟尼底图（色罩已烘进图里）+ 一层夜色罩压艳；装饰层，不参与交互 -->
+      <img class="lamp-buddha" id="lamp-buddha" alt="" aria-hidden="true">
+      <div class="lamp-veil" aria-hidden="true"></div>
       <div class="lamp-halo"></div>
       <!-- 右上角 ✕：任何时候都可关（此前唯一出口是底部文字链，内容一超高就够不着） -->
       <div class="lamp-x" id="lamp-x">✕</div>
@@ -1223,15 +1241,12 @@
         <div class="lamp-title" id="lamp-title">万家灯火</div>
         <div class="lamp-total" id="lamp-total"></div>
         <div class="lamp-sub" id="lamp-sub"></div>
-        <div class="lamp-flame">
-          <div class="flame-glow"></div>
-          <div class="flame f1"></div>
-          <div class="flame f2"></div>
-          <div class="flame f3"></div>
-          <div class="lamp-body">
-            <div class="lamp-cup"></div>
-            <div class="lamp-foot"></div>
-          </div>
+        <!-- 鎏金酥油灯（真实图片）+ 写实火苗：未点亮完全静态，点亮后 .lit 挂多层火焰动画 -->
+        <div class="lamp-flame" id="lamp-flame">
+          <div class="flame-halo"></div>
+          <img class="flame-img fi-outer" id="fi-outer" alt="" aria-hidden="true">
+          <img class="flame-img fi-core" id="fi-core" alt="" aria-hidden="true">
+          <img class="lamp-img" id="lamp-img" alt="" aria-hidden="true">
           <div class="sparks" id="lamp-sparks"></div>
         </div>
         <div class="lamp-sec">各地灯火</div>
@@ -1254,8 +1269,10 @@
       <!-- 固定底栏：CTA 与关闭按钮永远在屏幕内 -->
       <div class="lamp-actions">
         <div class="lamp-btn" id="lamp-btn">点亮我的一盏灯</div>
+        <!-- D50（用户点名文案）：点亮后第一按钮 = 致谢（点击同为收下灯火，不留死按钮） -->
+        <div class="lamp-thanks" id="lamp-thanks"></div>
         <div class="lamp-tip" id="lamp-tip"></div>
-        <div class="lamp-close" id="lamp-close">收下灯火 · 关闭</div>
+        <div class="lamp-close" id="lamp-close"></div>
         <span class="lamp-skip" id="lamp-skip">今天先不点灯</span>
         <div class="lamp-note" id="lamp-note"></div>
       </div>
@@ -4959,6 +4976,13 @@ function renderLamp() {
   $('lamp-lotus-gold').textContent = lampFormat(LAMP.lotus.gold);
   $('lamp-lotus-pink').textContent = lampFormat(LAMP.lotus.pink);
   $('lamp-btn').textContent = LAMP.buttonText;
+  // D50：释迦牟尼底图 / 鎏金酥油灯 / 写实火苗（构建时内联 data URL）+ 用户点名按钮文案
+  $('lamp-buddha').src = IMAGES.buddhaBg;
+  $('lamp-img').src = IMAGES.lampImg;
+  $('fi-outer').src = IMAGES.flameImg;
+  $('fi-core').src = IMAGES.flameImg;
+  $('lamp-thanks').textContent = LAMP.thanksText;
+  $('lamp-close').textContent = LAMP.closeText;
   $('lamp-tip').textContent = LAMP.tip;
   $('lamp-note').textContent = LAMP.onceNote;
 }
@@ -4982,7 +5006,11 @@ function lightLamp() {
   $('lamp-total').classList.add('pop');
   $('lamp-sub').classList.add('pop');
   $('lamp-btn').classList.add('hide');   // 点亮后 CTA 收起（不留死按钮），元素保留仅为守卫测试可点
+  // D50：写实火焰三层动画 + 致谢按钮（用户点名文案）+ 中文播报《嗡 嘛 呢 叭 咪 吽》
+  $('lamp-flame').classList.add('lit');
+  $('lamp-thanks').classList.add('show');
   $('lamp-tip').classList.add('show');
+  speak('mantra');
   // 点亮之后：出现显著关闭按钮；未点亮态的安静出口（今天先不点灯）让位
   $('lamp-close').classList.add('show');
   $('lamp-skip').classList.add('hide');

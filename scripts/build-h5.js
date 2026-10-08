@@ -27,7 +27,9 @@ function read(rel) {
 }
 function dataUrl(rel) {
   const buf = fs.readFileSync(path.join(ROOT, rel));
-  const mime = /\.jpe?g$/i.test(rel) ? 'image/jpeg' : 'image/png';
+  const mime = /\.jpe?g$/i.test(rel) ? 'image/jpeg'
+    : /\.webp$/i.test(rel) ? 'image/webp'      // D50：揭图/灯火资产主格式（此前误标 image/png，靠浏览器嗅探兜底）
+    : 'image/png';
   return 'data:' + mime + ';base64,' + buf.toString('base64');
 }
 
@@ -64,7 +66,11 @@ const IMAGES = {
   bgGlobal: dataUrl('preview/assets/bg-global-h5.jpg'),
   pattern: dataUrl('images/pat-tile.png'),
   // 精灵表字母（试点 ཀ）：全部该字母方块共用一张 2×2 四色帧图
-  spriteKa: dataUrl('images/sprite_ka.png')
+  spriteKa: dataUrl('images/sprite_ka.png'),
+  // 灯火跳窗改版资产（D50）：释迦牟尼底图（色罩已烘进图里）+ 鎏金酥油灯 + 写实火苗
+  buddhaBg: dataUrl('images/buddha-bg.jpg'),
+  lampImg: dataUrl('images/lamp.webp'),
+  flameImg: dataUrl('images/flame.webp')
 };
 // 秘境揭图（D31）：十关各一张，base64 内联（体验版保持单文件，双击即可用）
 for (let i = 1; i <= 10; i++) {

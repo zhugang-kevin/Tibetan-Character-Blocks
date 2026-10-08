@@ -7,6 +7,7 @@ var collect = require('../../utils/collect');
 var tibText = require('../../utils/tibetan-text');
 var ladder = require('../../utils/ladder');
 var lamp = require('../../utils/lamp');
+var audio = require('../../utils/audio');
 var regionsData = require('../../data/regions');
 var dailyData = require('../../data/daily');
 var lampData = require('../../data/lamp');
@@ -321,7 +322,9 @@ Page({
       lampLotus: {
         goldText: lamp.formatCount(lampData.lotus.gold),
         pinkText: lamp.formatCount(lampData.lotus.pink)
-      }
+      },
+      lampThanksText: lampData.thanksText,
+      lampCloseText: lampData.closeText
     };
   },
 
@@ -341,6 +344,9 @@ Page({
     try {
       if (wx.vibrateShort) wx.vibrateShort({ type: 'medium' });
     } catch (err) { /* 部分机型不支持震动，静默降级 */ }
+    // D50（用户要求）：点灯同时中文播报《嗡 嘛 呢 叭 咪 吽》（audio/voice/mantra.mp3，
+    // 离线预生成资产；走 pronounce 单声部通道，新播报会打断旧播报；缺文件静默）
+    audio.speak('mantra');
     storage.markLampDay(todayStr());
   },
 

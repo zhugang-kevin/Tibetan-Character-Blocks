@@ -1020,105 +1020,91 @@ page,
   50% { transform: scale(1.12); }
 }
 
-/* 3D 酥油灯 + CSS 火焰 */
+/* ---- D50 灯火跳窗改版：释迦牟尼底图 + 色罩（装饰层，不参与交互） ---- */
+.lamp-buddha {
+  position: absolute;
+  left: 0; right: 0; top: 0; bottom: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+.lamp-veil {
+  position: absolute;
+  left: 0; right: 0; top: 0; bottom: 0;
+  z-index: 0;
+  /* 第二层夜色罩：压住照片艳部，保证金字与正文可读（图内已烘一层，这里只做轻罩） */
+  background: linear-gradient(180deg, rgba(11, 30, 54, 0.38) 0%, rgba(74, 21, 21, 0.30) 100%);
+  pointer-events: none;
+}
+.lamp-scroll, .lamp-actions { position: relative; z-index: 2; }
+
+/* ---- D50 鎏金酥油灯（真实图片）+ 写实火苗 ----
+   未点亮（无 .lit）：火苗、光晕完全静止（用户要求：点灯之前火焰是静态的）。
+   点亮后（.lit）：外焰/焰芯/光晕三层各自异相动画，焰形由 SVG 渐变渲染的
+   flame.webp 提供（橙缘 + 白黄焰芯 + 淡蓝焰根），transform 全部走 keyframes，
+   定位用 left:calc(50% - Nrpx) 避开 transform 冲突。 */
 .lamp-flame {
   position: relative;
-  height: 210rpx;
-  margin: 26rpx 0 8rpx;
+  height: 480rpx;
+  margin: 20rpx 0 8rpx;
 }
-.flame-glow {
+.lamp-img {
   position: absolute;
-  left: 50%;
-  top: 4rpx;
+  /* 灯体内容在抠图 bbox 里偏右（地面反光不对称）→ 左移 24rpx 让灯柱回到中轴 */
+  left: calc(50% - 174rpx);
+  bottom: 0;
+  width: 300rpx;
+  height: 424rpx;
+}
+.flame-halo {
+  position: absolute;
+  left: calc(50% - 130rpx);
+  bottom: 276rpx;
   width: 260rpx;
   height: 200rpx;
-  transform: translateX(-50%);
   border-radius: 50%;
-  background: radial-gradient(ellipse at center, rgba(255, 206, 84, 0.55) 0%, rgba(241, 196, 15, 0.14) 48%, transparent 76%);
-  animation: lampBreathe 2.6s ease-in-out infinite;
+  background: radial-gradient(ellipse at center, rgba(255, 206, 84, 0.28) 0%, rgba(241, 196, 15, 0.08) 48%, transparent 76%);
 }
-.flame {
+.flame-img {
   position: absolute;
-  left: 50%;
-  border-radius: 50% 50% 46% 46% / 62% 62% 38% 38%;
-  transform-origin: 50% 100%;
+  width: 92rpx;
+  height: 160rpx;
 }
-.flame.f1 {
-  bottom: 92rpx;
-  width: 46rpx;
-  height: 96rpx;
-  margin-left: -23rpx;
-  background: linear-gradient(180deg, #FFF3C4 0%, #FFC24B 52%, #E9711F 100%);
-  box-shadow: 0 0 26rpx rgba(255, 176, 46, 0.75);
-  animation: flicker 1.5s ease-in-out infinite;
+.fi-outer {
+  left: calc(50% - 46rpx);
+  bottom: 330rpx;
+  transform-origin: 50% 96%;
 }
-.flame.f2 {
-  bottom: 96rpx;
-  width: 26rpx;
-  height: 60rpx;
-  margin-left: -13rpx;
-  background: linear-gradient(180deg, #FFFFFF 0%, #FFE9A8 60%, #FFB43C 100%);
+.fi-core {
+  left: calc(50% - 28rpx);
+  bottom: 336rpx;
+  width: 56rpx;
+  height: 98rpx;
   opacity: 0.92;
-  animation: flicker 1.1s ease-in-out infinite reverse;
+  transform-origin: 50% 96%;
 }
-.flame.f3 {
-  bottom: 90rpx;
-  width: 76rpx;
-  height: 40rpx;
-  margin-left: -38rpx;
-  border-radius: 50%;
-  background: radial-gradient(ellipse at center, rgba(255, 196, 70, 0.55) 0%, transparent 70%);
-  animation: lampBreathe 2.2s ease-in-out infinite;
+/* 点亮后：三层异相火焰（周期互质，避免「整齐划一」的机械感） */
+.lit .fi-outer { animation: flameSway 1.7s ease-in-out infinite; }
+.lit .fi-core { animation: flameDance 1.13s ease-in-out infinite; }
+.lit .flame-halo { animation: haloBreathe 2.3s ease-in-out infinite; }
+@keyframes flameSway {
+  0%, 100% { transform: scale(1, 1) skewX(0deg); }
+  28% { transform: scale(0.94, 1.08) skewX(2.4deg); }
+  55% { transform: scale(1.04, 0.94) skewX(-1.8deg); }
+  78% { transform: scale(0.97, 1.04) skewX(1.2deg); }
 }
-@keyframes flicker {
-  0%, 100% { transform: scaleY(1) scaleX(1) translateY(0); }
-  32% { transform: scaleY(1.14) scaleX(0.94) translateY(-4rpx); }
-  66% { transform: scaleY(0.92) scaleX(1.05) translateY(2rpx); }
+@keyframes flameDance {
+  0%, 100% { transform: scale(1, 1) skewX(0deg); }
+  36% { transform: scale(1.1, 0.9) skewX(-2.6deg); }
+  64% { transform: scale(0.9, 1.12) skewX(2.2deg); }
 }
-@keyframes lampBreathe {
-  0%, 100% { opacity: 0.72; }
-  50% { opacity: 1; }
-}
-
-/* 酥油灯碗（3D：碗身 + 碗口高光 + 底座） */
-.lamp-body {
-  position: absolute;
-  left: 50%;
-  bottom: 0;
-  width: 220rpx;
-  height: 92rpx;
-  transform: translateX(-50%);
-}
-.lamp-cup {
-  position: absolute;
-  left: 0; right: 0; top: 0;
-  height: 62rpx;
-  border-radius: 0 0 50% 50% / 0 0 78% 78%;
-  background: linear-gradient(180deg, #F2CE5C 0%, #C9971B 52%, #7E5C10 100%);
-  box-shadow: inset 0 8rpx 12rpx rgba(255, 245, 200, 0.6), 0 10rpx 20rpx rgba(0, 0, 0, 0.42);
-}
-.lamp-cup::after {
-  content: '';
-  position: absolute;
-  left: 14rpx; right: 14rpx; top: 6rpx;
-  height: 16rpx;
-  border-radius: 50%;
-  background: linear-gradient(180deg, rgba(255, 236, 168, 0.85), rgba(255, 200, 90, 0.1));
-}
-.lamp-foot {
-  position: absolute;
-  left: 50%;
-  bottom: 0;
-  width: 130rpx;
-  height: 40rpx;
-  transform: translateX(-50%);
-  border-radius: 0 0 26rpx 26rpx;
-  background: linear-gradient(180deg, #C9971B 0%, #6E5010 100%);
-  box-shadow: 0 8rpx 16rpx rgba(0, 0, 0, 0.4);
+@keyframes haloBreathe {
+  0%, 100% { opacity: 0.55; transform: scale(0.94); }
+  50% { opacity: 1; transform: scale(1.06); }
 }
 
 /* 点亮后的金粉爆炸粒子（12 向） */
-.sparks { position: absolute; left: 50%; bottom: 150rpx; width: 0; height: 0; }
+.sparks { position: absolute; left: 50%; bottom: 356rpx; width: 0; height: 0; }
 .spark {
   position: absolute;
   width: 12rpx;
@@ -1199,8 +1185,21 @@ page,
   background: linear-gradient(180deg, #FFE9A8 0%, #F1C40F 46%, #B7950B 100%);
   box-shadow: 0 12rpx 26rpx rgba(181, 137, 0, 0.45), inset 0 3rpx 0 rgba(255, 255, 255, 0.6);
 }
+/* D50（用户点名文案）：点亮后的第一按钮——致谢（点击同为收下灯火，不留死按钮） */
+.lamp-thanks {
+  margin-top: 26rpx;
+  padding: 24rpx 0;
+  border-radius: 999rpx;
+  text-align: center;
+  font-size: 30rpx;
+  font-weight: 700;
+  letter-spacing: 2rpx;
+  color: #3D2E05;
+  background: linear-gradient(180deg, #FFE9A8 0%, #F1C40F 46%, #B7950B 100%);
+  box-shadow: 0 12rpx 26rpx rgba(181, 137, 0, 0.45), inset 0 3rpx 0 rgba(255, 255, 255, 0.6);
+}
 .lamp-tip {
-  margin-top: 18rpx;
+  margin-top: 16rpx;
   text-align: center;
   font-size: 26rpx;
   color: #FFE9A8;

@@ -3946,6 +3946,101 @@ section('39. 中文播报与藏文书写细则');
   else warn('体验版首页内边距未收档（非阻塞）');
 })();
 
+// ============================== 41. 灯火跳窗改版（D50，2026-10-08 用户点名 6 条） ==============================
+// ① 释迦牟尼底图 + 色罩  ② 鎏金酥油灯（参照实拍）  ③ 点亮前火焰静态
+// ④ 点亮后火焰写实多层动态  ⑤ 点灯播报《嗡 嘛 呢 叭 咪 吽》  ⑥ 致谢 / 关闭按钮文案
+section('41. 灯火跳窗改版（释迦牟尼底图 / 真实酥油灯 / 静→动火焰 / 燃灯播报）');
+{
+  const iw41 = read('pages/index/index.wxml');
+  const iwx41 = read('pages/index/index.wxss');
+  const ijs41 = read('pages/index/index.js');
+  const lamp41 = read('data/lamp.js');
+  const t41 = read('preview/template.html');
+
+  // 41.1 资产齐备 + 体积口径（与 make_lamp_assets.py 的预算一致）
+  [['images/buddha-bg.jpg', 50], ['images/lamp.webp', 58], ['images/flame.webp', 14]].forEach(pair => {
+    if (!exists(pair[0])) { err('缺少 ' + pair[0] + '（D50 灯火跳窗资产）'); return; }
+    const kb = fs.statSync(path.join(ROOT, pair[0])).size / 1024;
+    if (kb <= pair[1]) ok(pair[0] + ' 体积 ' + Math.round(kb) + 'KB ≤ ' + pair[1] + 'KB');
+    else err(pair[0] + ' 超预算：' + Math.round(kb) + 'KB > ' + pair[1] + 'KB');
+  });
+  if (exists('scripts/make_lamp_assets.py')) ok('scripts/make_lamp_assets.py 存在（灯火资产可零成本复现）');
+  else err('缺 scripts/make_lamp_assets.py（D50 资产必须可复现）');
+
+  // 41.2 小程序端：底图 + 色罩挂在卡片层（WXSS 不支持本地路径 background-image，必须用 <image>）
+  if (iw41.indexOf('<image class="lamp-buddha" src="/images/buddha-bg.jpg"') > -1)
+    ok('跳窗挂载释迦牟尼底图（<image> 组件，mode=aspectFill）');
+  else err('跳窗未挂载 /images/buddha-bg.jpg（WXSS background-image 不支持本地路径）');
+  [['.lamp-buddha', iwx41], ['.lamp-veil', iwx41], ['.lamp-veil', t41]].forEach(pair => {
+    if (pair[1].indexOf(pair[0] + ' {') > -1 || pair[1].indexOf(pair[0] + '{') > -1)
+      ok('样式齐备：' + pair[0] + (pair[1] === iwx41 ? '（小程序）' : '（体验版）'));
+    else err('缺少样式 ' + pair[0] + '（' + (pair[1] === iwx41 ? 'index.wxss' : 'template.html') + '）');
+  });
+  if (/\.lamp-veil\s*\{[\s\S]*?linear-gradient/.test(iwx41)) ok('色罩为渐变夜色罩（压艳保证可读）');
+  else err('.lamp-veil 缺少渐变色罩');
+
+  // 41.3 真实酥油灯 + 写实火苗：两端结构齐备
+  [['<image class="lamp-img"', iw41], ['<image class="flame-img fi-outer"', iw41], ['<image class="flame-img fi-core"', iw41],
+   ['id="lamp-img"', t41], ['id="fi-outer"', t41], ['id="fi-core"', t41]].forEach(pair => {
+    if (pair[1].indexOf(pair[0]) > -1) ok('灯火图结构齐备：' + pair[0]);
+    else err('缺少灯火图结构：' + pair[0]);
+  });
+  if (ijs41.indexOf('lampImg') === -1 && read('scripts/build-h5.js').indexOf("lampImg: dataUrl('images/lamp.webp')") > -1)
+    ok('体验版注入 lampImg/flameImg/buddhaBg（build-h5.js）');
+  else err('build-h5.js 未注入 D50 灯火资产');
+  if (t41.indexOf("$('lamp-buddha').src = IMAGES.buddhaBg") > -1 && t41.indexOf("$('lamp-img').src = IMAGES.lampImg") > -1)
+    ok('体验版 renderLamp 挂载灯火三图');
+  else err('体验版 renderLamp 未挂载灯火三图');
+
+  // 41.4 静→动火焰（用户要求 3/4）：未点亮态 .flame-img 规则块不得含 animation；动画只挂 .lit 之下
+  const flameBlock41 = (iwx41.match(/\.flame-img\s*\{[\s\S]*?\}/) || [''])[0];
+  if (flameBlock41 && flameBlock41.indexOf('animation') === -1)
+    ok('未点亮态火苗完全静态（.flame-img 无 animation）');
+  else err('未点亮态火苗带动画（违反「点灯之前火焰是静态的」）');
+  [['.lit .fi-outer', 'flameSway'], ['.lit .fi-core', 'flameDance'], ['.lit .flame-halo', 'haloBreathe']].forEach(pair => {
+    const re = new RegExp(pair[0].replace(/\./g, '\\.') + '\\s*\\{[^}]*animation:[^;]*' + pair[1]);
+    if (re.test(iwx41)) ok('点亮后动态火焰：' + pair[0] + ' → ' + pair[1]);
+    else err('点亮后火焰动画缺失：' + pair[0] + '（' + pair[1] + '）');
+  });
+  [['flameSway', iwx41], ['flameDance', iwx41], ['flameSway', t41], ['flameDance', t41]].forEach(pair => {
+    if (pair[1].indexOf('@keyframes ' + pair[0]) > -1) ok('@keyframes 齐备：' + pair[0]);
+    else err('缺少 @keyframes ' + pair[0]);
+  });
+  if (t41.indexOf("classList.add('lit')") > -1 && t41.indexOf("id=\"lamp-flame\"") > -1)
+    ok('体验版点亮后挂 .lit');
+  else err('体验版点亮后未挂 .lit');
+
+  // 41.5 燃灯播报《嗡 嘛 呢 叭 咪 吽》（用户要求 5）：mp3 资产 + 两端接线
+  if (exists('audio/voice/mantra.mp3')) {
+    const mk = fs.statSync(path.join(ROOT, 'audio/voice/mantra.mp3')).size / 1024;
+    if (mk <= 18) ok('audio/voice/mantra.mp3 体积 ' + mk.toFixed(1) + 'KB ≤ 18KB');
+    else err('mantra.mp3 超预算：' + mk.toFixed(1) + 'KB > 18KB');
+  } else err('缺少 audio/voice/mantra.mp3（燃灯播报）');
+  if (ijs41.indexOf("audio.speak('mantra')") > -1) ok('小程序 onLightLamp 播报 mantra');
+  else err('小程序 onLightLamp 未播报 mantra');
+  if (t41.indexOf("speak('mantra')") > -1) ok('体验版 lightLamp 播报 mantra');
+  else err('体验版 lightLamp 未播报 mantra');
+
+  // 41.6 按钮文案（用户要求 6）：文案在 data/lamp.js 单一来源，两端取用
+  if (lamp41.indexOf("thanksText: '感谢您为世界和平祈福'") > -1 && lamp41.indexOf("closeText: '点击关闭'") > -1)
+    ok('data/lamp.js 含用户点名文案（感谢您为世界和平祈福 / 点击关闭）');
+  else err('data/lamp.js 缺 thanksText/closeText 点名文案');
+  if (iw41.indexOf('{{lampThanksText}}') > -1 && iw41.indexOf('{{lampCloseText}}') > -1)
+    ok('小程序底栏按钮走数据绑定（lampThanksText / lampCloseText）');
+  else err('小程序底栏按钮未走数据绑定');
+  if (ijs41.indexOf('lampData.thanksText') > -1 && ijs41.indexOf('lampData.closeText') > -1)
+    ok('buildLampView 注入 thanks/close 文案');
+  else err('buildLampView 未注入 thanks/close 文案');
+  if (t41.indexOf("$('lamp-thanks').textContent = LAMP.thanksText") > -1 &&
+      t41.indexOf("$('lamp-close').textContent = LAMP.closeText") > -1)
+    ok('体验版按钮文案同源（LAMP.thanksText / closeText）');
+  else err('体验版按钮文案未同源');
+  // 反例自测：文案若回退成旧「收下灯火 · 关闭」必须立刻报错
+  if (iw41.indexOf('收下灯火 · 关闭') === -1 && t41.indexOf('收下灯火 · 关闭') === -1)
+    ok('旧文案「收下灯火 · 关闭」已按用户要求退场');
+  else err('底栏仍残留旧文案「收下灯火 · 关闭」');
+}
+
 console.log('通过: ' + passed + ' | 错误: ' + errors.length + ' | 警告: ' + warnings.length);
 if (errors.length) { console.log('\x1b[31m存在错误，需修复后重试\x1b[0m'); process.exit(1); }
 console.log('\x1b[32m全部自检通过 ✓\x1b[0m');

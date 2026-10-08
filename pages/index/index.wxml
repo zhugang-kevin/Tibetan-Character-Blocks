@@ -267,6 +267,9 @@
   <!-- 万家灯火：进入主界面前的静态祈福跳窗（每天首次打开一次；全部为本地固定数据，无任何网络请求） -->
   <view wx:if="{{lampShow}}" class="lamp-mask">
     <view class="lamp-card">
+      <!-- D50：坐着的释迦牟尼底图（色罩已烘进图里）+ 一层夜色罩压艳；两者均为装饰层，不参与交互 -->
+      <image class="lamp-buddha" src="/images/buddha-bg.jpg" mode="aspectFill" aria-hidden="true"></image>
+      <view class="lamp-veil" aria-hidden="true"></view>
       <view class="lamp-halo"></view>
       <!-- 右上角 ✕：任何时候都可关（此前唯一出口是底部文字链，内容一超高就够不着） -->
       <view class="lamp-x" bindtap="closeLampWindow">✕</view>
@@ -278,16 +281,12 @@
       <view class="lamp-total {{lampTotalPop ? 'pop' : ''}}">{{lampTotalText}}<text class="lamp-unit">盏</text></view>
       <view class="lamp-sub {{lampTotalPop ? 'pop' : ''}}">{{lampSub}}</view>
 
-      <!-- 3D 酥油灯 + CSS 火焰 -->
-      <view class="lamp-flame">
-        <view class="flame-glow"></view>
-        <view class="flame f1"></view>
-        <view class="flame f2"></view>
-        <view class="flame f3"></view>
-        <view class="lamp-body">
-          <view class="lamp-cup"></view>
-          <view class="lamp-foot"></view>
-        </view>
+      <!-- 鎏金酥油灯（真实图片）+ 写实火苗：未点亮完全静态，点亮后 .lit 挂多层火焰动画 -->
+      <view class="lamp-flame {{lampLit ? 'lit' : ''}}">
+        <view class="flame-halo"></view>
+        <image class="flame-img fi-outer" src="/images/flame.webp" mode="widthFix"></image>
+        <image class="flame-img fi-core" src="/images/flame.webp" mode="widthFix"></image>
+        <image class="lamp-img" src="/images/lamp.webp" mode="widthFix"></image>
         <view wx:if="{{lampLit}}" class="sparks">
           <view class="spark"></view><view class="spark"></view><view class="spark"></view>
           <view class="spark"></view><view class="spark"></view><view class="spark"></view>
@@ -328,9 +327,11 @@
       <view class="lamp-actions">
         <!-- 未点亮：CTA。点亮后收起（不留下一个「再点也没反应」的死按钮） -->
         <view wx:if="{{!lampLit}}" class="lamp-btn" bindtap="onLightLamp">{{lampButtonText}}</view>
+        <!-- D50（用户点名文案）：点亮后第一按钮 = 致谢（点击同为收下灯火，不留死按钮） -->
+        <view wx:if="{{lampLit}}" class="lamp-thanks" bindtap="closeLampWindow">{{lampThanksText}}</view>
         <view wx:if="{{lampLit}}" class="lamp-tip">{{lampTip}}</view>
-        <!-- 点亮之后：显著关闭按钮（收下灯火 · 关闭），不再让人找不到出口 -->
-        <view wx:if="{{lampLit}}" class="lamp-close" bindtap="closeLampWindow">收下灯火 · 关闭</view>
+        <!-- 点亮之后：第二按钮 = 显著关闭出口 -->
+        <view wx:if="{{lampLit}}" class="lamp-close" bindtap="closeLampWindow">{{lampCloseText}}</view>
         <!-- 未点亮时：安静的次级出口 -->
         <text wx:if="{{!lampLit}}" class="lamp-skip" bindtap="closeLampWindow">今天先不点灯</text>
         <view class="lamp-note">{{lampOnceNote}}</view>

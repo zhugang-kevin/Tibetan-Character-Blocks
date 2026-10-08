@@ -1747,7 +1747,8 @@ function mockCtx(sink) {
     check('第 1 关揭图为雪山（与 data/reveals.js 同源）', ev('state.reveal && state.reveal.name') === '雪山');
     check('揭图层已注入且为内联 data URL', (function () {
       const i = $('#reveal-img');
-      return !!i && i.style.display === 'block' && String(i.getAttribute('src')).indexOf('data:image/png;base64,') === 0;
+      // D50：揭图主格式 .webp（此前 dataUrl 误标 image/png，靠浏览器嗅探兜底；已修正）
+      return !!i && i.style.display === 'block' && String(i.getAttribute('src')).indexOf('data:image/webp;base64,') === 0;
     })());
     check('揭图层精确对齐牌区（四向样式齐全）', (function () {
       const s = $('#reveal-img').style;
@@ -1791,7 +1792,7 @@ function mockCtx(sink) {
     ev('finishLevel()');
     check('结算页揭晓本关秘境图', $('#res-reveal .reveal-name') && $('#res-reveal .reveal-name').textContent === '雪山');
     check('揭晓卡图为内联 data URL', String(($('#res-reveal .reveal-art') || {}).src !== undefined
-      ? $('#res-reveal .reveal-art').getAttribute('src') : '').indexOf('data:image/png;base64,') === 0);
+      ? $('#res-reveal .reveal-art').getAttribute('src') : '').indexOf('data:image/webp;base64,') === 0);
     check('藏文名 + 拉丁转写上屏', $('#res-reveal .rt-t').textContent === 'གངས་རི་'
       && $('#res-reveal .rt-roman').textContent === 'gangs ri');
     check('揭晓卡承诺「已收入文化护照」且报图鉴进度 1 / 10',

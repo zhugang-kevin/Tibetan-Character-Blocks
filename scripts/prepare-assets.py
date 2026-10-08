@@ -45,8 +45,8 @@ KB = 1024
 # 预算表（与规格书 §七 一致）
 BUDGET = {
     'icon': 30 * KB,      # 单张
-    'reveal': 33 * KB,    # 单张（WebP；10 张 ≤330KB——画作颗粒密，33KB 是质量与体积的平衡点）
-    'bg_global': 70 * KB,
+    'reveal': 29 * KB,    # 单张（WebP；10 张 ≤290KB。D50 起从 33 收紧——腾体积给灯火跳窗改版资产，画作颗粒密，29KB 仍高于可感知劣化点）
+    'bg_global': 52 * KB,
     'bg_global_h5': 24 * KB,   # H5 单文件版内联的小图（preview/assets/，不进小程序包）
     'bg_sky': 40 * KB,
     'bg_ground': 45 * KB,
@@ -56,7 +56,7 @@ BUDGET = {
     'logo_200': 12 * KB,
     'logo_watermark': 6 * KB,
     'tashi': 25 * KB,          # E1 藏文金字（Canvas 兜底图）
-    'scene': 130 * KB,    # 单张场景照片（首页/游戏页底图；照片细节多，比平滑渐变底更占体积）
+    'scene': 108 * KB,    # 单张场景照片（D50 起从 130 收紧——照片上蒙了夜色罩，q46 档实测 102-106KB）
 }
 
 ICON_ALIAS = [
@@ -114,9 +114,10 @@ def save_under_budget(img, path, budget, tries=((256, None), (128, None), (96, 0
     return '最小档仍超'
 
 def save_webp_under_budget(img, path, budget):
-    """WebP 阶梯压缩（painting 类图 WebP 比 JPEG 再省 ~40%；微信 <image> 全支持）。"""
+    """WebP 阶梯压缩（painting 类图 WebP 比 JPEG 再省 ~40%；微信 <image> 全支持）。
+    D50：阶梯下探到 46——灯火跳窗改版要腾体积，画作在夜色底上 q46 不可感知。"""
     img = img.convert('RGB')
-    for q in (80, 74, 68, 62, 58, 54):
+    for q in (80, 74, 68, 62, 58, 54, 50, 46):
         img.save(path, 'WEBP', quality=q, method=6)
         if os.path.getsize(path) <= budget:
             return 'webp q=%d' % q
@@ -127,7 +128,7 @@ def save_jpeg_under_budget(img, path, budget, max_w=None):
     img = img.convert('RGB')
     if max_w and img.width > max_w:
         img = img.resize((max_w, int(img.height * max_w / img.width)), Image.LANCZOS)
-    for q in (85, 80, 74, 68, 62, 56):
+    for q in (85, 80, 74, 68, 62, 56, 50, 46):
         img.save(path, 'JPEG', quality=q, optimize=True, progressive=True)
         if os.path.getsize(path) <= budget:
             return 'q=%d w=%d' % (q, img.width)
