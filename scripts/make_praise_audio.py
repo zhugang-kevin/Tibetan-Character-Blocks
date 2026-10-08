@@ -156,3 +156,5 @@ if __name__ == '__main__':
     write_wav('horn.wav', make_horn())
     write_wav('cheer.wav', make_cheer())
     print('完成（规格：单声道 / 22050Hz / 16-bit PCM，与既有 4 条一致）')
+    print('⚠ 下一步：python scripts/compress_sfx.py —— drum/horn/cheer 在包内是 MP3'
+          '（D52 体积腾挪），WAV 只是中间产物，不压缩会让主包超 2MB 上限。')

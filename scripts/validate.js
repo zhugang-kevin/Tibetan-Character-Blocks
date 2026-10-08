@@ -144,10 +144,24 @@ ok('文化卡字段完整性检查完成');
 
 // ---------- 5. 音效文件 ----------
 section('5. 音效文件');
-['tap', 'match', 'mismatch', 'win'].forEach(s => {
-  if (exists('audio/' + s + '.wav')) ok('audio/' + s + '.wav 存在');
-  else err('audio/' + s + '.wav 缺失');
-});
+// D52：6 条程序合成音由 WAV 转 MP3（scripts/compress_sfx.py，172KB → 35KB，
+// 给「讲解播整段」腾包体）；tap 保留 WAV（1.5KB + 零延迟）。
+// 扩展名**只从 utils/audio.js 的 SFX_MP3 读**，避免两处口径漂移。
+{
+  const auSrc = read('utils/audio.js');
+  const mp3Set = new Set(((/var SFX_MP3 = \{([^}]*)\}/.exec(auSrc) || [])[1] || '')
+    .split(',').map(s => s.trim().split(':')[0]).filter(Boolean));
+  ['tap', 'match', 'mismatch', 'win', 'drum', 'horn', 'cheer'].forEach(s => {
+    const ext = mp3Set.has(s) ? 'mp3' : 'wav';
+    if (exists('audio/' + s + '.' + ext)) ok('audio/' + s + '.' + ext + ' 存在');
+    else err('audio/' + s + '.' + ext + ' 缺失（扩展名由 utils/audio.js 的 SFX_MP3 决定）');
+    // 反面：转过的音效不得把 WAV 留在包里（否则 133KB 的腾挪白做）
+    if (mp3Set.has(s) && exists('audio/' + s + '.wav'))
+      err('audio/' + s + '.wav 仍在包内 —— 已转 MP3，源 WAV 必须删除（scripts/compress_sfx.py）');
+  });
+  if (exists('scripts/compress_sfx.py')) ok('音效压缩脚本 scripts/compress_sfx.py 存在（WAV→MP3 可复现）');
+  else err('缺 scripts/compress_sfx.py（音效压缩不可复现）');
+}
 
 // ---------- 6. 禁用 API（规格红线） ----------
 section('6. 禁用 API 检查');
@@ -2714,7 +2728,8 @@ section('32. 消除情绪激励（D34：时间窗口连击 · 五档赞美 · �
       ok(f + ' 含连击单位迁移契约（COMBO_MODEL / comboModel）');
     else err(f + ' 缺连击单位迁移契约（旧记录会以「每关连击」的旧口径冒充新口径）');
   });
-  ['audio/drum.wav', 'audio/horn.wav', 'audio/cheer.wav'].forEach(f => {
+  // D52：档位三音已随其余合成音转 MP3（WAV 不再入包）
+  ['audio/drum.mp3', 'audio/horn.mp3', 'audio/cheer.mp3'].forEach(f => {
     if (exists(f)) ok('档位音效资产 ' + f + ' 存在');
     else err('缺少档位音效资产 ' + f);
   });
@@ -3820,8 +3835,12 @@ section('39. 中文播报与藏文书写细则');
   // 39.1 生成脚本（可复现、离线预生成、带体积口径）
   if (exists('scripts/gen_chinese_voice.py')) {
     const g = read('scripts/gen_chinese_voice.py');
+    // D52：讲解词表不再写死在本脚本里（那正是「只播第一句」的根因），
+    //      改由 load_secrets() 从 data/secrets.js 读全文 —— 听到 = 看到。
     [['edge-tts', '合成引擎（微软 Edge TTS，免费无 Key）'], ['libmp3lame', 'ffmpeg 压缩到目标码率'],
-     ["'praise_2'", '激励词表（praise_2..5）'], ["'secret_01'", '讲解词表（secret_01..10）'], ['LIMIT', '单条体积上限']]
+     ["'praise_2'", '激励词表（praise_2..5）'], ['load_secrets', '讲解正文单一事实源（D52）'],
+     ["os.path.join(ROOT, 'data', 'secrets.js')", '从 data/secrets.js 取全文'],
+     ["'secret_%02d' % lv", '按关卡号生成 secret_NN'], ['LIMIT', '单条体积上限']]
       .forEach(([k, label]) => {
         if (g.indexOf(k) > -1) ok('gen_chinese_voice.py 含 ' + label);
         else err('gen_chinese_voice.py 缺 ' + label + '（' + k + '）');
@@ -3841,8 +3860,9 @@ section('39. 中文播报与藏文书写细则');
   const secretKeys = Array.from({ length: 10 }, (_, i) => 'secret_' + String(i + 1).padStart(2, '0'));
   const haveS = secretKeys.filter(k => exists('audio/voice/' + k + '.mp3'));
   if (haveS.length === secretKeys.length) {
-    const overS = haveS.filter(k => fs.statSync(path.join(ROOT, 'audio/voice/' + k + '.mp3')).size > 22 * 1024);
-    if (!overS.length) ok('藏地密码讲解 10 条就位且 ≤22KB/条');
+    // D52：讲解改为播整段正文（约 130 字 @10kbps ≈ 26KB），单条上限随之放宽到 32KB
+    const overS = haveS.filter(k => fs.statSync(path.join(ROOT, 'audio/voice/' + k + '.mp3')).size > 32 * 1024);
+    if (!overS.length) ok('藏地密码讲解 10 条就位且 ≤32KB/条（播整段）');
     else err('讲解语音超限：' + overS.join(','));
   } else if (haveS.length) err('讲解语音不完整（' + haveS.length + '/10）');
   else ok('（讲解语音尚未生成，跳过）');
@@ -4190,6 +4210,117 @@ section('42. 藏文学习体系与关卡生成（15 级 × 150 关 · 动态格�
       ok('终极证书解锁状态可查询（集齐 15 张才解锁）');
     else err('终极证书状态缺失');
   }
+}
+
+// ---------- 43. 藏地密码「播整段」讲解（D52，2026-10-08 用户反馈） ----------
+// 真实缺陷：中文播报只念第一句，屏幕上却显示三段正文 —— 听到的比看到的短一大截。
+// 根因：scripts/gen_chinese_voice.py 里另写了一份「一句话精简版」词表，
+//       于是 data/secrets.js 改了正文、mp3 不跟着变（两份文本必然漂移）。
+// 正解：**单一事实源** —— 讲解文本只在 data/secrets.js 写一次，生成脚本按关卡号取全文。
+// 代价：十条合计 196KB → 279KB（+83KB），由音效 WAV→MP3 腾挪（scripts/compress_sfx.py，-133KB）。
+section('43. 藏地密码讲解「播整段」');
+{
+  // --- 43.1 单一事实源：生成脚本不得再内置讲解文本 ---
+  const gcv = exists('scripts/gen_chinese_voice.py') ? read('scripts/gen_chinese_voice.py') : '';
+  if (!gcv) err('缺 scripts/gen_chinese_voice.py（讲解语音不可复现）');
+  else {
+    if (!/SECRETS\s*=\s*\{/.test(gcv)) ok('gen_chinese_voice.py 已无内置讲解词表（杜绝第二份文本）');
+    else err('gen_chinese_voice.py 仍在脚本里写死讲解文本 —— 这正是「只播第一句」的根因');
+    [['def load_secrets', '讲解正文读取函数'], ["os.path.join(ROOT, 'data', 'secrets.js')", '从 data/secrets.js 取全文'],
+     ["len(text) < 80", '正文过短即硬失败（宁可不生成，也不播半截）'],
+     ['len(out) != 10', '则数不足即硬失败'], ['raise SystemExit', '失败是显式报错而非静默降级']]
+      .forEach(([k, label]) => {
+        if (gcv.indexOf(k) > -1) ok('gen_chinese_voice.py 含 ' + label);
+        else err('gen_chinese_voice.py 缺 ' + label + '（' + k + '）');
+      });
+  }
+
+  // --- 43.2 正文长度：十条都必须是「整段」（与 Python 侧同一口径） ---
+  let secList43 = null;
+  try { secList43 = require(path.join(ROOT, 'data', 'secrets.js')); } catch (e) { /* 走下面 err */ }
+  if (secList43 && secList43.length === 10) {
+    const short43 = secList43.filter(s => (s.title + '。' + s.text).length < 80);
+    if (!short43.length) ok('十条讲解正文均为整段（≥80 字，最短 ' +
+      Math.min(...secList43.map(s => (s.title + '。' + s.text).length)) + ' 字）');
+    else err('讲解正文过短（疑似只截了一句）：' +
+      short43.map(s => 'L' + s.level + '=' + (s.title + '。' + s.text).length).join(','));
+  } else err('data/secrets.js 无法解析为 10 则');
+
+  // --- 43.3 反证：mp3 时长必须真的覆盖整段 ---
+  // 读 MP3 的 Xing/Info 头里的**帧数**换算时长（不依赖 ffmpeg、不猜码率）：
+  //   duration = frames × samplesPerFrame / sampleRate，samplesPerFrame = 1152(MPEG1) / 576(MPEG2)
+  // 判定用「语速」而不是绝对秒数：整段 ≈ 4.1–4.8 字/秒；若只念了第一句，
+  // 用整段字数去除那段时长，语速会飙到 12+ 字/秒 —— 一眼可辨。
+  function mp3Duration(rel) {
+    const b = fs.readFileSync(path.join(ROOT, rel));
+    const SR = { 1: [44100, 48000, 32000], 2: [22050, 24000, 16000], 25: [11025, 12000, 8000] };
+    let i = 0;
+    if (b[0] === 0x49 && b[1] === 0x44 && b[2] === 0x33) {
+      const sz = ((b[6] & 0x7f) << 21) | ((b[7] & 0x7f) << 14) | ((b[8] & 0x7f) << 7) | (b[9] & 0x7f);
+      i = 10 + sz;
+    }
+    for (; i < b.length - 200; i++) {
+      if (b[i] !== 0xFF || (b[i + 1] & 0xE0) !== 0xE0) continue;
+      if (((b[i + 1] >> 1) & 3) !== 1) continue;                    // 只认 Layer III
+      const vb = (b[i + 1] >> 3) & 3;
+      const ver = vb === 3 ? 1 : vb === 2 ? 2 : vb === 0 ? 25 : 0;
+      if (!ver) continue;
+      const sr = SR[ver][(b[i + 2] >> 2) & 3];
+      if (!sr) continue;
+      const at = b.slice(i + 4, i + 200).toString('latin1').search(/Xing|Info/);
+      if (at < 0) return null;
+      const p = i + 4 + at + 4;                                     // 4B tag → 4B flags → 4B frames
+      if (!(b.readUInt32BE(p) & 1)) return null;                    // 无帧数字段
+      return b.readUInt32BE(p + 4) * (ver === 1 ? 1152 : 576) / sr;
+    }
+    return null;
+  }
+
+  const keys43 = Array.from({ length: 10 }, (_, i) => 'secret_' + String(i + 1).padStart(2, '0'));
+  const miss43 = keys43.filter(k => !exists('audio/voice/' + k + '.mp3'));
+  if (miss43.length) {
+    ok('（讲解语音未生成，跳过时长反证：' + miss43.length + '/10 缺失）');
+  } else if (secList43 && secList43.length === 10) {
+    const rows = secList43.map(s => {
+      const k = 'secret_' + String(s.level).padStart(2, '0');
+      const n = (s.title + '。' + s.text).length;
+      const d = mp3Duration('audio/voice/' + k + '.mp3');
+      return { k, n, d, rate: d ? n / d : null };
+    });
+    const bad = rows.filter(r => r.d === null);
+    if (!bad.length) ok('十条讲解 mp3 均能读出时长（Xing 帧数换算，不依赖 ffmpeg）');
+    else err('时长解析失败（无 Xing/Info 帧数）：' + bad.map(r => r.k).join(','));
+
+    const slow = rows.filter(r => r.d && r.rate < 3.5);      // 念得过快 = 少念了内容
+    const fast = rows.filter(r => r.d && r.rate > 6.0);      // 念得过慢 = 异常拉长
+    if (!slow.length && !fast.length)
+      ok('十条讲解语速均落在 3.5–6.0 字/秒（实测 ' +
+        Math.min(...rows.map(r => r.rate)).toFixed(2) + '–' +
+        Math.max(...rows.map(r => r.rate)).toFixed(2) + '）→ 播的是整段');
+    else err('讲解语速异常（疑似截句/拉长）：' +
+      slow.concat(fast).map(r => r.k + '=' + (r.rate || 0).toFixed(2) + '字/秒').join(','));
+
+    const shortDur = rows.filter(r => r.d && r.d < 20);
+    if (!shortDur.length) ok('十条讲解时长均 ≥20s（实测 ' +
+      Math.min(...rows.map(r => r.d)).toFixed(1) + '–' + Math.max(...rows.map(r => r.d)).toFixed(1) + 's，与整段相称）');
+    else err('讲解时长过短（疑似只念了第一句）：' +
+      shortDur.map(r => r.k + '=' + r.d.toFixed(1) + 's').join(','));
+
+    // 反例自测：把「只念第一句」的假设代入同一套判定，必须立刻报错
+    const firstSent = secList43.map(s => (s.title + '。' + s.text.split('。')[0] + '。').length);
+    const wouldPass = rows.filter((r, i) => r.d && (firstSent[i] / r.d) >= 3.5 && (firstSent[i] / r.d) <= 6.0);
+    if (!wouldPass.length) ok('守卫自测：若只念第一句，语速判定必然报错（反例全部落网）');
+    else err('守卫自测失败：「只念第一句」也能蒙混过关 —— ' + wouldPass.map(r => r.k).join(','));
+  }
+
+  // --- 43.4 包体腾挪的落点：音效已转 MP3，主包回到预算内 ---
+  if (exists('scripts/compress_sfx.py')) ok('音效压缩脚本 scripts/compress_sfx.py 存在（腾挪可复现）');
+  else err('缺 scripts/compress_sfx.py（讲解整段化后主包会超 2MB）');
+  const stillWav = ['match', 'mismatch', 'win', 'drum', 'horn', 'cheer'].filter(s => exists('audio/' + s + '.wav'));
+  if (!stillWav.length) ok('6 条合成音已无 WAV 残留（172KB → 35KB，腾出 133KB）');
+  else err('WAV 残留会让腾挪白做：' + stillWav.map(s => s + '.wav').join(','));
+  if (exists('audio/tap.wav')) ok('tap.wav 保留（1.5KB + 零延迟，转 MP3 得不偿失）');
+  else err('audio/tap.wav 缺失（点击反馈音效）');
 }
 
 console.log('通过: ' + passed + ' | 错误: ' + errors.length + ' | 警告: ' + warnings.length);

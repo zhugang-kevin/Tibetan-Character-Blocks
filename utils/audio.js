@@ -1,12 +1,31 @@
 // utils/audio.js — 音效管理
-// 4个音效均为程序合成（sine 波 + 包络），免费可商用，无版权风险。
+// 7个音效均为程序合成（sine 波 + 包络），免费可商用，无版权风险。
+//
+// D52 体积腾挪（2026-10-08）：藏地密码讲解改为「播整段正文」后十条 mp3 +83KB，
+// 主包顶到 2MB 上限；这里把 6 条合成音由未压缩 PCM WAV 转 MP3（172KB → 35KB）
+// 一次腾出 133KB。见 scripts/compress_sfx.py。
+//   · tap **保留 WAV**：只有 1.5KB 省不出空间，且是「点一下立刻响」的即时反馈，
+//     MP3 编码器约 26ms 的前置延迟会把手感变钝 —— 收益为零、风险非零。
+//   · 其余 6 条（match / mismatch / win / drum / horn / cheer）走 MP3：
+//     单声道 / 22050Hz / 64kbps，合成音频谱极简，无可辨听感损失。
+//   · 仍留 wav 兜底：万一有人重跑 make_praise_audio.py 只产出了 WAV，声音照响，
+//     体积守卫会红，但玩家不会遭遇静音。
+var SFX_MP3 = { match: 1, mismatch: 1, win: 1, drum: 1, horn: 1, cheer: 1 };
 var cache = {};
 
 function get(name) {
   if (!cache[name]) {
     var ctx = wx.createInnerAudioContext();
-    ctx.src = '/audio/' + name + '.wav';
+    ctx.src = '/audio/' + name + (SFX_MP3[name] ? '.mp3' : '.wav');
     ctx.obeyMuteSwitch = true;
+    ctx.__triedWav = false;
+    ctx.onError(function () {
+      // mp3 缺失（例如重生成时只产出了 WAV）→ 退到同名 wav，只试一次
+      if (SFX_MP3[name] && !ctx.__triedWav) {
+        ctx.__triedWav = true;
+        try { ctx.src = '/audio/' + name + '.wav'; ctx.play(); } catch (e) { /* 静默 */ }
+      }
+    });
     cache[name] = ctx;
   }
   return cache[name];

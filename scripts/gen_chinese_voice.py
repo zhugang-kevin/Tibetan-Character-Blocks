@@ -29,6 +29,7 @@
 import argparse
 import asyncio
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -48,19 +49,40 @@ PRAISE = {
     'praise_5': ('你简直就是无敌', 24),
 }
 
-# 藏地密码讲解（精简版：一句话能听懂；完整文字在结算页与护照页展示）
-SECRETS = {
-    'secret_01': ('高原上的雪峰终年不化，是因为海拔越高气温越低。开始常年积雪的那条高度线，就叫雪线。', 16),
-    'secret_02': ('青稞炒熟磨成粉，就是糌粑。不用生火、不用筷子，抓起来就能吃，是长途行走的干粮。', 16),
-    'secret_03': ('牦牛的毛是高原上重要的织物原料。下雨时毛纤维吸潮膨胀，帐篷的缝隙会自己合拢挡雨。', 16),
-    'secret_04': ('高原冬季寒冷干燥、风大，是天然的冷库。牛肉切条挂在通风处，让风带走水分，就是风干肉。', 16),
-    'secret_05': ('茶从云南、四川压成茶砖，用马帮驮进高原，换回马匹与畜产品——这就是茶马古道。', 16),
-    'secret_06': ('藏文有三十个辅音字母，你在这款游戏里能见到全部三十个。走完十课，就认过一遍字母表。', 16),
-    'secret_07': ('藏文里那个小小的点，叫音节点。它不是标点，作用更像空格，把音节一个个分开。', 16),
-    'secret_08': ('哈达是一条长巾，最常见的颜色是白色。递哈达时要双手捧起，微微躬身。', 16),
-    'secret_09': ('藏式木碗轻、不烫手、摔不碎，出门就揣在怀里，一人一碗、随身携带。', 16),
-    'secret_10': ('秋收之前，人们绕着田地走一圈，看看青稞的长势，也庆祝即将到来的丰收。这叫望果。', 16),
-}
+# 藏地密码讲解：**正文直接取自 data/secrets.js（播整段，不截句）**
+# ⚠️ D52 修复的真实缺陷：此前本文件硬编码了一份「一句话精简版」，于是 mp3 里只有第一句，
+#    而结算页/护照页显示的是完整三段正文 —— 听到的比看到的短一大截。
+#    正解 = 单一事实源：讲解文本只在 data/secrets.js 里写一次，这里生成时按关卡号取全文。
+#    代价测算：全文约 130 字，16kHz / 10kbps 单声道 ≈ 26KB（原精简版 16kbps 也要 20KB），
+#    十条合计 +90KB，由 images/ 侧预算腾挪（见 prepare-assets.py 的 D52 注释）。
+def load_secrets():
+    """从 data/secrets.js 读出十则的「标题 + 完整正文」（title。text，text 为多段拼接）。
+
+    为什么不在 Python 里再写一份：任何第二份文本都必然与屏幕上的正文漂移，
+    「只播第一句」正是这么来的。取不到 / 取不全（≠10 条或某条过短）直接报错退出，
+    宁可生成失败，也不静默播半截。
+    """
+    p = os.path.join(ROOT, 'data', 'secrets.js')
+    if not os.path.exists(p):
+        raise SystemExit('✗ 缺少 data/secrets.js（藏地密码正文的唯一来源）')
+    src = open(p, encoding='utf-8').read()
+    pat = re.compile(
+        r"level:\s*(\d+)\s*,\s*key:\s*'[^']*'\s*,\s*tag:\s*'[^']*'\s*,\s*title:\s*'([^']*)'\s*,\s*"
+        r"text:\s*((?:'[^']*'\s*\+?\s*)+)", re.S)
+    out = {}
+    for m in pat.finditer(src):
+        lv, title, body = int(m.group(1)), m.group(2), m.group(3)
+        frags = re.findall(r"'([^']*)'", body)
+        text = (title + '。' if title else '') + ''.join(frags)
+        if len(text) < 80:
+            raise SystemExit('✗ 第 %d 则讲解正文过短（%d 字）——是否只截到了第一句？' % (lv, len(text)))
+        out['secret_%02d' % lv] = (text, 10)     # 10kbps：全文 130 字 ≈ 26KB
+    if len(out) != 10:
+        raise SystemExit('✗ data/secrets.js 解析出 %d 则（应为 10）——正则需同步更新' % len(out))
+    return out
+
+
+SECRETS = load_secrets()
 
 ITEMS = dict(PRAISE)
 ITEMS.update(SECRETS)
@@ -70,6 +92,10 @@ ITEMS['mantra'] = ('嗡 嘛 呢 叭 咪 吽', 24)
 # 单条体积上限（KB）：讲解 22KB；激励 8KB
 LIMIT = {k: (8 if k.startswith('praise') else 22) for k in ITEMS}
 LIMIT['mantra'] = 18
+# D52：讲解改为播整段（约 130 字 @10kbps ≈ 26KB）→ 单条上限随之放宽到 30KB；
+#      仍要卡上限：一旦有人把 bitrate 调回 16k 或塞进更长的正文，这里会先红。
+for _k in SECRETS:
+    LIMIT[_k] = 32
 
 
 def synth_one(key, text, kbps):

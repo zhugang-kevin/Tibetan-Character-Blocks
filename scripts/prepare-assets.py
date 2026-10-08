@@ -45,7 +45,10 @@ KB = 1024
 # 预算表（与规格书 §七 一致）
 BUDGET = {
     'icon': 30 * KB,      # 单张
-    'reveal': 26 * KB,    # 单张（WebP；10 张 ≤260KB。D50 起从 33 收紧——腾体积给灯火跳窗改版资产，画作颗粒密，26KB 仍高于可感知劣化点）
+    # D52 曾把本表整体再收一档（reveal 22 / bg_global 46 / scene 92）去填「讲解播整段」的
+    # +83KB；随后找到更好的腾挪点（合成音效 WAV→MP3，-133KB，见 scripts/compress_sfx.py），
+    # 于是**把画质还回去** —— 能不牺牲画面就别牺牲，体积问题在它该在的地方解决。
+    'reveal': 26 * KB,    # 单张（WebP；10 张 ≤260KB。D50 起从 33 收紧——腾体积给灯火跳窗改版资产，画作颗粒密，26KB）
     'bg_global': 52 * KB,
     'bg_global_h5': 24 * KB,   # H5 单文件版内联的小图（preview/assets/，不进小程序包）
     'bg_sky': 40 * KB,
@@ -56,7 +59,7 @@ BUDGET = {
     'logo_200': 12 * KB,
     'logo_watermark': 6 * KB,
     'tashi': 25 * KB,          # E1 藏文金字（Canvas 兜底图）
-    'scene': 108 * KB,    # 单张场景照片（D50 起从 130 收紧——照片上蒙了夜色罩，q46 档实测 102-106KB）
+    'scene': 108 * KB,   # 单张场景照片（D50 起从 130 收紧——照片上蒙了夜色罩，颗粒被罩子吃掉一半，108KB 够用）
 }
 
 ICON_ALIAS = [
