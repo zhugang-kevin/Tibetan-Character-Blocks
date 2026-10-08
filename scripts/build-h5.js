@@ -61,7 +61,7 @@ const IMAGES = {
   watermark: dataUrl('images/logo-watermark.png'),
   bgSky: dataUrl('images/bg-sky.png'),
   bgGround: dataUrl('images/bg-ground.png'),
-  bgGlobal: dataUrl('images/bg-global-h5.jpg'),
+  bgGlobal: dataUrl('preview/assets/bg-global-h5.jpg'),
   pattern: dataUrl('images/pat-tile.png'),
   // 精灵表字母（试点 ཀ）：全部该字母方块共用一张 2×2 四色帧图
   spriteKa: dataUrl('images/sprite_ka.png')
@@ -102,7 +102,7 @@ const VOICES = {};
     const mm = /^(.*)\.(wav|mp3)$/i.exec(f);
     if (!mm) return;
     const id = mm[1], ext = mm[2].toLowerCase();
-    if (pick[id] === 'wav') return;                       // wav（TTS 产物）优先于 mp3
+    if (pick[id] === 'mp3') return;                       // mp3 优先（中文播报与压缩后的元素音）；wav 兼容保留
     pick[id] = ext;
     const buf = fs.readFileSync(path.join(dir, f));
     VOICES[id] = (ext === 'wav' ? 'data:audio/wav;base64,' : 'data:audio/mpeg;base64,') + buf.toString('base64');
@@ -147,7 +147,7 @@ html = html.replace('/*__PHOTO__*/', JSON.stringify(PHOTO));
 console.log('  场景照片注入：' + Object.keys(PHOTO).length + ' 张（images/scene/*' + (Object.keys(PHOTO).length ? '' : ' 暂无，保持渐变底') + '）');
 console.log('  真实图标注入：' + Object.keys(ICON_ART).length + ' 个（images/icons/*' +
   (Object.keys(ICON_ART).length ? '' : ' 暂无，走程序线稿') + '）');
-console.log('  语音注入：' + Object.keys(VOICES).length + ' 条（audio/voice/*.wav' +
+console.log('  语音注入：' + Object.keys(VOICES).length + ' 条（audio/voice/*.mp3|wav' +
   (Object.keys(VOICES).length ? '' : ' 尚未录制，体验版静默') + '）');
 
 // ---------- 3. 内联脚本语法自检 ----------

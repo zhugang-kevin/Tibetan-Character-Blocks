@@ -479,6 +479,11 @@ Page({
     audio.tier(dec.level);
     // 文案开关只关「文字」，不关音效与元素发音（发音属学习闭环，见 D34）
     if (dec.show && dec.text && !this.data.praiseOff) this.showPraise(dec);
+    // 中文激励播报（2026-10-08 用户要求）：档位 ≥2 且未关文案时，播「很好/非常好/你好厉害/你简直就是无敌」
+    // 与文字同门控（praiseOff 一关全关）；音频为预生成静态资产（scripts/gen_chinese_voice.py）
+    if (dec.show && dec.level >= 2 && !this.data.praiseOff) {
+      audio.speak('praise_' + Math.min(5, dec.level));
+    }
 
     var id = a.id;
     var firstTime = !storage.isCardSeen(id);
@@ -698,6 +703,12 @@ Page({
     this.cardTimer = setTimeout(function () {
       that.setData({ showCard: false });
     }, CARD_AUTO_MS);
+  },
+
+  // 用户开始操作文化卡（阅读 / 准备点「点击播放藏文读音」）：暂停自动收起——
+  // 2026-10-08 用户反馈：卡片 5.2s 自动收起，手指还没点到按钮就消失，观感像「点不了」
+  holdCard: function () {
+    if (this.cardTimer) { clearTimeout(this.cardTimer); this.cardTimer = null; }
   },
 
   dismissCard: function () {

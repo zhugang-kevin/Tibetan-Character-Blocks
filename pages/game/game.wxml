@@ -95,7 +95,7 @@
   </view>
 
   <!-- 文化卡（首次发现滑出 · 藏纸卷轴样式 · 不打断游戏） -->
-  <view class="card-sheet {{showCard ? 'show' : ''}}" wx:if="{{card}}">
+  <view class="card-sheet {{showCard ? 'show' : ''}}" wx:if="{{card}}" bindtouchstart="holdCard">
     <view class="scroll-rod"></view>
     <view class="card-hero" style="background: linear-gradient(135deg, {{cardColor}}, {{cardColorDark}});">
       <view class="hero-pat"></view>

@@ -64,6 +64,7 @@
     </view>
     <view class="secret-title">{{secret.title}}</view>
     <view class="secret-text">{{secret.text}}</view>
+    <view class="secret-listen" bindtap="speakSecret">🔊 听讲解（中文语音）</view>
     <view class="secret-note">已收入文化护照 · 藏地密码 {{secretGot}} / {{secretTotal}}</view>
   </view>
 

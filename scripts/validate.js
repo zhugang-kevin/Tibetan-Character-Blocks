@@ -892,7 +892,7 @@ section('17. 留存系统与首页重构（PRD v4）');
   const PAGES = ['index', 'game', 'result', 'cert', 'passport', 'benefits'];
 
   // 18.1 底图资产存在（小程序全尺寸 + H5 压缩版）
-  ['images/bg-global.jpg', 'images/bg-global-h5.jpg'].forEach(f => {
+  ['images/bg-global.jpg', 'preview/assets/bg-global-h5.jpg'].forEach(f => {
     if (exists(f)) ok('底图资产存在：' + f);
     else err('缺少底图资产：' + f);
   });
@@ -950,7 +950,7 @@ section('17. 留存系统与首页重构（PRD v4）');
 
   // 18.8 镜像构建脚本必须内联全局底图
   const buildSrc = read('scripts/build-h5.js');
-  if (buildSrc.indexOf('bg-global-h5.jpg') > -1 && buildSrc.indexOf('bgGlobal') > -1)
+  if (buildSrc.indexOf('preview/assets/bg-global-h5.jpg') > -1 && buildSrc.indexOf('bgGlobal') > -1)
     ok('build-h5.js 已内联全局底图（bg-global-h5.jpg）');
   else err('build-h5.js 未内联全局底图');
 })();
@@ -1975,10 +1975,17 @@ section('29. 通关揭图（十关秘境图 · 零金额 · 不新增存储字�
     const noTib = rvList29.filter(r => !r.tibetan || !r.roman || !r.name || !r.desc);
     if (!noTib.length) ok('每条揭图都有 藏文名 + 拉丁转写 + 中文名 + 释义');
     else err('揭图缺字段：' + noTib.map(r => r.level).join(','));
-    // 藏文排版铁律：音节后跟 tsheg，末音节不带 tsheg（不得出现行首 tsheg / 双 tsheg）
-    const badTib = rvList29.filter(r => /་\s*་|^་|་\s*$/.test(r.tibetan || ''));
-    if (!badTib.length) ok('揭图藏文名符合 tsheg 规范（无行首/行尾/连续 tsheg）');
-    else err('揭图藏文名 tsheg 用法可疑：' + badTib.map(r => r.name).join('/'));
+    // 藏文书写规范（2026-10-08 用户拍板修订）：**完整词尾必须带一个 ་**（展示态）；
+    //   仍禁止：行首 ་、连续 ་་。依据：用户原话「每一个完整藏文字符后面都应该有 ་」。
+    const badTib = rvList29.filter(r => {
+      const t = (r.tibetan || '').trim();
+      if (!t) return true;
+      if (!/[་།]$/.test(t)) return true;     // 词尾必须带 ་ 或 །
+      if (/^་|་་/.test(t)) return true;       // 禁止行首 ་ / 连续 ་
+      return false;
+    });
+    if (!badTib.length) ok('揭图藏文名符合书写规范（词尾带 ་；无行首/连续 ་）');
+    else err('揭图藏文名不符合书写规范（词尾应带 ་）：' + badTib.map(r => r.name).join('/'));
   }
 
   // 29.2 图片资产：存在 + 单张体积预算（主包 2MB 硬约束）
@@ -3800,6 +3807,83 @@ section('38. 生产上线守卫（主包体积 / 隐私授权 / 工程配置）'
       ok('规格书含 G 组照片指令与色罩规范');
     else err('规格书缺 G 组（照片指令）或色罩规范');
   }
+}
+
+// ---------- 39. 中文播报与藏文书写细则（D48，2026-10-08 用户反馈） ----------
+// 三件事：① 激励鼓励中文播报（很好/非常好/你好厉害/你简直就是无敌）
+//         ② 藏地密码「听讲解」中文播报（10 条精简版）
+//         ③ 藏文书写细则：完整词尾必须带 ་（用户拍板，例：གངས་རི → གངས་རི་）
+section('39. 中文播报与藏文书写细则');
+{
+  // 39.1 生成脚本（可复现、离线预生成、带体积口径）
+  if (exists('scripts/gen_chinese_voice.py')) {
+    const g = read('scripts/gen_chinese_voice.py');
+    [['edge-tts', '合成引擎（微软 Edge TTS，免费无 Key）'], ['libmp3lame', 'ffmpeg 压缩到目标码率'],
+     ["'praise_2'", '激励词表（praise_2..5）'], ["'secret_01'", '讲解词表（secret_01..10）'], ['LIMIT', '单条体积上限']]
+      .forEach(([k, label]) => {
+        if (g.indexOf(k) > -1) ok('gen_chinese_voice.py 含 ' + label);
+        else err('gen_chinese_voice.py 缺 ' + label + '（' + k + '）');
+      });
+  } else err('缺 scripts/gen_chinese_voice.py（中文播报无法复现）');
+
+  // 39.2 资产条件校验：存在即查体积（未生成时跳过，不阻塞）
+  const praiseKeys = ['praise_2', 'praise_3', 'praise_4', 'praise_5'];
+  const haveP = praiseKeys.filter(k => exists('audio/voice/' + k + '.mp3'));
+  if (haveP.length === praiseKeys.length) {
+    const overP = haveP.filter(k => fs.statSync(path.join(ROOT, 'audio/voice/' + k + '.mp3')).size > 8 * 1024);
+    if (!overP.length) ok('激励语音 4 条就位且 ≤8KB/条');
+    else err('激励语音超限：' + overP.join(','));
+  } else if (haveP.length) err('激励语音不完整（' + haveP.length + '/4）');
+  else ok('（激励语音尚未生成，跳过——生成命令见 scripts/gen_chinese_voice.py）');
+
+  const secretKeys = Array.from({ length: 10 }, (_, i) => 'secret_' + String(i + 1).padStart(2, '0'));
+  const haveS = secretKeys.filter(k => exists('audio/voice/' + k + '.mp3'));
+  if (haveS.length === secretKeys.length) {
+    const overS = haveS.filter(k => fs.statSync(path.join(ROOT, 'audio/voice/' + k + '.mp3')).size > 22 * 1024);
+    if (!overS.length) ok('藏地密码讲解 10 条就位且 ≤22KB/条');
+    else err('讲解语音超限：' + overS.join(','));
+  } else if (haveS.length) err('讲解语音不完整（' + haveS.length + '/10）');
+  else ok('（讲解语音尚未生成，跳过）');
+
+  // 39.3 接线：激励播报两端 + 听讲解两端 + 双扩展名回退 + 卡片触摸暂停
+  if (read('pages/game/game.js').indexOf("audio.speak('praise_'") > -1) ok('小程序激励播报接线（档位 ≥2，与文案同门控）');
+  else err('小程序缺激励播报接线');
+  const tpl39 = read('preview/template.html');
+  if (tpl39.indexOf("speak('praise_'") > -1) ok('体验版激励播报接线');
+  else err('体验版缺激励播报接线');
+  if (read('pages/result/result.wxml').indexOf('bindtap="speakSecret"') > -1 &&
+      read('pages/result/result.js').indexOf("'secret_'") > -1)
+    ok('小程序藏地密码「听讲解」接线');
+  else err('小程序缺「听讲解」接线');
+  if (tpl39.indexOf('speakSecretListen') > -1 && tpl39.indexOf('听讲解') > -1)
+    ok('体验版「听讲解」接线');
+  else err('体验版缺「听讲解」接线');
+  const au39 = read('utils/audio.js');
+  if (au39.indexOf("'.mp3'") > -1 && au39.indexOf("'.wav'") > -1 && au39.indexOf('__triedWav') > -1)
+    ok('发音双扩展名回退（mp3 主 / wav 备）');
+  else err('发音未接双扩展名回退');
+  if (read('pages/game/game.wxml').indexOf('bindtouchstart="holdCard"') > -1 &&
+      read('pages/game/game.js').indexOf('holdCard: function') > -1 &&
+      tpl39.indexOf("$('card-panel').addEventListener('pointerdown'") > -1)
+    ok('文化卡触摸暂停自动收起（两端）');
+  else err('文化卡缺触摸暂停（点按钮前卡片会先消失）');
+
+  // 39.4 书写细则守卫：展示层单词词尾必须带 ་（含反例自测）
+  const cardsSrc39 = read('data/cards.js');
+  const subtitles39 = [...cardsSrc39.matchAll(/藏语：([\u0F00-\u0FFF]+)/g)].map(m => m[1]);
+  const badSub39 = subtitles39.filter(w => !/[་།]$/.test(w) || /^་|་་/.test(w));
+  if (subtitles39.length && !badSub39.length)
+    ok('文化卡藏语名全部符合书写规范（' + subtitles39.length + ' 条，词尾带 ་）');
+  else err('文化卡藏语名不合书写规范：' + (badSub39.join(' ') || '（一条都没扫到？！）'));
+  if (/[་།]$/.test('གངས་རི་') && !/[་།]$/.test('གངས་རི'))
+    ok('守卫自测：缺尾 ་ 可被检出（གངས་རི 判错 / གངས་རི་ 判对）');
+  else err('守卫自测失败（尾 ་ 判定有问题）');
+  // 每日祝福的独立藏文值同样检查
+  const daily39 = read('data/daily.js');
+  const gr39 = [...daily39.matchAll(/tibetan:\s*'([^']*)'/g)].map(m => m[1]);
+  const badD39 = gr39.filter(w => w && !/[་།]$/.test(w.trim()) || /^་|་་/.test(w));
+  if (gr39.length && !badD39.length) ok('雪域日签藏文值全部带尾 ་（' + gr39.length + ' 条）');
+  else err('日签藏文值不合规范：' + badD39.join(' / '));
 }
 
 console.log('通过: ' + passed + ' | 错误: ' + errors.length + ' | 警告: ' + warnings.length);

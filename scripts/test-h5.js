@@ -1092,11 +1092,20 @@ function mockCtx(sink) {
   ev('showCard("letter_01")');
   await sleep(60);
   check('可弹出卷轴文化卡', $('#card-panel').classList.contains('show'));
+  // 有语音时：点击 → 走播报链路（模拟已就位的发音文件）
+  ev('VOICES["letter_01"] = "data:audio/mpeg;base64,AA"');
   const pronBeforeCard = ev('state.pronounceCount');
   $('#card-speak').click();
   await sleep(60);
-  check('点喇叭播放该元素藏文读音', ev('state.pronounceCount') === pronBeforeCard + 1,
+  check('点喇叭播放该元素藏文读音（有语音时）', ev('state.pronounceCount') === pronBeforeCard + 1,
     pronBeforeCard + ' → ' + ev('state.pronounceCount'));
+  // 无语音时：给明确提示而不是静默（2026-10-08 用户反馈「点了没反应」）
+  ev('delete VOICES["letter_01"]; state.pronounceCount = 0');
+  $('#card-speak').click();
+  await sleep(60);
+  check('无语音时点击给明确提示（不静默）',
+    $('#toast-text').textContent.indexOf('即将上线') > -1 && ev('state.pronounceCount') === 0,
+    $('#toast-text').textContent + ' | count=' + ev('state.pronounceCount'));
   $('#card-know').click();
   await sleep(60);
   check('点「知道了」收起文化卡', !$('#card-panel').classList.contains('show'));
@@ -1771,8 +1780,9 @@ function mockCtx(sink) {
       'var s={};for(var j=0;j<10;j++){if(s[REVEALS[j].img])return false;s[REVEALS[j].img]=1;}return true;})()') === true);
     check('每条揭图都有 藏文/拉丁/中文名/释义',
       ev('REVEALS.every(function(r){return r.tibetan&&r.roman&&r.name&&r.desc;})') === true);
-    check('揭图藏文名符合 tsheg 规范（无行首/行尾/连续 tsheg）',
-      ev('REVEALS.every(function(r){return !/་\\s*་|^་|་\\s*$/.test(r.tibetan);})') === true);
+    // 新书写规范（2026-10-08 用户拍板）：完整词尾必须带 ་；禁止行首 ་ / 连续 ་
+    check('揭图藏文名符合书写规范（词尾带 ་；无行首/连续 ་）',
+      ev('REVEALS.every(function(r){return /[་།]$/.test(r.tibetan) && !/^་|་་/.test(r.tibetan);})') === true);
     check('揭图数据层未出现 D25 红线符号', ev(
       '(function(){var s=JSON.stringify(REVEALS);' +
       'return s.indexOf("莲花")===-1&&s.indexOf("经幡")===-1&&s.indexOf("佛塔")===-1&&s.indexOf("酥油灯")===-1;})()') === true);
@@ -1782,7 +1792,7 @@ function mockCtx(sink) {
     check('结算页揭晓本关秘境图', $('#res-reveal .reveal-name') && $('#res-reveal .reveal-name').textContent === '雪山');
     check('揭晓卡图为内联 data URL', String(($('#res-reveal .reveal-art') || {}).src !== undefined
       ? $('#res-reveal .reveal-art').getAttribute('src') : '').indexOf('data:image/png;base64,') === 0);
-    check('藏文名 + 拉丁转写上屏', $('#res-reveal .rt-t').textContent === 'གངས་རི'
+    check('藏文名 + 拉丁转写上屏', $('#res-reveal .rt-t').textContent === 'གངས་རི་'
       && $('#res-reveal .rt-roman').textContent === 'gangs ri');
     check('揭晓卡承诺「已收入文化护照」且报图鉴进度 1 / 10',
       $('#res-reveal .reveal-note').textContent.indexOf('已收入文化护照') > -1

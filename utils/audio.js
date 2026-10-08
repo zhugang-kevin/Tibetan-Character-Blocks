@@ -23,7 +23,7 @@ function play(name) {
 }
 
 // ---- 藏文发音（Gate 1 P0：每次配对成功都朗读该元素）----
-// 发音音频放置于 audio/voice/{元素id}.wav（letter_01..30 / icon_01..04；
+// 发音音频放置于 audio/voice/{元素id}.mp3 或 .wav（双扩展名，mp3 优先；letter_01..30 / icon_01..04；
 // 由 scripts/gen_voice.py 的 TTS 预生成或真人录音，规格 16kHz 单声道 16bit WAV）。
 // 文件缺失时静默回退（onError 忽略），不阻塞游戏流程。
 // 录音规格：单声道、128kbps、每条 0.5-1.5s。
@@ -37,9 +37,17 @@ function pronounce(id) {
   try {
     if (!voiceCtx[id]) {
       var c = wx.createInnerAudioContext();
-      c.src = '/audio/voice/' + id + '.wav';
+      // 双扩展名（2026-10-08）：mp3 为主（中文播报 praise_*/secret_* 与压缩后的元素音），
+      // 失败自动回退 .wav（天翼 TTS 原始产物）；两个都没有时静默，不影响游戏。
+      c.__triedWav = false;
+      c.src = '/audio/voice/' + id + '.mp3';
       c.obeyMuteSwitch = true;
-      c.onError(function () { /* 无录音文件，静默 */ });
+      c.onError(function () {
+        if (!c.__triedWav) {
+          c.__triedWav = true;
+          try { c.src = '/audio/voice/' + id + '.wav'; c.play(); } catch (e) { /* 静默 */ }
+        }
+      });
       voiceCtx[id] = c;
     }
     var v = voiceCtx[id];

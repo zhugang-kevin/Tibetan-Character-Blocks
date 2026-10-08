@@ -10,7 +10,7 @@ var tibText = require('../../utils/tibetan-text');
 var privacy = require('../../utils/privacy');
 
 // 证书顶部的藏文装饰语：བོད་ཡིག་སློབ་སྦྱོང（藏文学习）
-var CERT_TIB = 'བོད་ཡིག་སློབ་སྦྱོང';
+var CERT_TIB = 'བོད་ཡིག་སློབ་སྦྱོང་';
 
 Page({
   data: {

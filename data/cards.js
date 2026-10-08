@@ -73,7 +73,7 @@ module.exports = [
     title: 'ཉ',
     subtitle: 'nya · 尼亚',
     description: '藏文第八个辅音字母，是一个舌面鼻音。',
-    funFact: '「ཉ」在藏文中常出现在词首，例如「ཉི་མ」意为「太阳」。'
+    funFact: '「ཉ」在藏文中常出现在词首，例如「ཉི་མ་」意为「太阳」。'
   },
   {
     id: 'letter_09',
@@ -100,7 +100,7 @@ module.exports = [
     title: 'ད',
     subtitle: 'da · 达（浊音）',
     description: '藏文第十一个辅音字母，发音时声带振动，是浊音。',
-    funFact: '「བོད」（西藏）的收尾字母就是「ད」，它在这里不单独发音，只给前面的音节收尾。'
+    funFact: '「བོད་」（西藏）的收尾字母就是「ད」，它在这里不单独发音，只给前面的音节收尾。'
   },
   {
     id: 'letter_12',
@@ -145,7 +145,7 @@ module.exports = [
     title: 'མ',
     subtitle: 'ma · 玛（鼻音）',
     description: '藏文第十六个辅音字母，是双唇鼻音。',
-    funFact: '「མེ」是火、「མི」是人——词典里「མ」打头的词要排好几页。'
+    funFact: '「མེ་」是火、「མི་」是人——词典里「མ」打头的词要排好几页。'
   },
   {
     id: 'letter_17',
@@ -163,7 +163,7 @@ module.exports = [
     title: 'ཚ',
     subtitle: 'tsha · 擦（送气）',
     description: '藏文第十八个辅音字母，是「ཙ」的送气版本。',
-    funFact: '「ཚོང」（买卖）以「ཚ」打头，八廓街的商铺招牌上经常能见到它。'
+    funFact: '「ཚོང་」（买卖）以「ཚ」打头，八廓街的商铺招牌上经常能见到它。'
   },
   {
     id: 'letter_19',
@@ -199,7 +199,7 @@ module.exports = [
     title: 'ཟ',
     subtitle: 'za · 萨（浊音）',
     description: '藏文第二十二个辅音字母，是浊音。',
-    funFact: '「ཟ」就是「吃」——「ཟ་བ」意为食物，这个字每天都要说上好几遍。'
+    funFact: '「ཟ」就是「吃」——「ཟ་བ་」意为食物，这个字每天都要说上好几遍。'
   },
   {
     id: 'letter_23',
@@ -217,7 +217,7 @@ module.exports = [
     title: 'ཡ',
     subtitle: 'ya · 亚',
     description: '藏文第二十四个辅音字母，发音像汉语的「亚」的声母。',
-    funFact: '「ཡི」是藏文里最常见的虚词之一，相当于汉语的「的」。'
+    funFact: '「ཡི་」是藏文里最常见的虚词之一，相当于汉语的「的」。'
   },
   {
     id: 'letter_25',
@@ -226,7 +226,7 @@ module.exports = [
     title: 'ར',
     subtitle: 'ra · 热（卷舌）',
     description: '藏文第二十五个辅音字母，发音时舌尖轻卷，接近「热」的声母。',
-    funFact: '「མར」（酥油）的收尾就是「ར」——它是十个后加字里最常露面的一员。'
+    funFact: '「མར་」（酥油）的收尾就是「ར」——它是十个后加字里最常露面的一员。'
   },
   {
     id: 'letter_26',
@@ -244,7 +244,7 @@ module.exports = [
     title: 'ཤ',
     subtitle: 'sha · 夏（清音）',
     description: '藏文第二十七个辅音字母，发音像汉语「夏」的声母。',
-    funFact: '「ཤམ་བྷ་ལ」（香巴拉）以「ཤ」开头——传说中高原深处的理想之地。'
+    funFact: '「ཤམ་བྷ་ལ་」（香巴拉）以「ཤ」开头——传说中高原深处的理想之地。'
   },
   {
     id: 'letter_28',
@@ -262,7 +262,7 @@ module.exports = [
     title: 'ཧ',
     subtitle: 'ha · 哈',
     description: '藏文第二十九个辅音字母，是喉部发出的清擦音。',
-    funFact: '笑出声的「哈哈」用藏文写出来就是「ཧ་ཧ」——三十个辅音里它最接近笑声。'
+    funFact: '笑出声的「哈哈」用藏文写出来就是「ཧ་ཧ་」——三十个辅音里它最接近笑声。'
   },
   {
     id: 'letter_30',
@@ -278,7 +278,7 @@ module.exports = [
     type: 'icon',
     tibetan: '',
     title: '吉祥结',
-    subtitle: '藏语：དཔལ་བེའུ',
+    subtitle: '藏语：དཔལ་བེའུ་',
     description: '藏传佛教八吉祥之一，象征佛陀的无限智慧与慈悲。',
     funFact: '吉祥结没有起点也没有终点，代表佛法循环不息。'
   },
@@ -287,7 +287,7 @@ module.exports = [
     type: 'icon',
     tibetan: '',
     title: '青稞',
-    subtitle: '藏语：ནས',
+    subtitle: '藏语：ནས་',
     description: '高原上的主粮作物，耐寒耐旱，籽粒可炒熟磨成糌粑，也可酿青稞酒。',
     funFact: '青稞是大麦的一支，在海拔四千米以上依然能结实成熟。'
   },
@@ -296,16 +296,16 @@ module.exports = [
     type: 'icon',
     tibetan: '',
     title: '雪山',
-    subtitle: '藏语：གངས་རི',
+    subtitle: '藏语：གངས་རི་',
     description: '西藏最典型的地貌象征，代表高原的纯净与崇高。',
-    funFact: '藏语中「གངས་རི」直译就是「雪的山」，冈仁波齐是其中最神圣的一座。'
+    funFact: '藏语中「གངས་རི་」直译就是「雪的山」，冈仁波齐是其中最神圣的一座。'
   },
   {
     id: 'icon_04',
     type: 'icon',
     tibetan: '',
     title: '牦牛',
-    subtitle: '藏语：གཡག',
+    subtitle: '藏语：གཡག་',
     description: '被称作「高原之舟」，驮运、乳食、毛帐都离不开它，是高原生活的老伙伴。',
     funFact: '牦牛的长毛一直垂到腿边，像一条厚厚的裙子，风雪里也冻不着。'
   }

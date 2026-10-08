@@ -247,6 +247,14 @@ Page({
     audio.stopVoice();
   },
 
+  // 藏地密码「听讲解」：播放预生成的中文讲解（audio/voice/secret_NN.mp3，与当前关卡同号）
+  speakSecret: function () {
+    var n = parseInt(this.data.level, 10) || 0;
+    if (n < 1 || n > 10) return;
+    var name = 'secret_' + (n < 10 ? '0' + n : '' + n);
+    if (audio.speak(name)) tracker.track('secret_pronounce');
+  },
+
   goHome: function () {
     wx.redirectTo({ url: '/pages/index/index' });
   },
@@ -385,12 +393,12 @@ Page({
         getApp().globalData && getApp().globalData.fontLoaded);
       if (fontOk) {
         ctx.font = '500 92px "Noto Serif Tibetan", serif';
-        tibText.drawTibetanWrapped(ctx, 'བཀྲ་ཤིས་བདེ་ལེགས', W / 2, 240, W - 160, 130);
+        tibText.drawTibetanWrapped(ctx, 'བཀྲ་ཤིས་བདེ་ལེགས་', W / 2, 240, W - 160, 130);
       } else if (blessImgs.tashi) {
         ctx.drawImage(blessImgs.tashi, W / 2 - 300, 150, 600, 197);
       } else {
         ctx.font = '500 92px "Noto Serif Tibetan", "Microsoft Himalaya", serif';
-        tibText.drawTibetanWrapped(ctx, 'བཀྲ་ཤིས་བདེ་ལེགས', W / 2, 240, W - 160, 130);
+        tibText.drawTibetanWrapped(ctx, 'བཀྲ་ཤིས་བདེ་ལེགས་', W / 2, 240, W - 160, 130);
       }
 
       // 分隔线

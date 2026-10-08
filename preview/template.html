@@ -773,6 +773,8 @@
   .break-fx.show { opacity: 1; transform: translate(-50%,-50%) scale(1.08); }
   /* 文化卡：藏纸卷轴形态（顶部卷轴杆 + 喇叭 + 知道了） */
   .scroll-rod { height: 8px; background: linear-gradient(180deg, #E8D9A8 0%, #B7950B 42%, #7A5F06 100%); box-shadow: 0 2px 6px rgba(0,0,0,.35); }
+  .secret-listen { margin-top: 9px; display: inline-block; padding: 6px 14px; border-radius: 999px;
+    background: #FBF4E2; border: 1px dashed rgba(183,149,11,.6); color: #8A6A12; font-size: 12px; cursor: pointer; }
   .card-speak {
     margin-top: 12px; display: flex; align-items: center; justify-content: center; gap: 8px;
     padding: 10px; border-radius: 10px; background: #FBF4E2;
@@ -3791,6 +3793,8 @@ function handleMatch(i, j) {
   // 档位音效（D34：一档一音）+ 赞美浮字（文案开关只关文字，不关音效与元素发音）
   audio.tier(praiseDec.level);
   if (praiseDec.show && praiseDec.text && !state.praiseOff) showPraise(praiseDec);
+  // 中文激励播报（2026-10-08）：档位 ≥2 且未关文案时播放，与文字同门控
+  if (praiseDec.show && praiseDec.level >= 2 && !state.praiseOff) speak('praise_' + Math.min(5, praiseDec.level));
 
   const id = a.id;
   if (state.collected.indexOf(id) === -1) state.collected.push(id);
@@ -4045,6 +4049,7 @@ function renderResult() {
         '<span class="secret-kind">' + secItem.tag + '</span></div>' +
       '<div class="secret-title">' + secItem.title + '</div>' +
       '<div class="secret-text">' + secItem.text + '</div>' +
+      '<div class="secret-listen" onclick="speakSecretListen(' + level + ')">🔊 听讲解（中文语音）</div>' +
       '<div class="secret-note">已收入文化护照 · 藏地密码 ' + secP.got + ' / ' + SECRETS.length + '</div>' +
     '</div>'
   ) : '';
@@ -4396,7 +4401,7 @@ function showPassport() {
 }
 
 /* ---------------- 藏文成长证书 ---------------- */
-const CERT_TIB = 'བོད་ཡིག་སློབ་སྦྱོང';
+const CERT_TIB = 'བོད་ཡིག་སློབ་སྦྱོང་';
 
 function showCert(stage) {
   const info = stageByNo(stage);
@@ -4703,6 +4708,14 @@ function showTip(text) {
   toastTimer = setTimeout(hideToast, 1700);
 }
 
+/* 藏地密码「听讲解」（结算页，2026-10-08）：中文讲解预生成资产
+   （audio/voice/secret_NN.mp3，构建时注入 VOICES；与小程序 result.js 的 speakSecret 同口径） */
+function speakSecretListen(lv) {
+  var m = Math.max(1, Math.min(10, Number(lv) || 1));
+  if (VOICES['secret_' + (m < 10 ? '0' + m : '' + m)]) speak('secret_' + (m < 10 ? '0' + m : '' + m));
+  else showTip('讲解语音即将上线');
+}
+
 function setBenefitMode(mode) {
   mode = bnNormalizeMode(mode);
   if (!mode) return;
@@ -4839,9 +4852,16 @@ $('reset-link').addEventListener('click', function () {
 $('pp-home').addEventListener('click', renderHome);
 $('cert-home').addEventListener('click', renderHome);
 $('bn-home').addEventListener('click', renderHome);
+// 用户开始操作文化卡（阅读 / 准备点「播放读音」）：暂停自动收起，避免点一半消失（2026-10-08）
+$('card-panel').addEventListener('pointerdown', function () { clearTimeout(cardTimer); cardTimer = null; });
 $('card-x').addEventListener('click', hideCard);
 // 藏纸卷轴文化卡：喇叭播放藏文读音 + 「知道了」收起（PRD 4.3，保持不打断游戏）
-$('card-speak').addEventListener('click', function () { if (state.cardId) pronounce(state.cardId); });
+$('card-speak').addEventListener('click', function () {
+  if (!state.cardId) return;
+  // 有录音/TTS 就播；暂时没有时给明确反馈，而不是静默（2026-10-08 用户反馈「点了没反应」）
+  if (VOICES[state.cardId]) pronounce(state.cardId);
+  else showTip('藏文发音即将上线，先看文字提示 🙂');
+});
 $('card-know').addEventListener('click', hideCard);
 // 点击卡片外任意处收起（不阻止牌面点击，游戏不中断）
 document.addEventListener('click', function (e) {
