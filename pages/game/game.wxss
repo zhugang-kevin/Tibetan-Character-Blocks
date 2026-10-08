@@ -915,3 +915,45 @@
   10%  { opacity: 1; transform: translate(0, -30rpx) rotate(-24deg) scale(1); }
   100% { opacity: 0; transform: translate(90rpx, -420rpx) rotate(260deg) scale(0.86); }
 }
+
+/* ====== D51 学习体系：长按放大预览 + 步数预算 ====== */
+.status-steps {
+  font-size: 22rpx;
+  color: #EBD9B4;
+  padding: 6rpx 16rpx;
+  border-radius: 999rpx;
+  background: rgba(36, 113, 163, 0.22);
+  border: 1rpx solid rgba(36, 113, 163, 0.45);
+}
+.status-steps.low { color: #FFF6DC; background: rgba(192, 57, 43, 0.5); border-color: rgba(192, 57, 43, 0.6); }
+.zoom-mask {
+  position: fixed;
+  left: 0; right: 0; top: 0; bottom: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(6, 14, 26, 0.72);
+}
+.zoom-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 400rpx;
+  height: 400rpx;
+  border-radius: 32rpx;
+  background: linear-gradient(180deg, #FDF6E3 0%, #F0E4C4 100%);
+  border: 2rpx solid rgba(212, 175, 55, 0.75);
+  box-shadow: 0 24rpx 60rpx rgba(0, 0, 0, 0.5);
+}
+.zoom-glyph {
+  font-size: 200rpx;
+  line-height: 1.1;
+  font-weight: 700;
+}
+.zoom-tip {
+  margin-top: 18rpx;
+  font-size: 22rpx;
+  color: #6B6455;
+}

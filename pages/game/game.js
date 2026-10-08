@@ -23,6 +23,9 @@ var photoAssets = require('../../data/photo-assets');   // D47 场景照片层�
 var tracker = require('../../utils/tracker');
 var obstacles = require('../../utils/obstacles');
 var board = require('../../utils/board');
+// D51 学习体系（15 级 × 150 关）：生成器 + 动态格子尺寸 + 藏文字形量算
+var learning = require('../../utils/learning');
+var grid = require('../../utils/grid');
 
 var GUIDE = [
   { title: '如何使用', text: '点击两张相同的藏文字母或文化图标，它们就会一起消失。' },
@@ -89,6 +92,14 @@ Page({
     // 渲染列表：绝对定位的方块（按 uid 稳定 key）。坐标用**百分比**表达 ——
     // translate 的百分比相对元素自身尺寸，所以不需要在 transform 里写 rpx 单位。
     pieces: [],
+    // D51 学习体系
+    zoomable: false,
+    zoom: { show: false, tibetan: '', color: '' },
+    learnName: '',
+    learnLv: 0,
+    learnStage: 0,
+    stepsBudget: 0,
+    stepsLeft: 0,
     tileW: 73,           // 统一牌宽（rpx）
     tileH: 88,           // 统一牌高（rpx）
     glyphSize: 45,       // 藏文字号（rpx）
@@ -170,8 +181,18 @@ Page({
   misses: 0,
 
   onLoad: function (query) {
-    var level = parseInt(query.level, 10) || 1;
-    var cfg = levelsData[level - 1];
+    // D51：支持两种入口
+    //   ① 老 10 关线：?level=N         → data/levels.js 的盘面配置（行为完全不变）
+    //   ② 学习体系线：?lv=N&stage=M     → utils/learning.js 生成的关卡（15 级 × 150 关）
+    //   未带 lv/stage 时走老线，零回归；学习线的 UI 入口（首页「学习体系」）在后续迭代接。
+    var queryLearn = { lv: parseInt(query.lv, 10) || 0, stage: parseInt(query.stage, 10) || 1 };
+    var stageCfg = queryLearn.lv ? learning.buildStage(queryLearn.lv, queryLearn.stage) : null;
+    this.learnCfg = stageCfg;                 // 非空 = 学习模式
+    this.runtimeTiles = stageCfg ? stageCfg.tiles : {};
+    this.stepsBudget = stageCfg ? stageCfg.steps : 0;
+
+    var level = stageCfg ? stageCfg.index : (parseInt(query.level, 10) || 1);
+    var cfg = stageCfg ? stageCfg : levelsData[level - 1];
     if (!cfg) {
       wx.redirectTo({ url: '/pages/index/index' });
       return;
@@ -206,7 +227,9 @@ Page({
     this.freed = [];
     for (var i = 0; i < this.board.slots; i++) this.freed.push(false);
 
-    wx.setNavigationBarTitle({ title: '第 ' + level + ' 课' });
+    wx.setNavigationBarTitle({
+      title: this.learnCfg ? ('L' + this.learnCfg.lv + ' · 第 ' + this.learnCfg.stage + ' 课') : ('第 ' + level + ' 课')
+    });
 
     // 正确率统计清零（本关重新计数）
     this.attempts = 0;
@@ -224,6 +247,17 @@ Page({
     var tileH = Math.round(tileW * 1.2);
     var boardW = cfg.cols * tileW + (cfg.cols - 1) * gap;
     var boardH = cfg.rows * tileH + (cfg.rows - 1) * gap;
+    // D51 学习体系：格子尺寸**反过来由列数决定**（cell = 屏宽 × 0.9 / cols，再扣间隙），
+    // 所以是「6×6 小格 → 3×3 大格」，不再套用 8 列基准。
+    var zoomable = false;
+    if (this.learnCfg) {
+      var sw = this.screenW();
+      var geo = grid.boardSize(this.learnCfg.lv, sw, gap);
+      tileW = tileH = geo.cell;                       // 正方格（藏文上下叠，长方格无用）
+      boardW = geo.width;
+      boardH = geo.height;
+      zoomable = grid.needsZoomPreview(this.learnCfg.lv);
+    }
 
     // 位置步进（百分比）：translate 的百分比相对元素自身 → 不需要在 transform 里写 rpx
     this.stepX = (tileW + gap) / tileW * 100;
@@ -243,6 +277,12 @@ Page({
       boardW: boardW,
       boardH: boardH,
       gap: gap,
+      zoomable: zoomable,
+      learnName: this.learnCfg ? this.learnCfg.name : '',
+      learnLv: this.learnCfg ? this.learnCfg.lv : 0,
+      learnStage: this.learnCfg ? this.learnCfg.stage : 0,
+      stepsBudget: this.stepsBudget,
+      stepsLeft: this.stepsBudget,
       reveal: rv ? { img: rv.img, name: rv.name, tibetan: rv.tibetan, roman: rv.roman, desc: rv.desc } : { img: '', name: '', tibetan: '', roman: '', desc: '' },
       revealPct: 0,
       praiseOff: praiseOff,
@@ -271,9 +311,17 @@ Page({
     }
   },
 
+  // 屏宽（px）：学习体系的格子尺寸按真实屏宽算（cell = 屏宽 × 0.9 / cols）
+  screenW: function () {
+    try {
+      if (wx.getWindowInfo) return wx.getWindowInfo().windowWidth || 375;  // 官方首选（已替代 getSystemInfoSync）
+    } catch (e) { /* 回退 */ }
+    try { return wx.getSystemInfoSync().windowWidth || 375; } catch (e2) { return 375; }
+  },
+
   // 造一张牌（含全部显示字段）。board.js 只负责把它在盘面上搬来搬去。
   makeTile: function (id, uid) {
-    var el = elements[id];
+    var el = elements[id] || this.runtimeTiles[id] || elements.letter_01;
     var t = {
       uid: uid,
       id: id,
@@ -300,7 +348,33 @@ Page({
       t.spriteSrc = '/images/sprite_' + spriteKey + '.png';
       t.pieceStyle = ''; // 质感烘在帧里，不用 CSS 渐变
     }
+    // D51：学习体系的字是叠加 3~4 部件的复合音节（如 བཀི），统一字号必然溢出格子，
+    // 所以按**每张牌自己的字**算缩放（measureTibetanSyllable → calcScale）。
+    if (this.learnCfg) {
+      var sw = this.screenW();
+      var cell = grid.cellPx(this.learnCfg.lv, sw);
+      var baseFont = Math.round(cell * grid.FONT_RATIO);
+      var fit = grid.calcScale(t.tibetan, cell, baseFont, null);
+      // 小程序 style 用 rpx → 把 px 按「750rpx = 屏宽」换算回来
+      t.glyphOverride = Math.round(fit.font * 750 / sw);
+    }
     return t;
+  },
+
+  // D51 长按放大预览：L11 以上的复合字在 3×3 格里偏小，长按即看大图；
+  // 仅在 zoomable 级别启用（由 grid.needsZoomPreview 判定 ≥ L11），点任意处收起。
+  onTileLongPress: function (e) {
+    if (!this.data.zoomable) return;
+    var idx = parseInt(e.currentTarget.dataset.index, 10);
+    var t = this.board && this.board.cells[idx];
+    if (!t) return;
+    this.setData({
+      zoom: { show: true, tibetan: t.tibetan || '', color: t.color || '#C0392B' }
+    });
+  },
+
+  closeZoom: function () {
+    if (this.data.zoom && this.data.zoom.show) this.setData({ zoom: { show: false, tibetan: '', color: '' } });
   },
 
   // 把盘面投影成渲染列表。
@@ -369,6 +443,8 @@ Page({
 
   onTapTile: function (e) {
     if (this.data.locked) return;
+    // D51：放大预览开着时，这一次点击只用来收起它（不误选牌）
+    if (this.data.zoom && this.data.zoom.show) { this.closeZoom(); return; }
     var idx = e.currentTarget.dataset.index;
     var tile = this.board.cells[idx];
     if (!tile || tile.state === 'removing') return;
@@ -409,6 +485,21 @@ Page({
 
     // 一次配对尝试（成功或失败都算）——正确率 = matches / attempts
     this.attempts++;
+
+    // D51 学习体系：每次配对尝试消耗一步（成功失败都消耗，这就是「步数预算」的含义）。
+    // 预算用完而盘面未空 → 本关结束走结算（不扣分；与既有的「正确率」口径分开统计）。
+    if (this.learnCfg) {
+      var left = Math.max(0, this.stepsBudget - this.attempts);
+      var patch = { stepsLeft: left };
+      if (left <= 0) {
+        patch.locked = true;
+        this.setData(patch);
+        var self = this;
+        setTimeout(function () { self.finishLevel(); }, 700);
+        return;
+      }
+      this.setData(patch);
+    }
 
     if (a.id === b.id) {
       this.matches++;

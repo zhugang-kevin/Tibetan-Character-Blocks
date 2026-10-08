@@ -4041,6 +4041,157 @@ section('41. 灯火跳窗改版（释迦牟尼底图 / 真实酥油灯 / 静→�
   else err('底栏仍残留旧文案「收下灯火 · 关闭」');
 }
 
+// ============================== 42. 藏文学习体系与关卡生成（D51） ==============================
+// 15 级 × 每级 10 关 = 150 关；格子按级别动态（6×6→5×5→4×4→3×3，cell = 屏宽×0.9/列数）
+// 验收口径（用户指定）：① 各级关数 ② 动态格子尺寸 ③ 自动证书 ④ L11 起长按放大预览
+section('42. 藏文学习体系与关卡生成（15 级 × 150 关 · 动态格子 · 证书）');
+{
+  let learning = null, grid = null, certif = null, learnData = null;
+  try {
+    learning = require(path.join(ROOT, 'utils', 'learning'));
+    grid = require(path.join(ROOT, 'utils', 'grid'));
+    certif = require(path.join(ROOT, 'utils', 'certificate'));
+    learnData = require(path.join(ROOT, 'data', 'learning'));
+  } catch (e) {
+    err('学习体系模块加载失败：' + e.message);
+  }
+
+  if (learning && grid && learnData) {
+    // 42.1 结构：15 级 / 合计 150 关 / 每级 10 关
+    const lv = learnData.LEVELS;
+    if (lv.length === 15) ok('学习体系共 15 级');
+    else err('学习体系应为 15 级，实际 ' + lv.length);
+    if (learning.totalStages() === 150) ok('关卡总数 150（15 级 × 10 关）');
+    else err('关卡总数应为 150，实际 ' + learning.totalStages());
+    if (lv.every(l => l.stages === 10)) ok('每级均为 10 关');
+    else err('存在非 10 关的级别：' + lv.map(l => l.lv + ':' + l.stages).join(' '));
+    // L1 覆盖 30 个辅音（用户指定：L1 = 三十个辅音）
+    const l1 = new Set();
+    for (let s = 1; s <= learning.stagesOf(1); s++) learning.buildStage(1, s).titles.forEach(t => l1.add(t));
+    if (l1.size === 30 && learnData.CONSONANTS.every(c => l1.has(c)))
+      ok('L1 十关完整覆盖 30 个辅音（每关 3 个新字母）');
+    else err('L1 覆盖辅音不全：' + l1.size + ' 个');
+
+    // 42.2 动态格子尺寸：行列表 + 弹性公式 + 用户给的基准值（52/63/80/108，±1px）
+    const EXPECT = [[1, 6, 52], [2, 6, 52], [3, 5, 63], [5, 5, 63], [6, 4, 80], [10, 4, 80], [11, 3, 108], [15, 3, 108]];
+    EXPECT.forEach(pair => {
+      const c = grid.colsOf(pair[0]);
+      const px = grid.cellPx(pair[0], 375);
+      if (c === pair[1] && Math.abs(px - pair[2]) <= 1) ok('L' + pair[0] + ' 网格 ' + c + '×' + c + ' · 牌面 ' + px + 'px（基准 ' + pair[2] + '）');
+      else err('L' + pair[0] + ' 尺寸不达标：cols=' + c + ' cell=' + px + 'px（期望 ' + pair[1] + '× / ' + pair[2] + '）');
+    });
+    if (Math.abs(grid.cellPx(6, 430) - grid.cellPx(6, 375)) > 0) ok('格子随屏宽弹性变化（375 → 430：' + grid.cellPx(6, 375) + ' → ' + grid.cellPx(6, 430) + 'px）');
+    else err('格子尺寸未按屏宽弹性变化');
+    if (Math.abs(grid.RATIO - 0.9) < 1e-9) ok('采用用户指定口径：cell = 屏宽 × 0.9 / cols');
+    else err('RATIO 应为 0.9，实际 ' + grid.RATIO);
+
+    // 42.3 生成器三条守恒（每种偶数 / 每种 ≥2 / 总数偶数）—— 全部 150 关跑一遍
+    let odd = 0, tooFew = 0, totalOdd = 0, emptyTitle = 0;
+    for (let L = 1; L <= 15; L++) {
+      for (let s = 1; s <= learning.stagesOf(L); s++) {
+        const st = learning.buildStage(L, s);
+        if (st.total % 2) totalOdd++;
+        st.elements.forEach(e => { if (e[1] % 2) odd++; if (e[1] < 2) tooFew++; });
+        if (!st.titles.length || st.titles.some(t => !t)) emptyTitle++;
+      }
+    }
+    if (!odd && !tooFew && !totalOdd && !emptyTitle)
+      ok('全部 150 关通过守恒校验（每种偶数 / 每种 ≥2 张 / 总数偶数 / 内容非空）');
+    else err('守恒违规：奇数种数=' + odd + ' 少于2张=' + tooFew + ' 总数奇数=' + totalOdd + ' 空内容=' + emptyTitle);
+
+    // 42.4 用户样例校核：L8 第 1 关 = 4×4 / 消除 10 个组合 / 25 步
+    const ex = learning.buildStage(8, 1);
+    if (ex.cols === 4 && ex.rows === 4) ok('L8 第 1 关为 4×4（与用户样例一致）');
+    else err('L8 第 1 关网格为 ' + ex.cols + '×' + ex.rows + '（应为 4×4）');
+    if (ex.pairs === 10) ok('L8 第 1 关需消除 10 个组合（与用户样例一致）');
+    else err('L8 第 1 关对数应为 10，实际 ' + ex.pairs);
+    if (ex.steps === 25) ok('L8 第 1 关步数预算 25（与用户样例一致）');
+    else err('L8 第 1 关步数应为 25，实际 ' + ex.steps);
+    // 前加字 + 基字 + 元音 的部件组合（用户点名：ག ད བ མ འ + ཀ ཁ ག ང + ི ུ ེ ོ）
+    if (ex.titles.every(t => /^[གདབམའ][ཀཁགང][ིེོུ]$/.test(t)))
+      ok('L8 第 1 关字形全部为「前加字 + 基字 + 元音」组合：' + ex.titles.join(' '));
+    else err('L8 第 1 关字形不符合样例：' + ex.titles.join(' '));
+
+    // 42.5 叠加深度限制（用户拍板：禁止七位全叠 → 只出 3~4 部件的真实组合）
+    // 只查**音节级**的关（L1–L9 / L14–L15 复习）：词句关（L10–L13）本身是长串，按 tsheg 分词后逐段查
+    const SYLL_LV = [1, 2, 3, 4, 5, 6, 7, 8, 9, 14, 15];
+    let deep = 0;
+    SYLL_LV.forEach(L => {
+      for (let s = 1; s <= learning.stagesOf(L); s++) {
+        learning.buildStage(L, s).titles.forEach(t => { if (t.length > 5) deep++; });
+      }
+    });
+    if (!deep) ok('无「七位全叠」的不成立音节（音节级关卡单字 ≤ 5 码位）');
+    else err('存在过深叠加的字：' + deep + ' 个');
+    let deepWord = 0;
+    [10, 11, 12, 13].forEach(L => {
+      for (let s = 1; s <= learning.stagesOf(L); s++) {
+        learning.buildStage(L, s).titles.forEach(t => {
+          String(t).split('་').forEach(seg => { if (seg.length > 5) deepWord++; });
+        });
+      }
+    });
+    if (!deepWord) ok('词句关的每一段同样是真实音节（无越界叠字）');
+    else err('词句关存在越界叠字：' + deepWord + ' 段');
+
+    // 42.6 字形量算与缩放：measureTibetanSyllable / calcScale 必须能把复合字塞进格子
+    const wide = grid.measureTibetanSyllable('བཀི', 50);
+    if (wide.width > 0 && wide.height > 0) ok('measureTibetanSyllable 返回墨迹宽高合理（' + Math.round(wide.width) + '×' + Math.round(wide.height) + '）');
+    else err('measureTibetanSyllable 返回值异常');
+    const fit = grid.calcScale('རྐྱི', 80, 50);
+    const inner = 80 * grid.INNER;
+    if (fit.scale <= 1 && fit.scale >= grid.MIN_SCALE && fit.width <= inner + 1 && fit.height <= inner + 1)
+      ok('calcScale 把 རྐྱི 缩到格内（scale=' + fit.scale.toFixed(2) + '，' + fit.width + '×' + fit.height + ' ≤ ' + Math.round(inner) + '）');
+    else err('calcScale 未把复合字缩到格内：' + JSON.stringify(fit));
+    // 注入式量算（真机 canvas 通道）：注入值必须被采信
+    // 注入 500px 的超宽量算值 → 缩放必须显著小于不注入时的估算（且被 MIN_SCALE 夹住）
+    const plain = grid.calcScale('ཀ', 80, 50);
+    const inj = grid.calcScale('ཀ', 80, 50, () => 500);
+    if (inj.scale < plain.scale && inj.scale === grid.MIN_SCALE)
+      ok('支持注入 canvas measureText 通道（宽 500 → 缩到下限 scale=' + inj.scale.toFixed(2) + '，未注入时 ' + plain.scale.toFixed(2) + '）');
+    else err('注入量算通道未被采信：' + JSON.stringify(inj) + ' / plain ' + JSON.stringify(plain));
+
+    // 42.7 长按放大预览：L11 起开启
+    if (grid.needsZoomPreview(11) && !grid.needsZoomPreview(10)) ok('长按放大预览自 L11 起启用（L10 不开）');
+    else err('长按放大预览的级别阈值错误');
+    const gw = read('pages/game/game.wxml');
+    const gj = read('pages/game/game.js');
+    if (gw.indexOf('bindlongpress="onTileLongPress"') > -1 && gw.indexOf('class="zoom-mask"') > -1)
+      ok('游戏页 wiring 齐备：tile 长按 + 放大预览层');
+    else err('游戏页缺少长按 / 放大预览 wiring');
+    if (/zoomable:\s*false/.test(gj) && gj.indexOf('closeZoom') > -1) ok('放大预览有开关守卫与收起入口（zoomable / closeZoom）');
+    else err('放大预览缺少 zoomable 守卫或 closeZoom');
+
+    // 42.8 两端：学习模式入口（?lv=N&stage=M），老 ?level=N 不变
+    if (gj.indexOf("parseInt(query.lv, 10)") > -1 && gj.indexOf('learning.buildStage') > -1)
+      ok('游戏页支持学习模式入口（?lv=N&stage=M）');
+    else err('游戏页未支持学习模式入口');
+    if (gj.indexOf('grid.boardSize(') > -1 && gj.indexOf('grid.cellPx(') > -1)
+      ok('游戏页按 grid 模块计算牌面尺寸（动态格子落地）');
+    else err('游戏页未用 grid 模块计算牌面尺寸');
+    // 反例自测：计算式被改成常量 tree 必须立刻报错
+    if (/var tileW = Math\.floor/.test(gj) && /grid\.boardSize/.test(gj)) ok('守卫自测：牌面尺寸仍为运行时计算（非写死常量）');
+    else err('守卫自测失败：牌面尺寸被写死');
+
+    // 42.9 证书体系：15 张级别证书 + 终极「藏文拼读宗师」
+    if (typeof certif.learningList === 'function' && typeof certif.issueLearningCert === 'function')
+      ok('证书模块导出学习证书接口（learningList / issueLearningCert）');
+    else err('证书模块缺少学习证书接口');
+    const hurt = certif.buildLearningCert(3, { acc: 0.96, clean: true }, null);
+    if (hurt && hurt.tier === 'gold' && hurt.lv === 3 && hurt.key === 'lv3')
+      ok('学习证书按正确率自动定档（96% 零失误 → 金质）');
+    else err('学习证书定档错误：' + JSON.stringify(hurt));
+    const hurt2 = certif.buildLearningCert(3, { acc: 0.5, clean: false }, null);
+    if (hurt2 && hurt2.tier === 'bronze') ok('学习证书低正确率落普通档（50% → 普通）');
+    else err('学习证书低档判断错误：' + hurt2 && hurt2.tier);
+    if (learnData.ULTIMATE.name === '藏文拼读宗师') ok('终极证书名 = 藏文拼读宗师');
+    else err('终极证书名错误：' + learnData.ULTIMATE.name);
+    if (typeof certif.learningList().ultimate.unlocked === 'boolean')
+      ok('终极证书解锁状态可查询（集齐 15 张才解锁）');
+    else err('终极证书状态缺失');
+  }
+}
+
 console.log('通过: ' + passed + ' | 错误: ' + errors.length + ' | 警告: ' + warnings.length);
 if (errors.length) { console.log('\x1b[31m存在错误，需修复后重试\x1b[0m'); process.exit(1); }
 console.log('\x1b[32m全部自检通过 ✓\x1b[0m');

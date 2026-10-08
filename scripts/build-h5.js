@@ -45,6 +45,8 @@ const DATA = {
   daily: require(path.join(ROOT, 'data', 'daily')),
   // 万家灯火祈福跳窗（展示数据固定写死，不接任何后端）
   lamp: require(path.join(ROOT, 'data', 'lamp')),
+  // 藏文学习体系（D51）：15 级 × 10 课 = 150 课的课程与格子尺寸表
+  learning: require(path.join(ROOT, 'data', 'learning')),
   // 「藏文可以组合」拼合预告（纯展示数据）
   combo: require(path.join(ROOT, 'data', 'combo')),
   // 即时应激励文案库（D34：五档中藏双语赞美）

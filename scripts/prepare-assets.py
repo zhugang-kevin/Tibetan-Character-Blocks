@@ -45,7 +45,7 @@ KB = 1024
 # 预算表（与规格书 §七 一致）
 BUDGET = {
     'icon': 30 * KB,      # 单张
-    'reveal': 29 * KB,    # 单张（WebP；10 张 ≤290KB。D50 起从 33 收紧——腾体积给灯火跳窗改版资产，画作颗粒密，29KB 仍高于可感知劣化点）
+    'reveal': 26 * KB,    # 单张（WebP；10 张 ≤260KB。D50 起从 33 收紧——腾体积给灯火跳窗改版资产，画作颗粒密，26KB 仍高于可感知劣化点）
     'bg_global': 52 * KB,
     'bg_global_h5': 24 * KB,   # H5 单文件版内联的小图（preview/assets/，不进小程序包）
     'bg_sky': 40 * KB,
@@ -117,7 +117,7 @@ def save_webp_under_budget(img, path, budget):
     """WebP 阶梯压缩（painting 类图 WebP 比 JPEG 再省 ~40%；微信 <image> 全支持）。
     D50：阶梯下探到 46——灯火跳窗改版要腾体积，画作在夜色底上 q46 不可感知。"""
     img = img.convert('RGB')
-    for q in (80, 74, 68, 62, 58, 54, 50, 46):
+    for q in (80, 74, 68, 62, 58, 54, 50, 46, 42, 38, 34):
         img.save(path, 'WEBP', quality=q, method=6)
         if os.path.getsize(path) <= budget:
             return 'webp q=%d' % q

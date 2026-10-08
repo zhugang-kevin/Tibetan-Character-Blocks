@@ -266,6 +266,107 @@ function ownedCount() {
   return storage.getCerts().length;
 }
 
+// ============================================================
+// D51 学习体系证书：15 级各一张 + 集齐解锁终极「藏文拼读宗师」
+//
+// 与既有「12 阶段证书」的关系：**并存**，不是替换。
+//   阶段证书 key = stage（1..12），学习证书用 `key: 'lv'+lv`（1..15）区分，
+//   两者共用同一个 storage.saveCert 列表与同一个流水号（编号全球唯一）；
+//   list() 按 stage 过滤 → 不受影响；ownedCount() 会把两套都算进去。
+//
+// 颁发口径：某级的 10 关全部通关（调用方在每关结算时把结果喂进来）→ 颁发该级证书；
+//   质量门槛沿用三档（金 ≥95% 且零失误 / 银 ≥80% / 普 完成即给），与既有口径一致。
+//   重習提升正确率可升级，**只升不降**（与既有 buildCert 的取口径相同）。
+// ============================================================
+var learningData = require('../data/learning');
+
+function lvKey(lv) { return 'lv' + lv; }
+
+function findLvCert(lv) {
+  var all = storage.getCerts();
+  for (var i = 0; i < all.length; i++) if (all[i].key === lvKey(lv)) return all[i];
+  return null;
+}
+
+function lvTier(acc, clean) {
+  if (acc >= TIERS.gold.minAccuracy && clean) return TIERS.gold;
+  if (acc >= TIERS.silver.minAccuracy) return TIERS.silver;
+  return TIERS.bronze;
+}
+
+// 构造学习证书对象（纯：只按传入的成绩构造，不落盘）
+function buildLearningCert(lv, agg, prev) {
+  var L = learningData.byLevel(lv);
+  if (!L) return null;
+  var tier = lvTier(agg.acc, agg.clean);
+  var date = new Date();
+  var seq = (prev && prev.seq) || storage.nextCertSeq();
+  return {
+    key: lvKey(lv),
+    kind: 'learning',              // 与阶段证书区分（阶段证书无本字段）
+    lv: lv,
+    name: L.name,
+    goal: L.goal,
+    stages: L.stages,
+    lines: learningData.ULTIMATE.lines && lv === 15 ? learningData.ULTIMATE.lines : [
+      '完成 ' + L.stages + ' 个学习关卡',
+      '正确率 ' + Math.round(agg.acc * 100) + '%'
+    ],
+    tier: tier.key,
+    tierLabel: tier.label,
+    tierSeal: tier.seal,
+    tierColor: tier.color,
+    tierRule: tier.rule,
+    acc: Math.round(agg.acc * 100),
+    clean: !!agg.clean,
+    seq: seq,
+    no: certNo(seq, date),
+    holder: storage.getHolderName() || '藏文学习者',
+    date: formatDate(date)
+  };
+}
+
+// 某级全部通关后调用：agg = { acc: 0..1, clean: true/false }
+// 未达更好成绩则原样返回旧证书（只升不降）
+function issueLearningCert(lv, agg) {
+  var a = agg || { acc: 1, clean: false };
+  var prev = findLvCert(lv);
+  var next = buildLearningCert(lv, { acc: a.acc, clean: !!a.clean }, prev);
+  if (!next) return null;
+  if (prev && tierRank(prev.tier) >= tierRank(next.tier)) {
+    return { cert: prev, isNew: false, upgraded: false };
+  }
+  storage.saveCert(next);
+  return { cert: next, isNew: !prev, upgraded: !!prev };
+}
+
+// 15 张学习证书的列表（护照 / 证书墙用）+ 终极证书状态
+function learningList() {
+  var rows = learningData.LEVELS.map(function (L) {
+    var got = findLvCert(L.lv);
+    return {
+      lv: L.lv, key: lvKey(L.lv), name: L.name, goal: L.goal,
+      stages: L.stages, cols: L.cols, rows: L.rows,
+      unlocked: !!got, cert: got, tier: got ? got.tier : null,
+      tierLabel: got ? got.tierLabel : '', tierColor: got ? got.tierColor : '',
+      accuracy: got ? got.acc : 0
+    };
+  });
+  var owned = rows.filter(function (r) { return r.unlocked; }).length;
+  return {
+    rows: rows,
+    owned: owned,
+    total: rows.length,                        // 15
+    ultimate: {
+      unlocked: owned >= rows.length,
+      name: learningData.ULTIMATE.name,
+      goal: learningData.ULTIMATE.goal,
+      lines: learningData.ULTIMATE.lines,
+      need: Math.max(0, rows.length - owned)   // 还差几张
+    }
+  };
+}
+
 module.exports = {
   PREFIX: PREFIX,
   TIERS: TIERS,
@@ -284,5 +385,11 @@ module.exports = {
   nextTierHint: nextTierHint,
   formatDate: formatDate,
   certNo: certNo,
-  buildLines: buildLines
+  buildLines: buildLines,
+  // D51 学习体系证书
+  lvKey: lvKey,
+  findLvCert: findLvCert,
+  buildLearningCert: buildLearningCert,
+  issueLearningCert: issueLearningCert,
+  learningList: learningList
 };

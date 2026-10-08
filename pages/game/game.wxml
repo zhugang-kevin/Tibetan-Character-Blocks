@@ -14,9 +14,11 @@
 
   <!-- 顶部状态条 -->
   <view class="statusbar">
-    <text class="status-level">第 {{level}} 课</text>
+    <text class="status-level">{{learnName ? ('L' + learnLv + ' · ' + learnStage + ' 课') : ('第 ' + level + ' 课')}}</text>
     <text class="status-score">学习得分 {{score}}</text>
     <text class="status-pairs">{{matchedPairs}}/{{totalPairs}} 对</text>
+    <!-- D51 学习体系：步数预算（每关限量尝试，用完即结算；与「正确率」分开统计） -->
+    <text wx:if="{{stepsBudget}}" class="status-steps {{stepsLeft <= 3 ? 'low' : ''}}">剩余 {{stepsLeft}}/{{stepsBudget}} 步</text>
     <!-- 文案开关（D34）：只关赞美文案，不关元素发音（发音属学习闭环） -->
     <text class="status-praise {{praiseOff ? 'off' : ''}}" bindtap="onTogglePraise">{{praiseOff ? '文案 关' : '文案 开'}}</text>
     <!-- 背景音乐开关（PRD 3.3）：默认开，只关 BGM，不关音效与朗读 -->
@@ -55,13 +57,14 @@
               style="width: {{tileW}}rpx; height: {{tileH}}rpx; transform: translate({{item.tx}}%, {{item.ty}}%);"
               data-index="{{item.index}}"
               bindtap="onTapTile"
+              bindlongpress="onTileLongPress"
             >
               <!-- 第四层：凸起方块（渐变底色 + 底部投影 + 顶部高光；精灵表字母用帧图取代渐变） -->
               <view class="piece {{item.sprite ? 'ka-sprite-piece' : ''}}" style="{{item.pieceStyle}}">
                 <view wx:if="{{item.sprite}}" class="ka-sprite ka-v{{item.variant}}">
                   <image src="{{item.spriteSrc}}" mode="scaleToFill" />
                 </view>
-                <text wx:elif="{{item.type === 'letter'}}" class="glyph tibetan" style="font-size: {{glyphSize}}rpx;">{{item.tibetan}}</text>
+                <text wx:elif="{{item.type === 'letter'}}" class="glyph tibetan" style="font-size: {{item.glyphOverride || glyphSize}}rpx;">{{item.tibetan}}</text>
                 <image wx:elif="{{iconPaths[item.id + '|lite']}}" class="glyph-img" src="{{item.golden ? iconPaths[item.id + '|gold'] : iconPaths[item.id + '|lite']}}" mode="aspectFit" />
                 <text wx:else class="glyph-fallback">{{item.fallbackText}}</text>
                 <view wx:if="{{item.golden}}" class="gold-star">✦</view>
@@ -142,6 +145,14 @@
       class="fx-bit {{item.kind}}{{item.alt}}"
       style="left:{{item.left}};top:{{item.top}};width:{{item.size}};height:{{item.size}};background:{{item.color}};animation-delay:{{item.delay}}ms;"
     ></view>
+  </view>
+
+  <!-- D51 长按放大预览：L11 以上（zoomable）的复合音节看得更清楚，点任意处收起 -->
+  <view wx:if="{{zoom.show}}" class="zoom-mask" bindtap="closeZoom">
+    <view class="zoom-box">
+      <text class="zoom-glyph tibetan" style="color: {{zoom.color}};">{{zoom.tibetan}}</text>
+      <view class="zoom-tip">松开手，继续配对</view>
+    </view>
   </view>
 
   <!-- 新手引导（首次进入，3 步） -->
