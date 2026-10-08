@@ -33,13 +33,13 @@
 ## 自检
 
 ```bash
-node scripts/validate.js         # 小程序静态自检：39 大类 1240 项（含 §17.8 D25 元素库宗教符号清零、§31 盘面模型真跑模拟、§33 藏地密码、§34 BGM、§35 纹样砖完整性、§36 绳结障碍、30 辅音基线、§37 去游戏化守卫（含量词「关」单字扫描）、§38 生产上线守卫：主包体积/隐私授权/工程配置/存储健壮性/资产引用/语音生命周期/零网络）
+node scripts/validate.js         # 小程序静态自检：40 大类 1249 项（含 §17.8 D25 元素库宗教符号清零、§31 盘面模型真跑模拟、§33 藏地密码、§34 BGM、§35 纹样砖完整性、§36 绳结障碍、30 辅音基线、§37 去游戏化守卫（含量词「关」单字扫描）、§38 生产上线守卫：主包体积/隐私授权/工程配置/存储健壮性/资产引用/语音生命周期/零网络、§40 首屏可达性：结算页固定底栏 / 首页压缩）
 node scripts/test-tibetan.js     # 藏文排版规则：1392 项断言（无需依赖）
 ```
 
 ```bash
 # 浏览器体验版端到端测试（需 jsdom）
-NODE_PATH="<node_modules 路径>" node scripts/test-h5.js   # 574 项断言
+NODE_PATH="<node_modules 路径>" node scripts/test-h5.js   # 583 项断言
 ```
 
 ```bash
@@ -80,7 +80,7 @@ node scripts/build-h5.js        # 重新生成（改了 data/ 或 images/ 之后
 ├── audio/ images/                 # 音效与品牌 Logo / 背景资产
 ├── preview/                       # 浏览器体验版（template + 生成物）
 ├── docs/                          # 运行指南 / 排版规范 / 证书体系 / 上线与商业化
-└── scripts/                       # validate / test-tibetan / build-h5 / test-h5 / inject-pattern / 各资产合成脚本
+└── scripts/                       # validate / test-tibetan / build-h5 / test-h5 / inject-pattern / 资产母图生成（make_bg / make_logo）/ 加工管线（prepare-assets）
 ```
 
 ## 文档

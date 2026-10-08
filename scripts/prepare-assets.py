@@ -45,14 +45,17 @@ KB = 1024
 # 预算表（与规格书 §七 一致）
 BUDGET = {
     'icon': 30 * KB,      # 单张
-    'reveal': 45 * KB,    # 单张（spec 写 ≤40KB；给 5KB 容错，超出会尝试降级）
+    'reveal': 33 * KB,    # 单张（WebP；10 张 ≤330KB——画作颗粒密，33KB 是质量与体积的平衡点）
     'bg_global': 70 * KB,
+    'bg_global_h5': 24 * KB,   # H5 单文件版内联的小图（preview/assets/，不进小程序包）
     'bg_sky': 40 * KB,
     'bg_ground': 45 * KB,
     'pat_tile': 15 * KB,
     'grain': 10 * KB,
     'logo_master': 150 * KB,
     'logo_200': 12 * KB,
+    'logo_watermark': 6 * KB,
+    'tashi': 25 * KB,          # E1 藏文金字（Canvas 兜底图）
     'scene': 130 * KB,    # 单张场景照片（首页/游戏页底图；照片细节多，比平滑渐变底更占体积）
 }
 
@@ -78,6 +81,22 @@ def note(name, path, budget, extra=''):
     return ok
 
 
+def save_flat_png(img, path, budget):
+    """扁平矢量类图（Logo / 藏文金字）：先原样存，超预算再 256 色量化。
+    扁平图（无大面积渐变）量化后几乎无损，且不会出现色阶断层——这是把 Logo 设计成
+    平色的副产物（渐变版 q256 在印身上会出现肉眼可见的同心带）。"""
+    img = img.convert('RGBA')
+    img.save(path, 'PNG', optimize=True)
+    if os.path.getsize(path) <= budget:
+        return 'plain'
+    for colors in (256, 192, 128, 96, 64):
+        q = img.quantize(colors=colors, method=Image.FASTOCTREE)
+        q.save(path, 'PNG', optimize=True)
+        if os.path.getsize(path) <= budget:
+            return 'q%d' % colors
+    return '最小档仍超'
+
+
 def save_under_budget(img, path, budget, tries=((256, None), (128, None), (96, 0.9), (64, 0.8), (48, 0.7))):
     """按预算递进压缩：逐步减色/缩小，直到落进预算（返回最终使用的档位说明）。"""
     img = img.convert('RGBA')
@@ -93,6 +112,16 @@ def save_under_budget(img, path, budget, tries=((256, None), (128, None), (96, 0
         if os.path.getsize(path) <= budget:
             return 'colors=%s scale=%s' % (colors, scale or 1)
     return '最小档仍超'
+
+def save_webp_under_budget(img, path, budget):
+    """WebP 阶梯压缩（painting 类图 WebP 比 JPEG 再省 ~40%；微信 <image> 全支持）。"""
+    img = img.convert('RGB')
+    for q in (80, 74, 68, 62, 58, 54):
+        img.save(path, 'WEBP', quality=q, method=6)
+        if os.path.getsize(path) <= budget:
+            return 'webp q=%d' % q
+    return 'webp 最小档仍超'
+
 
 def save_jpeg_under_budget(img, path, budget, max_w=None):
     img = img.convert('RGB')
@@ -162,6 +191,9 @@ def do_icons():
 
 
 def do_reveals():
+    """B 组揭图：640×640 JPEG（≤26KB/张）。
+    2026-10-08 起输出改 JPEG（painted 图 PNG 量化压不到预算；旧 10 张 PNG 共 320KB，
+    新版 JPEG 目标 ≤260KB——主包与图片总盘同时受益）。旧 reveal_NN.png 会一并清理。"""
     files = src_files('reveals')
     if not files:
         print('  （assets-src/reveals/ 为空，跳过）')
@@ -170,18 +202,32 @@ def do_reveals():
         nn = '%02d' % i
         hit = None
         for path in files:
-            if re.search(r'(reveal[_-]?0?%d\b|(^|\D)0?%d(\.|\D|$))' % (i, i), os.path.basename(path), re.I):
+            if re.search(r'reveal[_-]?0?%d\b' % i, os.path.basename(path), re.I):
                 hit = path
                 break
         if not hit:
             print('  - reveal_%s 未找到源图' % nn)
             continue
         img = Image.open(hit).convert('RGB')
-        if img.width > 640:
-            img = img.resize((640, 640), Image.LANCZOS)
-        out = os.path.join(IMAGES, 'reveal_%s.png' % nn)
-        how = save_under_budget(img.convert('RGBA'), out, BUDGET['reveal'])
-        note('reveal_%s' % nn, out, BUDGET['reveal'], how)
+        # 轻柔化 0.5px：AI 画作自带细密颗粒噪点，是压缩的最大敌人；
+        # 显示尺寸只有 ~350px（还被棋盘盖着），0.5px 柔化肉眼无损、体积降 30%+
+        img = img.filter(ImageFilter.GaussianBlur(0.8))
+        out = os.path.join(IMAGES, 'reveal_%s.webp' % nn)
+        how = None
+        for scale in (1.0, 0.9, 0.8):                      # 阶梯降尺寸兜底
+            im = img
+            if scale < 1.0:
+                im = img.resize((int(640 * scale), int(640 * scale)), Image.LANCZOS)
+            elif im.width > 640:
+                im = im.resize((640, 640), Image.LANCZOS)
+            how = save_webp_under_budget(im, out, BUDGET['reveal'])
+            if os.path.getsize(out) <= BUDGET['reveal']:
+                break
+        for ext in ('.png', '.jpg'):                       # 清掉旧格式同名图
+            old = os.path.join(IMAGES, 'reveal_%s%s' % (nn, ext))
+            if os.path.exists(old):
+                os.remove(old)
+        note('reveal_%s.webp' % nn, out, BUDGET['reveal'], how)
 
 
 def do_bg():
@@ -196,6 +242,11 @@ def do_bg():
             out = os.path.join(IMAGES, 'bg-global.jpg')
             how = save_jpeg_under_budget(img, out, BUDGET['bg_global'], max_w=1170)
             note('bg-global.jpg', out, BUDGET['bg_global'], how)
+            # H5 单文件版内联用的小图（preview/assets/，不进小程序包；validate §18.1 要求同在）
+            h5 = os.path.join(ROOT, 'preview', 'assets', 'bg-global-h5.jpg')
+            os.makedirs(os.path.dirname(h5), exist_ok=True)
+            how2 = save_jpeg_under_budget(img, h5, BUDGET['bg_global_h5'], max_w=600)
+            note('bg-global-h5.jpg', h5, BUDGET['bg_global_h5'], how2)
         elif target == 'pat-tile':
             out = os.path.join(IMAGES, 'pat-tile.png')
             im = img.convert('RGBA')
@@ -253,22 +304,47 @@ def do_scene():
 
 
 def do_logo():
+    """品牌派生（规格书 §五）。母图两个：logo-master.png（D1 印章）、tashi-delek.png（E1 藏文金字）。
+    派生：logo-200/144/80、logo-watermark（60×60 淡墨）、preview/assets/logo-master.png（H5/设计源）。"""
     files = src_files('logo')
     master = None
-    for path in files:
-        if 'master' in os.path.basename(path).lower() or 'logo' in os.path.basename(path).lower():
-            master = path
-            break
-    if not master:
-        print('  （assets-src/logo/ 里没有 logo-master，跳过）')
+    tashi = None
+    for path in sorted(files):
+        base = os.path.basename(path).lower()
+        if 'tashi' in base:
+            tashi = path
+        elif 'master' in base or 'logo' in base:
+            master = master or path
+    if not master and not tashi:
+        print('  （assets-src/logo/ 为空，跳过）')
         return
-    img = Image.open(master).convert('RGBA')
-    for size, name, budget in ((200, 'logo-200.png', BUDGET['logo_200']),
-                               (144, 'logo-144.png', BUDGET['logo_200']),
-                               (80, 'logo-80.png', BUDGET['logo_200'])):
-        out = os.path.join(IMAGES, name)
-        img.resize((size, size), Image.LANCZOS).save(out, 'PNG', optimize=True)
-        note(name, out, budget)
+
+    if master:
+        img = Image.open(master).convert('RGBA')
+        # 尺寸档（≤12KB：缩到目标尺寸后 256 色量化——扁平矢量图量化后几乎无损，实测 30KB→8KB）
+        for size, name, budget in ((200, 'logo-200.png', BUDGET['logo_200']),
+                                   (144, 'logo-144.png', BUDGET['logo_200']),
+                                   (80, 'logo-80.png', BUDGET['logo_200'])):
+            out = os.path.join(IMAGES, name)
+            how = save_flat_png(img.resize((size, size), Image.LANCZOS), out, budget)
+            note(name, out, budget, how)
+        # 水印版：祝福签右上角 60×60 以 globalAlpha .5 落纸 → 文件本身再压到 ~.62，读作淡朱印
+        wm = img.resize((60, 60), Image.LANCZOS)
+        wm.putalpha(wm.split()[3].point(lambda v: int(v * 0.62)))
+        out = os.path.join(IMAGES, 'logo-watermark.png')
+        how = save_flat_png(wm, out, BUDGET['logo_watermark'])
+        note('logo-watermark.png', out, BUDGET['logo_watermark'], how)
+        # H5 / 设计源：与小程序同款素材（validate §品牌资产 要求 preview/assets/logo-master.png 在场）
+        out = os.path.join(ROOT, 'preview', 'assets', 'logo-master.png')
+        os.makedirs(os.path.dirname(out), exist_ok=True)
+        how = save_flat_png(img, out, BUDGET['logo_master'])
+        note('logo-master.png', out, BUDGET['logo_master'], how)
+
+    if tashi:
+        img = Image.open(tashi).convert('RGBA')
+        out = os.path.join(IMAGES, 'tashi-delek.png')
+        how = save_flat_png(img, out, BUDGET['tashi'])
+        note('tashi-delek.png', out, BUDGET['tashi'], how)
 
 
 def do_report():

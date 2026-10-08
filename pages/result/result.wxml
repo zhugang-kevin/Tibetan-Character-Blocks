@@ -1,4 +1,4 @@
-<view class="page">
+<view class="page has-bar">
 
   <!-- 藏文化背景层（六层：全局底图 / 纹样 / 藏纸颗粒 / 雪山布达拉宫 / 经幡 / 夜色罩） -->
   <view class="scenery" aria-hidden="true">
@@ -174,9 +174,20 @@
     </view>
   </block>
 
-  <button wx:if="{{!isFinal}}" class="next-btn" bindtap="goNext">下一课 →</button>
-  <button class="passport-btn" bindtap="openPassport">文化护照 · 已获 {{ownedCerts}} 张证书</button>
-  <button class="home-btn" bindtap="goHome">返回首页</button>
+  <!-- 固定底栏（首屏可达）：主操作永远在手边。
+       此前这三个按钮排在长内容之后，实测「下一课」落在折线下 622px（普通关）/ 972px（第 10 关），
+       玩完一关要继续得先滑一屏——本条把主操作钉在屏幕上，内容照旧可滚（下内边距由 .page.has-bar 让位）。 -->
+  <view class="result-bar">
+    <button wx:if="{{!isFinal}}" class="next-btn" bindtap="goNext">下一课 →</button>
+    <block wx:else>
+      <button wx:if="{{!imagePath}}" class="next-btn" bindtap="openNameModal" disabled="{{generating}}">{{generating ? '生成中…' : '生成我的祝福卡'}}</button>
+      <button wx:else class="next-btn" open-type="share">分享给朋友</button>
+    </block>
+    <view class="bar-links">
+      <button class="passport-btn" bindtap="openPassport">文化护照 · {{ownedCerts}} 张证书</button>
+      <button class="home-btn" bindtap="goHome">返回首页</button>
+    </view>
+  </view>
 
   <!-- 昵称输入弹窗 -->
   <view wx:if="{{showNameModal}}" class="mask" bindtap="closeNameModal">

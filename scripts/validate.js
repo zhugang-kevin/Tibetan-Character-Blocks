@@ -205,7 +205,7 @@ if (brandJs.includes('认藏文，从方块开始')) ok('Slogan「认藏文，�
 else err('品牌语丢失：首页转发卡应含 Slogan「认藏文，从方块开始」');
 if (brandWxml.includes('logo-200.png')) ok('首页使用 Logo（200px 完整方块版）');
 else ok('首页品牌行已按拍板移除（Logo 保留在证书 / 护照等载体）');
-const brandAssets = ['images/logo-144.png', 'images/logo-200.png', 'images/logo-80.png', 'images/logo-watermark.png', 'images/logo-master.png'];
+const brandAssets = ['images/logo-144.png', 'images/logo-200.png', 'images/logo-80.png', 'images/logo-watermark.png', 'preview/assets/logo-master.png'];
 brandAssets.forEach(f => { if (exists(f)) ok(f + ' 存在'); else err('品牌资产缺失: ' + f); });
 // 品牌规范：文字不用纯黑
 let pureBlack = 0;
@@ -1992,14 +1992,16 @@ section('29. 通关揭图（十关秘境图 · 零金额 · 不新增存储字�
   let rvBytes29 = 0;
   for (let i = 1; i <= 10; i++) {
     const nn = String(i).padStart(2, '0');
-    const rel = 'images/reveal_' + nn + '.png';
-    if (!exists(rel)) { err('缺少揭示图 ' + rel); continue; }
+    // 2026-10-08 起主格式 .webp（AI 写实画作）；.jpg/.png 兼容
+    const rel = ['images/reveal_' + nn + '.webp', 'images/reveal_' + nn + '.jpg', 'images/reveal_' + nn + '.png']
+      .find(f => exists(f));
+    if (!rel) { err('缺少揭示图 images/reveal_' + nn + '.(webp|jpg|png)'); continue; }
     const b = fs.statSync(path.join(ROOT, rel)).size;
     rvBytes29 += b;
-    if (b > 45 * 1024) err(rel + ' 超出单张 45KB 预算（' + Math.round(b / 1024) + 'KB）');
+    if (b > 33 * 1024) err(rel + ' 超出单张 33KB 预算（' + Math.round(b / 1024) + 'KB）');
   }
-  if (rvBytes29 > 0 && rvBytes29 <= 450 * 1024)
-    ok('十张揭示图合计 ' + Math.round(rvBytes29 / 1024) + 'KB（≤450KB 预算，主包安全）');
+  if (rvBytes29 > 0 && rvBytes29 <= 340 * 1024)
+    ok('十张揭示图合计 ' + Math.round(rvBytes29 / 1024) + 'KB（≤340KB 预算，主包安全）');
   else if (rvBytes29 > 450 * 1024)
     err('十张揭示图合计 ' + Math.round(rvBytes29 / 1024) + 'KB 超预算（450KB）');
   if (exists('scripts/make_reveals.py')) ok('scripts/make_reveals.py 存在（揭示图可零美术成本复现）');
@@ -2087,8 +2089,8 @@ section('29. 通关揭图（十关秘境图 · 零金额 · 不新增存储字�
   if (bh29.indexOf("require(path.join(ROOT, 'data', 'reveals'))") > -1)
     ok('build-h5.js 注入 data/reveals（与小程序同源）');
   else err('build-h5.js 未注入 data/reveals');
-  if (bh29.indexOf("IMAGES['reveal' + nn] = dataUrl('images/reveal_' + nn + '.png')") > -1)
-    ok('build-h5.js 内联十张揭示图（体验版保持单文件）');
+  if (bh29.indexOf("'.webp', '.jpg', '.png'") > -1 && bh29.indexOf("reveal_' + nn") > -1)
+    ok('build-h5.js 内联十张揭示图（多扩展名解析，体验版保持单文件）');
   else err('build-h5.js 未内联揭示图（体验版会引用到不存在的相对路径）');
   if (bh29.indexOf('r.img = IMAGES[key]') > -1)
     ok('build-h5.js 把揭图路径换写为 data URL（/images/... 是小程序路径）');
@@ -3004,9 +3006,9 @@ section('34. 背景音乐（PRD 3.3：程序合成 · 无缝循环 · 开关三�
     const ch = wav.readUInt16LE(22), rate = wav.readUInt32LE(24), bits = wav.readUInt16LE(34);
     if (riff === 'RIFF' && wave === 'WAVE') ok('audio/bgm.wav 是合法 RIFF/WAVE 容器');
     else err('audio/bgm.wav 不是合法 WAV（RIFF=' + riff + ' WAVE=' + wave + '）');
-    if (ch === 1 && rate === 22050 && bits === 16)
-      ok('规格与既有音效一致：单声道 / 22050Hz / 16-bit');
-    else err('规格不符：channels=' + ch + ' rate=' + rate + ' bits=' + bits + '（应为 1/22050/16）');
+    if (ch === 1 && rate === 16000 && bits === 16)
+      ok('BGM 规格：单声道 / 16000Hz / 16-bit（2026-10-08 起 16kHz——内容最高约 2.6kHz，无听感损失，主包省 ~38KB）');
+    else err('BGM 规格不符：channels=' + ch + ' rate=' + rate + ' bits=' + bits + '（应为 1/16000/16）');
     // data 块长度 → 时长
     const di = wav.indexOf(Buffer.from('data'));
     const dataLen = di > -1 ? wav.readUInt32LE(di + 4) : 0;
@@ -3885,6 +3887,64 @@ section('39. 中文播报与藏文书写细则');
   if (gr39.length && !badD39.length) ok('雪域日签藏文值全部带尾 ་（' + gr39.length + ' 条）');
   else err('日签藏文值不合规范：' + badD39.join(' / '));
 }
+
+// ---------- 40. 首屏可达性（结算页固定底栏 / 首页压缩） ----------
+// 实测背景（2026-10-08，430×932 体验版）：结算页主按钮原在折线下 622px（普通关）/ 972px（第 10 关），
+// 玩完一关要继续得先滑一屏；首页 1158px（1.24 屏）。本节把「主操作必须首屏可达」钉成回归锁。
+(function () {
+  section('40. 首屏可达性（结算页固定底栏 / 首页压缩）');
+
+  const rw40 = read('pages/result/result.wxml');
+  const rwx40 = read('pages/result/result.wxss');
+  const iwx40 = read('pages/index/index.wxss');
+  const t40 = read('preview/template.html');
+
+  // 40.1 结算页：主操作搬进固定底栏（三个按钮都必须在 .result-bar 内）
+  const bar40 = rw40.match(/<view class="result-bar">([\s\S]*?)<\/view><!-- 昵称输入弹窗/);
+  const barAny = rw40.match(/<view class="result-bar">([\s\S]*?)<\/view>\s*<!-- 昵称输入弹窗/);
+  const inner40 = (barAny || bar40) ? (barAny || bar40)[1] : null;
+  if (inner40) {
+    const hasNext40 = inner40.indexOf('class="next-btn"') > -1;
+    const links40 = inner40.match(/<view class="bar-links">([\s\S]*?)<\/view>/);
+    const hasLinks40 = !!links40 && links40[1].indexOf('passport-btn') > -1 && links40[1].indexOf('home-btn') > -1;
+    if (hasNext40 && hasLinks40) ok('结算页主操作已在固定底栏内（下一课 + 文化护照/返回首页）');
+    else err('结算页底栏结构不完整（next-btn: ' + hasNext40 + ' / links: ' + hasLinks40 + '）');
+  } else err('结算页缺 .result-bar 固定底栏（主按钮会重新沉到折线以下）');
+
+  // 40.2 底栏必须是 fixed（static 会随内容滚走）——含反例自测
+  const barRule40 = (rwx40.match(/\.result-bar\s*\{[\s\S]*?\}/) || [''])[0];
+  if (/position:\s*fixed/.test(barRule40) && /z-index:\s*\d+/.test(barRule40)) ok('底栏 position: fixed + z-index 在案');
+  else err('底栏不是 fixed（或缺 z-index）：主按钮首屏可达性会被擦掉');
+  if (/safe-area-inset-bottom/.test(barRule40)) ok('底栏补了安全区（全面屏 Home Indicator）');
+  else err('底栏缺 env(safe-area-inset-bottom)');
+  if (!/position:\s*fixed/.test('position: static')) ok('守卫自测：把 fixed 改成 static 可被检出');
+  else err('守卫自测失败');
+
+  // 40.3 内容必须为底栏让位（否则最后一块内容被底栏永久盖住）
+  const hasBar40 = rw40.indexOf('class="page has-bar"') > -1;
+  const padRule40 = (rwx40.match(/\.page\.has-bar\s*\{[\s\S]*?\}/) || [''])[0];
+  if (hasBar40 && /padding-bottom:\s*calc\(/.test(padRule40) && /safe-area-inset-bottom/.test(padRule40))
+    ok('结算页内容为底栏让位（.page.has-bar 含安全区）');
+  else err('结算页未给底栏让位（.page.has-bar / padding-bottom: calc(...safe-area...) 缺失）');
+
+  // 40.4 体验版同构：.result-bar 固定 + #res-actions 就是底栏容器
+  const tBarRule40 = (t40.match(/\.result-bar\s*\{[\s\S]*?\}/) || [''])[0];
+  if (/position:\s*fixed/.test(tBarRule40) && t40.indexOf('<div class="result-bar" id="res-actions"></div>') > -1)
+    ok('体验版同构：底栏 fixed 且 #res-actions 即底栏容器');
+  else err('体验版底栏未同构（#res-actions 不在 .result-bar 内）');
+  const tRes40 = (t40.match(/#screen-result\s*\{[\s\S]*?\}/) || [''])[0];
+  if (/padding-bottom:\s*calc\(/.test(tRes40) && /safe-area-inset-bottom/.test(tRes40))
+    ok('体验版结算页为底栏让位');
+  else err('体验版结算页未给底栏让位');
+
+  // 40.5 首页压缩：两端天梯高度同步（1080rpx / 620px），别只改一端
+  const rpxH40 = (iwx40.match(/\.vine-map\s*\{[\s\S]*?height:\s*(\d+)rpx/) || [])[1];
+  const pxH40 = (t40.match(/\.vine-map\s*\{[^}]*height:\s*(\d+)px/) || [])[1];
+  if (rpxH40 === '1080' && pxH40 === '620') ok('首页天梯高度两端同步压缩（1080rpx / 620px）');
+  else err('首页天梯高度两端不一致或未压缩（rpx=' + rpxH40 + ' / px=' + pxH40 + '）');
+  if (/#screen-home\s*\{[^}]*padding-top/.test(t40)) ok('体验版首页内边距已收档');
+  else warn('体验版首页内边距未收档（非阻塞）');
+})();
 
 console.log('通过: ' + passed + ' | 错误: ' + errors.length + ' | 警告: ' + warnings.length);
 if (errors.length) { console.log('\x1b[31m存在错误，需修复后重试\x1b[0m'); process.exit(1); }

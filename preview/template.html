@@ -75,7 +75,7 @@
   /* ---------- 首页 ---------- */
   /* 品牌行已移除（2026-10-06 用户拍板）：首页视觉重心交给朝圣天梯，品牌语保留在分享卡与证书 */
 
-  .profile-row { display: flex; justify-content: space-between; align-items: center; margin: 6px 0 18px; padding: 0 2px; }
+  .profile-row { display: flex; justify-content: space-between; align-items: center; margin: 4px 0 10px; padding: 0 2px; }
   .profile-stamps { display: flex; gap: 8px; align-items: center; }
   .mini-stamp {
     width: 42px; height: 42px; line-height: 40px; text-align: center;
@@ -108,9 +108,9 @@
   .level-btn.done .badge { background: var(--green); }
   .level-btn.locked .badge { background: #C9C1AF; font-size: 10px; }
 
-  .footer { margin-top: 26px; text-align: center; font-size: 13px; letter-spacing: 1px; color: #E8C86B; }
-  .footer-sub { margin-top: 8px; text-align: center; font-size: 12px; color: #C9BFA8; }
-  .reset-link { margin-top: 14px; text-align: center; font-size: 12px; text-decoration: underline; cursor: pointer; color: #6E6759; }
+  .footer { margin-top: 14px; text-align: center; font-size: 13px; letter-spacing: 1px; color: #E8C86B; }
+  .footer-sub { margin-top: 4px; text-align: center; font-size: 12px; color: #C9BFA8; }
+  .reset-link { margin-top: 8px; text-align: center; font-size: 12px; text-decoration: underline; cursor: pointer; color: #6E6759; }
 
   /* ---------- 游戏页 ---------- */
   #screen-game { padding-bottom: 24px; }
@@ -333,6 +333,23 @@
     background: var(--green); color: #fff; font-size: 40px; font-weight: 700;
   }
   .result-title { margin-top: 16px; font-size: 27px; font-weight: 800; color: #F5E9CF; text-shadow: 0 2px 10px rgba(0,0,0,.55); }
+
+  /* 结算页固定底栏（与小程序 .result-bar 同构）：底栏 ≈ 96px + 安全区；给内容留出让位 */
+  /* D49 首页压缩：顶部/底部内边距各收一档（内容本身不动） */
+  #screen-home { padding-top: 12px; padding-bottom: 24px; }
+  #screen-result { padding-bottom: calc(120px + env(safe-area-inset-bottom)); }
+  .result-bar {
+    position: fixed; left: 50%; transform: translateX(-50%);
+    width: 100%; max-width: 430px; bottom: 0; z-index: 30;
+    padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+    box-sizing: border-box;
+    background: linear-gradient(180deg, rgba(11,30,54,0) 0%, rgba(8,18,36,.9) 24%, rgba(6,14,26,.98) 100%);
+  }
+  .result-bar .bar-links { display: flex; gap: 9px; margin-top: 8px; }
+  /* 次级入口等宽（用 > button 泛选：两个按钮在两端类名不完全一致，key 死类名会漏） */
+  .result-bar .bar-links > button {
+    flex: 1; min-width: 0; width: auto; margin: 0;
+  }
   .result-sub { margin-top: 8px; font-size: 15px; color: #C9BFA8; }
   .stat-row { display: flex; gap: 12px; margin-top: 20px; }
   .stat-box { flex: 1; background: rgba(255,255,255,.9); border: 1.5px solid var(--line); border-radius: 14px; padding: 14px 8px; text-align: center; }
@@ -530,7 +547,7 @@
   .pc-count { font-size: 22px; font-weight: 700; color: var(--red); line-height: 1; }
   .pc-total { font-size: 12px; color: #6E6759; font-weight: 600; }
   .pc-label { margin-top: 3px; font-size: 10px; color: var(--muted); }
-  .stage-head { font-size: 14px; font-weight: 700; margin-bottom: 9px; padding: 0 2px; color: #FFD98A; }
+  .stage-head { font-size: 14px; font-weight: 700; margin-bottom: 6px; padding: 0 2px; color: #FFD98A; }
 
   /* ============ 通关情绪反馈（与小程序 game.wxss 同口径） ============ */
   .fx-layer { position: fixed; left: 0; top: 0; right: 0; bottom: 0; z-index: 60; pointer-events: none; overflow: hidden; }
@@ -788,13 +805,13 @@
   }
 
   /* ============ PRD v4 首页：资源条 / 藤蔓地图 / 悬浮入口 / 底部平层 / 入口面板（体验版镜像） ============ */
-  .res-bar { display: flex; gap: 8px; margin-bottom: 12px; position: relative; z-index: 2; }
+  .res-bar { display: flex; gap: 8px; margin-bottom: 8px; position: relative; z-index: 2; }
   .res-item { flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px; padding: 8px 6px; border-radius: 11px; background: rgba(255,255,255,.86); border: 1px solid rgba(214,202,176,.95); box-shadow: 0 3px 9px rgba(96,78,44,.12); }
   .res-ico { font-size: 14px; }
   .res-val { font-size: 14px; font-weight: 800; color: #C0392B; }
   .res-cap { font-size: 10px; color: #6E6759; }
 
-  .vine-map { position: relative; height: 660px; margin: 12px 0 6px; border-radius: 18px; overflow: hidden; background: linear-gradient(180deg, rgba(255,214,120,.42), rgba(255,240,205,.30) 16%, rgba(250,240,218,.34) 42%, rgba(122,108,138,.26) 76%, rgba(38,32,58,.52)); border: 1px solid rgba(212,175,55,.55); }
+  .vine-map { position: relative; height: 620px; margin: 8px 0 4px; border-radius: 18px; overflow: hidden; background: linear-gradient(180deg, rgba(255,214,120,.42), rgba(255,240,205,.30) 16%, rgba(250,240,218,.34) 42%, rgba(122,108,138,.26) 76%, rgba(38,32,58,.52)); border: 1px solid rgba(212,175,55,.55); }
   .vine-stem { position: absolute; left: 50%; top: 13%; bottom: 7%; width: 12px; transform: translateX(-50%); border-radius: 999px; background: linear-gradient(90deg, #B9BEC4, #E4E7EA 30%, #D5D8DC 55%, #8E979E); border: 1px solid rgba(212,175,55,.65); box-shadow: inset 2px 0 4px rgba(255,255,255,.6), 0 4px 11px rgba(60,66,72,.3); }
   .vine-stem::after { content: ''; position: absolute; left: 50%; top: 0; bottom: 0; width: 3px; transform: translateX(-50%); background-image: linear-gradient(180deg, #D4AF37 0 10px, transparent 10px 22px); background-size: 3px 22px; background-repeat: repeat-y; opacity: .8; }
   .ladder-heaven { position: absolute; left: 0; right: 0; top: 0; height: 15%; pointer-events: none; }
@@ -1331,7 +1348,8 @@
 
     <div id="res-bless"></div>
 
-    <div id="res-actions" style="margin-top: 26px;"></div>
+    <!-- 固定底栏（与小程序 result-bar 同构）：主操作钉在屏幕底部，内容照旧可滚 -->
+    <div class="result-bar" id="res-actions"></div>
       <div class="roller roller-bottom" aria-hidden="true"></div>
     </div>
   </section>
@@ -4178,30 +4196,41 @@ function renderResult() {
     blessEl.innerHTML = '';
   }
 
-  // 底部按钮
+  // 固定底栏（与小程序 .result-bar 同构）：主操作钉底 + 两个次级入口并排
   const actions = $('res-actions');
   actions.innerHTML = '';
   if (level < MAX_LEVEL) {
     const next = document.createElement('button');
     next.className = 'primary-btn';
     next.textContent = '下一课 →';
-    next.setAttribute('style', 'background: var(--red); color:#fff; border:0; border-radius:14px; padding:14px 0; width:100%; font-size:16px; font-weight:700; cursor:pointer;');
+    next.setAttribute('style', 'background: var(--red); color:#fff; border:0; border-radius:26px; padding:13px 0; width:100%; font-size:16px; font-weight:700; cursor:pointer;');
     next.addEventListener('click', function () { startLevel(level + 1); });
     actions.appendChild(next);
+  } else if (!$('bless-out') || !$('bless-out').innerHTML) {
+    // 第 10 关：主操作 = 生成祝福卡（生成后由祝福区接管预览/保存/分享）
+    const gen = document.createElement('button');
+    gen.className = 'primary-btn';
+    gen.textContent = '生成我的祝福卡';
+    gen.setAttribute('style', 'background: var(--red); color:#fff; border:0; border-radius:26px; padding:13px 0; width:100%; font-size:16px; font-weight:700; cursor:pointer;');
+    gen.addEventListener('click', generateBlessing);
+    actions.appendChild(gen);
   }
+  const links = document.createElement('div');
+  links.className = 'bar-links';
   const passport = document.createElement('button');
   passport.className = 'passport-btn';
-  passport.textContent = '文化护照 · 已获 ' + ownedCertCount() + ' 张证书';
-  passport.setAttribute('style', 'margin-top:12px; border:1.5px solid #1E8449; border-radius:14px; padding:13px 0; width:100%; font-size:15px; font-weight:700; color:#176B3C; background:rgba(255,255,255,.9); cursor:pointer;');
+  passport.textContent = '文化护照 · ' + ownedCertCount() + ' 张证书';
+  passport.setAttribute('style', 'border:1.5px solid #1E8449; border-radius:22px; padding:10px 0; font-size:14px; font-weight:700; color:#176B3C; background:rgba(255,255,255,.9); cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;');
   passport.addEventListener('click', showPassport);
-  actions.appendChild(passport);
+  links.appendChild(passport);
 
   const back = document.createElement('button');
   back.className = 'ghost-btn';
   back.textContent = '返回首页';
-  back.setAttribute('style', 'border:1.5px solid var(--line); border-radius:14px; padding:13px 0; width:100%; font-size:15px; font-weight:700; color:var(--ink); background:rgba(255,255,255,.9); margin-top:12px; cursor:pointer;');
+  back.setAttribute('style', 'border:1.5px solid var(--line); border-radius:22px; padding:10px 0; font-size:14px; font-weight:700; color:var(--ink); background:rgba(255,255,255,.9); cursor:pointer;');
   back.addEventListener('click', renderHome);
-  actions.appendChild(back);
+  links.appendChild(back);
+  actions.appendChild(links);
   // 跳转到结算页由 finishLevel 统一负责（延迟 1.2s 让庆祝粒子先飘完），此处只负责内容
 }
 

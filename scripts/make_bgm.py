@@ -20,14 +20,14 @@
 体验版（preview/template.html）用 Web Audio 按**同一份音符表**复现，
 两端旋律一致；WAV 只在小程序包内。
 
-规格（与既有音效一致）：单声道 / 22050Hz / 16-bit PCM。
+规格：单声道 / 16000Hz / 16-bit PCM（2026-10-08 起；内容最高约 2.6kHz，无听感损失）。
 响度口径：BGM 必须明显低于音效 —— 目标 RMS ≈ 1000（match.wav 是 2394），
 峰值压在 11000 以下；播放时小程序端再把音量乘 0.28，留足余量不吵人。
 
 **无缝循环**：所有音符的衰减尾巴超过循环末尾时**回绕写入开头**（wrap-around），
 而不是截断 —— 否则每次循环点会有一个可听见的「咔」。
 
-体积预算：3.36s × 22050 × 2B ≈ 145KB（validate §34 上限 150KB，主包 2MB 硬约束）。
+体积预算：3.36s × 16000 × 2B ≈ 105KB（validate §34 上限 150KB，主包 2MB 硬约束）。
 
 用法：python scripts/make_bgm.py
 """
@@ -36,7 +36,7 @@ import math
 import os
 import wave
 
-RATE = 22050
+RATE = 16000   # 2026-10-08：22050→16000（内容最高约 2.6kHz，无听感损失；主包省 ~38KB）
 OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'audio')
 
 # ---- 乐曲规格（体验版 template.html 的 BGM_* 常量与此逐字对应，改一处必须改两处） ----
@@ -163,4 +163,4 @@ def make_bgm():
 if __name__ == '__main__':
     print('生成背景音乐 → audio/')
     write_wav('bgm.wav', make_bgm())
-    print('完成（规格：单声道 / 22050Hz / 16-bit PCM / 两小节无缝循环）')
+    print('完成（规格：单声道 / 16000Hz / 16-bit PCM / 两小节无缝循环）')

@@ -69,12 +69,15 @@ const IMAGES = {
 // 秘境揭图（D31）：十关各一张，base64 内联（体验版保持单文件，双击即可用）
 for (let i = 1; i <= 10; i++) {
   const nn = String(i).padStart(2, '0');
-  IMAGES['reveal' + nn] = dataUrl('images/reveal_' + nn + '.png');
+  // 扩展名解析：.webp（2026-10-08 起主格式）> .jpg > .png（兼容旧版）
+  const ext = ['.webp', '.jpg', '.png'].find(function (e) { return fs.existsSync(path.join(ROOT, 'images', 'reveal_' + nn + e)); });
+  if (!ext) { console.error('✗ 缺少揭示图 images/reveal_' + nn + '.(webp|jpg|png)'); process.exit(1); }
+  IMAGES['reveal' + nn] = dataUrl('images/reveal_' + nn + ext);
 }
 // 把揭图路径换成内联 data URL（data/reveals.js 里的 /images/... 是小程序路径）
 (DATA.reveals || []).forEach(function (r, i) {
   const key = 'reveal' + String(i + 1).padStart(2, '0');
-  if (!IMAGES[key]) { console.error('✗ 缺少揭示图 images/reveal_' + String(i + 1).padStart(2, '0') + '.png'); process.exit(1); }
+  if (!IMAGES[key]) { console.error('✗ 缺少揭示图 images/reveal_' + String(i + 1).padStart(2, '0')); process.exit(1); }
   r.img = IMAGES[key];
 });
 
