@@ -3440,7 +3440,8 @@ section('38. 生产上线守卫（主包体积 / 隐私授权 / 工程配置）'
   // --- 38.2 主包体积预算（按 ignore 规则实测，不信估数）---
   {
     const KB = 1024, LIMIT_KB = 1843; // 2MB 上限留 10% 余量给编译产物
-    const skipDir = new Set(['preview', 'docs', 'scripts', 'node_modules', '.workbuddy', '.git']);
+    // ⚠️ 必须与 project.config.json 的 packOptions.ignore 保持一致（D46 起 assets-src 为原材料投放区）
+    const skipDir = new Set(['preview', 'docs', 'scripts', 'node_modules', '.workbuddy', '.git', 'assets-src']);
     let totalK = 0;
     (function walk(rel) {
       for (const e of fs.readdirSync(path.join(ROOT, rel), { withFileTypes: true })) {
@@ -3785,9 +3786,10 @@ section('38. 生产上线守卫（主包体积 / 隐私授权 / 工程配置）'
     // 体验版：常量 + 节点 + 无照片时移除
     const tpV3 = read('preview/template.html');
     if (tpV3.indexOf('const PHOTO = /*__PHOTO__*/') > -1 && tpV3.indexOf('id="sc-photo"') > -1 &&
-        tpV3.indexOf('sp.parentNode.removeChild(sp)') > -1)
-      ok('体验版照片层：常量 + 节点 + 无照片回退全在');
-    else err('体验版照片层接线不全');
+        tpV3.indexOf('sp.parentNode.removeChild(sp)') > -1 &&
+        tpV3.indexOf('id="sc-game-photo"') > -1 && tpV3.indexOf('PHOTO.game') > -1)
+      ok('体验版照片层：首页+游戏页节点 / 常量 / 无照片回退全在');
+    else err('体验版照片层接线不全（首页/游戏页）');
     // 加工脚本与规格书
     const pav = read('scripts/prepare-assets.py');
     if (pav.indexOf('def do_scene') > -1 && pav.indexOf("'scene':") > -1 && pav.indexOf('photo-assets.js') > -1)

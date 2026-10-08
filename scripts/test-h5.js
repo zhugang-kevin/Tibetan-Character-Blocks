@@ -149,8 +149,14 @@ function mockCtx(sink) {
   check('雪山/布达拉宫地面层已内联', ($('#sc-ground') || {}).src && $('#sc-ground').src.indexOf('data:image/png') === 0);
   check('藏式菱格纹样已设置为 CSS 变量',
     (doc.documentElement.style.getPropertyValue('--pat') || '').indexOf('data:image/png') > -1);
-  check('背景为五层结构（底图/纹样/地面/天空/夜色罩）',
-    $$('.scenery > *').length === 5, '实际 ' + $$('.scenery > *').length);
+  check('背景为五层结构 + 可选照片层（底图/纹样/地面/天空/夜色罩，D47 照片层可有可无）',
+    (function () {
+      const kids = $$('.scenery > *');
+      const has = function (sel) { return !!$(sel); };
+      const core = has('#sc-bg') && has('.sc-pattern') && has('#sc-ground') && has('#sc-sky') && has('.sc-night');
+      // 5 层核心 + 0/1 个照片层（有照片时 6，无照片时 5）
+      return core && (kids.length === 5 || (kids.length === 6 && has('#sc-photo')));
+    })(), '实际 ' + $$('.scenery > *').length);
   check('夜色罩存在（压暗四角、突出中心金光）', !!$('.sc-night'));
 
   /* ---------- 3. 进入第 1 关 ---------- */

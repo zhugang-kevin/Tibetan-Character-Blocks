@@ -53,7 +53,7 @@ BUDGET = {
     'grain': 10 * KB,
     'logo_master': 150 * KB,
     'logo_200': 12 * KB,
-    'scene': 95 * KB,     # 单张场景照片（首页/游戏页底图）
+    'scene': 130 * KB,    # 单张场景照片（首页/游戏页底图；照片细节多，比平滑渐变底更占体积）
 }
 
 ICON_ALIAS = [
@@ -98,7 +98,7 @@ def save_jpeg_under_budget(img, path, budget, max_w=None):
     img = img.convert('RGB')
     if max_w and img.width > max_w:
         img = img.resize((max_w, int(img.height * max_w / img.width)), Image.LANCZOS)
-    for q in (85, 80, 74, 68):
+    for q in (85, 80, 74, 68, 62, 56):
         img.save(path, 'JPEG', quality=q, optimize=True, progressive=True)
         if os.path.getsize(path) <= budget:
             return 'q=%d w=%d' % (q, img.width)
@@ -233,8 +233,8 @@ def do_scene():
         # 压暗 8%
         from PIL import ImageEnhance
         img = ImageEnhance.Brightness(img).enhance(0.92)
-        # 竖向铺满：宽度 ≥1170，必要时等比放大
-        if img.width < 1170:
+        # 竖向铺满：只在超宽时下采样到 1170（不放大——放大只会增体积不加清晰度）
+        if img.width > 1170:
             img = img.resize((1170, int(img.height * 1170 / img.width)), Image.LANCZOS)
         out = os.path.join(SCENE_DIR, key + '.jpg')
         how = save_jpeg_under_budget(img, out, BUDGET['scene'], max_w=1170)
@@ -277,7 +277,7 @@ def do_report():
     for root, _, files in os.walk(IMAGES):
         for f in files:
             total += os.path.getsize(os.path.join(root, f))
-    print('  images/ 合计 %.1fKB / 上限 680KB' % (total / KB))
+    print('  images/ 合计 %.1fKB / 上限 840KB' % (total / KB))
     print('  （banner：主包 ≤1800KB；跑 --all 加工后再看一次）')
 
 

@@ -1245,6 +1245,8 @@
 
   <!-- ============ 游戏页 ============ -->
   <section id="screen-game" class="screen">
+    <!-- 真实场景照片层（D47，清单驱动；无照片时移除） -->
+    <img class="sc-photo" id="sc-game-photo" alt="">
     <div class="sc-night" aria-hidden="true"></div>
     <div class="statusbar">
       <button class="back-btn" id="game-back" title="返回首页" aria-label="返回首页">←</button>
@@ -4968,6 +4970,9 @@ $('sc-bg').src = IMAGES.bgGlobal;
   const sp = $('sc-photo');
   if (sp && PHOTO.home) sp.src = PHOTO.home;
   else if (sp) sp.parentNode.removeChild(sp);
+  const gp = $('sc-game-photo');
+  if (gp && PHOTO.game) gp.src = PHOTO.game;
+  else if (gp) gp.parentNode.removeChild(gp);
 })();
 $('sc-sky').src = IMAGES.bgSky;
 $('sc-ground').src = IMAGES.bgGround;
