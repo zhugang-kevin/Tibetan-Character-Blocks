@@ -15,6 +15,8 @@ var lampData = require('../../data/lamp');
 var photoAssets = require('../../data/photo-assets');
 // 用户隐私保护指引（utils/privacy.js）：保存相册是受保护接口，必须先过授权关卡
 var privacy = require('../../utils/privacy');
+// D54 性别 + 藏族名字：三档取值与选名算法（纯函数，与护照页同一份）
+var tibetanName = require('../../utils/tibetan-name.js');
 
 // 视口高度：优先用 wx.getWindowInfo（基础库 2.20.1+），旧设备回退 getSystemInfoSync，
 // 两者都取不到时用 667 兜底。getSystemInfoSync 已标记不再维护，不再作为首选路径。
@@ -120,6 +122,13 @@ Page({
     lampOnceNote: lampData.onceNote,
     lampButtonText: lampData.buttonText,
     lampTip: lampData.tip,
+    // D54 性别与藏族名字（用户自填 · 仅本机 · 可改可清除）
+    //   genderAskStep: 'ask' = 选性别；'name' = 展示按性别挑好的藏族名字
+    genderAskShow: false,
+    genderAskStep: 'ask',
+    genderOptions: [],
+    genderPicked: null,
+    tibetanName: { name: '', mean: '', gender: '' },
     // 朝圣天梯入场动效（纯视觉类名，不含任何数据）
     ladderIn: false
   },
@@ -242,6 +251,45 @@ Page({
       // 通关返回：台阶莲花绽放，画面自动升到下一级
       this.bloomAndClimb(bloomN);
     }
+
+    // D54 性别引导：只在「还没选过」时出现，且**永远排在灯火跳窗之后**
+    // （两个弹窗不同框，叠层会互相挡住出口）。选过之后不再打扰。
+    if (lampFirst) this._pendingGender = !storage.getGender();
+    else this.maybeAskGender();
+  },
+
+  // ---------- D54 性别 + 藏族名字（首次引导） ----------
+  // 合规三条：① 只能用户自己点（微信不返回性别，头像昵称类接口也在 §6 禁用名单里）；
+  //           ② 「不愿透露」是并列选项，不是隐藏入口，选它照样拿名字、功能不打折；
+  //           ③ 只写本机 storage，不上传、不同步、不进埋点。
+  maybeAskGender: function () {
+    if (storage.getGender()) return false;
+    this.setData({
+      genderAskShow: true,
+      genderAskStep: 'ask',
+      genderPicked: null,
+      genderOptions: tibetanName.GENDERS.map(function (g) {
+        return { key: g.key, label: g.label };
+      })
+    });
+    return true;
+  },
+
+  onPickGender: function (e) {
+    var key = (e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.key) || '';
+    if (!key) return;
+    // setGender 内部同步按新性别重取名字（storage 与页面同时落地，不会前后不一致）
+    var g = storage.setGender(key);
+    this.setData({
+      genderAskStep: 'name',
+      genderPicked: { key: g, label: tibetanName.labelOf(g) },
+      tibetanName: storage.getTibetanName()
+    });
+    audio.play('tap');
+  },
+
+  closeGenderAsk: function () {
+    this.setData({ genderAskShow: false, genderAskStep: 'ask', genderPicked: null });
   },
 
   // 天梯入场 / 上行动效：先落在山脚（人间），再缓缓升到目标台阶。
@@ -364,6 +412,11 @@ Page({
       this.releaseLadderIn();
     } else if (bloom) {
       this.bloomAndClimb(bloom);
+    }
+    // 灯火跳窗让位后，再问一次性别（若还没选）
+    if (this._pendingGender) {
+      this._pendingGender = false;
+      this.maybeAskGender();
     }
   },
 

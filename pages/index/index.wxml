@@ -349,4 +349,38 @@
     </view>
   </view>
 
+  <!-- D54 性别引导：只在还没选过时出现，且排在灯火跳窗之后（两个弹窗不同框）。
+       两步：① 选性别（三档并列，「不愿透露」同样给名字、功能不打折）
+             ② 展示按性别挑好的藏族名字
+       只写本机 storage，不上传、不同步；护照页「我的资料」可随时改或清除。 -->
+  <view wx:if="{{genderAskShow}}" class="ga-mask">
+    <view class="ga-card">
+
+      <block wx:if="{{genderAskStep === 'ask'}}">
+        <view class="ga-title">在开始之前</view>
+        <view class="ga-sub">藏族名字分男女（扎西是男名、卓玛是女名）。选一个，我们才好为你取一个属于你的藏族名字。</view>
+        <view class="ga-opts">
+          <view
+            wx:for="{{genderOptions}}"
+            wx:key="key"
+            class="ga-opt {{item.key === 'unspecified' ? 'quiet' : ''}}"
+            data-key="{{item.key}}"
+            bindtap="onPickGender"
+          >{{item.label}}</view>
+        </view>
+        <view class="ga-note">只保存在本机，不上传、不同步 · 护照页「我的资料」可随时修改或清除</view>
+      </block>
+
+      <block wx:else>
+        <view class="ga-title">你的藏族名字</view>
+        <view class="ga-name">{{tibetanName.name}}</view>
+        <view class="ga-mean">{{tibetanName.mean}} · {{genderPicked.label}}</view>
+        <view class="ga-sub">往后你的证书与藏品，都会写在这个名字下。</view>
+        <view class="ga-btn" bindtap="closeGenderAsk">进入雪域</view>
+        <view class="ga-note">只保存在本机，不上传、不同步 · 护照页「我的资料」可随时修改或清除</view>
+      </block>
+
+    </view>
+  </view>
+
 </view>

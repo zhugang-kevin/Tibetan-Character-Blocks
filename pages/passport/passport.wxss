@@ -127,6 +127,78 @@
   line-height: 1.7;
 }
 
+/* ============ D54 我的资料（性别 + 藏族名字） ============
+   沿用本页既有的藏纸白卡片 + 朱砂红强调 (#C0392B) + 松石绿 (#176B3C)，不引入新色。 */
+.profile-row {
+  display: flex;
+  align-items: baseline;
+  margin-top: 20rpx;
+}
+.profile-k {
+  flex: 0 0 auto;
+  font-size: 26rpx;
+  color: #6E6759;
+}
+.profile-v {
+  margin-left: 20rpx;
+  font-size: 34rpx;
+  font-weight: 800;
+  letter-spacing: 2rpx;
+  color: #8A6A12;
+}
+.profile-v.empty {
+  font-size: 26rpx;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: #9A9284;
+}
+.profile-note {
+  margin-top: 14rpx;
+  font-size: 22rpx;
+  line-height: 1.7;
+  color: #8A8172;
+}
+.profile-actions {
+  display: flex;
+  margin-top: 22rpx;
+}
+.pa-btn {
+  padding: 14rpx 34rpx;
+  margin-right: 18rpx;
+  border-radius: 999rpx;
+  font-size: 25rpx;
+  font-weight: 700;
+  color: #FDF6E3;
+  background: #176B3C;
+}
+.pa-btn.ghost {
+  color: #6E6759;
+  background: rgba(214, 202, 176, 0.35);
+}
+/* 三档并列：同样的形状与可点面积，「不愿透露」不缩不小，避免变相逼选 */
+.gender-pick {
+  display: flex;
+  margin-top: 22rpx;
+}
+.gp-item {
+  flex: 1;
+  margin-right: 14rpx;
+  padding: 20rpx 0;
+  border-radius: 16rpx;
+  text-align: center;
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #5A5230;
+  background: rgba(214, 202, 176, 0.35);
+  border: 2rpx solid transparent;
+}
+.gp-item:last-child { margin-right: 0; }
+.gp-item.on {
+  color: #FDF6E3;
+  background: #176B3C;
+  border-color: #176B3C;
+}
+
 /* ============ 证书 12 格 ============ */
 .cert-grid {
   display: flex;

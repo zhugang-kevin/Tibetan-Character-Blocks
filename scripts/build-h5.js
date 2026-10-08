@@ -54,7 +54,9 @@ const DATA = {
   // 秘境揭图（D31）：十关各一张，程序绘制（scripts/make_reveals.py）
   reveals: require(path.join(ROOT, 'data', 'reveals')),
   // 藏地密码（PRD 5.2）：十关各一则藏地小知识，通关解锁（纯文字，无资产）
-  secrets: require(path.join(ROOT, 'data', 'secrets'))
+  secrets: require(path.join(ROOT, 'data', 'secrets')),
+  // D54 藏族名字（男 / 女 / 中性三池）：与小程序同一份，体验版不另写一份
+  tibetanNames: require(path.join(ROOT, 'data', 'tibetan-names'))
 };
 
 // ---------- 2. 注入品牌与背景资产 ----------

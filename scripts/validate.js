@@ -4427,6 +4427,156 @@ section('44. 祈福之光跳窗 D53（更名 / 压艳 / 50% 缩放 / 底座同�
   else err('.lamp-buddha 仍是 height:100% 绝对铺满 —— 佛龛层高度不再由底图决定');
 }
 
+// ---------- 45. 性别 + 藏族名字 D54（2026-10-09 用户点名「系统必须能区分男女」） ----------
+// 用户原话：后期要给用户藏族名字，而藏族名字分男女 —— 所以一开始就要把性别这层做对。
+// 四条硬规矩（任何一条破了都会变成合规事故，故全部做成机械守卫）：
+//   ① 只能用户自填（不调任何获取个人资料的接口，微信也不再返回性别）
+//   ② 必须有「不愿透露」出口，且是并列选项不是隐藏入口
+//   ③ 只落本机（不上传 / 不同步 / 不进埋点）
+//   ④ 可查看 / 可修改 / 可清除
+section('45. 性别 + 藏族名字 D54（自填三档 / 不愿透露出口 / 仅本机 / 可改可清除）');
+{
+  const names45 = read('data/tibetan-names.js');
+  const util45 = read('utils/tibetan-name.js');
+  const store45 = read('utils/storage.js');
+  const ijs45 = read('pages/index/index.js');
+  const iw45 = read('pages/index/index.wxml');
+  const pjs45 = read('pages/passport/passport.js');
+  const pw45 = read('pages/passport/passport.wxml');
+  const t45 = read('preview/template.html');
+  const bh45 = read('scripts/build-h5.js');
+
+  // --- 45.1 不调任何「获取个人资料」接口（微信小程序自 2022 年起也不再返回真实性别） ---
+  // 与 §6 同一份名单，这里再点一次名：本功能的取值必须 100% 来自页面上的显式点选。
+  const PROFILE_APIS = ['wx.getUserProfile', 'wx.getUserInfo', 'wx.authorize'];
+  [['utils/tibetan-name.js', util45], ['utils/storage.js', store45],
+   ['pages/index/index.js', ijs45], ['pages/passport/passport.js', pjs45]]
+    .forEach(p => {
+      const hit = PROFILE_APIS.filter(a => p[1].indexOf(a) > -1);
+      if (!hit.length) ok(p[0] + ' 未调用任何个人资料接口（性别纯自填）');
+      else err(p[0] + ' 出现个人资料接口：' + hit.join(','));
+    });
+  // 反例自测：把禁用接口字面量塞进扫描器，必须立刻落网（证明这条守卫不是空转）
+  const selfHit45 = PROFILE_APIS.filter(a => ('wx.getUserProfile();').indexOf(a) > -1);
+  if (selfHit45.length === 1) ok('守卫自测：含禁用接口的源码必被拦下（反例落网）');
+  else err('§45.1 守卫自测失效（反例未落网）—— 扫描器形同虚设');
+
+  // --- 45.2 三档取值：男 / 女 / 不愿透露（不设第四档，避免多收不必要的个人信息） ---
+  ['male', 'female', 'unspecified'].forEach(k => {
+    if (util45.indexOf("key: '" + k + "'") > -1) ok('性别档位齐备：' + k);
+    else err('utils/tibetan-name.js 缺少性别档位 ' + k);
+  });
+  const keys45 = (util45.match(/key:\s*'([a-z]+)'/g) || []).map(s => s.match(/'([a-z]+)'/)[1]);
+  if (keys45.length === 3) ok('性别取值恰好三档（' + keys45.join(' / ') + '，不多收）');
+  else err('性别档位数量不是 3：' + keys45.length);
+  // 「不愿透露」必须是并列选项（同一组按钮里渲染出来），不能只是代码分支里的兜底
+  if (iw45.indexOf("item.key === 'unspecified' ? 'quiet' : ''") > -1 &&
+      iw45.indexOf('genderOptions') > -1)
+    ok('「不愿透露」与男/女同屏并列渲染（不是隐藏兜底）');
+  else err('「不愿透露」未与男/女并列渲染');
+
+  // --- 45.3 名字池分男女，且「不愿透露」走中性池（功能不打折） ---
+  const maleCount45 = (names45.match(/\{ name: '/g) || []).length;
+  ['male', 'female', 'neutral'].forEach(k => {
+    if (new RegExp('\\b' + k + ':\\s*\\[').test(names45)) ok('名字池存在：' + k);
+    else err('data/tibetan-names.js 缺少名字池 ' + k);
+  });
+  if (util45.indexOf("if (k === 'male') return NAMES.male;") > -1 &&
+      util45.indexOf("if (k === 'female') return NAMES.female;") > -1 &&
+      util45.indexOf('return NAMES.neutral;') > -1)
+    ok('选名按性别分流（男→男名池 / 女→女名池 / 其余→中性池）');
+  else err('选名未按性别分流');
+  // 男女名池不得有交集（扎西不能同时出现在两池里）
+  const grab45 = k => {
+    const m = names45.match(new RegExp(k + ':\\s*\\[([\\s\\S]*?)\\]'));
+    return m ? (m[1].match(/name:\s*'([^']+)'/g) || []).map(s => s.match(/'([^']+)'/)[1]) : [];
+  };
+  const m45 = grab45('male'), f45 = grab45('female'), n45 = grab45('neutral');
+  const overlap45 = m45.filter(x => f45.indexOf(x) > -1);
+  if (!overlap45.length && m45.length && f45.length)
+    ok('男女名池无交集（' + m45.length + ' 男名 / ' + f45.length + ' 女名 / ' + n45.length + ' 中性名）');
+  else err('男女名池存在重名：' + overlap45.join(','));
+
+  // --- 45.4 只出中文音译，不写藏文（藏文写法待母语审校，见 data/tibetan-names.js 文件头） ---
+  // 藏文码位 U+0F00–U+0FFF
+  if (!/[\u0F00-\u0FFF]/.test(names45))
+    ok('名字只出中文音译（无藏文码位 U+0F00–U+0FFF）');
+  else err('data/tibetan-names.js 含藏文码位 —— 母语审校前不得开新的藏文文本源');
+  // 反例自测：喂一个藏文码位进去必须落网
+  if (/[\u0F00-\u0FFF]/.test('བཀྲ་ཤིས')) ok('守卫自测：藏文码位必被拦下（反例落网）');
+  else err('§45.4 守卫自测失效（藏文反例未落网）');
+
+  // --- 45.5 确定性选名：同 seed 必得同名（不会每次刷新都变） ---
+  if (/Math\.floor\(n\)\s*%\s*pool\.length/.test(util45))
+    ok('选名走确定性取模（同 seed 必得同名）');
+  else err('选名不是确定性算法（每次刷新会变名字）');
+  const tib45 = require(path.join(ROOT, 'utils', 'tibetan-name.js'));
+  const a45 = tib45.pickFor('female', 7), b45 = tib45.pickFor('female', 7);
+  if (a45 && b45 && a45.name === b45.name) ok('确定性实测：female/seed7 两次均为 ' + a45.name);
+  else err('确定性选名实测不一致');
+  if (a45 && tib45.pickFor('male', 7) && a45.name !== tib45.pickFor('male', 7).name)
+    ok('男女不同名：同 seed 下 女=' + a45.name + ' / 男=' + tib45.pickFor('male', 7).name);
+  else err('同 seed 下男女拿到同一个名字 —— 性别没起作用');
+  if (tib45.normalizeGender('外星人') === '' && tib45.normalizeGender('male') === 'male')
+    ok('归一化：脏值归为未选择，男/女原样通过');
+  else err('normalizeGender 行为不对');
+  // 反例自测：若某人把取模改成随机，确定性断言必然挂 —— 这里用「池外 seed」验证不越界
+  const wrap45 = tib45.pickFor('neutral', 3 * 1000 + 1);
+  if (wrap45 && n45.indexOf(wrap45.name) > -1) ok('大 seed 仍落在池内（取模不越界）');
+  else err('大 seed 取模越界');
+
+  // --- 45.6 两端字段同源（小程序 storage ↔ 体验版 getProgress 白名单逐字段比对） ---
+  const FN45 = ['gender', 'tibetanName', 'tibetanNameMean'];
+  FN45.forEach(f => {
+    const inStore = new RegExp('^\\s*' + f + ':', 'm').test(store45);
+    const inH5 = new RegExp('^\\s*' + f + ':', 'm').test(t45);
+    if (inStore && inH5) ok('两端 storage 字段齐备：' + f);
+    else err('字段缺一端：' + f + '（小程序=' + inStore + ' 体验版=' + inH5 + '）');
+  });
+  if (bh45.indexOf("tibetanNames: require(path.join(ROOT, 'data', 'tibetan-names'))") > -1)
+    ok('体验版名字池由构建注入（data/tibetan-names.js 单一来源，不另写一份）');
+  else err('build-h5.js 未注入 tibetanNames —— 体验版会另起一份名字池');
+
+  // --- 45.7 可查看 / 可修改 / 可清除（护照页「我的资料」） ---
+  if (pw45.indexOf('我的资料') > -1 && pjs45.indexOf('pickGender') > -1 &&
+      pjs45.indexOf('clearGender') > -1)
+    ok('护照页「我的资料」可修改性别（pickGender + clearGender）');
+  else err('护照页缺「我的资料」的查看/修改/清除');
+  if (/storage\.setGender\(''\)/.test(pjs45))
+    ok('清除 = setGender(\'\')：性别与名字一并撤掉（个人信息可撤回）');
+  else err('清除路径不是 setGender(\'\')');
+  // 清除必须连名字一起撤（只清性别不清名字 = 留了个无主名字）
+  if (/p\.tibetanName = '';/.test(store45) && /p\.tibetanNameMean = '';/.test(store45))
+    ok('清性别同时清空名字（不留无主名字）');
+  else err('清性别未同步清名字');
+
+  // --- 45.8 只落本机：写入路径必须经过 save(p)（无网络 / 无云 / 无埋点） ---
+  const setG45 = (store45.match(/function setGender[\s\S]*?\n}/) || [''])[0];
+  if (setG45.indexOf('save(p)') > -1 && !/wx\.request|wx\.cloud|tracker/.test(setG45))
+    ok('性别只写本机 storage（setGender 内无请求 / 无云 / 无埋点）');
+  else err('setGender 走了网络 / 云 / 埋点');
+
+  // --- 45.9 首次引导：只在还没选过时出现，且排在灯火跳窗之后（两个弹窗不同框） ---
+  if (/genderAskShow/.test(iw45) && /onPickGender/.test(ijs45))
+    ok('首页有首次性别引导（选完即写库）');
+  else err('首页缺首次性别引导');
+  if (/if \(lampFirst\) this\._pendingGender = !storage\.getGender\(\);/.test(ijs45) &&
+      /if \(this\._pendingGender\)[\s\S]{0,160}maybeAskGender\(\);/.test(ijs45))
+    ok('性别引导排在灯火跳窗之后（跳窗关闭后才弹出）');
+  else err('性别引导未排在灯火跳窗之后 —— 两个弹窗会叠层');
+  if (/if \(storage\.getGender\(\)\) return false;/.test(ijs45))
+    ok('选过之后不再打扰（maybeAskGender 先查已选）');
+  else err('maybeAskGender 未做「已选则跳过」判断');
+  // 体验版同契约
+  if (/if \(lamp\.shown\) \{ GENDER_PENDING = true; return false; \}/.test(t45) &&
+      /lampFlushGender\(\);/.test(t45))
+    ok('体验版同契约：性别引导排在灯火跳窗之后');
+  else err('体验版性别引导未让位给灯火跳窗');
+  if (/if \(getGender\(\)\) return false;/.test(t45))
+    ok('体验版同样「已选则跳过」');
+  else err('体验版 maybeAskGender 未做已选跳过');
+}
+
 console.log('通过: ' + passed + ' | 错误: ' + errors.length + ' | 警告: ' + warnings.length);
 if (errors.length) { console.log('\x1b[31m存在错误，需修复后重试\x1b[0m'); process.exit(1); }
 console.log('\x1b[32m全部自检通过 ✓\x1b[0m');

@@ -460,6 +460,19 @@
   .pp-h-title { font-size: 16px; font-weight: 700; }
   .pp-h-count { font-size: 13px; font-weight: 700; color: var(--red); }
   .pp-sub { margin-top: 6px; font-size: 12px; color: var(--muted); line-height: 1.7; }
+  /* D54 我的资料（性别 + 藏族名字）：沿用本页藏纸白卡片 + 朱砂红强调 + 松石绿，不引入新色 */
+  .pp-profile { display: flex; align-items: baseline; margin-top: 10px; }
+  .pp-pk { flex: 0 0 auto; font-size: 13px; color: var(--muted); }
+  .pp-pv { margin-left: 10px; font-size: 17px; font-weight: 800; letter-spacing: 1px; color: #8A6A12; }
+  .pp-pv.empty { font-size: 13px; font-weight: 400; letter-spacing: 0; color: #9A9284; }
+  .pp-pact { display: flex; margin-top: 11px; }
+  .pp-pbtn { padding: 7px 17px; margin-right: 9px; border-radius: 999px; font-size: 12px; font-weight: 700; color: #FDF6E3; background: #176B3C; cursor: pointer; }
+  .pp-pbtn.ghost { color: #6E6759; background: rgba(214,202,176,.35); }
+  .pp-gp { display: none; margin-top: 11px; }
+  .pp-gp.show { display: flex; }
+  .gp-cell { flex: 1; margin-right: 7px; padding: 10px 0; border-radius: 8px; text-align: center; font-size: 13px; font-weight: 700; color: #5A5230; background: rgba(214,202,176,.35); border: 1px solid transparent; cursor: pointer; }
+  .gp-cell:last-child { margin-right: 0; }
+  .gp-cell.on { color: #FDF6E3; background: #176B3C; border-color: #176B3C; }
   .pp-next { margin-top: 6px; font-size: 12px; color: var(--green); display: flex; justify-content: space-between; }
   .pp-next b { color: var(--red); }
   .pp-bar { margin-top: 10px; height: 8px; border-radius: 4px; background: #EFE7D4; overflow: hidden; }
@@ -1025,6 +1038,27 @@
   .lamp-tip.show { display: block; }
   .lamp-skip { display: block; margin-top: 10px; text-align: center; font-size: 12px; color: #6E6759; cursor: pointer; }
   .lamp-note { margin-top: 6px; text-align: center; font-size: 10px; color: #6E6759; }
+
+  /* ============ D54 性别引导（首次出现，排在灯火跳窗之后；与小程序 index.wxss 同名同类） ============ */
+  .ga-mask { position: fixed; left: 0; right: 0; top: 0; bottom: 0; z-index: 92; display: none; align-items: center; justify-content: center; padding: 20px 18px; background: linear-gradient(180deg, rgba(11,30,54,.90), rgba(11,30,54,.96)); }
+  .ga-mask.show { display: flex; }
+  .ga-card { width: 100%; max-width: 320px; padding: 28px 22px 20px; border-radius: 18px; text-align: center;
+    background: linear-gradient(180deg, rgba(253,246,227,.98), rgba(240,231,205,.98)); border: 1px solid rgba(176,149,11,.55);
+    box-shadow: 0 12px 30px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.7); }
+  .ga-title { font-size: 19px; font-weight: 800; letter-spacing: 2px; color: #3D2E05; }
+  .ga-sub { margin-top: 9px; font-size: 12px; line-height: 1.7; color: #6E6759; }
+  .ga-opts { margin-top: 18px; }
+  .ga-opt { margin-top: 9px; padding: 12px 0; border-radius: 999px; font-size: 15px; font-weight: 700; letter-spacing: 1px; color: #3D2E05; cursor: pointer;
+    background: linear-gradient(180deg, #FFE9A8, #F1C40F 46%, #B7950B); box-shadow: 0 5px 11px rgba(181,137,0,.35), inset 0 2px 0 rgba(255,255,255,.6); }
+  .ga-opt:first-child { margin-top: 0; }
+  /* 「不愿透露」是并列选项，不是隐藏入口：同样形状与可点面积，只降饱和 */
+  .ga-opt.quiet { color: #5A5230; background: linear-gradient(180deg, #FDF6E3, #E4D9B8); box-shadow: inset 0 1px 0 rgba(255,255,255,.6); }
+  .ga-name { margin-top: 15px; font-size: 36px; font-weight: 800; letter-spacing: 5px; color: #8A6A12; text-shadow: 0 2px 7px rgba(241,196,15,.4); }
+  .ga-mean { margin-top: 4px; font-size: 13px; color: #6E6759; }
+  .ga-btn { margin-top: 20px; padding: 12px 0; border-radius: 999px; font-size: 15px; font-weight: 700; letter-spacing: 1.5px; color: #FDF6E3; cursor: pointer;
+    background: linear-gradient(180deg, #2471A3, #176B3C); box-shadow: 0 6px 13px rgba(23,107,60,.4), inset 0 2px 0 rgba(255,255,255,.25); }
+  .ga-note { margin-top: 13px; font-size: 10px; line-height: 1.6; color: #8A8172; }
+
   .entry-grid { display: flex; flex-wrap: wrap; gap: 9px; }
   .entry-metric { flex: 1 1 46%; padding: 12px; border-radius: 11px; background: #FBF6E8; border: 1px solid rgba(214,202,176,.8); display: flex; flex-direction: column; gap: 3px; }
   .em-v { font-size: 20px; font-weight: 800; color: #C0392B; }
@@ -1287,6 +1321,28 @@
     </div>
   </div>
 
+  <!-- D54 性别引导：只在还没选过时出现，且排在灯火跳窗之后（两个弹窗不同框）。
+       两步：① 选性别（三档并列，「不愿透露」同样给名字、功能不打折）② 展示藏族名字
+       只写本机 localStorage（file:// 下 memoryStore 兜底），不上传、不同步；护照页可随时改或清除。 -->
+  <div class="ga-mask" id="ga-mask">
+    <div class="ga-card">
+      <div id="ga-step-ask">
+        <div class="ga-title">在开始之前</div>
+        <div class="ga-sub">藏族名字分男女（扎西是男名、卓玛是女名）。选一个，我们才好为你取一个属于你的藏族名字。</div>
+        <div class="ga-opts" id="ga-opts"></div>
+        <div class="ga-note">只保存在本机，不上传、不同步 · 护照页「我的资料」可随时修改或清除</div>
+      </div>
+      <div id="ga-step-name" style="display:none">
+        <div class="ga-title">你的藏族名字</div>
+        <div class="ga-name" id="ga-name"></div>
+        <div class="ga-mean" id="ga-mean"></div>
+        <div class="ga-sub">往后你的证书与藏品，都会写在这个名字下。</div>
+        <div class="ga-btn" id="ga-btn">进入雪域</div>
+        <div class="ga-note">只保存在本机，不上传、不同步 · 护照页「我的资料」可随时修改或清除</div>
+      </div>
+    </div>
+  </div>
+
   <!-- ============ 游戏页 ============ -->
   <section id="screen-game" class="screen">
     <!-- 真实场景照片层（D47，清单驱动；无照片时移除） -->
@@ -1386,6 +1442,26 @@
       <div class="pp-title">我的西藏文化护照</div>
       <div class="pp-holder" id="pp-holder"></div>
       <div class="pp-slogan">每一个字母，都是一座西藏</div>
+    </div>
+
+    <!-- D54 我的资料：性别 + 藏族名字（可查看 / 可修改 / 可清除）
+         三条硬规矩：只由用户自己点选 / 有「不愿透露」出口 / 可随时修改或清除。
+         性别只用于挑一个对应性别的藏族名字，不用于别的任何地方。 -->
+    <div class="pp-section">
+      <div class="pp-head">
+        <span class="pp-h-title">我的资料</span>
+        <span class="pp-h-count" id="pp-gender"></span>
+      </div>
+      <div class="pp-profile">
+        <span class="pp-pk">藏族名字</span>
+        <span class="pp-pv" id="pp-tib-name"></span>
+      </div>
+      <div class="pp-sub">性别只用来为你挑一个对应的藏族名字（藏族名字分男女）。只保存在本机，不上传、不同步。</div>
+      <div class="pp-pact">
+        <span class="pp-pbtn" id="pp-edit">修改性别</span>
+        <span class="pp-pbtn ghost" id="pp-clear">清除</span>
+      </div>
+      <div class="pp-gp" id="pp-gp"></div>
     </div>
 
     <div class="pp-section">
@@ -1592,6 +1668,11 @@ function getProgress() {
     certs: (p && p.certs) || [],
     certSeq: (p && p.certSeq) || 0,
     holderName: (p && p.holderName) || '',
+    // D54 性别与藏族名字：**只在用户自己点选后写入**（浏览器同样拿不到性别，也不去猜）。
+    //   与 utils/storage.js#getProgress 同名字段，validate §45.6 逐字段比对两端白名单。
+    gender: (p && p.gender) || '',
+    tibetanName: (p && p.tibetanName) || '',
+    tibetanNameMean: (p && p.tibetanNameMean) || '',
     // 权益中心（双轨制）：模式 / 城市 / 已领凭证 / 核销码流水
     userMode: (p && p.userMode) || '',
     city: (p && p.city) || '',
@@ -1940,6 +2021,70 @@ function updateCertHolder(name) {
   const p = getProgress();
   p.certs.forEach(function (c) { c.holder = name; });
   saveProgress(p);
+}
+
+/* ---------------- D54 性别 + 藏族名字（utils/tibetan-name.js / utils/storage.js 的体验版镜像） ----------------
+   与小程序同一套契约：三档取值 / 归一化 / 确定性选名 / 与日期绑定的 seed。
+   名字池由构建脚本注入（DATA.tibetanNames ← data/tibetan-names.js），不在这里另写一份。 */
+const TIB_NAMES = DATA.tibetanNames || { male: [], female: [], neutral: [] };
+const GENDERS = [
+  { key: 'male', label: '男' },
+  { key: 'female', label: '女' },
+  { key: 'unspecified', label: '不愿透露' }
+];
+function normalizeGender(v) {
+  for (let i = 0; i < GENDERS.length; i++) { if (GENDERS[i].key === v) return v; }
+  return '';
+}
+function genderLabel(v) {
+  const k = normalizeGender(v);
+  for (let i = 0; i < GENDERS.length; i++) { if (GENDERS[i].key === k) return GENDERS[i].label; }
+  return '未选择';
+}
+function namePoolOf(v) {
+  const k = normalizeGender(v);
+  if (k === 'male') return TIB_NAMES.male || [];
+  if (k === 'female') return TIB_NAMES.female || [];
+  return TIB_NAMES.neutral || [];
+}
+/* 确定性选名：同一 seed 永远同一个名字（不会每次刷新都变） */
+function namePickFor(gender, seed) {
+  const pool = namePoolOf(gender);
+  if (!pool.length) return null;
+  let n = Number(seed);
+  if (!isFinite(n) || n < 0) n = 0;
+  const i = Math.floor(n) % pool.length;
+  return { name: pool[i].name, mean: pool[i].mean, gender: normalizeGender(gender) };
+}
+function nameSeedFromDate(dayStr) {
+  const s = String(dayStr || '');
+  let sum = 0;
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    sum += (c >= 48 && c <= 57) ? (c - 48) : c;
+  }
+  return sum;
+}
+function getGender() { return normalizeGender(getProgress().gender); }
+function getTibetanName() {
+  const p = getProgress();
+  return { name: p.tibetanName || '', mean: p.tibetanNameMean || '', gender: normalizeGender(p.gender) };
+}
+/* 写性别 = 同步换一个对应性别的藏族名字；传 '' = 清除（性别与名字一并撤掉） */
+function setGender(v) {
+  const g = normalizeGender(v);
+  const p = getProgress();
+  p.gender = g;
+  if (g) {
+    const picked = namePickFor(g, nameSeedFromDate((p.openLog && p.openLog.first) || ''));
+    p.tibetanName = picked ? picked.name : '';
+    p.tibetanNameMean = picked ? picked.mean : '';
+  } else {
+    p.tibetanName = '';
+    p.tibetanNameMean = '';
+  }
+  saveProgress(p);
+  return p.gender;
 }
 
 /* ---------------- 音效（Web Audio 合成，对应 utils/audio.js） ---------------- */
@@ -4366,6 +4511,34 @@ function renderBlessOut(cv, name) {
 }
 
 /* ---------------- 文化护照（总档案） ---------------- */
+/* ---------------- D54 我的资料：性别 + 藏族名字（可查看 / 可修改 / 可清除） ---------------- */
+let profileEdit = false;
+function renderProfile() {
+  const g = getGender();
+  const nm = getTibetanName();
+  $('pp-gender').textContent = g ? genderLabel(g) : '未选择';
+  const pv = $('pp-tib-name');
+  pv.textContent = nm.name ? (nm.name + '（' + nm.mean + '）') : '尚未获得';
+  pv.className = 'pp-pv' + (nm.name ? '' : ' empty');
+  $('pp-clear').style.display = g ? '' : 'none';
+  $('pp-edit').textContent = profileEdit ? '收起' : '修改性别';
+  const gp = $('pp-gp');
+  gp.className = 'pp-gp' + (profileEdit ? ' show' : '');
+  gp.innerHTML = GENDERS.map(function (x) {
+    return '<div class="gp-cell' + (x.key === g ? ' on' : '') + '" data-key="' + x.key + '">' + x.label + '</div>';
+  }).join('');
+  Array.prototype.forEach.call(gp.querySelectorAll('.gp-cell'), function (el) {
+    el.addEventListener('click', function () {
+      setGender(el.getAttribute('data-key'));   // 写库时同步换一个对应性别的名字
+      profileEdit = false;
+      renderProfile();
+    });
+  });
+}
+$('pp-edit').addEventListener('click', function () { profileEdit = !profileEdit; renderProfile(); });
+// 清除 = 个人信息可撤回：性别回到未选择，名字一并撤掉（下次进首页会重新引导）
+$('pp-clear').addEventListener('click', function () { setGender(''); profileEdit = false; renderProfile(); });
+
 function showPassport() {
   const p = getProgress();
   const list = certList();
@@ -4374,6 +4547,9 @@ function showPassport() {
   $('pp-logo').src = IMAGES.logo144;
   $('pp-holder').textContent = p.holderName ? ('持有人 · ' + p.holderName) : '持有人 · 未填写';
   $('pp-cert-count').textContent = owned + ' / 12';
+
+  // 我的资料（D54）：性别与名字都从 progress 读，不另开真相源；可查看 / 可修改 / 可清除
+  renderProfile();
 
   const grid = $('pp-cert-grid');
   grid.innerHTML = list.map(function (it) {
@@ -5003,6 +5179,7 @@ function hideLampWindow() {
   $('lamp-mask').classList.remove('show');
   lamp.shown = false;
   ladderFlushPending();   // 跳窗让位：补播被挡住的入场动效
+  lampFlushGender();      // 跳窗让位：性别引导排在灯火之后（两个弹窗不同框）
 }
 function lightLamp() {
   if (lamp.lit) return;
@@ -5044,9 +5221,50 @@ function closeLampWin() {
   saveProgress(p);
   hideLampWindow();
 }
+// 灯火跳窗让位后，再问一次性别（若还没选）
+function lampFlushGender() {
+  if (!GENDER_PENDING) return;
+  GENDER_PENDING = false;
+  maybeAskGender();
+}
 $('lamp-skip').addEventListener('click', closeLampWin);
 $('lamp-x').addEventListener('click', closeLampWin);
 $('lamp-close').addEventListener('click', closeLampWin);
+
+/* ---------------- D54 性别引导（体验版镜像；只在还没选过时出现，且排在灯火跳窗之后） ----------------
+   合规三条与小程序一致：只能用户自己点 / 「不愿透露」是并列选项 / 只写本机。 */
+let GENDER_PENDING = false;
+function showGenderAsk() {
+  const box = $('ga-opts');
+  box.innerHTML = GENDERS.map(function (g) {
+    return '<div class="ga-opt' + (g.key === 'unspecified' ? ' quiet' : '') + '" data-key="' + g.key + '">' +
+      g.label + '</div>';
+  }).join('');
+  Array.prototype.forEach.call(box.querySelectorAll('.ga-opt'), function (el) {
+    el.addEventListener('click', function () { pickGenderH5(el.getAttribute('data-key')); });
+  });
+  $('ga-step-ask').style.display = '';
+  $('ga-step-name').style.display = 'none';
+  $('ga-mask').classList.add('show');
+}
+function pickGenderH5(key) {
+  const g = setGender(key);              // 写库时同步按新性别重取名字
+  const nm = getTibetanName();
+  $('ga-name').textContent = nm.name;
+  $('ga-mean').textContent = nm.mean + ' · ' + genderLabel(g);
+  $('ga-step-ask').style.display = 'none';
+  $('ga-step-name').style.display = '';
+}
+function hideGenderAsk() { $('ga-mask').classList.remove('show'); }
+$('ga-btn').addEventListener('click', hideGenderAsk);
+function maybeAskGender() {
+  if (location.search.indexOf('nogender') > -1) return false;   // 本地调试开关：跳过引导，便于截图内页
+  if (getGender()) return false;
+  // 灯火跳窗在前：两个弹窗不同框，叠层会互相挡住出口 → 让它先走
+  if (lamp.shown) { GENDER_PENDING = true; return false; }
+  showGenderAsk();
+  return true;
+}
 
 /* ---------------- 启动 ---------------- */
 $('sc-bg').src = IMAGES.bgGlobal;
@@ -5066,6 +5284,7 @@ document.documentElement.style.setProperty('--pat', 'url("' + IMAGES.pattern + '
 applyOpenLog(markOpen(getOpenLog(), colToday()).state);
 renderHome();
 maybeShowLamp();
+maybeAskGender();   // D54：性别引导排在灯火跳窗之后（?nogender=1 可跳过，便于截图内页）
 </script>
 </body>
 </html>

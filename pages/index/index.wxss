@@ -1243,3 +1243,92 @@ page,
   font-size: 20rpx;
   color: #6E6759;
 }
+
+/* ---------- D54 性别引导（首次出现，排在灯火跳窗之后） ----------
+   配色沿用灯火跳窗的暗金体系（#F1C40F 金 / #FFE9A8 浅金 / #6E6759 弱化说明），
+   避免为一个弹窗再引入新色。z-index 高于 .lamp-mask(40)：两个弹窗不会同时显示，
+   但栈序要稳，防止时序抖动时出现半透明叠层。 */
+.ga-mask {
+  position: fixed;
+  left: 0; right: 0; top: 0; bottom: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60rpx 56rpx;
+  /* 夜色深蓝 + 青金石蓝，弱化金色光晕：这一步是「填写资料」，不是庆祝 */
+  background: linear-gradient(180deg, rgba(11, 30, 54, 0.90) 0%, rgba(11, 30, 54, 0.96) 100%);
+}
+.ga-card {
+  width: 100%;
+  max-width: 600rpx;
+  padding: 56rpx 44rpx 40rpx;
+  border-radius: 32rpx;
+  text-align: center;
+  background: linear-gradient(180deg, rgba(253, 246, 227, 0.98) 0%, rgba(240, 231, 205, 0.98) 100%);
+  border: 2rpx solid rgba(176, 149, 11, 0.55);
+  box-shadow: 0 24rpx 60rpx rgba(0, 0, 0, 0.5), inset 0 2rpx 0 rgba(255, 255, 255, 0.7);
+}
+.ga-title {
+  font-size: 38rpx;
+  font-weight: 800;
+  letter-spacing: 4rpx;
+  color: #3D2E05;
+}
+.ga-sub {
+  margin-top: 18rpx;
+  font-size: 26rpx;
+  line-height: 1.7;
+  color: #6E6759;
+}
+.ga-opts {
+  margin-top: 36rpx;
+}
+.ga-opt {
+  margin-top: 18rpx;
+  padding: 24rpx 0;
+  border-radius: 999rpx;
+  font-size: 30rpx;
+  font-weight: 700;
+  letter-spacing: 2rpx;
+  color: #3D2E05;
+  background: linear-gradient(180deg, #FFE9A8 0%, #F1C40F 46%, #B7950B 100%);
+  box-shadow: 0 10rpx 22rpx rgba(181, 137, 0, 0.35), inset 0 3rpx 0 rgba(255, 255, 255, 0.6);
+}
+.ga-opt:first-child { margin-top: 0; }
+/* 「不愿透露」是并列选项，不是隐藏入口：同样的形状与可点面积，只降饱和 */
+.ga-opt.quiet {
+  color: #5A5230;
+  background: linear-gradient(180deg, #FDF6E3 0%, #E4D9B8 100%);
+  box-shadow: inset 0 2rpx 0 rgba(255, 255, 255, 0.6);
+}
+.ga-name {
+  margin-top: 30rpx;
+  font-size: 72rpx;
+  font-weight: 800;
+  letter-spacing: 10rpx;
+  color: #8A6A12;
+  text-shadow: 0 4rpx 14rpx rgba(241, 196, 15, 0.4);
+}
+.ga-mean {
+  margin-top: 8rpx;
+  font-size: 26rpx;
+  color: #6E6759;
+}
+.ga-btn {
+  margin-top: 40rpx;
+  padding: 24rpx 0;
+  border-radius: 999rpx;
+  font-size: 30rpx;
+  font-weight: 700;
+  letter-spacing: 3rpx;
+  color: #FDF6E3;
+  background: linear-gradient(180deg, #2471A3 0%, #176B3C 100%);
+  box-shadow: 0 12rpx 26rpx rgba(23, 107, 60, 0.4), inset 0 3rpx 0 rgba(255, 255, 255, 0.25);
+}
+.ga-note {
+  margin-top: 26rpx;
+  font-size: 20rpx;
+  line-height: 1.6;
+  color: #8A8172;
+}

@@ -9,6 +9,8 @@ var cardsData = require('../../data/cards');
 var revealsData = require('../../data/reveals');
 var secretsData = require('../../data/secrets');
 var tracker = require('../../utils/tracker');
+// D54 性别 + 藏族名字：三档取值与选名算法（与 utils/storage.js 同一份）
+var tibetanName = require('../../utils/tibetan-name.js');
 
 // 印记定义（v0 仅拉萨；后续扩展七地市）
 var STAMPS = {
@@ -30,6 +32,13 @@ Page({
     bestCombo: 0,
     holder: '',
     levelsDone: 0,
+    // D54 我的资料：性别 + 藏族名字（可查看 / 可修改 / 可清除）
+    gender: '',
+    genderLabel: '未选择',
+    genderOptions: [],
+    tibetanName: '',
+    tibetanNameMean: '',
+    profileEdit: false,
     // 唐卡收藏（兑现 index 页「完整图收入文化护照」的承诺，2026-10-05 补齐）
     thangkaCells: [],
     fragCount: 0,
@@ -77,6 +86,10 @@ Page({
     // 藏地密码：与揭示图鉴同一口径（解锁 = 已完成该关），槽位由纯函数生成
     var secP = collect.secretProgress(secretsData, p.completedLevels);
 
+    // 我的资料（D54）：性别与名字都从 progress 读，不另开真相源
+    var g = storage.getGender();
+    var nm = storage.getTibetanName();
+
     this.setData({
       certs: list,      owned: owned,
       nextStage: next,
@@ -95,8 +108,34 @@ Page({
       revealTotal: revealsData.length,
       secretSlots: secP.slots,
       secretGot: secP.got,
-      secretTotal: secP.total
+      secretTotal: secP.total,
+      gender: g,
+      genderLabel: g ? tibetanName.labelOf(g) : '未选择',
+      genderOptions: tibetanName.GENDERS.map(function (x) { return { key: x.key, label: x.label }; }),
+      tibetanName: nm.name,
+      tibetanNameMean: nm.mean
     });
+  },
+
+  // ---------- D54 我的资料：可查看 / 可修改 / 可清除 ----------
+  toggleProfileEdit: function () {
+    this.setData({ profileEdit: !this.data.profileEdit });
+  },
+
+  pickGender: function (e) {
+    var key = (e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.key) || '';
+    if (!key) return;
+    storage.setGender(key);      // 写库时同步按新性别重取名字
+    this.refresh();
+    // 改完收起选择行：结果已经在上面那一行里了，不留一排常驻按钮
+    this.setData({ profileEdit: false });
+  },
+
+  // 清除 = 个人信息可撤回：性别回到未选择，名字一并撤掉（下次进首页会重新引导）
+  clearGender: function () {
+    storage.setGender('');
+    this.setData({ profileEdit: false });
+    this.refresh();
   },
 
   // 打开某阶段的证书页（未获得时进入「未解锁」说明页）

@@ -2212,6 +2212,67 @@ function mockCtx(sink) {
       tileBuf35.readUInt32BE(16) === 256 && tileBuf35.readUInt32BE(20) === 128);
   }
 
+  /* ---------- 36. 性别 + 藏族名字（D54：自填三档 / 不愿透露出口 / 仅本机 / 可改可清除） ---------- */
+  section('36. 性别 + 藏族名字（D54）');
+  {
+    // 36.1 三档并列渲染，且「不愿透露」不是隐藏兜底
+    const opts36 = Array.prototype.map.call(doc.querySelectorAll('#ga-opts .ga-opt'), function (el) {
+      return el.getAttribute('data-key');
+    });
+    check('引导页三档并列渲染（male/female/unspecified）',
+      opts36.join(',') === 'male,female,unspecified', opts36.join(','));
+    check('「不愿透露」与男/女同形并列（有 quiet 样式但可点面积一致）',
+      !!doc.querySelector('#ga-opts .ga-opt.quiet[data-key="unspecified"]'));
+
+    // 36.2 选「女」→ 拿到女名（与小程序同一份名字池，确定性取模）
+    const femaleName36 = ev("(function(){ setGender('female'); var n = getTibetanName(); setGender(''); return n.name; })()");
+    const maleName36 = ev("(function(){ setGender('male'); var n = getTibetanName(); setGender(''); return n.name; })()");
+    const neutralName36 = ev("(function(){ setGender('unspecified'); var n = getTibetanName(); setGender(''); return n.name; })()");
+    check('女 → 女名池（' + femaleName36 + '）', !!femaleName36);
+    check('男 → 男名池（' + maleName36 + '）', !!maleName36);
+    check('不愿透露 → 中性名池（' + neutralName36 + '，功能不打折）', !!neutralName36);
+    check('男女不同名（' + maleName36 + ' vs ' + femaleName36 + '）', maleName36 !== femaleName36);
+
+    // 36.3 确定性：同 seed 必得同名（不会每次刷新都变）
+    const twice36 = ev("(function(){ setGender('female'); var a = getTibetanName().name; var b = namePickFor('female', nameSeedFromDate(getProgress().openLog.first || '')).name; setGender(''); return a === b; })()");
+    check('确定性选名：落库名 = 算法同名', twice36 === true);
+
+    // 36.4 只落本机：存储里能读到，且字段只有三个（无网络 / 无云 / 无埋点已在 validate §45.8 静态守）
+    const fields36 = ev("(function(){ setGender('female'); var p = getProgress(); var r = [p.gender, p.tibetanName, p.tibetanNameMean]; setGender(''); return r.join('|'); })()");
+    check('性别与名字落在本机 progress（' + fields36 + '）',
+      fields36.split('|')[0] === 'female' && !!fields36.split('|')[1] && !!fields36.split('|')[2]);
+
+    // 36.5 清除 = 个人信息可撤回：性别与名字一并撤掉
+    const cleared36 = ev("(function(){ setGender('female'); setGender(''); var p = getProgress(); return [p.gender, p.tibetanName, p.tibetanNameMean].join('|'); })()");
+    check('清除后性别与名字一并撤空（不留无主名字）', cleared36 === '||', cleared36);
+
+    // 36.6 引导排在灯火跳窗之后（两个弹窗不同框）
+    const htmlSrc36 = fs.readFileSync(HTML, 'utf8');
+    check('灯火跳窗开着时性别引导让位（GENDER_PENDING）',
+      /if \(lamp\.shown\) \{ GENDER_PENDING = true; return false; \}/.test(htmlSrc36));
+    check('体验版同样「已选则跳过」（不反复打扰）',
+      /if \(getGender\(\)\) return false;/.test(htmlSrc36) &&
+      /if \(location\.search\.indexOf\('nogender'\) > -1\) return false;/.test(htmlSrc36));
+
+    // 36.7 护照页「我的资料」：可查看 / 可修改 / 可清除
+    ev("setGender('female'); showPassport();");
+    check('护照页显示性别标签（女）', $('#pp-gender').textContent === '女', $('#pp-gender').textContent);
+    check('护照页显示藏族名字（' + $('#pp-tib-name').textContent + '）',
+      $('#pp-tib-name').textContent.indexOf('（') > -1);
+    ev("document.querySelector('#pp-edit').click()");
+    check('点「修改性别」展开三档选择行', /show/.test($('#pp-gp').className));
+    const cells36 = Array.prototype.map.call(doc.querySelectorAll('#pp-gp .gp-cell'), function (el) {
+      return el.getAttribute('data-key');
+    });
+    check('护照页三档并列可点（' + cells36.join(',') + '）',
+      cells36.join(',') === 'male,female,unspecified');
+    check('当前性别在选择行里高亮（.on 落在 female）',
+      !!doc.querySelector('#pp-gp .gp-cell.on[data-key="female"]'));
+    ev("document.querySelector('#pp-clear').click()");
+    check('护照页清除后回到未选择', $('#pp-gender').textContent === '未选择', $('#pp-gender').textContent);
+    ev("showScreen('home')");
+  }
+
   /* ---------- 汇总 ---------- */
   check('全程无脚本运行时错误', errors.length === 0, errors[0]);
 

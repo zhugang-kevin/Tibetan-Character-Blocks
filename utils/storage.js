@@ -52,6 +52,13 @@ function getProgress() {
     certs: (p && p.certs) || [],
     certSeq: (p && p.certSeq) || 0,
     holderName: (p && p.holderName) || '',
+    // D54 性别与藏族名字：**只在用户自己点选后写入**（微信拿不到性别，也不去拿）。
+    //   gender 取值 '' | 'male' | 'female' | 'unspecified'（'' = 还没选，会出现首次引导）。
+    //   三档之外的值一律不认（见 utils/tibetan-name.js#normalizeGender），避免脏数据。
+    //   与 holderName 同一份 progress：纯本机、不上传、不同步、不进埋点。
+    gender: (p && p.gender) || '',
+    tibetanName: (p && p.tibetanName) || '',
+    tibetanNameMean: (p && p.tibetanNameMean) || '',
     // 权益中心（双轨制）：模式 / 城市 / 已领凭证 / 核销码流水
     userMode: (p && p.userMode) || '',
     city: (p && p.city) || '',
@@ -235,6 +242,39 @@ function setHolderName(name) {
 
 function getHolderName() {
   return getProgress().holderName || '';
+}
+
+// ---------- D54 性别 + 藏族名字 ----------
+// 性别只能由用户在页面上显式点选（微信不提供性别，头像昵称类接口也在 §6 禁用名单里）。
+// 写入时同步按新性别重取名字：改性别 = 换一个对应性别的藏族名字（名字与性别始终一致）。
+// seed 用「首次打开日期」→ 同一台机器上的名字稳定，不会每次进页面都变。
+var tibetanName = require('./tibetan-name.js');
+
+function getGender() {
+  return tibetanName.normalizeGender(getProgress().gender);
+}
+
+function setGender(v) {
+  var g = tibetanName.normalizeGender(v);
+  var p = getProgress();
+  p.gender = g;
+  if (g) {
+    var seed = tibetanName.seedFromDate((p.openLog && p.openLog.first) || '');
+    var picked = tibetanName.pickFor(g, seed);
+    p.tibetanName = picked ? picked.name : '';
+    p.tibetanNameMean = picked ? picked.mean : '';
+  } else {
+    // 「清除」：性别回到未选择，名字一并撤掉（个人信息可撤回）
+    p.tibetanName = '';
+    p.tibetanNameMean = '';
+  }
+  save(p);
+  return p.gender;
+}
+
+function getTibetanName() {
+  var p = getProgress();
+  return { name: p.tibetanName || '', mean: p.tibetanNameMean || '', gender: tibetanName.normalizeGender(p.gender) };
 }
 
 // ---------- 权益中心：模式 / 城市 / 凭证 ----------
@@ -457,6 +497,9 @@ module.exports = {
   getCertSeq: getCertSeq,
   setHolderName: setHolderName,
   getHolderName: getHolderName,
+  setGender: setGender,
+  getGender: getGender,
+  getTibetanName: getTibetanName,
   setUserMode: setUserMode,
   getUserMode: getUserMode,
   setCity: setCity,

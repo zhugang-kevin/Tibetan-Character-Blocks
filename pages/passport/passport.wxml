@@ -20,6 +20,34 @@
       <view class="cover-slogan">每一个字母，都是一座西藏</view>
     </view>
 
+    <!-- 0. 我的资料（D54）：性别 + 藏族名字
+         三条硬规矩：只由用户自己点选 / 有「不愿透露」出口 / 可随时修改或清除。
+         性别只用于挑一个对应性别的藏族名字，不用于别的任何地方。 -->
+    <view class="section">
+      <view class="section-head">
+        <text class="section-title">我的资料</text>
+        <text class="section-count">{{genderLabel}}</text>
+      </view>
+      <view class="profile-row">
+        <text class="profile-k">藏族名字</text>
+        <text class="profile-v {{tibetanName ? '' : 'empty'}}">{{tibetanName ? tibetanName + '（' + tibetanNameMean + '）' : '尚未获得'}}</text>
+      </view>
+      <view class="profile-note">性别只用来为你挑一个对应的藏族名字（藏族名字分男女）。只保存在本机，不上传、不同步。</view>
+      <view class="profile-actions">
+        <view class="pa-btn" bindtap="toggleProfileEdit">{{profileEdit ? '收起' : '修改性别'}}</view>
+        <view wx:if="{{gender}}" class="pa-btn ghost" bindtap="clearGender">清除</view>
+      </view>
+      <view wx:if="{{profileEdit}}" class="gender-pick">
+        <view
+          wx:for="{{genderOptions}}"
+          wx:key="key"
+          class="gp-item {{item.key === gender ? 'on' : ''}}"
+          data-key="{{item.key}}"
+          bindtap="pickGender"
+        >{{item.label}}</view>
+      </view>
+    </view>
+
     <!-- 1. 藏文成长证书（学习线） -->
     <view class="section">
       <view class="section-head">
