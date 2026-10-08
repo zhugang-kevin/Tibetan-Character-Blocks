@@ -62,9 +62,9 @@ NODE_PATH="C:/Users/zhuga/.workbuddy/binaries/node/workspace/node_modules" \
 - H5 镜像：`body` / `.phone` 暗色 + `bg-global-h5.jpg` base64（`dataUrl()` 按扩展名给 mime）+ `.sc-night`；
   启动时 `$('sc-bg').src = IMAGES.bgGlobal`。
 
-## 4. 天梯与万家灯火（§17 / §19 / §20）
+## 4. 天梯与祈福之光（§17 / §19 / §20；D53 前名「万家灯火」）
 
-- **万家灯火**：`data/lamp.js`（固定假数据）+ `utils/lamp.js` 纯函数
+- **祈福之光**（D53 更名）：`data/lamp.js`（固定假数据）+ `utils/lamp.js` 纯函数
   （`isFirstOpenToday` / `lightOne` / `fill` / `formatCount` 千分位 / `formatWan` 万·亿 / `glowLevel`），
   **禁任何网络/云 API**；状态存 `storage.lampDay`；首页 `lamp-mask` 每天首次打开显示一次。
   点亮 = 总数 +1 + `vibrateShort` + 金粉 + 祝福语 + `lampPop`。
@@ -120,7 +120,7 @@ chrome-headless-shell.exe --headless --no-sandbox --disable-gpu --disable-dev-sh
 ```
 
 - ⚠️ Windows 下最小窗宽 ≈ 512（用 430 会裁掉右侧，是**假 bug**）→ **512 截 + PIL 裁 `(41,0,471,高)`** 得 430px 真机框。
-- 内页两条捷径：① `play.html` 自带 **`?nolamp=1`**（跳过万家灯火跳窗）；
+- 内页两条捷径：① `play.html` 自带 **`?nolamp=1`**（跳过祈福之光跳窗）；
   ② 末尾 append `<script>` 调全局函数（`getProgress` / `saveProgress` / `showScreen` / `colToday` 都挂在顶层 → 全局），
   结果写 `body[data-probe]`（**别用 `title`**）。
 - ⚠️ 注入脚本必须包在 `window.addEventListener('load',…)` + `setTimeout(120)`（内联在 `</body>` 前会被启动流程覆盖）；

@@ -917,7 +917,7 @@
     background: radial-gradient(circle at 50% 26%, rgba(241,196,15,.22) 0%, rgba(241,196,15,0) 46%), linear-gradient(180deg, rgba(74,21,21,.86), rgba(11,30,54,.94)); }
   .lamp-mask.show { display: flex; }
   /* 三段式：可滚动中部 + 固定底栏（375×667 实测旧版把 CTA 裁出屏幕，见 D44） */
-  .lamp-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 20px 16px 6px; }
+  .lamp-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 0 16px 6px; }
   .lamp-actions { flex: 0 0 auto; padding: 8px 16px 14px; border-top: 1px solid rgba(212,175,55,.28);
     background: linear-gradient(180deg, rgba(22,20,40,.2), rgba(22,20,40,.75)); }
   .lamp-x { position: absolute; top: 9px; right: 11px; z-index: 3; width: 30px; height: 30px; line-height: 30px;
@@ -940,11 +940,18 @@
     display: flex; flex-direction: column; border-radius: 18px;
     background: linear-gradient(180deg, rgba(46,26,18,.94), rgba(22,20,40,.94)); border: 1px solid rgba(212,175,55,.75);
     box-shadow: 0 12px 30px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,233,168,.35); }
-  .lamp-halo { position: absolute; left: 50%; top: -22%; width: 120%; height: 62%; transform: translateX(-50%); border-radius: 50%; pointer-events: none;
+  /* D53 佛龛层：底图/色罩/光晕/酥油灯/标题/主数字同处一个坐标系，几何用「佛龛层高的百分比」，
+     佛龛层高 = 底图高 = 1.268 × 卡宽（img 等比），灯座与佛陀座基共线不随机型漂移 */
+  .lamp-shrine { position: relative; margin: 0 -16px; }
+  .lamp-buddha { display: block; width: 100%; height: auto; }
+  .lamp-veil { position: absolute; left: 0; top: 0; right: 0; bottom: 0; z-index: 0; pointer-events: none;
+    background: linear-gradient(180deg, rgba(11,30,54,.38), rgba(74,21,21,.30)); }
+  .lamp-halo { position: absolute; left: 50%; top: 0; width: 120%; height: 40%; transform: translateX(-50%); border-radius: 50%; pointer-events: none;
     background: radial-gradient(ellipse at center, rgba(255,226,140,.5), rgba(241,196,15,.16) 44%, transparent 74%); }
-  .lamp-title { position: relative; text-align: center; font-size: 22px; font-weight: 800; letter-spacing: 3px; color: #FFE9A8; text-shadow: 0 2px 8px rgba(241,196,15,.5); }
-  .lamp-sub { position: relative; margin-top: 6px; text-align: center; font-size: 13px; color: #EBD9B4; }
-  .lamp-total { position: relative; margin-top: 4px; text-align: center; font-size: 27px; font-weight: 800; letter-spacing: 1px; color: #FFD98A; text-shadow: 0 2px 8px rgba(241,196,15,.45); }
+  .lamp-title { position: absolute; top: 7%; left: 0; right: 0; z-index: 2; text-align: center; font-size: 22px; font-weight: 800; letter-spacing: 3px; color: #FFE9A8; text-shadow: 0 2px 8px rgba(241,196,15,.5); }
+  .lamp-sub { position: absolute; top: 93%; left: 0; right: 0; z-index: 2; text-align: center; font-size: 13px; color: #EBD9B4; }
+  /* D53 位置规则（用户点名）：主数字横穿灯腰——上半部（碗口+火焰）在数字之上，下半部在数字之下 */
+  .lamp-total { position: absolute; top: 70%; left: 0; right: 0; z-index: 2; text-align: center; font-size: 27px; font-weight: 800; letter-spacing: 1px; color: #FFD98A; text-shadow: 0 2px 8px rgba(241,196,15,.45); }
   .lamp-unit { margin-left: 4px; font-size: 13px; font-weight: 400; color: #C9BFA8; }
   .lamp-total.pop, .lamp-sub.pop { animation: lampPop 620ms cubic-bezier(.22,1.2,.36,1) both; }
   @keyframes lampPop { 0% { transform: scale(1); } 34% { transform: scale(1.16); } 100% { transform: scale(1); } }
@@ -955,19 +962,16 @@
   .glow-3 { opacity: .72; box-shadow: 0 0 6px rgba(255,217,138,.66); }
   .glow-4 { opacity: .92; box-shadow: 0 0 9px rgba(255,217,138,.82); }
   @keyframes lampGlow { 0%, 100% { transform: scale(.86); } 50% { transform: scale(1.12); } }
-  .lamp-flame { position: relative; height: 240px; margin: 10px 0 4px; }
-  /* D50：释迦牟尼底图 + 色罩（图内已烘一层，这里只做轻罩）；装饰层不参与交互 */
-  .lamp-buddha { position: absolute; left: 0; top: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
-  .lamp-veil { position: absolute; left: 0; top: 0; right: 0; bottom: 0; z-index: 0; pointer-events: none;
-    background: linear-gradient(180deg, rgba(11,30,54,.38), rgba(74,21,21,.30)); }
-  .lamp-scroll, .lamp-actions { position: relative; z-index: 2; }
-  /* 鎏金酥油灯（真实图片）+ 写实火苗：未点亮完全静态，.lit 挂三层异相动画 */
-  .lamp-img { position: absolute; left: calc(50% - 87px); bottom: 0; width: 150px; height: 212px; }
-  .flame-halo { position: absolute; left: calc(50% - 65px); bottom: 138px; width: 130px; height: 100px; border-radius: 50%;
+  /* D53：酥油灯 50%（75×106px = 150×212rpx），灯座 bottom:8% ↔ 底图 92% 座基（供桌线）；
+     火苗/光晕/金粉按 0.5 等比缩小，锚点跟随灯座（calc(% + px) 混合定位）。
+     灯足在抠图 bbox 里偏右（质心 0.578 宽）→ 左移 6px 回中轴 */
+  .lamp-flame { position: absolute; left: 0; right: 0; top: 0; bottom: 0; z-index: 1; pointer-events: none; }
+  .lamp-img { position: absolute; left: calc(50% - 44px); bottom: 8%; width: 75px; height: 106px; }
+  .flame-halo { position: absolute; left: calc(50% - 33px); bottom: calc(8% + 69px); width: 65px; height: 50px; border-radius: 50%;
     background: radial-gradient(ellipse at center, rgba(255,206,84,.28), rgba(241,196,15,.08) 48%, transparent 76%); }
-  .flame-img { position: absolute; width: 46px; height: 80px; }
-  .fi-outer { left: calc(50% - 23px); bottom: 165px; transform-origin: 50% 96%; }
-  .fi-core { left: calc(50% - 14px); bottom: 168px; width: 28px; height: 49px; opacity: .92; transform-origin: 50% 96%; }
+  .flame-img { position: absolute; width: 23px; height: 40px; }
+  .fi-outer { left: calc(50% - 12px); bottom: calc(8% + 82px); transform-origin: 50% 96%; }
+  .fi-core { left: calc(50% - 7px); bottom: calc(8% + 85px); width: 14px; height: 25px; opacity: .92; transform-origin: 50% 96%; }
   .lit .fi-outer { animation: flameSway 1.7s ease-in-out infinite; }
   .lit .fi-core { animation: flameDance 1.13s ease-in-out infinite; }
   .lit .flame-halo { animation: haloBreathe 2.3s ease-in-out infinite; }
@@ -983,21 +987,21 @@
     64% { transform: scale(.9,1.12) skewX(2.2deg); }
   }
   @keyframes haloBreathe { 0%, 100% { opacity: .55; transform: scale(.94); } 50% { opacity: 1; transform: scale(1.06); } }
-  .sparks { position: absolute; left: 50%; bottom: 178px; width: 0; height: 0; }
-  .spark { position: absolute; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%;
+  .sparks { position: absolute; left: 50%; bottom: calc(8% + 89px); width: 0; height: 0; }
+  .spark { position: absolute; width: 4px; height: 4px; margin: -2px 0 0 -2px; border-radius: 50%;
     background: radial-gradient(circle, #FFF6D0, #F1C40F 58%, rgba(241,196,15,0)); animation: sparkFly .9s cubic-bezier(.2,.8,.3,1) forwards; }
-  .spark:nth-child(1) { --dx: 0px; --dy: -110px; }
-  .spark:nth-child(2) { --dx: 55px; --dy: -95px; }
-  .spark:nth-child(3) { --dx: 95px; --dy: -55px; }
-  .spark:nth-child(4) { --dx: 110px; --dy: 0px; }
-  .spark:nth-child(5) { --dx: 95px; --dy: 55px; }
-  .spark:nth-child(6) { --dx: 55px; --dy: 95px; }
-  .spark:nth-child(7) { --dx: 0px; --dy: 110px; }
-  .spark:nth-child(8) { --dx: -55px; --dy: 95px; }
-  .spark:nth-child(9) { --dx: -95px; --dy: 55px; }
-  .spark:nth-child(10) { --dx: -110px; --dy: 0px; }
-  .spark:nth-child(11) { --dx: -95px; --dy: -55px; }
-  .spark:nth-child(12) { --dx: -55px; --dy: -95px; }
+  .spark:nth-child(1) { --dx: 0px; --dy: -55px; }
+  .spark:nth-child(2) { --dx: 28px; --dy: -48px; }
+  .spark:nth-child(3) { --dx: 48px; --dy: -28px; }
+  .spark:nth-child(4) { --dx: 55px; --dy: 0px; }
+  .spark:nth-child(5) { --dx: 48px; --dy: 28px; }
+  .spark:nth-child(6) { --dx: 28px; --dy: 48px; }
+  .spark:nth-child(7) { --dx: 0px; --dy: 55px; }
+  .spark:nth-child(8) { --dx: -28px; --dy: 48px; }
+  .spark:nth-child(9) { --dx: -48px; --dy: 28px; }
+  .spark:nth-child(10) { --dx: -55px; --dy: 0px; }
+  .spark:nth-child(11) { --dx: -48px; --dy: -28px; }
+  .spark:nth-child(12) { --dx: -28px; --dy: -48px; }
   @keyframes sparkFly {
     0% { transform: translate(0,0) scale(.4); opacity: 1; }
     70% { opacity: .9; }
@@ -1230,24 +1234,28 @@
   <!-- 万家灯火：进入主界面前的静态祈福跳窗（每天首次打开一次；展示数据全部写死在 data/lamp.js，无网络请求） -->
   <div class="lamp-mask" id="lamp-mask">
     <div class="lamp-card">
-      <!-- D50：坐着的释迦牟尼底图（色罩已烘进图里）+ 一层夜色罩压艳；装饰层，不参与交互 -->
-      <img class="lamp-buddha" id="lamp-buddha" alt="" aria-hidden="true">
-      <div class="lamp-veil" aria-hidden="true"></div>
-      <div class="lamp-halo"></div>
       <!-- 右上角 ✕：任何时候都可关（此前唯一出口是底部文字链，内容一超高就够不着） -->
       <div class="lamp-x" id="lamp-x">✕</div>
       <!-- 中部可滚动：内容再长也不裁切（此前 overflow:hidden 把 CTA 直接裁出屏幕） -->
       <div class="lamp-scroll" id="lamp-scroll">
-        <div class="lamp-title" id="lamp-title">万家灯火</div>
-        <div class="lamp-total" id="lamp-total"></div>
-        <div class="lamp-sub" id="lamp-sub"></div>
-        <!-- 鎏金酥油灯（真实图片）+ 写实火苗：未点亮完全静态，点亮后 .lit 挂多层火焰动画 -->
-        <div class="lamp-flame" id="lamp-flame">
-          <div class="flame-halo"></div>
-          <img class="flame-img fi-outer" id="fi-outer" alt="" aria-hidden="true">
-          <img class="flame-img fi-core" id="fi-core" alt="" aria-hidden="true">
-          <img class="lamp-img" id="lamp-img" alt="" aria-hidden="true">
-          <div class="sparks" id="lamp-sparks"></div>
+        <!-- D53 佛龛层：底图 + 色罩 + 酥油灯同处一个「供桌线」坐标系——
+             灯座 bottom:8% 与底图 92% 高度处的座基共线（契约见 make_lamp_assets.py 文件头）；
+             主数字横穿灯腰（validate §44.4）。灯体先于文字绘制：文字压在灯腰之上。 -->
+        <div class="lamp-shrine">
+          <img class="lamp-buddha" id="lamp-buddha" alt="" aria-hidden="true">
+          <div class="lamp-veil" aria-hidden="true"></div>
+          <div class="lamp-halo"></div>
+          <!-- 鎏金酥油灯（真实图片）+ 写实火苗：未点亮完全静态，点亮后 .lit 挂多层火焰动画 -->
+          <div class="lamp-flame" id="lamp-flame">
+            <div class="flame-halo"></div>
+            <img class="flame-img fi-outer" id="fi-outer" alt="" aria-hidden="true">
+            <img class="flame-img fi-core" id="fi-core" alt="" aria-hidden="true">
+            <img class="lamp-img" id="lamp-img" alt="" aria-hidden="true">
+            <div class="sparks" id="lamp-sparks"></div>
+          </div>
+          <div class="lamp-title" id="lamp-title">祈福之光</div>
+          <div class="lamp-total" id="lamp-total"></div>
+          <div class="lamp-sub" id="lamp-sub"></div>
         </div>
         <div class="lamp-sec">各地灯火</div>
         <div class="lamp-list" id="lamp-list"></div>

@@ -1,11 +1,25 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""scripts/make_lamp_assets.py — 万家灯火跳窗改版资产（D50）
+"""scripts/make_lamp_assets.py — 祈福之光跳窗资产（D50 建立 / D53 改版）
 
 用户点名的三项视觉资产（2026-10-08）：
   1. 跳窗背景 = 坐着的释迦牟尼 + 一层色罩（不艳丽）        → images/buddha-bg.jpg
   2. 酥油灯 = 参照用户提供的真实鎏金酥油灯照片（未点燃状态）→ images/lamp.webp（黑底抠透明）
   3. 火焰 = 写实火苗（未点静态 / 点燃后 CSS 多层动态）      → images/flame.webp（SVG→Chrome 渲染）
+
+D53 改版（2026-10-09 用户反馈三条）：
+  ① 灯体「特别艳丽」，与暗色底图不协调 → **压艳**：饱和 .42 / 亮度 .60 / 对比 .90
+     + 深棕金罩 28%。原图是亮银 + 高饱和金 + 一颗绿松石，在夜色底上像贴纸；
+     压完落到暗青铜金，与释迦牟尼的铜色同源，錾刻花纹仍在（再压到 .32/.50 就会糊）。
+  ② 灯体太大 → 缩到 50%（150×212rpx），见 index.wxss。
+  ③ 灯座要与佛陀底座「同一个基础」 → **底座线必须由资产侧钉死**：
+     底图裁到源高的 90%（CROP_TO），而佛陀莲花座底沿在源高的 80.2%（BASE_Y），
+     于是底座线永远落在产物图高的 80.2/90 = **89.1%** 处；
+     CSS 侧把灯座挂在 `bottom: 11%`（= 100 − 89），两边永远咬合，不随机型漂移。
+     产物图最下 11% 渐隐到卡片墨色，避免裁切硬边。
+
+⚠️ 改 CROP_TO / BASE_Y 任何一个，都必须同步改 index.wxss 与 template.html 的
+   `bottom: 11%`（validate §44.3 会机械校核两者一致，不一致直接红）。
 
 为什么火焰用图片而不是纯 CSS：
   纯 CSS 圆角块火苗在写实鎏金灯旁会瞬间「穿帮」；SVG 渐变火苗（橙缘 + 白黄芯 +
@@ -35,6 +49,21 @@ KB = 1024
 BUDDHA_BUDGET = 50 * KB
 LAMP_BUDGET = 58 * KB
 FLAME_BUDGET = 14 * KB
+
+# ---- D53 底座线契约（与 index.wxss / template.html 的 bottom: 8% 逐一对应）----
+# 佛陀坐在莲花座上，座下还有一层须弥座第二层（仰莲瓣带），其下沿 ≈ 源高 94%——
+# 这就是「地面」。灯座与它共线 ⇒ 灯像供在佛前、站在同一张供桌上。
+BASE_LINE = 0.92   # 灯座线在**产物图**里的高度比例 ⇒ CSS 灯座 bottom = 1 − 0.92 = 8%
+CROP_TO = 0.90     # 底图裁到源高的 90%（切掉最底部余黑，卡片下部留给数据区）
+FADE_FROM = 0.84   # 从 84% 高度起向卡片墨色渐隐（座基「沉入暗处」，不留硬切边）
+FADE_TO = (30, 23, 28)   # 渐隐到的墨色（卡片竖向渐变在该高度附近的取值）
+
+# ---- D53 灯体压艳（用户：灯「特别艳丽」，与背景不协调）----
+LAMP_SAT = 0.42
+LAMP_BRI = 0.60
+LAMP_CON = 0.90
+LAMP_TINT = (64, 40, 16)   # 深棕金，与释迦牟尼铜色同源
+LAMP_TINT_A = 0.28
 
 CHROME = os.environ.get(
     'WB_CHROME',
@@ -98,6 +127,22 @@ def do_buddha():
     vig = vig.filter(ImageFilter.GaussianBlur(80))
     dark = ImageEnhance.Brightness(img).enhance(0.62)
     img = Image.composite(img, dark, vig)
+    # ---- D53：裁到 90% 高 + 底部渐隐。目的 = 让「供桌线」（灯座所站的那条线）
+    #      固定在产物图 92% 处，CSS 侧灯座挂 bottom:8% 即与之共线（见文件头契约）。
+    #      渐隐让座基「沉入暗处」，避免硬切边。----
+    w2, h2 = img.size
+    img = img.crop((0, 0, w2, int(h2 * CROP_TO)))
+    w2, h2 = img.size
+    fade_top = int(h2 * FADE_FROM)
+    if fade_top < h2 - 2:
+        band = Image.new('RGB', (w2, h2 - fade_top), FADE_TO)
+        mask = Image.new('L', (w2, h2 - fade_top), 0)
+        mp = mask.load()
+        for y in range(h2 - fade_top):
+            v = int(255 * (y / max(1, h2 - fade_top - 1)) ** 1.25)
+            for x in range(w2):
+                mp[x, y] = v
+        img.paste(band, (0, fade_top), mask)
     out = os.path.join(IMAGES, 'buddha-bg.jpg')
     how = save_jpeg_under_budget(img, out, BUDDHA_BUDGET)
     print('  %-16s %6.1fKB / 上限 %5.1fKB  %s' % (
@@ -131,6 +176,17 @@ def do_lamp():
     th = 480
     if img.height > th:
         img = img.resize((int(img.width * th / img.height), th), Image.LANCZOS)
+    # ---- D53 压艳：饱和 .42 / 亮度 .60 / 对比 .90 + 深棕金罩 28% ----
+    # 原图亮银 + 高饱和金 + 绿松石，在夜色底图上「跳」出来；压完落到暗青铜金，
+    # 与释迦牟尼铜色同源。注意再压到 .32/.50 錾刻花纹就糊了（三档对比图已验证）。
+    img = ImageEnhance.Color(img).enhance(LAMP_SAT)
+    img = ImageEnhance.Brightness(img).enhance(LAMP_BRI)
+    img = ImageEnhance.Contrast(img).enhance(LAMP_CON)
+    # 罩色必须乘上灯体自身的 alpha：否则会给整张透明区镀一层棕雾（RGBA 合成踩坑，
+    # 与 D49 记录的「alpha 被应用两次」是同一类错误）
+    tint_layer = Image.new('RGBA', img.size, LAMP_TINT + (255,))
+    tint_layer.putalpha(img.split()[3].point(lambda v: int(v * LAMP_TINT_A)))
+    img.alpha_composite(tint_layer)
     out = os.path.join(IMAGES, 'lamp.webp')
     how = save_webp_under_budget(img, out, LAMP_BUDGET)
     print('  %-16s %6.1fKB / 上限 %5.1fKB  %s  %dx%d' % (

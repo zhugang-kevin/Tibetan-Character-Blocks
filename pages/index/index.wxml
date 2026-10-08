@@ -276,23 +276,33 @@
 
       <!-- 中部可滚动：内容再长也不裁切（此前 overflow:hidden 把 CTA 直接裁出屏幕） -->
       <scroll-view class="lamp-scroll" scroll-y>
-      <view class="lamp-title">{{lampTitle}}</view>
-      <!-- 主数字走万/亿口径（12.85万）；精确值在下一行的句子里（128,457 盏灯） -->
-      <view class="lamp-total {{lampTotalPop ? 'pop' : ''}}">{{lampTotalText}}<text class="lamp-unit">盏</text></view>
-      <view class="lamp-sub {{lampTotalPop ? 'pop' : ''}}">{{lampSub}}</view>
-
-      <!-- 鎏金酥油灯（真实图片）+ 写实火苗：未点亮完全静态，点亮后 .lit 挂多层火焰动画 -->
-      <view class="lamp-flame {{lampLit ? 'lit' : ''}}">
-        <view class="flame-halo"></view>
-        <image class="flame-img fi-outer" src="/images/flame.webp" mode="widthFix"></image>
-        <image class="flame-img fi-core" src="/images/flame.webp" mode="widthFix"></image>
-        <image class="lamp-img" src="/images/lamp.webp" mode="widthFix"></image>
-        <view wx:if="{{lampLit}}" class="sparks">
-          <view class="spark"></view><view class="spark"></view><view class="spark"></view>
-          <view class="spark"></view><view class="spark"></view><view class="spark"></view>
-          <view class="spark"></view><view class="spark"></view><view class="spark"></view>
-          <view class="spark"></view><view class="spark"></view><view class="spark"></view>
+      <!-- D53 佛龛层：底图 + 色罩 + 酥油灯同处一个「供桌线」坐标系——
+           灯座 bottom:8% 与底图 92% 高度处的座基共线（契约见 make_lamp_assets.py 文件头，
+           改任一侧必须同步另一侧，§44.3 机械校核）；主数字横穿灯腰（§44.4）。
+           灯体先于文字绘制：主数字要压在灯腰上，文字必须在顶层。 -->
+      <view class="lamp-shrine">
+        <image class="lamp-buddha" src="/images/buddha-bg.jpg" mode="widthFix" aria-hidden="true"></image>
+        <view class="lamp-veil" aria-hidden="true"></view>
+        <view class="lamp-halo"></view>
+        <!-- 鎏金酥油灯（真实图片）+ 写实火苗：未点亮完全静态，点亮后 .lit 挂多层火焰动画 -->
+        <view class="lamp-flame {{lampLit ? 'lit' : ''}}">
+          <view class="flame-halo"></view>
+          <image class="flame-img fi-outer" src="/images/flame.webp" mode="widthFix"></image>
+          <image class="flame-img fi-core" src="/images/flame.webp" mode="widthFix"></image>
+          <image class="lamp-img" src="/images/lamp.webp" mode="widthFix"></image>
+          <view wx:if="{{lampLit}}" class="sparks">
+            <view class="spark"></view><view class="spark"></view><view class="spark"></view>
+            <view class="spark"></view><view class="spark"></view><view class="spark"></view>
+            <view class="spark"></view><view class="spark"></view><view class="spark"></view>
+            <view class="spark"></view><view class="spark"></view><view class="spark"></view>
+          </view>
         </view>
+        <view class="lamp-title">{{lampTitle}}</view>
+        <!-- 主数字走万/亿口径（12.85万）；精确值在底部的句子里（128,457 盏灯）。
+             D53：主数字定位在「灯腰」——上半部（碗口+火焰）在数字之上，
+             下半部（灯座）在数字之下（用户点名的上下位置规则）。 -->
+        <view class="lamp-total {{lampTotalPop ? 'pop' : ''}}">{{lampTotalText}}<text class="lamp-unit">盏</text></view>
+        <view class="lamp-sub {{lampTotalPop ? 'pop' : ''}}">{{lampSub}}</view>
       </view>
 
       <!-- 各地灯火：辉光等级按行号循环取 1..4，纯装饰，与灯火数量无关（不标示高低与位次） -->

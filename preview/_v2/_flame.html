@@ -1,0 +1,35 @@
+<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;padding:0;background:transparent;width:480px;height:840px;overflow:hidden;}</style></head><body><svg width="480" height="840" viewBox="0 0 240 420" xmlns="http://www.w3.org/2000/svg">
+<defs>
+  <radialGradient id="glow" cx="0.5" cy="0.62" r="0.62">
+    <stop offset="0" stop-color="#FFB44D" stop-opacity="0.62"/>
+    <stop offset="0.55" stop-color="#F08A28" stop-opacity="0.2"/>
+    <stop offset="1" stop-color="#F08A28" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="outer" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#FFC963"/>
+    <stop offset="0.42" stop-color="#FFA032"/>
+    <stop offset="0.82" stop-color="#F0761F"/>
+    <stop offset="1" stop-color="#D85E14"/>
+  </linearGradient>
+  <linearGradient id="core" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#FFFBE8"/>
+    <stop offset="0.55" stop-color="#FFEB9E"/>
+    <stop offset="1" stop-color="#FFC85E"/>
+  </linearGradient>
+  <radialGradient id="blue" cx="0.5" cy="0.5" r="0.5">
+    <stop offset="0" stop-color="#8FC1F2" stop-opacity="0.55"/>
+    <stop offset="1" stop-color="#8FC1F2" stop-opacity="0"/>
+  </radialGradient>
+  <filter id="soft" x="-30%" y="-30%" width="160%" height="160%">
+    <feGaussianBlur stdDeviation="2.4"/>
+  </filter>
+</defs>
+<ellipse cx="120" cy="258" rx="112" ry="156" fill="url(#glow)"/>
+<path d="M 120 398 C 64 344, 48 268, 76 196 C 94 148, 111 96, 120 28
+         C 129 96, 146 148, 164 196 C 192 268, 176 344, 120 398 Z"
+      fill="url(#outer)" filter="url(#soft)"/>
+<path d="M 120 384 C 88 348, 80 292, 98 244 C 108 216, 116 186, 120 148
+         C 124 186, 132 216, 142 244 C 160 292, 152 348, 120 384 Z"
+      fill="url(#core)" filter="url(#soft)" opacity="0.95"/>
+<ellipse cx="120" cy="376" rx="34" ry="22" fill="url(#blue)"/>
+</svg></body></html>

@@ -903,11 +903,12 @@ page,
   box-shadow: 0 24rpx 60rpx rgba(0, 0, 0, 0.55), inset 0 2rpx 0 rgba(255, 233, 168, 0.35);
 }
 
-/* 中部滚动区：内容再长也不裁切 */
+/* 中部滚动区：内容再长也不裁切。D53：顶部 padding 归零——佛龛层要通铺到卡片边，
+   由 .lamp-shrine 的负外边距抵消左右 padding。 */
 .lamp-scroll {
   flex: 1 1 auto;
   min-height: 0;
-  padding: 44rpx 34rpx 6rpx;
+  padding: 0 34rpx 6rpx;
 }
 
 /* 固定底栏：CTA 与关闭按钮永远在屏幕内（类名避开酥油灯座 .lamp-foot，D35 撞名教训） */
@@ -951,16 +952,21 @@ page,
 .lamp-halo {
   position: absolute;
   left: 50%;
-  top: -22%;
+  top: 0;               /* D53：移入佛龛层后以龛顶为基准（原 -22% 会画出滚动区外被裁） */
   width: 120%;
-  height: 62%;
+  height: 40%;
   transform: translateX(-50%);
   border-radius: 50%;
   background: radial-gradient(ellipse at center, rgba(255, 226, 140, 0.5) 0%, rgba(241, 196, 15, 0.16) 44%, transparent 74%);
   pointer-events: none;
 }
+/* D53：标题 / 主数字 / 副行全部改为佛龛层内的绝对定位（此前是文档流）。
+   定位基准 = 佛龛层高度（= 底图高 = 1.268 × 卡宽），百分比随屏宽等比缩放。 */
 .lamp-title {
-  position: relative;
+  position: absolute;
+  top: 7%;
+  left: 0; right: 0;
+  z-index: 2;
   text-align: center;
   font-size: 44rpx;
   font-weight: 700;
@@ -969,18 +975,26 @@ page,
   text-shadow: 0 3rpx 14rpx rgba(241, 196, 15, 0.5);
 }
 .lamp-sub {
-  position: relative;
-  margin-top: 12rpx;
+  position: absolute;
+  top: 93%;
+  left: 0; right: 0;
+  z-index: 2;
   text-align: center;
   font-size: 26rpx;
   color: #EBD9B4;
 }
 
-/* 主数字：万/亿口径（12.85万）。精确值仍保留在下一行句子里（128,457 盏灯）。
-   两者共用同一套墨色（#FFD98A / #EBD9B4），不引入新墨，避免触碰 §30 白名单。 */
+/* 主数字：万/亿口径（12.85万）。精确值移到灯座下方的句子里（128,457 盏灯）。
+   两者共用同一套墨色（#FFD98A / #EBD9B4），不引入新墨，避免触碰 §30 白名单。
+   D53 位置规则（用户点名）：**主数字横穿灯腰**——灯的上半部（碗口+火焰）在数字
+   之上，下半部（灯座）在数字之下。灯体占位：底 8% / 高 212rpx ⇒ 顶 ≈65%、
+   腰 ≈77%（shrine ≈786rpx @620 卡宽）；数字行高 76rpx、top 70% ⇒ 行中心 ≈74.8%，
+   正落在灯腰上（§44.4 机械校核，偏出灯腰 ±4% 直接红）。 */
 .lamp-total {
-  position: relative;
-  margin-top: 8rpx;
+  position: absolute;
+  top: 70%;
+  left: 0; right: 0;
+  z-index: 2;
   text-align: center;
   font-size: 54rpx;
   font-weight: 700;
@@ -1020,13 +1034,19 @@ page,
   50% { transform: scale(1.12); }
 }
 
-/* ---- D50 灯火跳窗改版：释迦牟尼底图 + 色罩（装饰层，不参与交互） ---- */
+/* ---- D50 灯火跳窗改版：释迦牟尼底图 + 色罩（装饰层，不参与交互） ----
+   D53 佛龛层：底图 / 色罩 / 光晕 / 酥油灯 / 标题 / 主数字 收进同一个
+   position:relative 容器，几何全部用「佛龛层高度的百分比」表达——
+   佛龛层高 = 底图高 = 1.268 × 卡宽（widthFix 等比），因此所有比例随屏宽等比缩放，
+   灯座与佛陀座基的共线关系不随机型漂移。 */
+.lamp-shrine {
+  position: relative;
+  /* 抵消 .lamp-scroll 的左右 padding，底图通铺到卡片边 */
+  margin: 0 -34rpx;
+}
 .lamp-buddha {
-  position: absolute;
-  left: 0; right: 0; top: 0; bottom: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 0;
+  display: block;          /* 消除 inline 图片基线空隙（高度会多出几 px） */
+  width: 100%;             /* mode=widthFix：高 = 宽 × 786/620 ≈ 1.268 × 卡宽 */
 }
 .lamp-veil {
   position: absolute;
@@ -1042,44 +1062,49 @@ page,
    未点亮（无 .lit）：火苗、光晕完全静止（用户要求：点灯之前火焰是静态的）。
    点亮后（.lit）：外焰/焰芯/光晕三层各自异相动画，焰形由 SVG 渐变渲染的
    flame.webp 提供（橙缘 + 白黄焰芯 + 淡蓝焰根），transform 全部走 keyframes，
-   定位用 left:calc(50% - Nrpx) 避开 transform 冲突。 */
+   定位用 left:calc(50% - Nrpx) 避开 transform 冲突。
+   D53 几何（全部相对佛龛层）：
+   · 灯体缩到 50%（用户口径「缩小 70%」二选一后拍板 50%）：300×424 → 150×212rpx
+   · 灯座 bottom:8% ↔ 底图 92% 处的座基（供桌线），契约见 make_lamp_assets.py
+   · 火苗 / 光晕 / 金粉按 0.5 等比缩小，锚点跟随灯座（calc(% + rpx) 混合定位） */
 .lamp-flame {
-  position: relative;
-  height: 480rpx;
-  margin: 20rpx 0 8rpx;
+  position: absolute;
+  left: 0; right: 0; top: 0; bottom: 0;
+  z-index: 1;
+  pointer-events: none;
 }
 .lamp-img {
   position: absolute;
-  /* 灯体内容在抠图 bbox 里偏右（地面反光不对称）→ 左移 24rpx 让灯柱回到中轴 */
-  left: calc(50% - 174rpx);
-  bottom: 0;
-  width: 300rpx;
-  height: 424rpx;
+  /* 灯足在抠图 bbox 里偏右（质心实测 0.578 宽）→ 左移 12rpx 让灯柱回到中轴 */
+  left: calc(50% - 87rpx);
+  bottom: 8%;
+  width: 150rpx;
+  height: 212rpx;
 }
 .flame-halo {
   position: absolute;
-  left: calc(50% - 130rpx);
-  bottom: 276rpx;
-  width: 260rpx;
-  height: 200rpx;
+  left: calc(50% - 65rpx);
+  bottom: calc(8% + 138rpx);
+  width: 130rpx;
+  height: 100rpx;
   border-radius: 50%;
   background: radial-gradient(ellipse at center, rgba(255, 206, 84, 0.28) 0%, rgba(241, 196, 15, 0.08) 48%, transparent 76%);
 }
 .flame-img {
   position: absolute;
-  width: 92rpx;
-  height: 160rpx;
+  width: 46rpx;
+  height: 80rpx;
 }
 .fi-outer {
-  left: calc(50% - 46rpx);
-  bottom: 330rpx;
+  left: calc(50% - 23rpx);
+  bottom: calc(8% + 165rpx);
   transform-origin: 50% 96%;
 }
 .fi-core {
-  left: calc(50% - 28rpx);
-  bottom: 336rpx;
-  width: 56rpx;
-  height: 98rpx;
+  left: calc(50% - 14rpx);
+  bottom: calc(8% + 171rpx);
+  width: 28rpx;
+  height: 49rpx;
   opacity: 0.92;
   transform-origin: 50% 96%;
 }
@@ -1103,29 +1128,29 @@ page,
   50% { opacity: 1; transform: scale(1.06); }
 }
 
-/* 点亮后的金粉爆炸粒子（12 向） */
-.sparks { position: absolute; left: 50%; bottom: 356rpx; width: 0; height: 0; }
+/* 点亮后的金粉爆炸粒子（12 向；D53 随灯体等比缩到 0.5） */
+.sparks { position: absolute; left: 50%; bottom: calc(8% + 178rpx); width: 0; height: 0; }
 .spark {
   position: absolute;
-  width: 12rpx;
-  height: 12rpx;
-  margin: -6rpx 0 0 -6rpx;
+  width: 8rpx;
+  height: 8rpx;
+  margin: -4rpx 0 0 -4rpx;
   border-radius: 50%;
   background: radial-gradient(circle, #FFF6D0 0%, #F1C40F 58%, rgba(241, 196, 15, 0) 100%);
   animation: sparkFly 0.9s cubic-bezier(0.2, 0.8, 0.3, 1) forwards;
 }
-.spark:nth-child(1) { --dx: 0rpx; --dy: -220rpx; }
-.spark:nth-child(2) { --dx: 110rpx; --dy: -190rpx; }
-.spark:nth-child(3) { --dx: 190rpx; --dy: -110rpx; }
-.spark:nth-child(4) { --dx: 220rpx; --dy: 0rpx; }
-.spark:nth-child(5) { --dx: 190rpx; --dy: 110rpx; }
-.spark:nth-child(6) { --dx: 110rpx; --dy: 190rpx; }
-.spark:nth-child(7) { --dx: 0rpx; --dy: 220rpx; }
-.spark:nth-child(8) { --dx: -110rpx; --dy: 190rpx; }
-.spark:nth-child(9) { --dx: -190rpx; --dy: 110rpx; }
-.spark:nth-child(10) { --dx: -220rpx; --dy: 0rpx; }
-.spark:nth-child(11) { --dx: -190rpx; --dy: -110rpx; }
-.spark:nth-child(12) { --dx: -110rpx; --dy: -190rpx; }
+.spark:nth-child(1) { --dx: 0rpx; --dy: -110rpx; }
+.spark:nth-child(2) { --dx: 55rpx; --dy: -95rpx; }
+.spark:nth-child(3) { --dx: 95rpx; --dy: -55rpx; }
+.spark:nth-child(4) { --dx: 110rpx; --dy: 0rpx; }
+.spark:nth-child(5) { --dx: 95rpx; --dy: 55rpx; }
+.spark:nth-child(6) { --dx: 55rpx; --dy: 95rpx; }
+.spark:nth-child(7) { --dx: 0rpx; --dy: 110rpx; }
+.spark:nth-child(8) { --dx: -55rpx; --dy: 95rpx; }
+.spark:nth-child(9) { --dx: -95rpx; --dy: 55rpx; }
+.spark:nth-child(10) { --dx: -110rpx; --dy: 0rpx; }
+.spark:nth-child(11) { --dx: -95rpx; --dy: -55rpx; }
+.spark:nth-child(12) { --dx: -55rpx; --dy: -95rpx; }
 @keyframes sparkFly {
   0% { transform: translate(0, 0) scale(0.4); opacity: 1; }
   70% { opacity: 0.9; }

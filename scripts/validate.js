@@ -3987,9 +3987,10 @@ section('41. 灯火跳窗改版（释迦牟尼底图 / 真实酥油灯 / 静→�
   if (exists('scripts/make_lamp_assets.py')) ok('scripts/make_lamp_assets.py 存在（灯火资产可零成本复现）');
   else err('缺 scripts/make_lamp_assets.py（D50 资产必须可复现）');
 
-  // 41.2 小程序端：底图 + 色罩挂在卡片层（WXSS 不支持本地路径 background-image，必须用 <image>）
+  // 41.2 小程序端：底图 + 色罩挂在**佛龛层**（D53 起不再是卡片级绝对铺满，而是
+  //      .lamp-shrine 内的等比块；WXSS 不支持本地路径 background-image，必须用 <image>）
   if (iw41.indexOf('<image class="lamp-buddha" src="/images/buddha-bg.jpg"') > -1)
-    ok('跳窗挂载释迦牟尼底图（<image> 组件，mode=aspectFill）');
+    ok('跳窗挂载释迦牟尼底图（<image> 组件，mode=widthFix 等比）');
   else err('跳窗未挂载 /images/buddha-bg.jpg（WXSS background-image 不支持本地路径）');
   [['.lamp-buddha', iwx41], ['.lamp-veil', iwx41], ['.lamp-veil', t41]].forEach(pair => {
     if (pair[1].indexOf(pair[0] + ' {') > -1 || pair[1].indexOf(pair[0] + '{') > -1)
@@ -4212,8 +4213,7 @@ section('42. 藏文学习体系与关卡生成（15 级 × 150 关 · 动态格�
   }
 }
 
-// ---------- 43. 藏地密码「播整段」讲解（D52，2026-10-08 用户反馈） ----------
-// 真实缺陷：中文播报只念第一句，屏幕上却显示三段正文 —— 听到的比看到的短一大截。
+// ---------- 43. 藏地密码「播整段」讲解（D52，2026-10-08 用户反馈） ----------// 真实缺陷：中文播报只念第一句，屏幕上却显示三段正文 —— 听到的比看到的短一大截。
 // 根因：scripts/gen_chinese_voice.py 里另写了一份「一句话精简版」词表，
 //       于是 data/secrets.js 改了正文、mp3 不跟着变（两份文本必然漂移）。
 // 正解：**单一事实源** —— 讲解文本只在 data/secrets.js 写一次，生成脚本按关卡号取全文。
@@ -4321,6 +4321,110 @@ section('43. 藏地密码讲解「播整段」');
   else err('WAV 残留会让腾挪白做：' + stillWav.map(s => s + '.wav').join(','));
   if (exists('audio/tap.wav')) ok('tap.wav 保留（1.5KB + 零延迟，转 MP3 得不偿失）');
   else err('audio/tap.wav 缺失（点击反馈音效）');
+}
+
+// ---------- 44. 祈福之光跳窗 D53 改版（2026-10-09 用户点名四条） ----------
+// ① 更名：万家灯火 → 祈福之光（候选：世界和平之光 / 和平灯火 / 为世界和平祈福）
+// ② 灯体压艳（原「特别艳丽」与暗底不协调）→ 饱和 .42 / 亮度 .60 / 对比 .90 + 深棕金罩 28%
+// ③ 灯体缩到 50%（300×424 → 150×212rpx）
+// ④ 灯座与佛陀座基「同一个基础」+ 主数字横穿灯腰（下半部不高于第一个数据 / 上部高于它）
+section('44. 祈福之光跳窗 D53（更名 / 压艳 / 50% 缩放 / 底座同基 + 数字穿灯腰）');
+{
+  const lamp44 = read('data/lamp.js');
+  const iwx44 = read('pages/index/index.wxss');
+  const iw44 = read('pages/index/index.wxml');
+  const t44 = read('preview/template.html');
+  const gen44 = read('scripts/make_lamp_assets.py');
+
+  // --- 44.1 更名（单一来源 data/lamp.js，两端取用） ---
+  if (lamp44.indexOf("title: '祈福之光'") > -1) ok('跳窗名 = 祈福之光（data/lamp.js 单一来源）');
+  else err('跳窗名不是「祈福之光」');
+  if (/title:\s*'[^']*万家灯火/.test(lamp44)) err('data/lamp.js 仍残留「万家灯火」标题');
+  else ok('旧名「万家灯火」已从标题退场');
+
+  // --- 44.2 压艳参数（生成器内的契约常量，四档里用户选 B 中压） ---
+  const mute44 = [['LAMP_SAT = 0.42', '饱和 .42'], ['LAMP_BRI = 0.60', '亮度 .60'],
+    ['LAMP_CON = 0.90', '对比 .90'], ['LAMP_TINT_A = 0.28', '深棕金罩 28%']];
+  mute44.forEach(pair => {
+    if (gen44.indexOf(pair[0]) > -1) ok('灯体压艳：' + pair[1]);
+    else err('make_lamp_assets.py 缺压艳参数 ' + pair[0]);
+  });
+  // 罩色必须乘灯体自身 alpha，否则整张透明区会镀一层棕雾（RGBA 合成踩坑）
+  if (gen44.indexOf('putalpha(img.split()[3].point') > -1) ok('罩色按灯体 alpha 蒙版施加（不会给透明区镀雾）');
+  else err('压艳罩色未乘灯体 alpha —— 透明区会蒙上棕雾');
+
+  // --- 44.3 底座同基（供桌线契约：生成器 92% ↔ CSS bottom:8%） ---
+  if (gen44.indexOf('BASE_LINE = 0.92') > -1 && gen44.indexOf('CROP_TO = 0.90') > -1)
+    ok('make_lamp_assets.py 含底座线契约（BASE_LINE=0.92 / CROP_TO=0.90）');
+  else err('make_lamp_assets.py 缺底座线契约常量');
+  if (Math.round((1 - 0.92) * 100) !== 8) err('底座线换算自检失败（1-0.92 应为 8%）');
+  const lampCss44 = (iwx44.match(/\.lamp-img\s*\{[\s\S]*?\}/) || [''])[0];
+  const lampCssH5 = (t44.match(/\.lamp-img\s*\{[\s\S]*?\}/) || [''])[0];
+  if (/bottom:\s*8%/.test(lampCss44)) ok('小程序灯座 bottom:8% ↔ 佛陀座基 92%（同一条供桌线）');
+  else err('小程序 .lamp-img 未挂 bottom:8%（与底图 92% 座基脱钩）');
+  if (/bottom:\s*8%/.test(lampCssH5)) ok('体验版灯座 bottom:8%（两端同线）');
+  else err('体验版 .lamp-img 未挂 bottom:8%');
+
+  // --- 44.4 主数字横穿灯腰（用真实底图尺寸算几何，不靠目测） ---
+  function jpegSize(rel) {
+    const b = fs.readFileSync(path.join(ROOT, rel));
+    let i = 2;
+    while (i < b.length - 9) {
+      if (b[i] !== 0xFF) { i++; continue; }
+      const m = b[i + 1];
+      if (m === 0xC0 || m === 0xC1 || m === 0xC2 || m === 0xC3)
+        return { h: b.readUInt16BE(i + 5), w: b.readUInt16BE(i + 7) };
+      i += 2 + b.readUInt16BE(i + 2);
+    }
+    return null;
+  }
+  const dim44 = jpegSize('images/buddha-bg.jpg');
+  if (!dim44) err('无法解析 buddha-bg.jpg 尺寸（SOF 缺失）');
+  else {
+    const shrineH = 620 * dim44.h / dim44.w;              // 佛龛层高（rpx @620 卡宽）
+    const lampTop = 100 - 8 - 212 / shrineH * 100;        // 灯顶（% 佛龛层高）
+    const lampBase = 100 - 8;                             // 灯座线 = 佛陀座基
+    const numCenter = 70 + 38 / shrineH * 100;            // 主数字行中心（行高 ≈76rpx）
+    const waistMid = (lampTop + lampBase) / 2;
+    if (numCenter > lampTop && numCenter < lampBase)
+      ok('主数字落在灯体区间内（灯顶 ' + lampTop.toFixed(1) + '% < 数字中心 ' +
+        numCenter.toFixed(1) + '% < 灯座 ' + lampBase.toFixed(1) + '%）→ 上下半部被数字一分为二');
+    else err('主数字未穿过灯腰：数字中心 ' + numCenter.toFixed(1) + '%，灯体 ' +
+      lampTop.toFixed(1) + '%~' + lampBase.toFixed(1) + '%');
+    if (Math.abs(numCenter - waistMid) <= 4)
+      ok('主数字贴近灯腰正中（偏差 ' + Math.abs(numCenter - waistMid).toFixed(1) + '% ≤ 4%）');
+    else err('主数字偏离灯腰正中 ' + Math.abs(numCenter - waistMid).toFixed(1) + '%（>4%）');
+  }
+
+  // --- 44.5 50% 缩放（两端等比：H5 px = rpx / 2） ---
+  if (/width:\s*150rpx/.test(lampCss44) && /height:\s*212rpx/.test(lampCss44))
+    ok('小程序灯体 150×212rpx（= 300×424 的 50%）');
+  else err('小程序灯体不是 150×212rpx');
+  if (/width:\s*75px/.test(lampCssH5) && /height:\s*106px/.test(lampCssH5))
+    ok('体验版灯体 75×106px（与小程序 1px=2rpx 严格等比）');
+  else err('体验版灯体与小程序不等比（应为 75×106px）');
+
+  // --- 44.6 佛龛层结构：底图/色罩/灯/标题同层，灯先于文字（文字压在灯腰上） ---
+  const shrine44 = (iw44.match(/<view class="lamp-shrine">[\s\S]*?<\/view>\s*<view class="lamp-sec">/) || [''])[0];
+  const shrineH5 = (t44.match(/<div class="lamp-shrine">[\s\S]*?<\/div>\s*<div class="lamp-sec">/) || [''])[0];
+  [['小程序', shrine44, 'lamp-buddha', 'lamp-flame', 'lamp-title', 'lamp-total'],
+   ['体验版', shrineH5, 'lamp-buddha', 'lamp-flame', 'lamp-title', 'lamp-total']]
+    .forEach(pair => {
+      const src = pair[1];
+      if (!src) { err(pair[0] + '缺佛龛层 .lamp-shrine（底图/灯/标题必须同层）'); return; }
+      const idx = pair.slice(2).map(k => src.indexOf(k));
+      if (idx.every(v => v > -1) && idx[0] < idx[1] && idx[1] < idx[2] && idx[2] < idx[3])
+        ok(pair[0] + '佛龛层结构齐备且灯先于文字绘制（底图→灯→标题→主数字）');
+      else err(pair[0] + '佛龛层结构/顺序不对：' + pair.slice(2).join(','));
+    });
+  if (iwx44.indexOf('.lamp-shrine') > -1 && t44.indexOf('.lamp-shrine') > -1)
+    ok('佛龛层样式两端齐备（百分比定位，随屏宽等比）');
+  else err('缺 .lamp-shrine 样式');
+  // 反例：底图若还是「卡片级绝对铺满」（position:absolute + height:100%），共线契约必被破坏
+  const buddhaCss44 = (iwx44.match(/\.lamp-buddha\s*\{[\s\S]*?\}/) || [''])[0];
+  if (buddhaCss44.indexOf('height: 100%') === -1)
+    ok('底图为等比块（widthFix），不再绝对铺满卡片（共线契约成立的前提）');
+  else err('.lamp-buddha 仍是 height:100% 绝对铺满 —— 佛龛层高度不再由底图决定');
 }
 
 console.log('通过: ' + passed + ' | 错误: ' + errors.length + ' | 警告: ' + warnings.length);
