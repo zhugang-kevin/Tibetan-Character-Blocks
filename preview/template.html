@@ -805,6 +805,26 @@
   .scroll-rod { height: 8px; background: linear-gradient(180deg, #E8D9A8 0%, #B7950B 42%, #7A5F06 100%); box-shadow: 0 2px 6px rgba(0,0,0,.35); }
   .secret-listen { margin-top: 9px; display: inline-block; padding: 6px 14px; border-radius: 999px;
     background: #FBF4E2; border: 1px dashed rgba(183,149,11,.6); color: #8A6A12; font-size: 12px; cursor: pointer; }
+  /* D62 连击光晕：四档强度递增，一闪即收 */
+  #combo-aura {
+    position: absolute; left: 50%; top: 46%;
+    width: 320px; height: 320px; margin-left: -160px; margin-top: -160px;
+    border-radius: 50%; pointer-events: none; z-index: 8;
+    animation: comboAura 420ms ease-out forwards;
+  }
+  #combo-aura.lv1 { background: radial-gradient(circle, rgba(255,214,120,.16) 0%, rgba(255,214,120,0) 68%); }
+  #combo-aura.lv2 { background: radial-gradient(circle, rgba(255,186,90,.24) 0%, rgba(255,186,90,0) 68%); }
+  #combo-aura.lv3 { background: radial-gradient(circle, rgba(233,120,60,.32) 0%, rgba(233,120,60,0) 66%); }
+  #combo-aura.lv4 {
+    background: radial-gradient(circle, rgba(255,236,180,.46) 0%, rgba(214,120,40,.16) 42%, rgba(214,120,40,0) 70%);
+    width: 390px; height: 390px; margin-left: -195px; margin-top: -195px;
+  }
+  @keyframes comboAura {
+    0%   { opacity: 0; transform: scale(.72); }
+    22%  { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(1.16); }
+  }
+
   .card-speak {
     margin-top: 12px; display: flex; align-items: center; justify-content: center; gap: 8px;
     padding: 10px; border-radius: 10px; background: #FBF4E2;
@@ -1377,6 +1397,7 @@
          必须放在盘面容器之外 —— .board-wrap 有 overflow:hidden，浮字会被裁掉。
          ant-a / ant-b 是同一组动画的两个名字，轮流用：CSS 里同一个 animation-name
          不会重播，替换文案时必须换名，否则第二条看不出在播放。 -->
+    <div class="combo-aura" id="combo-aura" style="display:none" aria-hidden="true"></div>
     <div class="praise-fx" id="praise-fx">
       <span class="praise-combo" id="praise-combo"></span>
       <span class="praise-bo tib" id="praise-bo"></span>
@@ -2304,10 +2325,26 @@ function playVoice(src) {
     if (p && p.catch) p.catch(function () { /* 无录音文件：静默 */ });
   } catch (e) { /* 静默 */ }
 }
+/* D61：语音期间压低 BGM（ducking）。与 utils/audio.js 的 duckBgm 同值同窗口 ——
+   手机外放信噪比低，音乐叠着念会把齿音盖掉，听感就是「有时候听不清」。零字节成本。 */
+const BGM_DUCK = 0.10;
+let duckTimer = null;
+function duckBgm(ms) {
+  try {
+    if (bgmGain) bgmGain.gain.value = BGM_DUCK;
+    state.duckLog = (state.duckLog || []).concat([true]);
+    if (duckTimer) clearTimeout(duckTimer);
+    duckTimer = setTimeout(function () {
+      duckTimer = null;
+      try { if (bgmGain) bgmGain.gain.value = BGM_VOLUME; } catch (e) { /* 静默 */ }
+    }, ms || 1400);
+  } catch (e) { /* 静默 */ }
+}
+
 function pronounce(id) {
   state.pronounceCount++;
   state.lastPronounced = id;
-  if (VOICES[id]) playVoice(VOICES[id]);   // 有录音/TTS 就播报；没有则静默（计数照记，测试用）
+  if (VOICES[id]) { playVoice(VOICES[id]); duckBgm(1400); }  // 无音源则静默（计数照记，测试用）
   return true;
 }
 /* 情绪语音（与小程序 utils/audio.js 的 speak 同口径）：
@@ -2567,7 +2604,7 @@ const state = {
   vibrateCount: 0,                          // 震动次数（情绪引擎，测试断言用）
   // 障碍物（PRD 3.1）：冰霜 / 藏式木箱 —— 遮挡是**牌**的属性，随牌下落
   frostTotal: 0, ropeTotal: 0, crateTotal: 0, brokenCount: 0, cardId: null,
-  hapticLog: [],   // D60：触觉事件流水（自动化测试可断言分档）
+  hapticLog: [], duckLog: [],   // D60 触觉流水 / D61 BGM 压低事件（供自动化断言）
   speakLog: [],                             // 语音播放记录（tashi_delek / blessing_01）
   fxCount: 0,                               // 通关粒子数
   // 权益中心（双轨制）可断言状态
@@ -3956,6 +3993,21 @@ function showBreakFx(label) {
    替换时靠 ant-a / ant-b 两个同名不同键的动画轮流用，强制重播——
    同一个 animation-name 在 CSS 里不会重播，不换名第二条就看不出来。 */
 const PRAISE_SHOW_MS = 1200;
+/* D62 连击光晕：一闪即收，四档强度递增（与 game.wxss 的 .combo-aura 同参）。
+   pointer-events:none —— 纯装饰，绝不挡牌面点击（D57 刚把打扰降到每局 2 次）。 */
+let auraTimer = null;
+function flashComboAura(level) {
+  const lv = Math.max(1, Math.min(4, level || 1));
+  const el = $('combo-aura');
+  if (!el) return;
+  el.className = 'combo-aura lv' + lv;
+  void el.offsetWidth;              // 强制回流，让连续触发时每一闪都能重播
+  el.style.display = 'block';
+  state.auraLog = (state.auraLog || []).concat([lv]);
+  if (auraTimer) clearTimeout(auraTimer);
+  auraTimer = setTimeout(function () { el.style.display = 'none'; }, 420);
+}
+
 function showPraise(dec) {
   const box = $('praise-fx');
   const burst = $('praise-burst');
@@ -4051,6 +4103,8 @@ function handleMatch(i, j) {
 
   // 档位音效（D34：一档一音）+ 赞美浮字（文案开关只关文字，不关音效与元素发音）
   audio.tier(praiseDec.level);
+  // D62：连击与视听耦合（对应 pages/game/game.js 的 flashComboAura）
+  if (praiseDec.level >= 2) flashComboAura(praiseDec.level);
   if (praiseDec.show && praiseDec.text && !state.praiseOff) showPraise(praiseDec);
   // 中文激励播报（2026-10-08）：档位 ≥2 且未关文案时播放，与文字同门控
   if (praiseDec.show && praiseDec.level >= 2 && !state.praiseOff) speak('praise_' + Math.min(5, praiseDec.level));

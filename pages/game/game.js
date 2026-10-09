@@ -138,6 +138,8 @@ Page({
     reveal: { img: '', name: '', tibetan: '', roman: '', desc: '' },
     revealPct: 0,
     showCard: false,
+    comboAura: 0,        // D62：连击光晕档位 0~4
+    comboAuraOn: false,  // D62：光晕一闪即收，不遮挡盘面
     card: null,
     cardColor: '#C0392B',
     cardColorDark: '#8F2B20',
@@ -606,6 +608,11 @@ Page({
     } catch (err) { /* 部分机型不支持，忽略 */ }
 
     audio.tier(dec.level);
+    // D62：连击与视听耦合 —— 光晕强度随档位递增，让「连了五对」这件事**看得见**。
+    // 原来连击只有「文字 + 音效」两条通道，玩家要读字才知道升档了；
+    // 现在档位一升，画面同时给一层短促的光晕，色/强度按档位分四档。
+    // 刻意做得克制：一闪即收（420ms），不遮挡盘面、不打断 D57 的打扰预算。
+    if (dec.level >= 2) this.flashComboAura(dec.level);
     // 文案开关只关「文字」，不关音效与元素发音（发音属学习闭环，见 D34）
     if (dec.show && dec.text && !this.data.praiseOff) this.showPraise(dec);
     // 中文激励播报（2026-10-08 用户要求）：档位 ≥2 且未关文案时，播「很好/非常好/你好厉害/你简直就是无敌」
@@ -643,6 +650,23 @@ Page({
   // 展示一条赞美（D34）：一次只显示一条，**新的替换旧的**（不排队、不叠加）。
   // 替换时靠 praiseAnt 在 A/B 之间翻转来重启动画——WXSS 里同一个 animation-name 不会重播，
   // 必须换成另一个同名不同键的动画（praisePopA / praisePopB），否则第二条看不出播放。
+  // D62 连击光晕：一闪即收，四档强度递增
+  flashComboAura: function (level) {
+    var lv = Math.max(1, Math.min(4, level || 1));
+    this.setData({ comboAura: lv, comboAuraOn: false });
+    var that = this;
+    // 下一帧再打开：保证连续触发时每一闪都能重播（与 praiseAnt 同理）
+    setTimeout(function () {
+      if (!that._alive) return;
+      that.setData({ comboAuraOn: true });
+    }, 16);
+    if (this.auraTimer) clearTimeout(this.auraTimer);
+    this.auraTimer = setTimeout(function () {
+      if (!that._alive) return;
+      that.setData({ comboAuraOn: false });
+    }, 420);
+  },
+
   showPraise: function (dec) {
     var that = this;
     this.setData({
@@ -656,6 +680,7 @@ Page({
       praiseBurst: dec.burst
     });
     if (this.praiseTimer) clearTimeout(this.praiseTimer);
+    if (this.auraTimer) clearTimeout(this.auraTimer);
     this.praiseTimer = setTimeout(function () {
       that.setData({ praiseOn: false });
     }, PRAISE_SHOW_MS);

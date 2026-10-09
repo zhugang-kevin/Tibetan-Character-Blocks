@@ -3680,7 +3680,12 @@ section('38. 生产上线守卫（主包体积 / 隐私授权 / 工程配置）'
     if (!missingV.length) ok('语音注入链三处同步（模板 / build-h5 / validate）');
     else err('语音注入链漂移，缺：' + missingV.join(' / '));
     // 体验版语音播放必须走注入表（相对路径在单文件体验版里必然 404）
-    if (/if \(VOICES\[id\]\) playVoice\(VOICES\[id\]\)/.test(tplV) && /if \(VOICES\[name\]\) playVoice\(VOICES\[name\]\)/.test(tplV))
+    // ⚠️ 断「意图」不断「排版」：D61 给 pronounce 加了 duckBgm 之后，行内多了一句，
+    //    原来那条精确匹配的正则就失配了（代码走注入表，却报「未走注入表」）。
+    //    判据应是「VOICES[id] 是播放的前置条件」，而不是「后面紧跟什么」。
+    const gateId = /if \(VOICES\[id\]\)[\s\S]{0,80}playVoice\(VOICES\[id\]\)/.test(tplV);
+    const gateName = /if \(VOICES\[name\]\)[\s\S]{0,80}playVoice\(VOICES\[name\]\)/.test(tplV);
+    if (gateId && gateName)
       ok('体验版 pronounce / speak 走 VOICES 注入表（不再依赖相对路径）');
     else err('体验版语音未走注入表（会 404 静默）');
   }
@@ -5114,6 +5119,63 @@ section('51. 交互反馈覆盖（D60）：高频交互必须有触觉，且分�
   if (/\| \*\*D60\*\* \|/.test(read('docs/DECISIONS.md')))
     ok('docs/DECISIONS.md 已登记 D60');
   else err('缺少 D60 决策行 —— 互动投入感的取舍依据无处可查');
+}
+
+// ---------- 52. 声画耦合（D61 ducking + D62 连击光晕） ----------
+// 两条都是「不花一个字节、把已有的信息用上」的改动：
+//  · D61 ducking：语音与 BGM 走**两条不同的音频通道**同时发声，而 BGM 恒定 0.28。
+//    手机外放信噪比本来就低，叠一层连续音乐会直接盖掉齿音 —— 这正是用户说的
+//    「中文播放有时候声音不是很清晰」里「有时候」的来源之一。录音棚标准做法：
+//    语音期间把 BGM 压下去，说完恢复。
+//  · D62 连击光晕：连击原本只有「文字 + 音效」两条通道，玩家必须**读字**才知道升档；
+//    补一层随档位递增、一闪即收的光晕，让「连了五对」看得见。
+// 本节守两件事：① ducking 必须两端同值且真的挂在语音上；② 光晕四档必须真的不同，
+// 且**不许挡牌面点击**（D57 刚把打扰降到每局 2 次，不能在这里引入新问题）。
+section('52. 声画耦合（D61 语音压低 BGM / D62 连击光晕）');
+{
+  const aj = read('utils/audio.js');
+  const th = read('preview/template.html');
+  const gj = read('pages/game/game.js');
+  // 52.1 ducking 两端同值
+  const mA = /BGM_DUCK\s*=\s*([0-9.]+)/.exec(aj);
+  const mT = /BGM_DUCK\s*=\s*([0-9.]+)/.exec(th);
+  if (mA && mT && mA[1] === mT[1] && parseFloat(mT[1]) < parseFloat(/BGM_VOLUME\s*=\s*([0-9.]+)/.exec(aj)[1]))
+    ok('两端 ducking 目标音量同值（' + mA[1] + ' < BGM ' + /BGM_VOLUME\s*=\s*([0-9.]+)/.exec(aj)[1] + '）');
+  else err('ducking 目标音量两端不一致或未真正低于 BGM_VOLUME');
+  // 52.2 必须真的挂在语音起播上（不是只定义常量）
+  if (/v\.play\(\);[\s\S]{0,120}duckBgm\(/.test(aj))
+    ok('小程序端 pronounce 起播即压低 BGM');
+  else err('pronounce 未触发 duckBgm —— 定义了也不会生效');
+  if (/duckBgm\(1400\)/.test(th))
+    ok('体验版同契：pronounce 同样触发 ducking');
+  else err('体验版 pronounce 未触发 ducking');
+  // 52.3 恢复逻辑不能把用户已关掉的 BGM 重新拉响
+  if (/duckTimer\) c\.volume = BGM_VOLUME/.test(aj))
+    ok('bgmStart 会把音量恢复常态（duck 未结束时除外）');
+  else err('bgmStart 未处理 duck 状态');
+  // 52.4 连击光晕：两端都有、四档不同、且不挡点击
+  if (/flashComboAura/.test(gj) && /flashComboAura/.test(th))
+    ok('连击光晕两端同构（flashComboAura）');
+  else err('连击光晕两端不同构');
+  {
+    const lvA = (read('pages/game/game.wxss').match(/\.combo-aura\.lv(\d)/g) || []).length;
+    const lvT = (th.match(/#combo-aura\.lv(\d)/g) || []).length;
+    if (lvA >= 4 && lvT >= 4) ok('光晕四档两端齐全（强度递增）');
+    else err('光晕档位不足（WXSS ' + lvA + ' / 体验版 ' + lvT + '，应各 ≥4）');
+  }
+  if (/pointer-events:\s*none/.test(read('pages/game/game.wxss')) &&
+      /pointer-events:\s*none/.test(th))
+    ok('光晕不拦截点击（纯装饰，不挡牌面）');
+  else err('连击光晕缺少 pointer-events:none —— 会挡住牌面点击');
+  // 52.5 触发门槛：只在升档时闪（>=2 档），不打扰
+  if (/dec\.level >= 2\) this\.flashComboAura/.test(gj) ||
+      /praiseDec\.level >= 2\) flashComboAura/.test(th))
+    ok('仅在 2 档及以上触发（一档不闪，避免与消除反馈打架）');
+  else err('光晕触发门槛缺失或不是 >=2 档');
+  if (/\| \*\*D61\*\* \|/.test(read('docs/DECISIONS.md')) &&
+      /\| \*\*D62\*\* \|/.test(read('docs/DECISIONS.md')))
+    ok('docs/DECISIONS.md 已登记 D61（ducking）与 D62（连击光晕）');
+  else err('缺少 D61 或 D62 决策行');
 }
 
 console.log('通过: ' + passed + ' | 错误: ' + errors.length + ' | 警告: ' + warnings.length);

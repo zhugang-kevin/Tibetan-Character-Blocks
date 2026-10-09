@@ -138,6 +138,9 @@
     <view class="card-hint">游戏不会暂停 · 点「知道了」或继续消除即可收起</view>
   </view>
 
+  <!-- D62 连击光晕：档位越高越亮，一闪即收；纯 CSS，不遮挡盘面点击 -->
+  <view wx:if="{{comboAuraOn}}" class="combo-aura lv{{comboAura}}" aria-hidden="true"></view>
+
   <!-- 通关情绪反馈：金色莲花 + 风马旗碎片粒子 + 雪山金光（纯 CSS，零依赖） -->
   <view wx:if="{{fxOn}}" class="fx-layer" aria-hidden="true">
     <view class="fx-glow"></view>

@@ -93,6 +93,8 @@ function pronounce(id) {
     activeVoice = v;
     v.stop();
     v.play();
+    // D61：语音期间压低 BGM（元素发音 0.3~2s，按 1.4s 窗口足够覆盖）
+    duckBgm(1400);
     return true;
   } catch (e) {
     return false;
@@ -137,6 +139,28 @@ function tier(level) {
 // 偏好位 bgmOff 存 progress（与 praiseOff 同一条三处同步链路）。
 // 体验版用 Web Audio 按同一份音符表复现（WAV 资产只在小程序包内）。
 var BGM_VOLUME = 0.28;
+
+// ---- 语音期间压低 BGM（ducking）：不加任何字节的清晰度手段 ----
+// 为什么需要（D61，用户「中文播放有时候声音不是很清晰」）：
+//   元素发音 / 激励语音走的是**另一条** InnerAudioContext，和 BGM 同时发声。
+//   手机外放本身信噪比就低（尤其 D59 之前藏文还轻 12~15dB），再叠一层 0.28 的
+//   连续音乐，**辅音齿音会被直接盖掉** —— 听感就是「有时候听不清」。
+//   做法：语音响起期间把 BGM 压到 0.28 × 0.36 ≈ 0.10，说完恢复。
+//   这是录音棚里的标准做法（ducking），代价为零字节。
+var BGM_DUCK = 0.10;        // 语音期间的目标音量
+var duckTimer = null;
+
+function duckBgm(ms) {
+  try {
+    if (bgmCtx) bgmCtx.volume = BGM_DUCK;
+    if (duckTimer) clearTimeout(duckTimer);
+    duckTimer = setTimeout(function () {
+      duckTimer = null;
+      // 恢复时若用户已把 BGM 关掉 / 页面已卸载，不要把它重新拉响
+      try { if (bgmCtx) bgmCtx.volume = BGM_VOLUME; } catch (e) { /* 静默 */ }
+    }, ms || 1400);
+  } catch (e) { /* 静默 */ }
+}
 var bgmCtx = null;
 
 function bgmContext() {
@@ -154,7 +178,10 @@ function bgmContext() {
 // 开始 / 恢复背景音乐。已开关偏好时调用方应先判断，本函数只管「响」。
 function bgmStart() {
   try {
-    bgmContext().play();
+    var c = bgmContext();
+    // 若上一次 duck 的恢复定时器还没到，此刻不该是 BGM_DUCK
+    if (!duckTimer) c.volume = BGM_VOLUME;
+    c.play();
     return true;
   } catch (e) {
     return false;
@@ -180,6 +207,8 @@ module.exports = {
   tier: tier,
   TIER_SOUND: TIER_SOUND,
   BGM_VOLUME: BGM_VOLUME,
+  BGM_DUCK: BGM_DUCK,
+  duckBgm: duckBgm,
   bgmStart: bgmStart,
   bgmStop: bgmStop,
   // 语义化封装
