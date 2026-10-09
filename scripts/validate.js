@@ -5512,8 +5512,11 @@ section('54. 设备响应式（手机优先 / 平板其次 / 电脑最后 · 字
   } else err('缺少 scripts/audit_device.py —— 没有设备矩阵，真机之前就没有第二道防线');
 
   // 54.2 WXSS 字号下限（rpx → 320pt 折算）
-  const RPX_HARD = 24;   // 360pt 安全线：24 × 0.48 = 11.5pt
-  const RPX_SOFT = 26;   // 320pt 安全线：26 × 0.4267 = 11.1pt
+  // D66：手机是第一优先设备，**320pt 也必须达标** —— 下限抬到 26rpx（= 11.1pt）。
+  // 24rpx 时代只保了 360pt（11.5pt），在 320pt 上只有 10.2pt，属「勉强可读」，
+  // 既然口径是「所有手机型号」，那条线就不该留着当及格线。
+  const RPX_HARD = 26;   // 320pt 安全线：26 × 0.4267 = 11.1pt
+  const RPX_SOFT = 26;   // 同上（不再设软线：要么达标，要么改）
   const hard = [], soft = [];
   const walk54 = (rel, out) => {
     for (const e of fs.readdirSync(path.join(ROOT, rel), { withFileTypes: true })) {
@@ -5536,12 +5539,11 @@ section('54. 设备响应式（手机优先 / 平板其次 / 电脑最后 · 字
     }
   });
   if (!hard.length)
-    ok('WXSS 字号无低于 24rpx 的声明（360pt 及以上机型均 ≥ 11.5pt）');
-  else err('WXSS 有 ' + hard.length + ' 处字号低于 24rpx：' + hard.slice(0, 4).join('；') +
-    ' —— 在 360pt 机型上就不足 11pt');
-  if (!soft.length) ok('WXSS 字号全部 ≥ 26rpx（320pt 小屏也 ≥ 11.1pt）');
-  else warn('有 ' + soft.length + ' 处字号介于 24~26rpx：在 320pt 小屏上折算 < 11pt（' +
-    soft.slice(0, 3).join('；') + '）—— 属小屏可读性待整改项，D64 已登记');
+    ok('WXSS 字号全部 ≥ 26rpx（**320pt 小屏也 ≥ 11.1pt** —— 手机是第一优先设备）');
+  else err('WXSS 有 ' + hard.length + ' 处字号低于 26rpx：' + hard.slice(0, 4).join('；') +
+    ' —— 在 320pt 机型上不足 11pt，属于「所有手机型号」口径未达标');
+  if (!soft.length) ok('小屏可读性无遗留软线（不再保留「勉强可读」的档位）');
+  else warn('有 ' + soft.length + ' 处字号介于软线与硬线之间：' + soft.slice(0, 3).join('；'));
 
   // 54.3 体验版字号下限（px 不随屏宽缩放，所以下限要更硬）
   const tpl54 = read('preview/template.html');
@@ -5555,14 +5557,34 @@ section('54. 设备响应式（手机优先 / 平板其次 / 电脑最后 · 字
   else err('体验版有 ' + tiny.length + ' 处字号 < 11px（' + tiny.slice(0, 5).join(',') +
     '）—— px 不随屏宽缩放，小屏与平板上都偏小');
 
-  // 54.4 页面不得写死 px 宽度（会顶破小屏；小程序里宽度一律走 rpx）
+  // 54.4 不得写死 px **width**（会把小屏顶破）
+  // ⚠️ 必须排除 `max-width`：它是**保护性**的（只封顶、不放大），正是 D66 平板适配用的东西。
+  //    旧正则 `/width:\s*\d{3,}px/` 会匹配到 `max-width:` 里的 `width:`，
+  //    于是「平板封顶」被自己的门禁判成违规 —— 门禁反过来成了障碍。
+  //    **判据要区分「有害的固定值」与「有益的上限」**，这与前面几次同源。
   const fixedW = [];
   wxss.forEach(function (rel) {
-    const src = read(rel);
-    if (/width:\s*\d{3,}px/.test(src)) fixedW.push(rel);
+    const src2 = read(rel);
+    // 前面必须是 ; { 或空白 —— 也就是「这条声明就是 width」而不是 max-width
+    if (/(?:^|[;{\s])width:\s*\d{3,}px/.test(src2)) fixedW.push(rel);
   });
-  if (!fixedW.length) ok('WXSS 无写死的 ≥100px 宽度（宽度一律 rpx，按屏宽缩放）');
-  else err('WXSS 存在写死的像素宽度：' + fixedW.join('、') + ' —— 小屏会被顶破');
+  if (!fixedW.length)
+    ok('WXSS 无写死的像素 width（宽度走 rpx；max-width 属保护性上限，不在此列）');
+  else err('WXSS 存在写死的像素 width：' + fixedW.join('、') + ' —— 小屏会被顶破');
+
+  // 54.5 平板必须有内容封顶（D66：平板是第二优先设备，不能只是「放大的手机」）
+  {
+    const need = ['pages/index/index.wxss', 'pages/game/game.wxss'];
+    const noCap = need.filter(function (rel) { return read(rel).indexOf('max-width') === -1; });
+    if (!noCap.length)
+      ok('平板已做内容封顶（max-width 居中）—— 平板不再是「放大的手机」');
+    else err('这些页面没有平板封顶：' + noCap.join('、') + ' —— 平板上会被整页拉伸');
+  }
+
+  // 54.6 安全区修补脚本必须在册（刘海机底部遮挡的修法要可复跑）
+  if (exists('scripts/fix_safe_area.py') && exists('scripts/fix_tablet_layout.py'))
+    ok('真机修补脚本在册：fix_safe_area.py（安全区）/ fix_tablet_layout.py（平板封顶）');
+  else err('缺少 fix_safe_area.py 或 fix_tablet_layout.py —— 真机修补不可复跑');
 
   if (/\| \*\*D64\*\* \|/.test(read('docs/DECISIONS.md')))
     ok('docs/DECISIONS.md 已登记 D64（设备响应式与机型优先级）');

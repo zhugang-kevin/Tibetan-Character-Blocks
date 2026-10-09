@@ -37,6 +37,9 @@
   }
   .screen { display: none; padding: 20px 14px 40px; position: relative; z-index: 1; }
   .screen.active { display: block; }
+
+  /* D66 平板：内容封顶居中，不再是「放大的手机」（手机端 max-width 不生效，零回归） */
+  .screen { max-width: 560px; margin-left: auto; margin-right: auto; }
   .tib { font-family: "Noto Serif Tibetan", "Microsoft Himalaya", "Jomolhari", "Kailasa", "PingFang SC", serif; }
 
   /* ============ 藏文化背景层（三层：纹样 / 经幡 / 雪山布达拉宫） ============ */

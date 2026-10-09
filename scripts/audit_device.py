@@ -99,22 +99,26 @@ PROBE = r"""
     var vOver = Math.max(de.scrollHeight, document.body.scrollHeight) - window.innerHeight;
     // 安全区：刘海机型上顶部/底部有系统遮挡区。这里用 CSS env() 的模拟值检查
     // 「有没有元素压在下面 34px / 上面 44px 里」—— 那正是真机上被遮住的地方。
-    var unsafe = 0;
-    for (i = 0; i < all.length; i++) {
-      el = all[i]; r = el.getBoundingClientRect();
-      if (r.width === 0 || r.height === 0) continue;
-      var cs2 = getComputedStyle(el);
-      if (cs2.position !== 'fixed' && cs2.position !== 'absolute') continue;
-      if (r.bottom > window.innerHeight - 2 && r.top < window.innerHeight - 34 &&
-          (cs2.position === 'fixed')) {
-        // 贴底固定元素：只有当它没有留出安全区内边距时才提示
-        var padB = parseFloat(cs2.paddingBottom) || 0;
-        if (padB < 34) unsafe++;
+    // ⚠️ 这里原来用「computed padding-bottom < 34」判断安全区，**是错的**：
+    //    桌面 Chrome 里 env(safe-area-inset-bottom) 恒等于 0，
+    //    于是即使 CSS **写了** env()，算出来也是 0 → 全部误报「缺安全区」。
+    //    （实测：补齐后仍报 ×3，而静态门禁 §55 已确认 0 条缺失。）
+    //    正确做法：**读样式表文本**，看这条规则到底有没有声明 env()。
+    var unsafe = 0, withEnv = 0;
+    try {
+      for (var si = 0; si < document.styleSheets.length; si++) {
+        var rs = document.styleSheets[si].cssRules;
+        for (var ri = 0; ri < rs.length; ri++) {
+          var rt = rs[ri].cssText || '';
+          if (rt.indexOf('position: fixed') === -1) continue;
+          if (!/bottom:\s*0(?!\d)/.test(rt)) continue;
+          if (/env\(safe-area-inset-bottom\)/.test(rt)) withEnv++; else unsafe++;
+        }
       }
-    }
+    } catch (e) { /* 跨源样式表读不到就跳过 */ }
     return 'V:' + Math.round(over) + '|' + bad + '|' + Math.round(minFont * 10) +
            '|' + taps + '|' + Math.round(minTap) + '|' + worst +
-           '|' + Math.round(vOver) + '|' + unsafe;
+           '|' + Math.round(vOver) + '|' + unsafe + '|' + withEnv;
   } catch (e) {
     return 'E:' + String(e && e.message).slice(0, 60);
   }
@@ -154,7 +158,8 @@ def parse(v):
             'minTap': int(p[4]) if len(p) > 4 and p[4] else None,
             'worst': p[5] if len(p) > 5 else '',
             'pageH': int(p[6]) if len(p) > 6 and p[6] else None,
-            'unsafe': int(p[7]) if len(p) > 7 and p[7] else 0}
+            'unsafe': int(p[7]) if len(p) > 7 and p[7] else 0,
+            'withEnv': int(p[8]) if len(p) > 8 and p[8] else 0}
 
 
 def main():
@@ -192,6 +197,8 @@ def main():
             print('\x1b[31m✗\x1b[0m' + head + r['error'])
             continue
         iss = []
+        if r.get('unsafe'):
+            iss.append('贴底固定浮层缺安全区 %d 处' % r['unsafe'])
         if r['overflow'] > TOL:
             iss.append('横向溢出 %dpx（%s）' % (r['overflow'], r.get('worst') or '?'))
         if r['smallText']:
@@ -202,7 +209,9 @@ def main():
         if r.get('pageH'):
             extra = '  [纵向可滚 %dpx]' % r['pageH']
         if r.get('unsafe'):
-            extra += '  [固定元素贴底无安全区内边距 ×%d]' % r['unsafe']
+            extra += '  [贴底固定缺安全区 ×%d]' % r['unsafe']
+        if r.get('withEnv'):
+            extra += '  [贴底固定已留安全区 ×%d]' % r['withEnv']
         if iss:
             bad += 1
             print('\x1b[31m✗\x1b[0m' + head + '；'.join(iss) + extra)
