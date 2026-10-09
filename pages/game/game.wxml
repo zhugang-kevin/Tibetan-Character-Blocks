@@ -123,10 +123,12 @@
         <text class="fact-label">文化小知识</text>
         <text class="fact-text">{{card.funFact}}</text>
       </view>
-      <!-- 喇叭：点击播放本元素的藏文发音 -->
-      <view class="card-speak" bindtap="speakCard">
-        <text class="speak-icon">🔊</text>
-        <text class="speak-text">点击播放藏文读音</text>
+      <!-- 喇叭：点击播放本元素的藏文发音；
+           没有音源时不假装能播 —— 按钮直接标成「发音待录入」（见 utils/audio.js hasVoice） -->
+      <view class="card-speak {{cardHasVoice ? '' : 'no-voice'}} {{speakMiss ? 'miss' : ''}}"
+            bindtap="speakCard">
+        <text class="speak-icon">{{cardHasVoice ? '🔊' : '🔇'}}</text>
+        <text class="speak-text">{{cardHasVoice ? '点击播放藏文读音' : '发音待录入'}}</text>
       </view>
       <view class="card-know" bindtap="dismissCard">知道了</view>
     </view>

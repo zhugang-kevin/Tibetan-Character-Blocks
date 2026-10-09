@@ -52,7 +52,24 @@ function play(name) {
 var voiceCtx = {};
 var activeVoice = null;
 
+// ---------------------------------------------------------------- 有没有这条发音？
+// 2026-10-09 用户反馈「《🔊 点击播放藏文读音》根本就没有办法播放」：
+// 一部分是这个原因——有些元素的音频**压根不存在**，而 `pronounce` 过去一律返回 true，
+// 于是 UI 永远显示「点击播放」，点了却是死寂：承诺了一个给不了的东西。
+// data/voices.js 是构建期由 scripts/gen_voice_index.py 按 audio/voice/ 目录生成的清单，
+// 有了它就能在**点之前**说实话（按钮显示「发音待录入」），而不是让用户对着黑洞点。
+var VOICE_INDEX = require('../data/voices.js');
+var VOICE_SET = {};
+VOICE_INDEX.ids.concat(VOICE_INDEX.extras).forEach(function (k) { VOICE_SET[k] = 1; });
+
+function hasVoice(id) {
+  return !!VOICE_SET[id];
+}
+
 function pronounce(id) {
+  // 没有音源就不要假装播了：直接返回 false，让调用方给出诚实的反馈。
+  // （过去这里会照常建 ctx 并 return true ——  misses 要等异步 onError 才知道，UI 无从判断。）
+  if (!id || !VOICE_SET[id]) return false;
   try {
     if (!voiceCtx[id]) {
       var c = wx.createInnerAudioContext();
@@ -157,6 +174,7 @@ function bgmStop() {
 module.exports = {
   play: play,
   pronounce: pronounce,
+  hasVoice: hasVoice,
   speak: speak,
   stopVoice: stopVoice,
   tier: tier,

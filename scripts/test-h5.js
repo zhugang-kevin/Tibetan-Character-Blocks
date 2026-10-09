@@ -447,8 +447,10 @@ function mockCtx(sink) {
   check('延时结束后完成朗读', ev('state.pronounceCount') === pronAtMatch + 1,
     'count=' + ev('state.pronounceCount'));
   check('重复匹配不再弹完整卡片', !$('#card-panel').classList.contains('show'));
-  check('重复匹配改为轻提示 toast', $('#toast').classList.contains('show'));
-  check('轻提示含「已收藏」', $('#toast').textContent.indexOf('已收藏') > -1, $('#toast').textContent);
+  // D57 打扰预算：重复匹配**不再弹任何浮层**（实测第 1 关单局会被这条规则打扰 12 次，
+  // 平均每一对都要弹一次）。配对消失本身就是反馈，多余的一律删。
+  check('重复匹配不再弹轻提示（D57 打扰预算）', !$('#toast').classList.contains('show'),
+    $('#toast').className);
 
   const pr2 = findPair();
   await clickTile(pr2[0]);
@@ -988,6 +990,7 @@ function mockCtx(sink) {
   // 木箱关（第 6 关）：木箱显示剩余耐久，相邻消除扣耐久
   ev('startLevel(6)');
   await sleep(60);
+  ev('lastBlockTipAt = 0');   // D57 障碍提示有 3s 冷却：每个用例独立，先把冷却清掉
   check('第 6 关有 2 个木箱', ev('state.crateTotal') === 2, 'crateTotal=' + ev('state.crateTotal'));
   check('DOM 木箱数量一致', $$('#board .crate').length === 2, '实际 ' + $$('#board .crate').length);
   const crateIdx = tiles().findIndex(function (t) { return t.crate > 0; });
@@ -1019,6 +1022,7 @@ function mockCtx(sink) {
   }
 
   // 绳结关（第 9 关，D40）：双股绳显示剩余股数，相邻消除松一股，两股全松才算解开
+  ev('lastBlockTipAt = 0');   // D57 障碍提示有 3s 冷却：每个用例独立，先把冷却清掉
   ev('startLevel(9)');
   await sleep(60);
   check('第 9 关有 2 个绳结（难度曲线：冰霜 L2 → 木箱 L6 → 绳结 L9）',
@@ -1132,13 +1136,25 @@ function mockCtx(sink) {
   await sleep(60);
   check('点喇叭播放该元素藏文读音（有语音时）', ev('state.pronounceCount') === pronBeforeCard + 1,
     pronBeforeCard + ' → ' + ev('state.pronounceCount'));
-  // 无语音时：给明确提示而不是静默（2026-10-08 用户反馈「点了没反应」）
+  // 无语音时（D57）：按钮在点之前就改成「发音待录入」，点击只抖一下、**不弹窗**。
+  // 背景：2026-10-09 用户反馈「《🔊 点击播放藏文读音》根本就没有办法播放」——
+  // 一部分元素压根没有音频文件，而按钮一如既往写着「点击播放」，点了当然是死寂。
   ev('delete VOICES["letter_01"]; state.pronounceCount = 0');
   $('#card-speak').click();
   await sleep(60);
-  check('无语音时点击给明确提示（不静默）',
-    $('#toast-text').textContent.indexOf('即将上线') > -1 && ev('state.pronounceCount') === 0,
-    $('#toast-text').textContent + ' | count=' + ev('state.pronounceCount'));
+  // 重新出卡，确认按钮文案随「有没有音」切换
+  ev('showCard("letter_01")');
+  await sleep(60);
+  check('无音源时喇叭如实标注「发音待录入」（不假装能播）',
+    $('#card-speak').classList.contains('no-voice') &&
+    $('#card-speak').textContent.indexOf('发音待录入') > -1,
+    $('#card-speak').textContent.trim());
+  $('#card-speak').click();
+  await sleep(60);
+  check('无语音时点击给抖动反馈且不静默计数、也不弹窗',
+    $('#card-speak').classList.contains('miss') && ev('state.pronounceCount') === 0 &&
+    !$('#toast').classList.contains('show'),
+    'count=' + ev('state.pronounceCount'));
   $('#card-know').click();
   await sleep(60);
   check('点「知道了」收起文化卡', !$('#card-panel').classList.contains('show'));

@@ -44,6 +44,10 @@ tashi_delek 在通关铜铃后播放，blessing_01 在结算页画卷展开时�
   → 录回来先验有声：python scripts/check_voice.py letter_03
     （「文件存在 ≠ 文件有声」，这条对真人录音同样成立）
 
+码率（2026-10-09 调整）：藏文发音 27 条由 16kbps 重编码到 **12kbps**（39.4 → 22.6KB），
+用于把主包从 1848KB（超预算）压回 1831KB；中文讲解 secret_* 仍是既有的低码率，未动。
+改码率用：python scripts/compress_voice.py --force --bitrate 12k --prefix letter_,icon_,tashi_delek,blessing_01
+
 每条音频用的是哪个藏文写法，见 scripts/tts-manifest.json：
   标 form=alt 的是「补了显式元音 ཱ」的写法，念出来偏长（如 ཀ → 「kaa」），
   这 8 条（letter_01/06/09/12/14/19/25/27）**务必请母语者听一遍**再定稿。

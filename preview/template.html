@@ -810,6 +810,18 @@
     padding: 10px; border-radius: 10px; background: #FBF4E2;
     border: 1px dashed rgba(183,149,11,.6); cursor: pointer; font-size: 13px; color: #8A6A12;
   }
+  /* D57：没有音源就如实标注，不假装能播 */
+  .card-speak.no-voice {
+    background: #F1EDE2; border-style: solid; border-color: rgba(122,110,88,.35); color: #7A6E58;
+  }
+  .card-speak.no-voice .speak-text { color: #7A6E58; }
+  .card-speak.miss { animation: speakMiss 380ms ease-in-out; }
+  @keyframes speakMiss {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-6px); }
+    45% { transform: translateX(5px); }
+    70% { transform: translateX(-3px); }
+  }
   .card-know {
     margin: 12px 0 4px; height: 40px; line-height: 40px; text-align: center; border-radius: 999px;
     background: linear-gradient(180deg, #C0392B 0%, #96291D 100%); color: #FFF6DC;
@@ -1588,7 +1600,7 @@
   <div class="card-body2">
     <div class="card-desc" id="card-desc"></div>
     <div class="card-fact"><span class="fact-tag">文化小知识</span><span id="card-fact"></span></div>
-    <div class="card-speak" id="card-speak">🔊 点击播放藏文读音</div>
+    <div class="card-speak" id="card-speak"><span class="speak-icon">🔊</span><span class="speak-text">点击播放藏文读音</span></div>
     <div class="card-know" id="card-know">知道了</div>
   </div>
   <div class="card-progress"><i id="card-bar"></i></div>
@@ -1628,6 +1640,14 @@ CARDS.forEach(function (c) { CARD_BY_ID[c.id] = c; });
 
 const TIB_FONT = '"Noto Serif Tibetan","Microsoft Himalaya","Jomolhari","Kailasa",serif';
 const CARD_AUTO_MS = 5200;   // 文化卡自动收起时长
+// ---------- 游戏中的「打扰预算」（D57，2026-10-09 用户反馈「跳窗实在太多了」）----------
+// 实测：打完第 1 关（12 对）被打断 14 次 —— 文化卡 2 次 + 重复匹配轻提示 12 次，
+// 平均每一对都要弹一次。原则：每次配对最多打扰一次；能不给的不给。
+//   · REPEAT_TOAST    重复匹配不再弹浮层（配对消失本身就是反馈）
+//   · BLOCK_COOLDOWN  障碍提示 3 秒冷却，连点同一障碍只提示一次
+// ⚠️ 这两个常量必须与 pages/game/game.js 同值（§48 守卫逐条核对两端）
+const REPEAT_TOAST = false;
+const BLOCK_COOLDOWN_MS = 3000;
 // D33 下落式盘面：与 pages/game/game.js 的 SHATTER_MS 同值（碎裂动画 0.34s，留满再结算下落）
 const SHATTER_MS = 340;
 
@@ -3894,7 +3914,12 @@ function onTapTile(idx) {
 
 /* 冰霜/木箱轻提示（非阻塞，不计入正确率）。⚠️ 复位要认「牌对象」而不是「格号」——
    420ms 内牌可能已经下落换格，按格号复位会把状态写错牌。 */
+let lastBlockTipAt = 0;   // D57 障碍提示冷却时间戳
 function blockedTip(idx, tile) {
+  // 打扰预算（D57）：3 秒冷却 —— 连点同一个障碍不再重复弹提示
+  const now = Date.now();
+  if (lastBlockTipAt && now - lastBlockTipAt < BLOCK_COOLDOWN_MS) return;
+  lastBlockTipAt = now;
   setTileState(tile, 'shake');
   showTip(tile.frost ? '❄ 这块被冰霜罩住了 · 先消除旁边的牌'
     : (tile.rope > 0 ? ('🪢 绳结还缠着 ' + tile.rope + ' 股 · 消除旁边的牌来解开')
@@ -4036,7 +4061,9 @@ function handleMatch(i, j) {
 
   setTimeout(function () {
     if (state.matchedCount === totalPairs()) return; // 通关瞬间不再弹卡/提示，直接进结算
-    if (firstTime) showCard(id); else showToast(id);
+    // 打扰预算（D57）：首次发现才出卡；重复匹配不再弹任何浮层
+    if (firstTime) showCard(id);
+    else if (REPEAT_TOAST) showToast(id);
   }, 340);
 }
 
@@ -4126,6 +4153,13 @@ function showCard(id) {
 
   $('card-panel').classList.add('show');
   state.cardId = id;   // 供「🔊 点击播放藏文读音」使用
+  // D57：有音源才写「点击播放藏文读音」，没有就直接标成「发音待录入」——
+  // 在点之前说实话，而不是让玩家对着一个假按钮点。
+  const hasV = !!VOICES[id];
+  const sp = $('card-speak');
+  sp.classList.toggle('no-voice', !hasV);
+  sp.querySelector('.speak-icon').textContent = hasV ? '🔊' : '🔇';
+  sp.querySelector('.speak-text').textContent = hasV ? '点击播放藏文读音' : '发音待录入';
   clearTimeout(cardTimer);
   cardTimer = setTimeout(hideCard, CARD_AUTO_MS);
 }
@@ -5122,9 +5156,14 @@ $('card-x').addEventListener('click', hideCard);
 // 藏纸卷轴文化卡：喇叭播放藏文读音 + 「知道了」收起（PRD 4.3，保持不打断游戏）
 $('card-speak').addEventListener('click', function () {
   if (!state.cardId) return;
-  // 有录音/TTS 就播；暂时没有时给明确反馈，而不是静默（2026-10-08 用户反馈「点了没反应」）
-  if (VOICES[state.cardId]) pronounce(state.cardId);
-  else showTip('藏文发音即将上线，先看文字提示 🙂');
+  // 有录音/TTS 就播；暂时没有时如实说明（不能再出现「点了没反应」的黑洞）。
+  // 注意这里**不再弹 toast**——D57 的打扰预算要求游戏中少弹窗，改为按钮抖动 +
+  // 按钮本身就写着「发音待录入」，玩家在点之前就能看出来。
+  if (VOICES[state.cardId]) { pronounce(state.cardId); return; }
+  const el = $('card-speak');
+  el.classList.remove('miss');
+  void el.offsetWidth;          // 强制回流，让抖动动画能重播
+  el.classList.add('miss');
 });
 $('card-know').addEventListener('click', hideCard);
 // 点击卡片外任意处收起（不阻止牌面点击，游戏不中断）

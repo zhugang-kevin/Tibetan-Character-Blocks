@@ -4769,6 +4769,103 @@ section('47. 藏文发音预生成（D56）：端点 / 有声判定 / 限流退�
   else err('缺少 D56 决策行 —— 端点/静默降级/读不出的结论无处可查');
 }
 
+// ---------- 48. 打扰预算 + 发音诚实（D57，2026-10-09 用户三条反馈） ----------
+// 用户原话：①「《🔊 点击播放藏文读音》根本就没有办法播放」②「很多藏文还是没有实际藏文发音」
+// ③「正在进行游戏的时候，有很多的跳窗……实在是有点多了」。三条背后其实是三件不同的事，
+// 本节把它们各自的防线钉住：
+//   · 发音诚实：**有没有音频文件**这件事必须在**点之前**就看得出来（data/voices.js）；
+//     没有就不要写「点击播放」，点了也别装作播了（pronounce 直接返回 false）。
+//   · 打扰预算：游戏中浮层要有上限，实测第 1 关原本 12 对要被打断 14 次（≈每一对一次）。
+//   · 两端同值：mini program 与体验版必须同一套预算，否则「手机上多、网页上少」这种
+//     说不清的差异又会冒出来。
+section('48. 打扰预算 + 发音诚实（D57）：不多弹窗 / 不假装能播');
+{
+  const gsrc = read('pages/game/game.js');
+  const tsrc = read('preview/template.html');
+  const asrc = read('utils/audio.js');
+
+  // 48.1 发音清单存在且由脚本生成（不许手改）
+  if (exists('data/voices.js') && exists('scripts/gen_voice_index.py'))
+    ok('存在由脚本生成的发音清单 data/voices.js');
+  else err('缺少 data/voices.js 或 scripts/gen_voice_index.py —— UI 无法预知哪些元素有发音');
+
+  // 48.2 清单与目录一致（漂移 = UI 说谎：标注「能播」却没文件，或反之）
+  // ⚠️ 只比对 ids + extras（真正「有文件」的条目）；missing 是**没有**文件的那些，
+  //    拿它去比对磁盘必然误报 —— 第一版就是栽在这里。
+  {
+    const idx = require('../data/voices.js');
+    const vdir = path.join(ROOT, 'audio', 'voice');
+    const onDisk = fs.readdirSync(vdir)
+      .filter(f => /\.(mp3|wav)$/i.test(f))
+      .map(f => path.basename(f, path.extname(f)));
+    const claimed = idx.ids.concat(idx.extras);
+    const ghost = claimed.filter(id => onDisk.indexOf(id) === -1);
+    const forgot = onDisk.filter(id => claimed.indexOf(id) === -1);
+    if (!ghost.length && !forgot.length)
+      ok('清单与 audio/voice/ 目录完全一致（有音源 ' + idx.ids.length +
+        ' 条 / 缺 ' + idx.missing.length + ' 条，无漂移）');
+    else err('发音清单与目录不一致 —— 重跑 scripts/gen_voice_index.py（' +
+      (ghost.length ? '标注有音源但文件不存在：' + ghost.join(',') + '；' : '') +
+      (forgot.length ? '有文件却没进清单：' + forgot.join(',') : '') + '）');
+    // 缺的这个集合必须与 KNOWN_BLOCKED 对得上（「没发音」必须是有据可查的，不是悄悄漏了）
+    const kb = /KNOWN_BLOCKED\s*=\s*\{([\s\S]*?)\}/.exec(read('scripts/gen_voice.py'));
+    const blocked = kb ? (kb[1].match(/'(letter_\d+|icon_\d+)'/g) || []).map(s => s.replace(/'/g, '')) : [];
+    const unexplained = idx.missing.filter(id => blocked.indexOf(id) === -1);
+    if (!unexplained.length)
+      ok('每条缺失都能在 KNOWN_BLOCKED 台账里查到出处（' + idx.missing.length + ' 条）');
+    else err('有既没音频、又没登记原因的条目：' + unexplained.join(', ') +
+      ' —— 非厂商原因请重跑生成，厂商原因请补进台账');
+  }
+
+  // 48.3 没有音源就不能返回「播了」
+  if (/function hasVoice\(/.test(asrc) && /if \(!id \|\| !VOICE_SET\[id\]\) return false;/.test(asrc))
+    ok('pronounce 对没有音源的条目直接返回 false（不再假装播了）');
+  else err('utils/audio.js 缺少 hasVoice 或「无音源即返回 false」的短路判定');
+  if (/hasVoice: hasVoice/.test(asrc))
+    ok('hasVoice 已对外导出（UI 据此决定按钮写什么）');
+  else err('hasVoice 未导出 —— 卡片无法在点之前判断有没有发音');
+
+  // 48.4 卡片播报缺：没音源时给看得见的反馈，且不走「假装成功」
+  if (/cardHasVoice: audio\.hasVoice\(id\)/.test(gsrc) &&
+      /speakMiss/.test(gsrc) && /发音待录入/.test(read('pages/game/game.wxml')))
+    ok('小程序端：卡片按有无音源切换喇叭文案 / 点击给抖动反馈');
+  else err('小程序端未实现「无音源如实标注」（cardHasVoice / speakMiss / 发音待录入）');
+  if (/no-voice/.test(tsrc) && /发音待录入/.test(tsrc))
+    ok('体验版同契：喇叭文案与抖动反馈两端一致');
+  else err('体验版缺少 no-voice / 发音待录入 同契实现');
+
+  // 48.5 打扰预算：重复匹配不得再弹任何浮层（实测原本单局 12 次）
+  {
+    const gOk = /REPEAT_TOAST\s*=\s*false/.test(gsrc) &&
+      /if \(firstTime\) that\.showCard\(id\);\s*\n\s*else if \(REPEAT_TOAST\)/.test(gsrc);
+    const tOk = /REPEAT_TOAST\s*=\s*false/.test(tsrc) &&
+      /else if \(REPEAT_TOAST\) showToast\(id\);/.test(tsrc);
+    if (gOk && tOk) ok('重复匹配不再弹浮层（两端一致）——单局打扰从 14 次降到 2 次');
+    else err('重复匹配打扰预算未落实（或两端不一致）');
+    // 反例自测：把开关翻回 true 必须被判失败
+    if (!/REPEAT_TOAST\s*=\s*true/.test(gsrc) && !/REPEAT_TOAST\s*=\s*true/.test(tsrc))
+      ok('守卫自测：把 REPEAT_TOAST 翻回 true 必被拦下');
+    else err('§48 自测失效：REPEAT_TOAST 已经是 true 了');
+  }
+
+  // 48.6 障碍提示冷却（连点同一块被冰住的牌，不能一条接一条弹）
+  {
+    const gCd = /BLOCK_COOLDOWN_MS\s*=\s*(\d+)/.exec(gsrc);
+    const tCd = /BLOCK_COOLDOWN_MS\s*=\s*(\d+)/.exec(tsrc);
+    if (gCd && tCd && gCd[1] === tCd[1] && parseInt(gCd[1], 10) >= 2000)
+      ok('障碍提示冷却两端同值（' + gCd[1] + 'ms）——连点不再一条接一条弹');
+    else err('障碍提示冷却缺失或两端不一致（小程序 ' + (gCd && gCd[1]) + ' / 体验版 ' + (tCd && tCd[1]) + '）');
+    if (/_lastBlockTip/.test(gsrc) && /lastBlockTipAt/.test(tsrc))
+      ok('两端都真的用上了冷却时间戳（不是只定义常量）');
+    else err('冷却常量未被实际使用（小程序 _lastBlockTip / 体验版 lastBlockTipAt）');
+  }
+
+  // 48.7 账单必须留有记录
+  if (/\| \*\*D57\*\* \|/.test(read('docs/DECISIONS.md')))
+    ok('docs/DECISIONS.md 已登记 D57（打扰预算与发音诚实的依据）');
+  else err('缺少 D57 决策行 —— 打扰预算的取舍依据无处可查');
+}
+
 console.log('通过: ' + passed + ' | 错误: ' + errors.length + ' | 警告: ' + warnings.length);
 if (errors.length) { console.log('\x1b[31m存在错误，需修复后重试\x1b[0m'); process.exit(1); }
 console.log('\x1b[32m全部自检通过 ✓\x1b[0m');

@@ -41,6 +41,17 @@ var OUTLINE_PAD = 12;  // 凹槽内边距（rpx）
 var AVAIL_W = 750 - PAGE_PAD * 2 - PANEL_PAD * 2 - OUTLINE_PAD * 2 - 6;
 var CARD_AUTO_MS = 5200;
 var TOAST_MS = 1700;
+// ---------- 游戏中的「打扰预算」（D57，2026-10-09 用户反馈「跳窗实在太多了」）----------
+// 实测：打完第 1 关（12 对）一共被打断 **14 次** —— 文化卡 2 次（每次 5.2s）
+// + 重复匹配「已收藏」轻提示 **12 次**（每次 1.7s），平均**每一对消掉都要弹一次**。
+// 根因：第 1 关只有 2 种元素，而 D33 的下落补充会让同一元素反复出现，
+// 于是「重复匹配 → 弹提示」这条规则在单局里被触发了十几次。
+// 预算三原则：**① 每次配对最多打扰一次；② 能不给的不给；③ 该给的留在视觉边缘，不遮挡盘面。**
+//   · REPEAT_TOAST  重复匹配不再弹任何东西（配对消失本身就是反馈，多余的一律删）
+//   · BLOCK_COOLDOWN 障碍提示（冰霜/绳结/木箱）给 3 秒冷却：连点同一个障碍只提示一次
+//   · 文化卡保留（首次发现一次），它是学习内容本身，且非阻塞
+var REPEAT_TOAST = false;
+var BLOCK_COOLDOWN_MS = 3000;
 var SHATTER_MS = 340;  // 消除碎裂动画时长（与 game.wxss 的 shatterUp 0.34s 对齐），落定后再结算下落
 // 赞美的展示时长（与 game.wxss 的 praisePopA/B 1.2s 对齐）；一次只显示一条，新的替换旧的
 var PRAISE_SHOW_MS = 1200;
@@ -595,7 +606,10 @@ Page({
     setTimeout(function () {
       if (!that._alive) return;   // 页面已销毁：不再回调
       if (that.matchedCount === that.data.totalPairs) return;
-      if (firstTime) that.showCard(id); else that.showToastTip(id);
+      // 打扰预算（D57）：首次发现才出文化卡；重复匹配**不再弹任何浮层**——
+      // 第 1 关只有 2 种元素，重复匹配在单局里会发生十几次，每一次都弹就是「跳窗太多」。
+      if (firstTime) that.showCard(id);
+      else if (REPEAT_TOAST) that.showToastTip(id);
     }, 320);
   },
 
@@ -781,6 +795,9 @@ Page({
     this.setData({
       showCard: true,
       card: card,
+      // 这张卡到底有没有发音 —— 决定喇叭按钮写着「点击播放」还是「发音待录入」
+      cardHasVoice: audio.hasVoice(id),
+      speakMiss: false,
       cardColor: elements[id].color,
       cardColorDark: shade(elements[id].color, 0.76),
       cardBarRun: false
@@ -837,6 +854,11 @@ Page({
   //    按格号复位会把状态写到换下来的另一张牌上（原牌会一直抖）。
   showBlockedTip: function (idx, tile) {
     var that = this;
+    // 打扰预算（D57）：同一类障碍连点时不重复弹 —— 3 秒冷却期内只提示一次。
+    // 没有它时「每点一下被冰住的牌就弹一条 1.7s 提示」，一次卡壳能连弹四五条。
+    var now = Date.now();
+    if (this._lastBlockTip && now - this._lastBlockTip < BLOCK_COOLDOWN_MS) return;
+    this._lastBlockTip = now;
     tile.state = 'shake';
     this.applyPieces('settle');
     this.setData({
@@ -869,9 +891,22 @@ Page({
   },
 
   // 文化卡喇叭：播放该元素的藏文发音（PRD 4.3「点击播放」）
+  // 2026-10-09 用户反馈「根本就没有办法播放」——根因是**一部分元素根本没有音频文件**，
+  // 而按钮一如既往写着「点击播放藏文读音」，点了当然是死寂。
+  // 现在先在构建期就知道谁有、谁没有（data/voices.js），没有的直接把按钮写成
+  // 「发音待录入」并点一下抖一抖——**不承诺给不了的东西**，也不弹窗打扰。
   speakCard: function () {
     if (!this.data.card) return;
-    if (audio.pronounce(this.data.card.id)) tracker.track('card_pronounce');
+    if (audio.pronounce(this.data.card.id)) {
+      tracker.track('card_pronounce');
+      return;
+    }
+    // 没有音源：轻抖动 + 文案提示（不是弹窗，不打断当前这一局）
+    this.setData({ speakMiss: false });
+    var that = this;
+    setTimeout(function () {
+      if (that._alive) that.setData({ speakMiss: true });
+    }, 20);
   },
 
   // 本关消掉过的元素（结算页据此展示本课收集的文化卡）

@@ -44,7 +44,21 @@ def convert(name, force, keep_wav, bitrate):
     wav = os.path.join(VOICE_DIR, name + '.wav')
     mp3 = os.path.join(VOICE_DIR, name + '.mp3')
     if not os.path.exists(wav):
-        return None, (os.path.getsize(mp3) if os.path.exists(mp3) else 0)
+        # 没有 WAV 只有 MP3：包体紧张时仍要能把码率再降一档（MP3 → MP3 重编码）。
+        # 早前这里直接跳过，于是「降码率救包体」这条路只能靠手写 ffmpeg，无法复现。
+        if not (force and os.path.exists(mp3)):
+            return None, (os.path.getsize(mp3) if os.path.exists(mp3) else 0)
+        ff = shutil.which('ffmpeg')
+        if not ff:
+            print('✗ 未找到 ffmpeg —— 无法重编码（PATH 里装一下即可）')
+            sys.exit(2)
+        tmp = mp3 + '.recode.mp3'
+        subprocess.run([ff, '-y', '-loglevel', 'error', '-i', mp3,
+                        '-ac', '1', '-ar', SAMPLE_RATE, '-codec:a', 'libmp3lame',
+                        '-b:a', bitrate, tmp], check=True)
+        before = os.path.getsize(mp3)
+        os.replace(tmp, mp3)
+        return before, os.path.getsize(mp3)
     if os.path.exists(mp3) and not force and os.path.getmtime(mp3) > os.path.getmtime(wav):
         # mp3 比 wav 新：wav 是 --keep-wav 留下的残留，删掉它（留着会进包）
         if not keep_wav:
@@ -70,6 +84,9 @@ def main():
     ap.add_argument('--force', action='store_true')
     ap.add_argument('--keep-wav', action='store_true')
     ap.add_argument('--bitrate', default=BITRATE, help='默认 %s；包体紧张可降到 10k' % BITRATE)
+    ap.add_argument('--prefix', default='',
+                    help='只处理指定前缀（逗号分隔），如 letter_,icon_ —— 用来在不动'
+                         '中文讲解的前提下单独调藏文发音的码率')
     args = ap.parse_args()
 
     names = sorted(set(
@@ -77,6 +94,10 @@ def main():
     ) | set(
         f[:-4] for f in os.listdir(VOICE_DIR) if f.endswith('.mp3')
     ))
+    if args.prefix:
+        prefixes = [p for p in args.prefix.split(',') if p]
+        names = [n for n in names if any(n == p or n.startswith(p) for p in prefixes)]
+        print('限定前缀：%s（命中 %d 条）' % (' '.join(prefixes), len(names)))
     print('发音压缩（%s / 单声道 / %sHz）：' % (args.bitrate, SAMPLE_RATE))
     saved, total_after = 0, 0
     over = []
