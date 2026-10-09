@@ -165,7 +165,7 @@
 }
 
 .meta-edit {
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: #C0392B;
 }
 
@@ -189,7 +189,7 @@
   text-align: center;
   border: 2rpx solid rgba(183, 149, 11, 0.6);
   border-radius: 14rpx;
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: #C0392B;
   background: rgba(255, 255, 255, 0.9);
 }
@@ -342,7 +342,7 @@
 }
 
 .tier-rule {
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: #6E6759;
   line-height: 1.5;
 }

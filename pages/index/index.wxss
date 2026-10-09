@@ -239,7 +239,7 @@ page,
 
 .pc-label {
   margin-top: 6rpx;
-  font-size: 20rpx;
+  font-size: 24rpx;
   color: #6E6759;
 }
 
@@ -261,7 +261,7 @@ page,
 }
 
 .stage-range {
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: #6E6759;
 }
 
@@ -312,7 +312,7 @@ page,
 
 .bc-label {
   margin-top: 6rpx;
-  font-size: 20rpx;
+  font-size: 24rpx;
   color: #6E6759;
 }
 
@@ -342,7 +342,7 @@ page,
 }
 .res-ico { font-size: 28rpx; }
 .res-val { font-size: 28rpx; font-weight: 700; color: #C0392B; }
-.res-cap { font-size: 20rpx; color: #6E6759; }
+.res-cap { font-size: 24rpx; color: #6E6759; }
 
 /* 朝圣天梯地图：山脚（人间）→ 石阶 → 山顶（天堂） */
 .vine-map {
@@ -562,7 +562,7 @@ page,
 }
 
 .node-stars { display: flex; gap: 2rpx; }
-.node-stars .star { font-size: 22rpx; line-height: 1; color: #DDD3BC; }
+.node-stars .star { font-size: 24rpx; line-height: 1; color: #DDD3BC; }
 .node-stars .star.on { color: #F1C40F; text-shadow: 0 1rpx 2rpx rgba(120, 90, 0, 0.4); }
 
 /* ============ 天梯动效（入场升起 / 台阶错峰 / 莲花绽放 / 点击回弹） ============ */
@@ -641,7 +641,7 @@ page,
 .region-txt { margin-left: 14rpx; display: flex; flex-direction: column; }
 .region-name { font-size: 24rpx; font-weight: 700; color: #6B6455; }
 .region.dim .region-name { color: #6E6759; }
-.region-spot { font-size: 20rpx; color: #6E6759; }
+.region-spot { font-size: 24rpx; color: #6E6759; }
 
 /* 五地剪影造型（简笔线条感，用 CSS 形状表达） */
 .region-shape.potala {
@@ -678,7 +678,7 @@ page,
   gap: 4rpx;
 }
 .side-ico { font-size: 32rpx; line-height: 1; }
-.side-txt { font-size: 18rpx; color: #6B6455; }
+.side-txt { font-size: 24rpx; color: #6B6455; }
 .side-dot {
   position: absolute;
   top: -10rpx;
@@ -688,7 +688,7 @@ page,
   border-radius: 999rpx;
   background: #C0392B;
   color: #FFFFFF;
-  font-size: 18rpx;
+  font-size: 24rpx;
   text-align: center;
   line-height: 30rpx;
 }
@@ -716,7 +716,7 @@ page,
   gap: 4rpx;
 }
 .dock-ico { font-size: 34rpx; }
-.dock-txt { font-size: 20rpx; color: #6B6455; }
+.dock-txt { font-size: 24rpx; color: #6B6455; }
 
 /* 入口面板（统一底部滑出，非阻塞） */
 .entry-panel {
@@ -746,7 +746,7 @@ page,
 .entry-body { max-height: 58vh; padding: 20rpx 26rpx; }
 .entry-foot {
   padding: 12rpx 26rpx calc(18rpx + env(safe-area-inset-bottom));
-  font-size: 20rpx;
+  font-size: 24rpx;
   color: #6E6759;
   text-align: center;
   border-top: 1rpx solid rgba(214, 202, 176, 0.7);
@@ -763,8 +763,8 @@ page,
   gap: 6rpx;
 }
 .em-v { font-size: 38rpx; font-weight: 700; color: #C0392B; }
-.em-k { font-size: 22rpx; color: #6E6759; }
-.entry-note { margin-top: 16rpx; font-size: 22rpx; color: #6E6759; line-height: 1.7; }
+.em-k { font-size: 24rpx; color: #6E6759; }
+.entry-note { margin-top: 16rpx; font-size: 24rpx; color: #6E6759; line-height: 1.7; }
 .entry-btn {
   margin-top: 20rpx;
   height: 84rpx;
@@ -800,7 +800,7 @@ page,
   border-color: rgba(183, 149, 11, 0.9);
   box-shadow: 0 0 18rpx rgba(241, 196, 15, 0.6);
 }
-.lamp-label { font-size: 18rpx; color: #6E6759; text-align: center; }
+.lamp-label { font-size: 24rpx; color: #6E6759; text-align: center; }
 
 /* 雪域日签 */
 .daily-tib { font-size: 56rpx; color: #C0392B; text-align: center; line-height: 1.5; }
@@ -836,14 +836,14 @@ page,
 .shop-ico { font-size: 40rpx; }
 .shop-main { flex: 1; }
 .shop-name { font-size: 28rpx; font-weight: 700; color: #2C3E50; }
-.shop-count { font-size: 20rpx; color: #6E6759; font-weight: 400; }
-.shop-desc { margin-top: 6rpx; font-size: 22rpx; color: #6E6759; }
+.shop-count { font-size: 24rpx; color: #6E6759; font-weight: 400; }
+.shop-desc { margin-top: 6rpx; font-size: 24rpx; color: #6E6759; }
 .shop-btn {
   padding: 12rpx 20rpx;
   border-radius: 999rpx;
   background: linear-gradient(180deg, #8A6A12, #6E5608);
   color: #FFF6DC;
-  font-size: 22rpx;
+  font-size: 24rpx;
   font-weight: 700;
 }
 
@@ -1195,7 +1195,7 @@ page,
   border: 1rpx solid rgba(212, 175, 55, 0.32);
 }
 .lotus-ico { font-size: 34rpx; display: block; }
-.lotus-k { display: block; margin-top: 6rpx; font-size: 22rpx; color: #C9BFA8; }
+.lotus-k { display: block; margin-top: 6rpx; font-size: 24rpx; color: #C9BFA8; }
 .lotus-v { display: block; margin-top: 4rpx; font-size: 28rpx; font-weight: 700; color: #FFD98A; }
 .lotus-cell.pink .lotus-v { color: #F2B6C6; }
 .lamp-btn {
@@ -1240,7 +1240,7 @@ page,
 .lamp-note {
   margin-top: 12rpx;
   text-align: center;
-  font-size: 20rpx;
+  font-size: 24rpx;
   color: #6E6759;
 }
 
@@ -1328,7 +1328,7 @@ page,
 }
 .ga-note {
   margin-top: 26rpx;
-  font-size: 20rpx;
+  font-size: 24rpx;
   line-height: 1.6;
   color: #8A8172;
 }

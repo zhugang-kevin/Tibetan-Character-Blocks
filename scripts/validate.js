@@ -5385,6 +5385,95 @@ section('53. 反证 harness 与循环校验治理（D63）');
   else err('缺少 D63 决策行 —— 这轮的假绿清单无处可查');
 }
 
+// ---------- 54. 设备响应式（D64：手机 → 平板 → 电脑 的优先级写进代码） ----------
+// 用户口径（2026-10-09）：「我们的第一个用户设备是手机——是**所有的手机型号**；
+// 第二个是平板——是**所有的平板型号**；最后的选择才是电脑」。
+//
+// 为什么这一节必须存在，而不是「设计时注意一下」：
+//   小程序是 **rpx 体系**（750rpx = 屏宽），**所有尺寸都按屏宽等比缩放**。
+//   于是「在我这台机器上正常」完全推不出「在用户机型上正常」——
+//   屏宽一变，字号、格径、间距**全部跟着变**。实测折算（1rpx = 屏宽/750 pt）：
+//     320pt → 22rpx = 9.4pt、24rpx = 10.2pt、**26rpx = 11.1pt**
+//     360pt → 24rpx = 11.5pt
+//     375pt → 22rpx = 11.0pt（当初只按这一台机器定的）
+//     1024pt(iPad) → 22rpx = 30pt、26rpx = 35.5pt
+//   也就是说：**同一套字号在 320pt 机型上整体偏小、在平板上整体偏大**，
+//   而「偏小到读不清」比「偏大」严重得多（读不清 = 直接不能用）。
+//   本节把**下限**钉死：WXSS 不得低于 24rpx（覆盖 ≥360pt 主流机型），
+//   低于 26rpx（=320pt 的 11pt 线）视为**待整改**并报出数量，不静默放过。
+section('54. 设备响应式（手机优先 / 平板其次 / 电脑最后 · 字号下限按屏宽折算）');
+{
+  // 54.1 设备矩阵必须写在册 —— 「支持哪些机型」不能只存在于某个人的脑子里
+  if (exists('scripts/audit_device.py')) {
+    const ad = read('scripts/audit_device.py');
+    const phones = (ad.match(/'phone'/g) || []).length;
+    const tablets = (ad.match(/'tablet'/g) || []).length;
+    const desk = (ad.match(/'desktop'/g) || []).length;
+    if (phones >= 4 && tablets >= 2 && desk >= 1)
+      ok('设备矩阵在册：手机 ' + phones + ' 档 / 平板 ' + tablets + ' 档 / 电脑 ' + desk +
+        ' 档（优先级 手机 → 平板 → 电脑）');
+    else err('设备矩阵不完整（手机 ' + phones + ' / 平板 ' + tablets + ' / 电脑 ' + desk +
+      '）—— 机型覆盖不足，用户设备优先级是手机 → 平板 → 电脑');
+  } else err('缺少 scripts/audit_device.py —— 没有设备矩阵，真机之前就没有第二道防线');
+
+  // 54.2 WXSS 字号下限（rpx → 320pt 折算）
+  const RPX_HARD = 24;   // 360pt 安全线：24 × 0.48 = 11.5pt
+  const RPX_SOFT = 26;   // 320pt 安全线：26 × 0.4267 = 11.1pt
+  const hard = [], soft = [];
+  const walk54 = (rel, out) => {
+    for (const e of fs.readdirSync(path.join(ROOT, rel), { withFileTypes: true })) {
+      const r = rel + '/' + e.name;
+      if (e.isDirectory()) walk54(r, out);
+      else if (e.name.endsWith('.wxss')) out.push(r);
+    }
+  };
+  const wxss = [];
+  walk54('pages', wxss);
+  wxss.forEach(function (rel) {
+    const src = read(rel);
+    let m;
+    const re = /font-size:\s*(\d+(?:\.\d+)?)rpx/g;
+    while ((m = re.exec(src))) {
+      const v = parseFloat(m[1]);
+      const pt320 = v * 320 / 750;
+      if (v < RPX_SOFT) soft.push(rel + ' ' + v + 'rpx(320pt=' + pt320.toFixed(1) + 'pt)');
+      else if (v < RPX_HARD) hard.push(rel + ' ' + v + 'rpx');
+    }
+  });
+  if (!hard.length)
+    ok('WXSS 字号无低于 24rpx 的声明（360pt 及以上机型均 ≥ 11.5pt）');
+  else err('WXSS 有 ' + hard.length + ' 处字号低于 24rpx：' + hard.slice(0, 4).join('；') +
+    ' —— 在 360pt 机型上就不足 11pt');
+  if (!soft.length) ok('WXSS 字号全部 ≥ 26rpx（320pt 小屏也 ≥ 11.1pt）');
+  else warn('有 ' + soft.length + ' 处字号介于 24~26rpx：在 320pt 小屏上折算 < 11pt（' +
+    soft.slice(0, 3).join('；') + '）—— 属小屏可读性待整改项，D64 已登记');
+
+  // 54.3 体验版字号下限（px 不随屏宽缩放，所以下限要更硬）
+  const tpl54 = read('preview/template.html');
+  const tiny = [];
+  let m2;
+  const re2 = /font-size:\s*(\d+(?:\.\d+)?)px/g;
+  while ((m2 = re2.exec(tpl54))) {
+    if (parseFloat(m2[1]) < 11) tiny.push(m2[1] + 'px');
+  }
+  if (!tiny.length) ok('体验版字号无低于 11px 的声明');
+  else err('体验版有 ' + tiny.length + ' 处字号 < 11px（' + tiny.slice(0, 5).join(',') +
+    '）—— px 不随屏宽缩放，小屏与平板上都偏小');
+
+  // 54.4 页面不得写死 px 宽度（会顶破小屏；小程序里宽度一律走 rpx）
+  const fixedW = [];
+  wxss.forEach(function (rel) {
+    const src = read(rel);
+    if (/width:\s*\d{3,}px/.test(src)) fixedW.push(rel);
+  });
+  if (!fixedW.length) ok('WXSS 无写死的 ≥100px 宽度（宽度一律 rpx，按屏宽缩放）');
+  else err('WXSS 存在写死的像素宽度：' + fixedW.join('、') + ' —— 小屏会被顶破');
+
+  if (/\| \*\*D64\*\* \|/.test(read('docs/DECISIONS.md')))
+    ok('docs/DECISIONS.md 已登记 D64（设备响应式与机型优先级）');
+  else err('缺少 D64 决策行');
+}
+
 console.log('通过: ' + passed + ' | 错误: ' + errors.length + ' | 警告: ' + warnings.length);
 if (errors.length) { console.log('\x1b[31m存在错误，需修复后重试\x1b[0m'); process.exit(1); }
 console.log('\x1b[32m全部自检通过 ✓\x1b[0m');

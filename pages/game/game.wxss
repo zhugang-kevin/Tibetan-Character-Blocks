@@ -103,7 +103,7 @@
 /* 文案开关（D34）：只关赞美文案，不关元素发音（发音属学习闭环）。
    「关」态靠虚线边框 + 降透明度区分，不引入新的字色。 */
 .status-praise {
-  font-size: 23rpx;
+  font-size: 24rpx;
   padding: 3rpx 12rpx;
   border: 1rpx solid rgba(183, 149, 11, 0.65);
   border-radius: 20rpx;
@@ -186,7 +186,7 @@
 .reveal-cap {
   margin-top: 12rpx;
   text-align: center;
-  font-size: 22rpx;
+  font-size: 24rpx;
   letter-spacing: 2rpx;
   color: #C9BFA8;
   text-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.6);
@@ -449,7 +449,7 @@
   position: absolute;
   top: 4rpx;
   right: 6rpx;
-  font-size: 20rpx;
+  font-size: 24rpx;
   color: #8A6414;
   line-height: 1;
   text-shadow: 0 1rpx 0 rgba(255, 255, 255, 0.6);
@@ -733,7 +733,7 @@
 
 .fact-label {
   display: inline-block;
-  font-size: 20rpx;
+  font-size: 24rpx;
   color: #FFFFFF;
   background: #8A6A12;
   border-radius: 8rpx;
@@ -771,7 +771,7 @@
 
 .card-hint {
   text-align: center;
-  font-size: 20rpx;
+  font-size: 24rpx;
   color: #6E6759;
   padding: 12rpx 0 16rpx;
 }
@@ -934,7 +934,7 @@
 
 /* ====== D51 学习体系：长按放大预览 + 步数预算 ====== */
 .status-steps {
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: #EBD9B4;
   padding: 6rpx 16rpx;
   border-radius: 999rpx;
@@ -970,7 +970,7 @@
 }
 .zoom-tip {
   margin-top: 18rpx;
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: #6B6455;
 }
 

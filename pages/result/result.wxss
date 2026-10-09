@@ -524,7 +524,7 @@
 }
 .rs-star { font-size: 44rpx; color: #DDD3BC; line-height: 1; }
 .rs-star.on { color: #F1C40F; text-shadow: 0 2rpx 6rpx rgba(183, 149, 11, 0.5); }
-.rs-tip { margin-left: 10rpx; font-size: 20rpx; color: #6E6759; }
+.rs-tip { margin-left: 10rpx; font-size: 24rpx; color: #6E6759; }
 
 .reward-row { display: flex; gap: 16rpx; margin: 18rpx 0 6rpx; }
 .reward-box {
@@ -537,7 +537,7 @@
   text-align: center;
 }
 .rw-v { font-size: 34rpx; font-weight: 700; color: #C0392B; }
-.rw-k { margin-top: 6rpx; font-size: 20rpx; color: #6E6759; }
+.rw-k { margin-top: 6rpx; font-size: 24rpx; color: #6E6759; }
 
 /* ============ 秘境揭图揭晓（D31）：藏纸卡 + 藏文名 + 释义 ============ */
 .reveal-card {
@@ -551,7 +551,7 @@
 }
 .reveal-head { display: flex; align-items: baseline; justify-content: center; gap: 14rpx; }
 .reveal-tag {
-  font-size: 20rpx;
+  font-size: 24rpx;
   color: #FFFFFF;
   background: #8A6A12;
   border-radius: 8rpx;
@@ -570,7 +570,7 @@
 .rt-t { font-size: 40rpx; color: #2C3E50; line-height: 1.5; }
 .rt-roman { font-size: 24rpx; color: #6E6759; }
 .reveal-desc { margin-top: 8rpx; font-size: 26rpx; color: #5B5343; line-height: 1.7; }
-.reveal-note { margin-top: 14rpx; font-size: 22rpx; color: #8A6A12; letter-spacing: 1rpx; }
+.reveal-note { margin-top: 14rpx; font-size: 24rpx; color: #8A6A12; letter-spacing: 1rpx; }
 
 /* ============ 藏地密码（PRD 5.2）：文化第三条线，通关解锁一则小知识 ============ */
 /* 与揭示图鉴的区别：图鉴是「看图」，密码是「读字」——故不居中、左对齐正文。
@@ -586,14 +586,14 @@
 }
 .secret-head { display: flex; align-items: center; justify-content: space-between; }
 .secret-tag {
-  font-size: 20rpx;
+  font-size: 24rpx;
   color: #FFFFFF;
   background: #8A6A12;
   border-radius: 8rpx;
   padding: 4rpx 12rpx;
   letter-spacing: 2rpx;
 }
-.secret-kind { font-size: 22rpx; color: #6E6759; letter-spacing: 1rpx; }
+.secret-kind { font-size: 24rpx; color: #6E6759; letter-spacing: 1rpx; }
 .secret-title { margin-top: 12rpx; font-size: 32rpx; font-weight: 700; color: #2C3E50; letter-spacing: 2rpx; }
 .secret-text { margin-top: 10rpx; font-size: 26rpx; color: #5B5343; line-height: 1.75; }
 .secret-listen {
@@ -609,7 +609,7 @@
   font-size: 24rpx;
 }
 
-.secret-note { margin-top: 14rpx; font-size: 22rpx; color: #8A6A12; letter-spacing: 1rpx; text-align: right; }
+.secret-note { margin-top: 14rpx; font-size: 24rpx; color: #8A6A12; letter-spacing: 1rpx; text-align: right; }
 
 /* ============ 前 60 秒钩子：结算决策点上的进度锚 ============ */
 .journey {
@@ -622,7 +622,7 @@
 }
 .j-head { display: flex; align-items: baseline; justify-content: space-between; }
 .j-step { font-size: 24rpx; font-weight: 700; color: #2C3E50; }
-.j-day { font-size: 20rpx; color: #6E6759; }
+.j-day { font-size: 24rpx; color: #6E6759; }
 .j-bar {
   margin-top: 14rpx;
   height: 10rpx;
@@ -651,7 +651,7 @@
 }
 .j-glyph { font-size: 26rpx; font-weight: 700; }
 .j-unknown { color: #6E6759; font-weight: 400; }
-.j-note { margin-top: 14rpx; font-size: 20rpx; line-height: 1.6; color: #6E6759; }
+.j-note { margin-top: 14rpx; font-size: 24rpx; line-height: 1.6; color: #6E6759; }
 
 /* ============ D27：阶段完结后的「下一步」预告 ============ */
 .next-stage {
@@ -672,7 +672,7 @@
   margin-right: 12rpx;
   padding: 2rpx 12rpx;
   border-radius: 999rpx;
-  font-size: 20rpx;
+  font-size: 24rpx;
   color: #FFFBF0;
   background: #8A6A12;
 }
@@ -689,7 +689,7 @@
 }
 .ns-note {
   margin-top: 8rpx;
-  font-size: 20rpx;
+  font-size: 24rpx;
   color: #6E6759;
 }
 
@@ -709,7 +709,7 @@
 .ct-tag {
   padding: 2rpx 12rpx;
   border-radius: 999rpx;
-  font-size: 20rpx;
+  font-size: 24rpx;
   color: #FFFBF0;
   background: #2471A3;
 }
@@ -742,7 +742,7 @@
 }
 .ct-note {
   margin-top: 6rpx;
-  font-size: 20rpx;
+  font-size: 24rpx;
   line-height: 1.6;
   color: #6E6759;
 }

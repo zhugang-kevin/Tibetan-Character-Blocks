@@ -77,7 +77,7 @@
 }
 .bn-note {
   margin-top: 18rpx;
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: #8A6A12;
   line-height: 1.6;
 }
@@ -128,12 +128,12 @@
 .bn-guide-btn.tourist .gb-name { color: #2471A3; }
 .gb-desc {
   margin-top: 8rpx;
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: #6B6455;
 }
 .bn-guide-foot {
   margin-top: 18rpx;
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: #6E6759;
   text-align: center;
 }
@@ -224,7 +224,7 @@
   color: #2C3E50;
 }
 .bc-kind {
-  font-size: 21rpx;
+  font-size: 24rpx;
   color: #8A6A12;
   border: 2rpx solid #E8D9A8;
   border-radius: 999rpx;
@@ -234,7 +234,7 @@
 }
 .bc-meta {
   margin-top: 10rpx;
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: #6E6759;
 }
 .bc-offer {
@@ -248,7 +248,7 @@
 }
 .bc-provider {
   margin-top: 14rpx;
-  font-size: 21rpx;
+  font-size: 24rpx;
   color: #176B3C;
   line-height: 1.5;
 }
@@ -259,7 +259,7 @@
   justify-content: space-between;
 }
 .bc-need {
-  font-size: 23rpx;
+  font-size: 24rpx;
   color: #6E6759;
 }
 .bc-need.ok { color: #176B3C; }
@@ -292,7 +292,7 @@
 
 .bn-disclaimer {
   margin: 26rpx 4rpx 0;
-  font-size: 21rpx;
+  font-size: 24rpx;
   line-height: 1.7;
   color: #6E6759;
 }
