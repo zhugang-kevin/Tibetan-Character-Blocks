@@ -100,9 +100,15 @@ MUTATIONS = [
     dict(group='orchestration', file='preview/template.html',
          find='const VOICES = /*__VOICES__*/;', repl='const VOICES = {};',
          gate='validate', desc='H5 不再内联语音（单文件体验版必然 404 静音）'),
+    # ⚠️ 上一版这条变异写的是「把 indexOf 的判断字符串改掉」，结果 `__VOICES__`
+    #    在 build-h5.js 里**出现 3 次**（守卫 1 次 + 报错文案 1 次 + replace 1 次），
+    #    只改一处 → 另外两处照样满足门禁 → **变异没打中，却记成了「门禁漏网」**。
+    #    教训：**变异必须先确认唯一命中**，否则量到的是自己没打准。
+    #    这里改成直接把守卫判据改坏（-1 → 999，等于「永远找不到占位符」）。
     dict(group='orchestration', file='scripts/build-h5.js',
-         find="html.indexOf('/*__VOICES__*/')", repl="html.indexOf('/*__VOICES_XX__*/')",
-         gate='validate', desc='构建脚本不再校验 VOICES 占位符（注入链悄悄断掉）'),
+         find="html.indexOf('/*__VOICES__*/') === -1",
+         repl="html.indexOf('/*__VOICES__*/') === 999",
+         gate='validate', desc='构建脚本的占位符守卫被改坏（注入链悄悄断掉）'),
 
     # 6. 音频资产（经 ffmpeg 变异）
     dict(group='audio', file='audio/voice/letter_02.mp3', gate='check_voice',
@@ -178,9 +184,32 @@ def write_rel(rel, s):
         f.write(s)
 
 
+# 还原策略：**内存快照**，不用 `git checkout --`。
+# 为什么换掉（实测踩到）：用 git 还原的前提是「工作区在跑 harness 前是干净的」。
+# 一次我在跑 harness 之前刚做完安全区修补但**还没提交**，harness 用
+# `git checkout -- preview/template.html` 还原变异时，把**我的未提交修补一起抹掉了** ——
+# harness 自己变成了破坏源。而它甚至没有报异常，只是下一轮 validate 红了。
+# 内存快照与 git 状态无关：跑之前把要动的文件按字节存下来，跑完原样写回。
+_SNAP = {}
+
+
+def snapshot(paths):
+    for rel in paths:
+        abs_p = os.path.join(ROOT, rel)
+        _SNAP[rel] = open(abs_p, 'rb').read() if os.path.exists(abs_p) else None
+
+
 def restore(rel):
-    subprocess.run(['git', 'checkout', '--', rel], cwd=ROOT,
-                   capture_output=True, text=True)
+    if rel not in _SNAP:
+        raise RuntimeError('没有快照可还原：%s（harness 内部错误）' % rel)
+    abs_p = os.path.join(ROOT, rel)
+    data = _SNAP[rel]
+    if data is None:
+        if os.path.exists(abs_p):
+            os.remove(abs_p)
+        return
+    with open(abs_p, 'wb') as f:
+        f.write(data)
 
 
 def apply_mut(m):
@@ -247,6 +276,7 @@ def main():
         return 2
 
     todo = [m for m in MUTATIONS if not args.only or m['group'] == args.only]
+    snapshot({m['file'] for m in todo})
     print('\n第 1 步 · 注入并验证（共 %d 条）' % len(todo))
     rows = []
     for m in todo:
@@ -299,22 +329,18 @@ def main():
     # 为什么不用后者当判据：本项目 preview/play.html 是构建产物，存在换行符（EOL）噪声，
     # 每次 build 之后 git status 都不干净 —— 若拿「仓库必须干净」当收尾标准，
     # harness 会永远失败，而真正的失败（没还原）会被这条噪声淹没。
+    # 收尾：与**快照**逐字节比对（不用 git status —— 它会把 EOL 噪声也算成差异）
     changed = sorted({m['file'] for m in todo})
-    still_dirty = []
-    try:
-        p = subprocess.run(['git', 'status', '--porcelain', '--'] + changed,
-                           cwd=ROOT, capture_output=True, text=True)
-        for line in (p.stdout or '').splitlines():
-            f = line[3:].strip().strip('"')
-            if f in changed:
-                still_dirty.append(line.strip())
-    except Exception as e:
-        still_dirty = ['(git status 调用失败：%s)' % e]
-    if still_dirty:
-        print('\n⚠️ harness 改动过的文件没有全部还原：\n' + '\n'.join(still_dirty))
+    bad = []
+    for rel in changed:
+        abs_p = os.path.join(ROOT, rel)
+        now = open(abs_p, 'rb').read() if os.path.exists(abs_p) else None
+        if now != _SNAP.get(rel):
+            bad.append(rel)
+    if bad:
+        print('\n⚠️ harness 改动过的文件没有还原：' + '、'.join(bad))
         return 1
-    print('harness 改动的 %d 个文件已全部还原 ✓（不要求仓库原本干净：'
-          'preview/play.html 有已知的 EOL 噪声）' % len(changed))
+    print('harness 改动的 %d 个文件已按快照逐字节还原 ✓（与 git 状态无关）' % len(changed))
     return 0
 
 

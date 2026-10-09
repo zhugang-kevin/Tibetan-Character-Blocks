@@ -732,7 +732,7 @@ page,
   transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
   box-shadow: 0 -12rpx 40rpx rgba(60, 44, 16, 0.28);
   overflow: hidden;
-}
+  padding-bottom: env(safe-area-inset-bottom);}
 .entry-panel.show { transform: translateY(0); }
 .entry-head {
   display: flex;

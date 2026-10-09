@@ -1,0 +1,21 @@
+# 统一换行策略（D65）
+#
+# 为什么要专门写这个文件：仓库里 core.autocrlf=true，而**构建产物与模板是 LF**，
+# 于是 git 期望工作区是 CRLF、实际是 LF —— 每次 rebuild 之后 `git status` 都不干净，
+# 但 `git diff` 又是空的。这种「状态脏、差异空」最坑人：
+#   · 反证 harness 的收尾检查曾被它带偏（已改为「只要求还原自己改过的文件」）
+#   · 任何「工作区必须干净」的 CI 判据都会永远为假
+# 显式声明 eol 之后，转换由仓库自己规定，不再依赖开发机的全局设置。
+* text=auto
+
+# 构建产物与模板：固定 LF（build-h5.js 用 '\n' 写出，ffmpeg/Chrome 工具链也产出 LF）
+preview/play.html text eol=lf
+preview/template.html text eol=lf
+
+# 二进制资产：禁止任何转换（曾经被 CRLF 转换过的图片会静默变大、触发体积门禁红）
+*.jpg binary
+*.jpeg binary
+*.png binary
+*.mp3 binary
+*.wav binary
+*.ttf binary

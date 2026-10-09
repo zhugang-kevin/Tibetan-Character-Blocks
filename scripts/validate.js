@@ -2346,8 +2346,34 @@ section('31. 下落式盘面模型（D33：下落 + 顶部补充 + 三条不变�
     const slots = l.cols * l.rows;
     return B.poolSize(l.cols, l.rows) === Math.max(2, Math.ceil(slots / 4 / 2) * 2);
   });
-  if (poolOk) ok('补充池公式 = round2(格数/4) 且下限 2（十关一致）');
-  else err('补充池公式与 utils/board.js 不一致');
+  if (poolOk) ok('补充池公式 = round2(格数/4) 且下限 2（十关一致）');  else err('补充池公式与 utils/board.js 不一致');
+
+  // --- 31.1b 逐关「总数 = 格数 + 池」**独立复算** ---
+  // D63 反证抓到的漏网：上面那条只把 `B.poolSize()` 和公式对撞，两者同源，
+  // 属于**循环校验** —— 于是把第 1 关 `cols` 6 改成 7，公式跟着变、两者照样相等、门禁全绿。
+  // 这里改为**独立地**按每关真实数据复算三条：
+  //   ① 元素出现次数全为偶数（能两两配对）
+  //   ② 总数 = 格数 + poolSize（牌既没多也没少）
+  //   ③ 每种元素 ≥ 2 张（开局就有对可配）
+  {
+    const bad31 = [];
+    levels.forEach(function (l, idx) {
+      const slots = l.cols * l.rows;
+      const total = l.elements.reduce((a, e) => a + e[1], 0);
+      const pool = B.poolSize(l.cols, l.rows);
+      const odd = l.elements.filter(e => e[1] % 2 !== 0).map(e => e[0]);
+      const few = l.elements.filter(e => e[1] < 2).map(e => e[0]);
+      if (odd.length) bad31.push('L' + (idx + 1) + ' 出现次数为奇数：' + odd.join(','));
+      if (few.length) bad31.push('L' + (idx + 1) + ' 元素不足 2 张：' + few.join(','));
+      if (total !== slots + pool) {
+        bad31.push('L' + (idx + 1) + ' 总数 ' + total + ' ≠ 格数 ' + slots + ' + 池 ' + pool +
+          '（cols=' + l.cols + ' rows=' + l.rows + '）');
+      }
+    });
+    if (!bad31.length)
+      ok('十关独立复算三条守恒成立：次数全偶 / 每种 ≥2 / 总数 = 格数 + 池');
+    else err('关卡配比被改坏（' + bad31.length + ' 处）：' + bad31.slice(0, 3).join('；'));
+  }
 
   // --- 31.2 开局：满铺、无一格悬空、三不变量成立 ---
   const lv1 = levels[0];
@@ -3702,6 +3728,44 @@ section('38. 生产上线守卫（主包体积 / 隐私授权 / 工程配置）'
     const missingV = trio.filter(t => !t[0]).map(t => t[1]);
     if (!missingV.length) ok('语音注入链三处同步（模板 / build-h5 / validate）');
     else err('语音注入链漂移，缺：' + missingV.join(' / '));
+    // 38.10b **占位符必须有守卫**（D65 反证抓到的最后一条漏网）
+    // 反证把 build-h5.js 里的 `indexOf('/*__VOICES__*/') === -1` 改成 `=== 999`
+    // （等于「永远找不到占位符」= 守卫失效），而 §38.10 只检查 `replace(...)` 还在，
+    // 于是**守卫被彻底破坏也没有任何门禁报红** —— 构建会静默产出带占位符的 play.html。
+    // 这里改为**通用**判据：模板里出现的每个 /*__X__*/ 占位符，
+    // build-h5 必须同时具备「replace 注入」与「indexOf 守卫」两处。
+    {
+      const names = (tplV.match(/\/\*__[A-Z_]+__\*\//g) || [])
+        .map(x => x.replace(/[/*]/g, ''));
+      const uniq = [...new Set(names)];
+      const noGuard = [], noReplace = [];
+      uniq.forEach(function (nm) {
+        const tok = '/*' + nm + '*/';
+        // ⚠️ 必须匹配「**失败条件本身**」`indexOf('/*__X__*/') === -1`，
+        //    而不是只要求出现过 indexOf(...)：反证把 `=== -1` 改成 `=== 999`
+        //    （守卫被彻底废掉、indexOf 调用还在）时，只查「出现过」会照样通过。
+        //    —— 这是「检查存在」与「检查有效」的差别，本轮已经栽过多次。
+        const guard = "indexOf('" + tok + "') === -1";
+        const guard2 = 'indexOf("' + tok + '") === -1';
+        if (bldV.indexOf(guard) === -1 && bldV.indexOf(guard2) === -1) noGuard.push(nm);
+        if (bldV.indexOf("replace('" + tok + "'") === -1 &&
+            bldV.indexOf('replace("' + tok + '"') === -1) noReplace.push(nm);
+      });
+      if (!noGuard.length)
+        ok('每个占位符都有 indexOf 守卫（' + uniq.length + ' 个：' + uniq.join(',') + '）');
+      else err('这些占位符没有守卫：' + noGuard.join(',') +
+        ' —— 守卫失效时构建会静默产出带 /*__X__*/ 的产物');
+      if (!noReplace.length) ok('每个占位符都有 replace 注入');
+      else err('这些占位符没有注入：' + noReplace.join(','));
+      // 产物侧独立复核：**构建结果里不允许残留任何占位符**（最硬的一条）
+      if (exists('preview/play.html')) {
+        const left2 = (read('preview/play.html').match(/\/\*__[A-Z_]+__\*\//g) || []);
+        if (!left2.length)
+          ok('产物 play.html 无残留占位符（注入链的最终结果正确）');
+        else err('产物 play.html 残留占位符：' + [...new Set(left2)].join(',') +
+          ' —— 请重跑 node scripts/build-h5.js');
+      }
+    }
     // 体验版语音播放必须走注入表（相对路径在单文件体验版里必然 404）
     // ⚠️ 断「意图」不断「排版」：D61 给 pronounce 加了 duckBgm 之后，行内多了一句，
     //    原来那条精确匹配的正则就失配了（代码走注入表，却报「未走注入表」）。
@@ -4880,6 +4944,22 @@ section('48. 打扰预算 + 发音诚实（D57）：不多弹窗 / 不假装能�
       ok('每条缺失都能在 KNOWN_BLOCKED 台账里查到出处（' + idx.missing.length + ' 条）');
     else err('有既没音频、又没登记原因的条目：' + unexplained.join(', ') +
       ' —— 非厂商原因请重跑生成，厂商原因请补进台账');
+    // 台账里每一条也必须真的在 missing 里（**双向**）——D63 反证抓到的漏网之一：
+    // 原来只查「missing ⊆ 台账」，于是从 missing 里悄悄删掉一条也不会报红。
+    const silent = blocked.filter(id => idx.missing.indexOf(id) === -1 && idx.ids.indexOf(id) === -1);
+    if (!silent.length)
+      ok('KNOWN_BLOCKED 台账与 missing 双向一致（没有「已解决却仍在台账里」的幽灵条目）');
+    else err('台账里这些条目既不在 missing 也不在 ids（有音/无音都没登记）：' + silent.join(', ') +
+      ' —— 要么补音频，要么从台账摘除，否则缺口会静默消失');
+    // missing 必须**恰好**等于「全部元素 − 有文件的元素」，不能多也不能少
+    {
+      const elsIds = Object.keys(require('../data/elements.js'));
+      const expect = elsIds.filter(id => idx.ids.indexOf(id) === -1).sort();
+      const got = idx.missing.slice().sort();
+      if (expect.length === got.length && expect.every((v, i) => v === got[i]))
+        ok('missing 恰好等于「全部元素 − 有音频的元素」（' + got.length + ' 条，无多无少）');
+      else err('missing 与实际不符：应为 [' + expect.join(',') + ']，实为 [' + got.join(',') + ']');
+    }
   }
 
   // 48.3 没有音源就不能返回「播了」
@@ -5369,12 +5449,27 @@ section('53. 反证 harness 与循环校验治理（D63）');
   {
     const g62 = read('pages/game/game.js');
     const t62 = read('preview/template.html');
-    // ⚠️ 断意图不断字面：小程序侧写的是 `that.matchedCount`（闭包里带 that.），
-    //    早先只匹配 `this.` 版本 → 代码在、却报「两端不一致」。同一个坑第三次出现了。
-    if (/matchedCount === (that|this)\.data\.totalPairs/.test(g62) &&
-        /matchedCount === totalPairs\(\)/.test(t62))
-      ok('两端都在通关瞬间抑制浮层');
-    else err('通关瞬间的浮层抑制两端不一致（最后一对会弹卡片）');
+    // ⚠️ 这里踩过两次：①只匹配 `this.` 而源码是闭包里的 `that.` → 代码在却报红；
+    //   ②**只要求「出现过」** → 模板里别处任何同名字符串都能满足它（D63 反证漏网）。
+    // 所以现在断的是**性质**：这段抑制逻辑在每个文件里**有且仅有一处**，
+    // 且必须落在「配对结算的延迟回调」里（前后有 setTimeout / matchedCount 上下文）。
+    function soleGuard(src, re) {
+      const m = src.match(re);
+      return m ? m.length : 0;
+    }
+    const gN = soleGuard(g62, /matchedCount === (that|this)\.data\.totalPairs/g);
+    const tN = soleGuard(t62, /matchedCount === totalPairs\(\)/g);
+    const gCtx = /setTimeout\([\s\S]{0,220}?matchedCount === (that|this)\.data\.totalPairs[\s\S]{0,80}?return;/.test(g62);
+    const tCtx = /setTimeout\([\s\S]{0,220}?matchedCount === totalPairs\(\)[\s\S]{0,80}?return;/.test(t62);
+    // ⚠️ 一度写成「各恰好一处」，结果误报 —— 实际源码里这条判断本就出现两次
+    //   （配对成功与批量补牌两条结算路径都需要它）。**教训与前几次同源：
+    //   把「至少要有一个」收紧成「必须恰好一个」，是在造新的假红。**
+    //   真正的判别力在**上下文**：它必须落在结算的延迟回调里，
+    //   否则模板里任何一处同名字符串都能骗过这条检查（D63 反证漏网）。
+    if (gN >= 1 && tN >= 1 && gCtx && tCtx)
+      ok('两端都在通关瞬间抑制浮层（小程序 ' + gN + ' 处 / 体验版 ' + tN + ' 处，均在结算回调内）');
+    else err('通关瞬间的浮层抑制不可靠：小程序 ' + gN + ' 处 / 体验版 ' + tN +
+      ' 处，且须落在结算回调内 —— 缺一处 = 最后一对会弹卡片');
     if (/if \(this\.data\.locked\) return;/.test(g62) && /if \(state\.locked\) return;/.test(t62))
       ok('两端都有下落锁定（动画期间防误触）');
     else err('下落锁定缺失或两端不一致');
@@ -5472,6 +5567,103 @@ section('54. 设备响应式（手机优先 / 平板其次 / 电脑最后 · 字
   if (/\| \*\*D64\*\* \|/.test(read('docs/DECISIONS.md')))
     ok('docs/DECISIONS.md 已登记 D64（设备响应式与机型优先级）');
   else err('缺少 D64 决策行');
+}
+
+// ---------- 55. 真机底线：安全区 + CI + 修补脚本（D65） ----------
+// D63 最大的遗留项是「这些纪律靠人记得去跑」。D64 又补出两个静默劣化点。
+// 本节把三件事钉死：① 贴底固定浮层必须留安全区（真机上被 Home 指示条遮住）；
+// ② 一条命令能跑完全部门禁（`scripts/ci.py`）；③ 两支修补脚本必须在册且**回读校验**。
+section('55. 真机底线：安全区 / CI / 修补脚本（D65）');
+{
+  // 55.1 贴底固定浮层的安全区（**这是真机上「文字被遮住」的根因**）
+  // 规则：凡是 `position: fixed` 且 `bottom: 0` 的规则块，块内必须有
+  // env(safe-area-inset-bottom)。纯遮罩（left/right/top/bottom 全 0）不算。
+  {
+    const RULE = /([^{}]*)\{([^{}]*)\}/g;
+    const files55 = [];
+    const walk55 = (rel) => {
+      for (const e of fs.readdirSync(path.join(ROOT, rel), { withFileTypes: true })) {
+        const r = rel + '/' + e.name;
+        if (e.isDirectory()) walk55(r);
+        else if (e.name.endsWith('.wxss')) files55.push(r);
+      }
+    };
+    walk55('pages');
+    files55.push('preview/template.html');
+    const bad55 = [];
+    files55.forEach(function (rel) {
+      const src = read(rel);
+      RULE.lastIndex = 0;
+      let m;
+      while ((m = RULE.exec(src))) {
+        const body = m[2];
+        if (body.indexOf('position: fixed') === -1) continue;
+        if (!/bottom:\s*0\s*;/.test(body)) continue;
+        if (/top:\s*0/.test(body) && /left:\s*0/.test(body) && /right:\s*0/.test(body)) continue; // 纯遮罩
+        if (body.indexOf('env(safe-area-inset-bottom)') === -1)
+          bad55.push(rel + ' 「' + m[1].trim().split('\n').pop().trim().slice(0, 28) + '」');
+      }
+    });
+    if (!bad55.length)
+      ok('所有贴底固定浮层都留了安全区（env(safe-area-inset-bottom)）—— 刘海机不会遮住文字');
+    else err('有 ' + bad55.length + ' 处贴底固定浮层缺安全区：' + bad55.slice(0, 4).join('；') +
+      ' —— 带 Home 指示条的 iPhone 上会被遮住');
+  }
+
+  // 55.2 CI：一条命令跑完全部门禁，且顺序正确（build 必须在 test-h5 之前）
+  if (exists('scripts/ci.py')) {
+    const ci = read('scripts/ci.py');
+    const need = ['validate.js', 'test-tibetan.js', 'build-h5.js', 'test-h5.js',
+      'check_voice.py', 'audit_device.py', 'falsify.py'];
+    const missing = need.filter(n => ci.indexOf(n) === -1);
+    if (!missing.length)
+      ok('CI 覆盖全部 ' + need.length + ' 项门禁（结构/排版/构建/端到端/音频/设备/反证）');
+    else err('CI 漏了：' + missing.join(', ') + ' —— 漏掉哪项，哪项就退回「靠人记得跑」');
+    const iBuild = ci.indexOf('build-h5.js');
+    const iT5 = ci.indexOf('test-h5.js');
+    if (iBuild > -1 && iT5 > iBuild)
+      ok('CI 顺序正确：构建在端到端之前（否则测的是上一次的产物）');
+    else err('CI 顺序错误：build-h5 必须在 test-h5 之前');
+    if (/--with-falsify/.test(ci))
+      ok('反证 harness 为显式开启（默认跳过以免每次提交都等 11 分钟）');
+    else err('CI 未提供 --with-falsify —— 反证要么每次都跑（太慢）要么永远不跑');
+  } else err('缺少 scripts/ci.py —— D63 的最大遗留项（纪律靠人记得跑）仍未解决');
+
+  // 55.3 修补脚本必须在册，且**带回读校验**（D64 教训：报告「改了 0 处」却其实没改）
+  [['scripts/fix_type_scale.py', '回读'], ['scripts/fix_safe_area.py', '回读']].forEach(function (pair) {
+    if (!exists(pair[0])) { err('缺少 ' + pair[0] + '（D64/D65 的修补脚本应保留在仓库里，可复跑）'); return; }
+    const s55 = read(pair[0]);
+    if (s55.indexOf(pair[1]) > -1)
+      ok(path.basename(pair[0]) + ' 带回读校验（改完重扫，不信「改了多少」的日志）');
+    else err(pair[0] + ' 缺少回读校验 —— 「没报错」不等于「真的做了」（D63/D64 同类事故）');
+  });
+
+  // 55.4 换行策略必须显式声明（core.autocrlf 与构建产物不一致会让「工作区必须干净」永远为假）
+  if (exists('.gitattributes')) {
+    const ga = read('.gitattributes');
+    if (/preview\/play\.html[^\n]*eol=lf/.test(ga))
+      ok('.gitattributes 固定了构建产物的换行（EOL 噪声根治）');
+    else err('.gitattributes 未固定 preview/play.html 的 eol —— rebuild 后 git status 永远不干净');
+  } else err('缺少 .gitattributes —— EOL 由各人开发机全局设置决定，不可复现');
+
+  // 55.5 反证检出率不得退步（门槛：≥90%，且漏网数不得超过 5）
+  {
+    const FALSIFY_MIN_RATE = 90, FALSIFY_MAX_MISS = 5;
+    // 取**最后一次**出现的检出率（D65 起台账里会累计多次记录）：
+    // 早先用 exec 只取第一处 → 读到的是 D63 那次的 67%，把后来的进展误判成「退步」。
+    // **同一个坑的第四种形态**：不是正则写错，而是「取哪一条」没定义清楚。
+    const allRates = read('docs/DECISIONS.md').match(/检出率[^0-9]{0,12}(\d+)%/g) || [];
+    const lastM = allRates.length ? /(\d+)/.exec(allRates[allRates.length - 1]) : null;
+    const rec = lastM ? [0, lastM[1]] : null;
+    if (rec && parseInt(rec[1], 10) >= FALSIFY_MIN_RATE)
+      ok('台账里最近一次反证检出率 ' + rec[1] + '%（门槛 ≥' + FALSIFY_MIN_RATE + '%）');
+    else if (rec) err('反证检出率已退步到 ' + rec[1] + '%（门槛 ≥' + FALSIFY_MIN_RATE + '%）—— 门禁可能被改弱了');
+    else warn('台账里找不到反证检出率记录（跑一次 python scripts/falsify.py 并把结果写进 D63.1）');
+  }
+
+  if (/\| \*\*D65\*\* \|/.test(read('docs/DECISIONS.md')))
+    ok('docs/DECISIONS.md 已登记 D65（安全区 / CI / EOL / 修补脚本）');
+  else err('缺少 D65 决策行');
 }
 
 console.log('通过: ' + passed + ' | 错误: ' + errors.length + ' | 警告: ' + warnings.length);

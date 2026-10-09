@@ -94,8 +94,27 @@ PROBE = r"""
         }
       }
     }
+    // 纵向：首屏之外的内容要能滚（D64 遗留缺口之一）。这里只报「整页高度 vs 视口」，
+    // 供人工判断「该滚多少」，不做硬门禁 —— 页面本来就设计成可滚的。
+    var vOver = Math.max(de.scrollHeight, document.body.scrollHeight) - window.innerHeight;
+    // 安全区：刘海机型上顶部/底部有系统遮挡区。这里用 CSS env() 的模拟值检查
+    // 「有没有元素压在下面 34px / 上面 44px 里」—— 那正是真机上被遮住的地方。
+    var unsafe = 0;
+    for (i = 0; i < all.length; i++) {
+      el = all[i]; r = el.getBoundingClientRect();
+      if (r.width === 0 || r.height === 0) continue;
+      var cs2 = getComputedStyle(el);
+      if (cs2.position !== 'fixed' && cs2.position !== 'absolute') continue;
+      if (r.bottom > window.innerHeight - 2 && r.top < window.innerHeight - 34 &&
+          (cs2.position === 'fixed')) {
+        // 贴底固定元素：只有当它没有留出安全区内边距时才提示
+        var padB = parseFloat(cs2.paddingBottom) || 0;
+        if (padB < 34) unsafe++;
+      }
+    }
     return 'V:' + Math.round(over) + '|' + bad + '|' + Math.round(minFont * 10) +
-           '|' + taps + '|' + Math.round(minTap) + '|' + worst;
+           '|' + taps + '|' + Math.round(minTap) + '|' + worst +
+           '|' + Math.round(vOver) + '|' + unsafe;
   } catch (e) {
     return 'E:' + String(e && e.message).slice(0, 60);
   }
@@ -133,7 +152,9 @@ def parse(v):
             'minFont': (int(p[2]) / 10.0) if len(p) > 2 and p[2] else None,
             'smallTap': int(p[3] or 0) if len(p) > 3 and p[3] else 0,
             'minTap': int(p[4]) if len(p) > 4 and p[4] else None,
-            'worst': p[5] if len(p) > 5 else ''}
+            'worst': p[5] if len(p) > 5 else '',
+            'pageH': int(p[6]) if len(p) > 6 and p[6] else None,
+            'unsafe': int(p[7]) if len(p) > 7 and p[7] else 0}
 
 
 def main():
@@ -177,11 +198,16 @@ def main():
             iss.append('字号过小 %d 处（最小 %.1fpx）' % (r['smallText'], r['minFont'] or 0))
         if r['smallTap']:
             iss.append('点击区过小 %d 处（最窄 %dpx）' % (r['smallTap'], r.get('minTap') or 0))
+        extra = ''
+        if r.get('pageH'):
+            extra = '  [纵向可滚 %dpx]' % r['pageH']
+        if r.get('unsafe'):
+            extra += '  [固定元素贴底无安全区内边距 ×%d]' % r['unsafe']
         if iss:
             bad += 1
-            print('\x1b[31m✗\x1b[0m' + head + '；'.join(iss))
+            print('\x1b[31m✗\x1b[0m' + head + '；'.join(iss) + extra)
         else:
-            print('\x1b[32m✓\x1b[0m' + head + '无溢出 / 无过小字号 / 无过小点击区')
+            print('\x1b[32m✓\x1b[0m' + head + '无溢出 / 无过小字号 / 无过小点击区' + extra)
     print('\n合计：%d 个尺寸，%d 个有问题' % (len(rows), bad))
     return 1 if bad else 0
 
