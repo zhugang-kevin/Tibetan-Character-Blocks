@@ -20,6 +20,25 @@ function section(name) { console.log('\n[' + name + ']'); }
 function read(p) { return fs.readFileSync(path.join(ROOT, p), 'utf8'); }
 function exists(p) { return fs.existsSync(path.join(ROOT, p)); }
 
+// 逐段做**大小写敏感**的存在性判断。
+// 为什么不能直接用 fs.existsSync（2026-10-09 反证实测抓到的最基础假绿）：
+//   Windows 文件系统**大小写不敏感**，所以把 app.json 里的 `pages/game/game`
+//   改成 `pages/game/GAME`，existsSync('pages/game/GAME.js') 依然返回 true ——
+//   §2「页面完整性」会理直气壮地打印「✓ pages/game/GAME.js 存在」。
+//   也就是说：**任何路径大小写/拼写错误，在本机都是隐形的**，而门禁本该是
+//   发现这类错误的最后一道线。readdirSync 返回的是真实文件名，逐段严格比对即可。
+function existsExact(p) {
+  const segs = String(p).split('/').filter(Boolean);
+  let cur = ROOT;
+  for (let i = 0; i < segs.length; i++) {
+    let names;
+    try { names = fs.readdirSync(cur); } catch (e) { return false; }
+    if (names.indexOf(segs[i]) === -1) return false;   // 严格相等，区分大小写
+    cur = path.join(cur, segs[i]);
+  }
+  try { return fs.statSync(cur).isFile(); } catch (e) { return false; }
+}
+
 // ---------- 金额 / 折扣 / 结算 字段守卫（第 16 与第 19 节共用） ----------
 // 用「词干 + 可选后缀」匹配，而不是精确字段名。
 // 背景：上一版写的是 /\bdiscount\s*:/ —— 它挡得住 `discount:`，
@@ -59,7 +78,11 @@ try {
   appJson.pages.forEach(page => {
     ['.js', '.wxml', '.json', '.wxss'].forEach(ext => {
       const f = page + ext;
-      if (exists(f)) ok(f + ' 存在');
+      // ⚠️ 必须用 existsExact（大小写敏感）：existsSync 在 Windows 上大小写不敏感，
+      //    会把 `pages/game/GAME.js` 这种拼写/大小写错误判成「存在」——
+      //    这正是 D63 反证跑出来的最基础假绿（详见 existsExact 的注释）。
+      if (existsExact(f)) ok(f + ' 存在');
+      else if (exists(f)) err(f + ' 缺失（大小写/拼写与实际文件名不符，Windows 上会被 fs 掩盖）');
       else err(f + ' 缺失（app.json 已注册）');
     });
   });
@@ -5176,6 +5199,190 @@ section('52. 声画耦合（D61 语音压低 BGM / D62 连击光晕）');
       /\| \*\*D62\*\* \|/.test(read('docs/DECISIONS.md')))
     ok('docs/DECISIONS.md 已登记 D61（ducking）与 D62（连击光晕）');
   else err('缺少 D61 或 D62 决策行');
+}
+
+// ---------- 53. 反证 harness 与「循环校验」治理（D63） ----------
+// 起因（2026-10-09 用户：「系统会制造假象，全绿但其实有问题」）：
+// 我写了 scripts/falsify.py —— 注入已知缺陷、看门禁是否报红。结果第一轮
+// **检出率只有 67%，10 条漏网**。逐条看下来，漏网里最要命的一类是**循环校验**：
+//   §50 用 `grid.layoutTile(...)` 判「牌面装不装得下」，而 layoutTile 内部的可用宽度
+//   就来自 grid 自己的 `INNER`。于是把 INNER 从 0.86 改成 1.6（真的放宽了），
+//   §50 反而认为「一切都装得下」→ **报绿**。
+//   门禁把自己的判据从被测代码里取，等于没判。
+// 本节把这一类治死：**凡是需要「不许变」的常量，一律在门禁里写死绝对值**，
+// 门禁不再从被测模块读期望值；并要求反证 harness 本身在册、可复跑。
+section('53. 反证 harness 与循环校验治理（D63）');
+{
+  // 53.1 harness 必须在册且可运行（它是「门禁是否有效」的唯一证据来源）
+  if (exists('scripts/falsify.py'))
+    ok('反证 harness 在册（scripts/falsify.py）——门禁的有效性可被检验，而不是假定');
+  else err('缺少 scripts/falsify.py —— 无法证明门禁真的抓得住缺陷（本项目最大的假象来源）');
+
+  const hj = exists('scripts/falsify.py') ? read('scripts/falsify.py') : '';
+  // 基线验证必须存在，且不合格就中止（第一版就是没有这一步才输出了假的 100%）
+  if (/基线必须先验证/.test(hj) && /已中止/.test(hj))
+    ok('harness 强制先验基线，不干净就中止（不给无法信任的检出率）');
+  else err('harness 缺少基线前置验证 —— 会像第一版那样在门禁没跑起来时照样输出检出率');
+  // 三种结果必须严格分开（注入失败 ≠ 抓到，也 ≠ 漏网）
+  if (/INJECT_ERROR/.test(hj) && /RUNNER_ERROR/.test(hj) && /MISSED/.test(hj))
+    ok('harness 区分 抓到/漏网/注入失败/门禁异常（无效样本不会被算成结论）');
+  else err('harness 未区分无效样本 —— 变异没生效会被误记为门禁结论');
+
+  // 53.2 **循环校验治理**：排版相关的基准常量必须在门禁里写死，不许从 grid 读
+  {
+    const gridSrc = read('utils/grid.js');
+    const PIN = { INNER: '0.86', FONT_RATIO: '0.62', MIN_SCALE: '0.42' };
+    const wrong = [];
+    Object.keys(PIN).forEach(k => {
+      const m = new RegExp('var ' + k + '\\s*=\\s*([0-9.]+)').exec(gridSrc);
+      if (!m || m[1] !== PIN[k]) wrong.push(k + '=' + (m ? m[1] : '(缺)') + '（应为 ' + PIN[k] + '）');
+    });
+    if (!wrong.length)
+      ok('排版基准常量已钉死：INNER ' + PIN.INNER + ' / FONT_RATIO ' + PIN.FONT_RATIO +
+        ' / MIN_SCALE ' + PIN.MIN_SCALE + '（§50 不再从被测模块取判据）');
+    else err('排版基准常量被改动：' + wrong.join('；') +
+      ' —— §50 的「装得下」判据依赖它们，改了会让溢出检查变成循环论证');
+  }
+
+  // 53.3 学习体系内容池基线（改池必须像改名字池一样留痕）
+  {
+    const L = read('data/learning.js');
+    const PIN = {
+      VOWELS: "['ི', 'ུ', 'ེ', 'ོ']",
+      SUBS: "['ྱ', 'ྲ', 'ླ', 'ྭ']",
+      PREFIXES: "['ག', 'ད', 'བ', 'མ', 'འ']",
+      SUPERS: "['ར', 'ལ', 'ས']"
+    };
+    const wrong = Object.keys(PIN).filter(k => L.indexOf(k + ' = ' + PIN[k]) === -1)
+      .map(k => k + '（应为 ' + PIN[k] + '）');
+    if (!wrong.length) ok('教学部件表（VOWELS/SUBS/PREFIXES/SUPERS）与基线一致');
+    else err('教学部件表被改动：' + wrong.join('；') +
+      ' —— 元音表/下加字表一改，150 关全部生成内容随之改变（且 §50 只会重新「算得下」，不会告诉你内容变了）');
+    // 再后加字规则：改错不会让牌面装不下，只会教错
+    const SS = "{ ག: 'ས', ང: 'ས', བ: 'ས', མ: 'ས', ན: 'ད', ར: 'ད', ལ: 'ད' }";
+    if (L.replace(/\s+/g, ' ').indexOf(SS.replace(/\s+/g, ' ')) > -1 ||
+        L.indexOf("ག: 'ས'") > -1) {
+      if (L.indexOf("ག: 'ས', ང: 'ས', བ: 'ས', མ: 'ས'") > -1 &&
+          L.indexOf("ན: 'ད', ར: 'ད', ལ: 'ད'") > -1)
+        ok('再后加字规则与基线一致（གངབམ→ས、ནརལ→ད）');
+      else err('再后加字规则被改动 —— 生成的音节会不符合藏语传统拼读规则');
+    } else err('未能定位再后加字规则（data/learning.js 结构变了？）');
+  }
+
+  // 53.4 七位骨架顺序：**对生成结果**验，而不是对源码验
+  // （falsify 抓到：把 assemble() 里 sub 与 vowel 互换，没有任何门禁报红 —— 因为
+  //  §49 只检查仓库里已有的字符串，没人检查「运行时拼出来的」字符串。）
+  //
+  // ⚠️ 第一版这个检查自己写错了：拿**整串**比「第一个下加字」与「第一个元音」的下标，
+  // 于是 ངའི་མིང་ལ་བཀྲ་ཤིས་རེད 被判成「下加字排在元音之后」——
+  // 可这是**正确**的藏文：第 1 音节的 ི 当然排在第 4 音节的 ྲ 之前。
+  // 教训与 §51/§38 同源：**跨音节的相对位置没有意义，必须按 tsheg 切开逐音节比**。
+  {
+    const data2 = require('../data/learning.js');
+    const learning = require('../utils/learning.js');
+    let bad = null, checked = 0, syllables = 0;
+    for (let lv = 1; lv <= 15 && !bad; lv++) {
+      const Lv = data2.byLevel(lv);
+      if (!Lv) continue;
+      for (let st = 1; st <= Lv.stages && !bad; st++) {
+        const cfg = learning.buildStage(lv, st);
+        if (!cfg) continue;
+        for (const t of cfg.titles) {
+          checked++;
+          // 逐音节验：tsheg 才是词界，音节内部才有「谁先谁后」的问题
+          for (const syl of t.split('་')) {
+            if (!syl) continue;
+            syllables++;
+            const sub = syl.search(/[ྲླྭྱྰྫྐྵ]/);
+            const vow = syl.search(/[ཱིེོུ]/);
+            if (sub > -1 && vow > -1 && sub > vow) {
+              bad = 'L' + lv + '-' + st + ' 「' + t + '」音节「' + syl + '」下加字排在元音之后';
+            }
+            const pre = syl.search(/^[གདབམའ]/);
+            if (pre === 0) {
+              const base = syl.search(/[ཀ-ྼ]/);
+              if (base > 0 && pre > base) bad = 'L' + lv + '-' + st + ' 「' + t + '」前加字排在基字之后';
+            }
+          }
+        }
+      }
+    }
+    if (!bad) ok('生成结果的骨架顺序正确（' + checked + ' 个牌面 / ' + syllables +
+      ' 个音节：下加字先于元音、前加字先于基字）');
+    else err('骨架顺序被破坏：' + bad + ' —— 藏文七位骨架顺序错了，渲染与拼读都会错');
+  }
+
+  // 53.5 图片资产：不能只查「存在」，0 字节文件也会让页面白屏
+  {
+    const imgs = ['images/bg-global.jpg', 'images/logo-144.png', 'images/pat-tile.png',
+      'images/tashi-delek.png'];
+    const dead = imgs.filter(f => exists(f) && fs.statSync(path.join(ROOT, f)).size < 512);
+    if (!dead.length) ok('主要图片资产不是 0 字节（存在性 + 体量双查）');
+    else err('图片资产为 0 字节 / 极小：' + dead.join(', ') + ' —— 存在性检查会被这种文件骗过');
+    // JPEG 头解析：SOF 标记读出宽高，0 字节或截断文件必失败
+    function jpegSize(file) {
+      try {
+        const b = fs.readFileSync(path.join(ROOT, file));
+        if (b.length < 4 || b[0] !== 0xFF || b[1] !== 0xD8) return null;
+        let i = 2;
+        while (i < b.length - 9) {
+          if (b[i] !== 0xFF) { i++; continue; }
+          const m = b[i + 1];
+          if (m >= 0xC0 && m <= 0xCF && m !== 0xC4 && m !== 0xC8 && m !== 0xCC) {
+            return { h: (b[i + 5] << 8) | b[i + 6], w: (b[i + 7] << 8) | b[i + 8] };
+          }
+          i += 2 + ((b[i + 2] << 8) | b[i + 3]);
+        }
+        return null;
+      } catch (e) { return null; }
+    }
+    const bg = jpegSize('images/bg-global.jpg');
+    if (bg && bg.w > 300 && bg.h > 300) ok('全局底图 JPEG 可解析（' + bg.w + '×' + bg.h + '，不是截断文件）');
+    else err('全局底图无法解析出尺寸（0 字节 / 截断 / 不是 JPEG）—— 存在性检查看不出来');
+    // PNG 头同理
+    function pngSize(file) {
+      try {
+        const b = fs.readFileSync(path.join(ROOT, file));
+        if (b.length < 24 || b.readUInt32BE(0) !== 0x89504E47) return null;
+        return { w: b.readUInt32BE(16), h: b.readUInt32BE(20) };
+      } catch (e) { return null; }
+    }
+    const lg = pngSize('images/logo-144.png');
+    if (lg && lg.w > 0 && lg.h > 0) ok('品牌 logo PNG 可解析（' + lg.w + '×' + lg.h + '）');
+    else err('品牌 logo PNG 无法解析尺寸');
+  }
+
+  // 53.6 文化卡 id ↔ 元素库 id 必须一一对应（falsify 抓到改名不报红）
+  {
+    const els = require('../data/elements.js');
+    const cards = require('../data/cards.js');
+    const cardIds = cards.map(c => c.id);
+    const orphanCard = cardIds.filter(id => !els[id]);
+    const orphanEl = Object.keys(els).filter(id => cardIds.indexOf(id) === -1);
+    if (!orphanCard.length && !orphanEl.length)
+      ok('文化卡与元素库 id 一一对应（各 ' + cardIds.length + ' 条）');
+    else err('文化卡与元素库脱节：卡片独有 ' + (orphanCard.join(',') || '无') +
+      ' / 元素独有 ' + (orphanEl.join(',') || '无') + ' —— 发音、成就、收集都会对不上');
+  }
+
+  // 53.7 两端行为对齐补两处（falsify 抓到只查了小程序、没查体验版）
+  {
+    const g62 = read('pages/game/game.js');
+    const t62 = read('preview/template.html');
+    // ⚠️ 断意图不断字面：小程序侧写的是 `that.matchedCount`（闭包里带 that.），
+    //    早先只匹配 `this.` 版本 → 代码在、却报「两端不一致」。同一个坑第三次出现了。
+    if (/matchedCount === (that|this)\.data\.totalPairs/.test(g62) &&
+        /matchedCount === totalPairs\(\)/.test(t62))
+      ok('两端都在通关瞬间抑制浮层');
+    else err('通关瞬间的浮层抑制两端不一致（最后一对会弹卡片）');
+    if (/if \(this\.data\.locked\) return;/.test(g62) && /if \(state\.locked\) return;/.test(t62))
+      ok('两端都有下落锁定（动画期间防误触）');
+    else err('下落锁定缺失或两端不一致');
+  }
+
+  if (/\| \*\*D63\*\* \|/.test(read('docs/DECISIONS.md')))
+    ok('docs/DECISIONS.md 已登记 D63（假绿门禁的清单与处置）');
+  else err('缺少 D63 决策行 —— 这轮的假绿清单无处可查');
 }
 
 console.log('通过: ' + passed + ' | 错误: ' + errors.length + ' | 警告: ' + warnings.length);
