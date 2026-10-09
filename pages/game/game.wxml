@@ -64,7 +64,7 @@
                 <view wx:if="{{item.sprite}}" class="ka-sprite ka-v{{item.variant}}">
                   <image src="{{item.spriteSrc}}" mode="scaleToFill" />
                 </view>
-                <text wx:elif="{{item.type === 'letter'}}" class="glyph tibetan" style="font-size: {{item.glyphOverride || glyphSize}}rpx;">{{item.tibetan}}</text>
+                <text wx:elif="{{item.type === 'letter'}}" class="glyph tibetan" style="font-size: {{item.glyphOverride || glyphSize}}rpx;">{{item.glyphText || item.tibetan}}</text>
                 <image wx:elif="{{iconPaths[item.id + '|lite']}}" class="glyph-img" src="{{item.golden ? iconPaths[item.id + '|gold'] : iconPaths[item.id + '|lite']}}" mode="aspectFit" />
                 <text wx:else class="glyph-fallback">{{item.fallbackText}}</text>
                 <view wx:if="{{item.golden}}" class="gold-star">✦</view>

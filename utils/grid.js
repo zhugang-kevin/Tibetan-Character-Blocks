@@ -118,6 +118,101 @@ function calcScale(text, cell, fontSizePx, measureWidth) {
   return { scale: scale, font: Math.round(fs * scale), width: Math.round(m.width * scale), height: Math.round(m.height * scale) };
 }
 
+// ---- ④′ 牌面排版：D59 —— 词 / 句级内容按 tsheg 断行后再缩放 ----
+// 为什么必须加这一层（2026-10-09 实测出来的真缺陷）：
+//   D51 的 calcScale 是「单行整体缩放」，而缩放被 MIN_SCALE=0.42 夹住。
+//   单词（2~3 音节）在 L10 起就已经放不下：
+//     L10 「བཀྲ་ཤིས」 → 81×91px，而可用只有 69px（L10 是 4×4 小格）
+//   句子（4~8 音节）差得更远：
+//     L12 「ངའི་མིང་ལ་བཀྲ་ཤིས་རེད」 → 330×372px，可用 94px（**超 3.5 倍**）
+//   全量复算：**150 关里 130 处溢出**。根因是 D51 只考虑过「复合音节」（བཀི 这种，
+//   3~4 层），从没把「词 / 句」当牌面内容验证过 —— 排版规则与内容池是脱节的。
+//
+// 做法：藏文的词界就是 tsheg，所以**按 tsheg 断行**天然不会切断音节。
+// 逐行贪心装箱 → 再按「行数」缩放，直到装得下；仍然装不下就如实报告 fits=false，
+// 交由调用方决定（不要静默画出一个溢出的牌面）。
+//
+// ⚠️ 与 utils/tibetan-text.js 的关系：那边是「有 canvas 时按真实 measureText 断行」
+// （证书/首页/结算页用）；这边是**无 canvas 的牌面兜底**，用同一个 0.55×层数 模型。
+function splitSyllables(text) {
+  var t = String(text || '');
+  // 末尾的 ། 属于前一个音节，不能自成一行
+  var out = [];
+  var parts = t.split('་');
+  for (var i = 0; i < parts.length; i++) {
+    var p = parts[i];
+    if (!p) continue;
+    if (i < parts.length - 1) p += '་';
+    out.push(p);
+  }
+  return out.length ? out : [t];
+}
+
+// 逐行贪心装箱：每行以 tsheg 为单位，能放就放，放不下换行。
+function wrapTibetanTile(text, cell, fontSizePx, measureWidth) {
+  var avail = num(cell, 52) * INNER;
+  var fs = num(fontSizePx, Math.round(num(cell, 52) * FONT_RATIO));
+  var units = splitSyllables(text);
+  var lines = [];
+  var cur = '';
+  for (var i = 0; i < units.length; i++) {
+    var trial = cur + units[i];
+    var w = measureTibetanSyllable(trial, fs, measureWidth).width;
+    if (cur && w > avail) {          // 已经有一行且塞不下 → 换行
+      lines.push(cur);
+      cur = units[i];
+    } else {
+      cur = trial;
+    }
+  }
+  if (cur) lines.push(cur);
+  return { lines: lines, font: fs, avail: avail };
+}
+
+// 牌面最终排版：先断行，再按行数缩放到装得下。
+// ⚠️ 这里必须拿**取整后的字号**去判定，不能用 base*scale（浮点）：
+//    早先版本循环里用 50*0.84 = 42.00000000000001 判定通过，落地字号却是 round(42)，
+//    两边在边界上差 1e-14 就把「刚好放得下」判成放不下（108 处假溢出）。教训：
+//    **判定用的必须是最终渲染用的那个数**，否则浮点会替你做决定。
+var FIT_TOL = 0.5;   // px：允许的亚像素误差
+
+function measureLines(lines, font, measureWidth) {
+  var width = 0, height = 0;
+  for (var i = 0; i < lines.length; i++) {
+    var m = measureTibetanSyllable(lines[i], font, measureWidth);
+    if (m.width > width) width = m.width;
+    height += 0.62 * font;          // 行高模型与 measureTibetanSyllary 同源
+  }
+  return { width: width, height: height };
+}
+
+function layoutTile(text, cell, fontSizePx, measureWidth) {
+  var c = num(cell, 52);
+  var base = num(fontSizePx, Math.round(c * FONT_RATIO));
+  var avail = c * INNER;
+  var w = wrapTibetanTile(text, c, base, measureWidth);
+  var font = Math.round(base);
+  var m = measureLines(w.lines, font, measureWidth);
+  var fits = m.width <= avail + FIT_TOL && m.height <= avail + FIT_TOL;
+  for (var s = 0.99; !fits && s >= 0.28; s -= 0.01) {
+    var f = Math.max(8, Math.round(base * s));
+    if (f === font) continue;
+    var mm = measureLines(w.lines, f, measureWidth);
+    if (mm.width <= avail + FIT_TOL && mm.height <= avail + FIT_TOL) {
+      font = f; m = mm; fits = true;
+    }
+  }
+  return {
+    lines: w.lines,
+    font: font,
+    scale: Math.round(font / base * 100) / 100,
+    width: Math.round(m.width),
+    height: Math.round(m.height),
+    avail: Math.round(avail),
+    fits: fits
+  };
+}
+
 // ---- ⑤ 长按放大预览 ----
 function needsZoomPreview(lv) { return num(lv, 1) >= ZOOM_FROM; }
 
@@ -137,5 +232,8 @@ module.exports = {
   layersOf: layersOf,
   measureTibetanSyllable: measureTibetanSyllable,
   calcScale: calcScale,
+  splitSyllables: splitSyllables,
+  wrapTibetanTile: wrapTibetanTile,
+  layoutTile: layoutTile,
   needsZoomPreview: needsZoomPreview
 };

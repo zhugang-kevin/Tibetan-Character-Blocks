@@ -361,13 +361,21 @@ Page({
     }
     // D51：学习体系的字是叠加 3~4 部件的复合音节（如 བཀི），统一字号必然溢出格子，
     // 所以按**每张牌自己的字**算缩放（measureTibetanSyllable → calcScale）。
+    //
+    // D59：光靠「整体缩放」不够 —— 缩放被 MIN_SCALE 夹住，而 L10 起的**词 / 句**
+    // （བཀྲ་ཤིས ~ ངའི་མིང་ལ་བཀྲ་ཤིས་རེད）实测超格最多 3.5 倍。
+    // 改为 grid.layoutTile：**按 tsheg 断行 → 再按行数缩放**，词界不会被切断。
     if (this.learnCfg) {
       var sw = this.screenW();
       var cell = grid.cellPx(this.learnCfg.lv, sw);
       var baseFont = Math.round(cell * grid.FONT_RATIO);
-      var fit = grid.calcScale(t.tibetan, cell, baseFont, null);
+      var lay = grid.layoutTile(t.tibetan, cell, baseFont, null);
       // 小程序 style 用 rpx → 把 px 按「750rpx = 屏宽」换算回来
-      t.glyphOverride = Math.round(fit.font * 750 / sw);
+      t.glyphOverride = Math.round(lay.font * 750 / sw);
+      // 多行交给 <text> 的 \n 断行（藏文按 tsheg 断，不会切碎音节）
+      t.glyphText = lay.lines.join('\n');
+      // 装不下时**不静默**：字号已到下限仍溢出，说明该内容不该做牌面
+      t.tileFits = lay.fits;
     }
     return t;
   },

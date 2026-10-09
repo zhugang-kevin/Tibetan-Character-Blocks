@@ -4992,6 +4992,75 @@ section('49. 藏文正字法（下加字 / 元音必须挂在基字上）');
   else err('缺少 D58 决策行');
 }
 
+// ---------- 50. 牌面藏文排版（D59：词 / 句级内容溢出格子） ----------
+// 起因：用户要求确认「每一关的藏文排版、藏文的组合」。全量复算 150 关后发现真缺陷：
+//   D51 的 grid.calcScale 是**单行整体缩放**，缩放被 MIN_SCALE=0.42 夹住，
+//   而 L10 起的内容池里已经有**词和句**（不是 D51 设计时考虑的 3~4 层复合音节）：
+//     L10 「བཀྲ་ཤིས」→ 81×91px，可用只有 69px（L10 是 4×4 小格）
+//     L12 「ངའི་མིང་ལ་བཀྲ་ཤིས་རེད」→ 330×372px，可用 94px（**超 3.5 倍**）
+//   实测 **130 处溢出**，最差的能被裁掉三分之二 —— 也就是说学习线一旦接上 UI，
+//   这些牌面会直接糊掉。根因是**排版规则与内容池脱节**：改了内容池没人重算排版。
+// 修法：新增 grid.layoutTile —— 藏文的词界就是 tsheg，**按 tsheg 断行**再按行数缩放，
+// 词界不会被切断；仍装不下就如实报 fits=false（不静默画一个溢出的牌面）。
+// 本节把「150 关全部装得下」变成门禁：以后谁往内容池里加词 / 句，立刻会被拦。
+section('50. 牌面藏文排版（150 关逐块复算 · 装不下即红）');
+{
+  const learning = require('../utils/learning.js');
+  const data = require('../data/learning.js');
+  const grid = require('../utils/grid.js');
+  let n = 0, bad = [], minFont = 9999, sample = null;
+  for (let lv = 1; lv <= 15; lv++) {
+    const L = data.byLevel(lv);
+    if (!L) { bad.push('L' + lv + ' 未定义'); continue; }
+    const cell = grid.cellPx(lv, 375);
+    const base = Math.round(cell * grid.FONT_RATIO);
+    for (let st = 1; st <= L.stages; st++) {
+      const cfg = learning.buildStage(lv, st);
+      if (!cfg) { bad.push('L' + lv + '-' + st + ' 生成失败'); continue; }
+      for (const t of cfg.titles) {
+        n++;
+        const f = grid.layoutTile(t, cell, base, null);
+        if (f.font < minFont) { minFont = f.font; sample = { lv, st, t, f }; }
+        if (!f.fits) bad.push('L' + lv + '-' + st + ' 「' + t + '」' + f.width + '×' + f.height + '>' + f.avail);
+      }
+    }
+  }
+  ok('复算 ' + n + ' 个牌面（15 级 × 10 课 × 各关内容）');
+  if (!bad.length)
+    ok('150 关全部装得下（最小字号 ' + minFont + 'px' +
+      (sample ? '，出现在 L' + sample.lv + '-' + sample.st + ' 「' + sample.t + '」' : '') + '）');
+  else err('有 ' + bad.length + ' 个牌面装不下：' + bad.slice(0, 3).join('；') +
+    ' —— 词/句级内容不能直接当牌面，请缩短内容或改用 grid.layoutTile 的断行结果');
+  // 字号下限：装得下但字太小等于没画出来
+  if (minFont >= 18) ok('最小字号 ' + minFont + 'px ≥ 18px（不是「装下了但看不清」）');
+  else err('最小字号仅 ' + minFont + 'px —— 牌面文字过小，应把该内容移出牌面（横幅/标题）');
+  // 结构：必须按 tsheg 断行（藏文词界），不能按字符硬切
+  const splitRes = grid.splitSyllables('བཀྲ་ཤིས་བདེ་ལེགས');
+  if (splitRes.length === 4 && splitRes[0] === 'བཀྲ་')
+    ok('按 tsheg 断行（词界保留，不会把音节切碎）');
+  else err('splitSyllables 行为异常：' + JSON.stringify(splitRes));
+  // 判定必须用取整后的字号（浮点曾导致 108 处假溢出）。
+  // ⚠️ 这里断的是**性质**（fits 为真且不超格子），不是某个具体字号 ——
+  //    早先版本写死「font === 42」，结果实现一改进（41 同样成立）就误报，
+  //    门禁一旦靠魔数就会变成噪音。
+  const edge = grid.layoutTile('གཁེ', 80, 50, null);
+  if (edge.fits && edge.width <= edge.avail && edge.height <= edge.avail)
+    ok('边界判定用取整字号（不再出现「刚好放得下」被判放不下）：' +
+      edge.lines.join('/') + ' ' + edge.width + '×' + edge.height + ' ≤ ' + edge.avail + ' @' + edge.font + 'px');
+  else err('边界判定异常：' + JSON.stringify(edge));
+  // 渲染端真的用了 layoutTile 的断行结果
+  const gj50 = read('pages/game/game.js');
+  if (/grid\.layoutTile\(/.test(gj50) && /t\.glyphText\s*=\s*lay\.lines\.join/.test(gj50))
+    ok('小程序端已接上 layoutTile 的多行结果（glyphText）');
+  else err('pages/game/game.js 未使用 layoutTile 的断行结果');
+  if (/item\.glyphText \|\| item\.tibetan/.test(read('pages/game/game.wxml')))
+    ok('WXML 渲染多行藏文（<text> 的 \\n 断行）');
+  else err('WXML 未渲染 glyphText');
+  if (/\| \*\*D59\*\* \|/.test(read('docs/DECISIONS.md')))
+    ok('docs/DECISIONS.md 已登记 D59');
+  else err('缺少 D59 决策行');
+}
+
 console.log('通过: ' + passed + ' | 错误: ' + errors.length + ' | 警告: ' + warnings.length);
 if (errors.length) { console.log('\x1b[31m存在错误，需修复后重试\x1b[0m'); process.exit(1); }
 console.log('\x1b[32m全部自检通过 ✓\x1b[0m');

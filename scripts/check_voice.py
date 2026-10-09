@@ -40,6 +40,18 @@ WANT_CHANNELS = 1
 WANT_RATE = 16000
 MAX_SIZE_KB = 40
 
+# ---- 响度判据（D59，2026-10-09）----
+# 加这条的起因：用户反馈「藏文的播放有时候就是没有读取的」。逐条量完发现，
+# 藏文发音的 RMS 比中文讲解**轻 12~15dB**（letter_07 峰值只有 −21dB），
+# 手机外放上听起来就是「按了没反应」—— 不是文件缺失，是**太轻**。
+# 归一后全库落在 −24…−20 dBFS，这里把这条线钉住，防止以后重新生成又变轻。
+#
+# ⚠️ 与 scripts/normalize_voice.py 的 TARGET_RMS_DB 同源同值（它写、这里验）。
+RMS_LO_DB = -26.0       # 低于此 = 明显偏轻，手机外放会听不见
+RMS_HI_DB = -18.0       # 高于此 = 偏吵，会盖过音效
+TARGET_RMS_DB = -20.0
+PEAK_CEIL_DB = -1.0     # 高于此 = 削波/爆音（削波比小声难听得多）
+
 
 def ffprobe(path, *args):
     try:
@@ -51,33 +63,37 @@ def ffprobe(path, *args):
 
 
 def analyze(path):
-    """返回 dict(dur, peak_db, channels, rate)。解析不出来返回 None。"""
+    """返回 dict(dur, peak_db, rms_db, channels, rate, clip)。解析不出来返回 None。"""
     dur = ffprobe(path, '-show_entries', 'format=duration', '-of', 'csv=p=0')
     ch = ffprobe(path, '-select_streams', 'a:0', '-show_entries', 'stream=channels',
                  '-of', 'csv=p=0')
     rate = ffprobe(path, '-select_streams', 'a:0', '-show_entries', 'stream=sample_rate',
                    '-of', 'csv=p=0')
-    # 峰值电平：**解码成裸 PCM 自己算**，不去解析 ffmpeg 的日志文本。
+    # 峰值与响度：**解码成裸 PCM 自己算**，不去解析 ffmpeg 的日志文本。
     # 踩过的坑：astats 的统计信息是按 info 级别打到 stderr 的，-v error 会把它连同
     # 报错一起压掉，结果「读不到峰值」——看起来像文件坏了，其实是日志级别的问题。
-    # 取裸 PCM 后自己求绝对值最大值，既不受日志级别影响，也不受语言/版本差异影响。
-    peak = None
+    peak = rms = None
+    clip = 0
     try:
         p = subprocess.run(['ffmpeg', '-v', 'error', '-i', path, '-map', 'a:0',
                             '-f', 's16le', '-ac', '1', '-ar', str(WANT_RATE), '-'],
-                           capture_output=True, timeout=120)
+                           capture_output=True, timeout=180)
         raw = p.stdout or b''
         if len(raw) >= 2:
             import array
+            import math
             arr = array.array('h')
             arr.frombytes(raw[:len(raw) // 2 * 2])
-            mx = max(max(arr), -min(arr)) if arr else 0
-            import math
-            peak = 20.0 * math.log10(max(1, mx) / 32768.0)
+            if arr:
+                mx = max(max(arr), -min(arr))
+                peak = 20.0 * math.log10(max(1, mx) / 32768.0)
+                rms = 20.0 * math.log10(
+                    max(1e-6, math.sqrt(sum(float(x) * x for x in arr) / len(arr))) / 32768.0)
+                clip = sum(1 for x in arr if abs(x) >= 32700)
     except Exception:
-        peak = None
+        pass
     try:
-        return {'dur': float(dur), 'peak_db': peak,
+        return {'dur': float(dur), 'peak_db': peak, 'rms_db': rms, 'clip': clip,
                 'channels': int(ch) if ch else None,
                 'rate': int(rate) if rate else None}
     except ValueError:
@@ -115,6 +131,14 @@ def main():
             issues.append('读不到峰值')
         elif a['peak_db'] <= MIN_PEAK_DB:
             issues.append('近静音 %.1fdB' % a['peak_db'])
+        # D59 响度：太轻 = 手机外放听不见（用户感知为「没读取」）；太吵 = 盖过音效
+        if a['rms_db'] is not None and (a['rms_db'] < RMS_LO_DB or a['rms_db'] > RMS_HI_DB):
+            issues.append('响度 %.1fdB 不在 %.0f…%.0f dB（目标 %.0f）'
+                          % (a['rms_db'], RMS_LO_DB, RMS_HI_DB, TARGET_RMS_DB))
+        if a['peak_db'] is not None and a['peak_db'] > PEAK_CEIL_DB:
+            issues.append('峰值 %.1fdB 超 %.1fdB（削波风险）' % (a['peak_db'], PEAK_CEIL_DB))
+        if a['clip']:
+            issues.append('削波 %d 样本' % a['clip'])
         if a['channels'] not in (None, WANT_CHANNELS):
             issues.append('%s 声道' % a['channels'])
         if a['rate'] not in (None, WANT_RATE):
@@ -125,7 +149,7 @@ def main():
         if issues:
             bad.append(tag)
             print('  ✗ %-18s %5.1fKB  %.2fs  %s dB  —— %s'
-                  % (f, size / 1024.0, a['dur'],
+                  % (f, size / 1024.0, a["dur"],
                      ('%.1f' % a['peak_db']) if a['peak_db'] is not None else '?',
                      '; '.join(issues)))
         else:
