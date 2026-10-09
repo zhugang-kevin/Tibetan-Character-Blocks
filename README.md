@@ -81,7 +81,7 @@ node scripts/build-h5.js        # 重新生成（改了 data/ 或 images/ 之后
 ├── audio/ images/                 # 音效与品牌 Logo / 背景资产
 ├── preview/                       # 浏览器体验版（template + 生成物）
 ├── docs/                          # 运行指南 / 排版规范 / 证书体系 / 上线与商业化
-└── scripts/                       # validate / test-tibetan / build-h5 / test-h5 / inject-pattern / 资产母图生成（make_bg / make_logo）/ 加工管线（prepare-assets）/ 语音生成（gen_voice / gen_chinese_voice）/ 音效压缩（compress_sfx）
+└── scripts/                       # validate / test-tibetan / build-h5 / test-h5 / inject-pattern / 资产母图生成（make_bg / make_logo）/ 加工管线（prepare-assets）/ 语音生成（gen_voice / gen_chinese_voice）/ 语音与音效压缩（compress_voice / compress_sfx）
 ```
 
 ## 文档

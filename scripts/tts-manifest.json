@@ -1,0 +1,245 @@
+{
+  "blessing_01": {
+    "dur": 2.072,
+    "form": "base",
+    "peak": 6038,
+    "sampleRate": 16000,
+    "text": "སེམས་ཁྲལ་མེད་པར་སྤྲོ་པོ་ཡོང་བར་ཤོག",
+    "ts": "2026-10-09 12:47:08",
+    "voice": "zhuoma"
+  },
+  "icon_01": {
+    "dur": 0.714,
+    "form": "base",
+    "peak": 5047,
+    "sampleRate": 16000,
+    "text": "དཔལ་བེའུ་",
+    "ts": "2026-10-09 12:46:25",
+    "voice": "zhuoma"
+  },
+  "icon_02": {
+    "dur": 0.464,
+    "form": "base",
+    "peak": 4935,
+    "sampleRate": 16000,
+    "text": "ནས་",
+    "ts": "2026-10-09 12:46:47",
+    "voice": "zhuoma"
+  },
+  "icon_03": {
+    "dur": 0.668,
+    "form": "base",
+    "peak": 4298,
+    "sampleRate": 16000,
+    "text": "གངས་རི་",
+    "ts": "2026-10-09 12:46:54",
+    "voice": "zhuoma"
+  },
+  "letter_01": {
+    "dur": 0.691,
+    "form": "alt",
+    "peak": 11478,
+    "sampleRate": 16000,
+    "text": "ཀཱ",
+    "ts": "2026-10-09 12:41:37",
+    "voice": "zhuoma"
+  },
+  "letter_02": {
+    "dur": 0.524,
+    "form": "base",
+    "peak": 4734,
+    "sampleRate": 16000,
+    "text": "ཁ",
+    "ts": "2026-10-09 12:41:44",
+    "voice": "zhuoma"
+  },
+  "letter_05": {
+    "dur": 0.296,
+    "form": "base",
+    "peak": 7095,
+    "sampleRate": 16000,
+    "text": "ཅ",
+    "ts": "2026-10-09 12:41:50",
+    "voice": "zhuoma"
+  },
+  "letter_06": {
+    "dur": 0.519,
+    "form": "alt",
+    "peak": 4485,
+    "sampleRate": 16000,
+    "text": "ཆཱ",
+    "ts": "2026-10-09 12:42:17",
+    "voice": "zhuoma"
+  },
+  "letter_07": {
+    "dur": 0.376,
+    "form": "base",
+    "peak": 3519,
+    "sampleRate": 16000,
+    "text": "ཇ",
+    "ts": "2026-10-09 12:42:24",
+    "voice": "zhuoma"
+  },
+  "letter_08": {
+    "dur": 0.314,
+    "form": "base",
+    "peak": 5543,
+    "sampleRate": 16000,
+    "text": "ཉ",
+    "ts": "2026-10-09 12:42:30",
+    "voice": "zhuoma"
+  },
+  "letter_09": {
+    "dur": 0.283,
+    "form": "alt",
+    "peak": 3969,
+    "sampleRate": 16000,
+    "text": "ཏཱ",
+    "ts": "2026-10-09 12:42:57",
+    "voice": "zhuoma"
+  },
+  "letter_10": {
+    "dur": 0.611,
+    "form": "base",
+    "peak": 4357,
+    "sampleRate": 16000,
+    "text": "ཐ",
+    "ts": "2026-10-09 12:43:04",
+    "voice": "zhuoma"
+  },
+  "letter_11": {
+    "dur": 0.294,
+    "form": "base",
+    "peak": 3186,
+    "sampleRate": 16000,
+    "text": "ད",
+    "ts": "2026-10-09 12:43:10",
+    "voice": "zhuoma"
+  },
+  "letter_12": {
+    "dur": 0.426,
+    "form": "alt",
+    "peak": 4704,
+    "sampleRate": 16000,
+    "text": "ནཱ",
+    "ts": "2026-10-09 12:43:37",
+    "voice": "zhuoma"
+  },
+  "letter_14": {
+    "dur": 0.312,
+    "form": "alt",
+    "peak": 4363,
+    "sampleRate": 16000,
+    "text": "ཕཱ",
+    "ts": "2026-10-09 12:44:04",
+    "voice": "zhuoma"
+  },
+  "letter_15": {
+    "dur": 0.318,
+    "form": "base",
+    "peak": 4855,
+    "sampleRate": 16000,
+    "text": "བ",
+    "ts": "2026-10-09 12:44:10",
+    "voice": "zhuoma"
+  },
+  "letter_17": {
+    "dur": 0.342,
+    "form": "base",
+    "peak": 4723,
+    "sampleRate": 16000,
+    "text": "ཙ",
+    "ts": "2026-10-09 12:44:17",
+    "voice": "zhuoma"
+  },
+  "letter_18": {
+    "dur": 0.321,
+    "form": "base",
+    "peak": 4986,
+    "sampleRate": 16000,
+    "text": "ཚ",
+    "ts": "2026-10-09 12:44:24",
+    "voice": "zhuoma"
+  },
+  "letter_19": {
+    "dur": 0.353,
+    "form": "alt",
+    "peak": 5267,
+    "sampleRate": 16000,
+    "text": "ཛཱ",
+    "ts": "2026-10-09 12:44:51",
+    "voice": "zhuoma"
+  },
+  "letter_22": {
+    "dur": 0.56,
+    "form": "base",
+    "peak": 3903,
+    "sampleRate": 16000,
+    "text": "ཟ",
+    "ts": "2026-10-09 12:44:57",
+    "voice": "zhuoma"
+  },
+  "letter_25": {
+    "dur": 1.022,
+    "form": "alt",
+    "peak": 6284,
+    "sampleRate": 16000,
+    "text": "རཱ",
+    "ts": "2026-10-09 12:45:24",
+    "voice": "zhuoma"
+  },
+  "letter_26": {
+    "dur": 0.672,
+    "form": "base",
+    "peak": 5589,
+    "sampleRate": 16000,
+    "text": "ལ",
+    "ts": "2026-10-09 12:45:31",
+    "voice": "zhuoma"
+  },
+  "letter_27": {
+    "dur": 0.44,
+    "form": "alt",
+    "peak": 4620,
+    "sampleRate": 16000,
+    "text": "ཤཱ",
+    "ts": "2026-10-09 12:45:57",
+    "voice": "zhuoma"
+  },
+  "letter_28": {
+    "dur": 0.402,
+    "form": "base",
+    "peak": 4291,
+    "sampleRate": 16000,
+    "text": "ས",
+    "ts": "2026-10-09 12:46:04",
+    "voice": "zhuoma"
+  },
+  "letter_29": {
+    "dur": 0.294,
+    "form": "base",
+    "peak": 5496,
+    "sampleRate": 16000,
+    "text": "ཧ",
+    "ts": "2026-10-09 12:46:11",
+    "voice": "zhuoma"
+  },
+  "letter_30": {
+    "dur": 0.671,
+    "form": "base",
+    "peak": 17859,
+    "sampleRate": 16000,
+    "text": "ཨ",
+    "ts": "2026-10-09 12:46:18",
+    "voice": "zhuoma"
+  },
+  "tashi_delek": {
+    "dur": 0.812,
+    "form": "base",
+    "peak": 5834,
+    "sampleRate": 16000,
+    "text": "བཀྲ་ཤིས་བདེ་ལེགས",
+    "ts": "2026-10-09 12:47:01",
+    "voice": "zhuoma"
+  }
+}

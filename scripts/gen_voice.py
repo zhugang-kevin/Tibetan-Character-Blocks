@@ -6,8 +6,8 @@ D45（2026-10-07）：34 条元素发音 + 2 条情绪语音目前是静默回�
 发音播报」要有声音，只差音频文件本身。用第三方藏语 TTS **一次性离线预生成**放进来。
 预生成 = 静态资产、运行时零请求 —— 不触碰 D3（纯本地）/ D13（不建后端）红线。
 
-主通道：天翼 AI 开放平台「卫藏实时超自然语音合成」
-  · 协议：WebSocket（wss://openapi.teleagi.cn:443/aipaas/voice/v1/tts/supernaturalrt）
+主通道：天翼 AI 开放平台「卫藏实时超自然语音合成」（算法编码 8005200036）
+  · 协议：WebSocket（wss://api-maas.teleai.com.cn/aipaas/voice/v1/weizStreamingSuperTts/streaming）
   · 鉴权：Authorization = teleai-cloud-auth-v1/{AppID}/{region}/{ts}/{exp}/{signedHeaders}/{sig}
            SigningKey = HMAC-SHA256-HEX(AppKey, prefix)，Signature = HMAC-SHA256-HEX(SigningKey, CanonicalRequest)
            CanonicalRequest = GET \\n {path} \\n {query=''} \\n x-app-id:{AppID}
@@ -55,11 +55,58 @@ EMOTION_TEXTS = {
 }
 
 # 天翼默认参数（可在 tts-config.json 里覆盖）
-TELEAI_ENDPOINT = 'wss://openapi.teleagi.cn:443/aipaas/voice/v1/weizStreamingSuperTts/streaming'   # 卫藏专属（8005200036）
+# 2026-10-09 核对官方文档（8005200036，最近更新 2026-10-08）：公网接入点为
+#   wss://api-maas.teleai.com.cn/aipaas/voice/v1/weizStreamingSuperTts/streaming
+# 旧写的 openapi.teleagi.cn 仍能连通（两侧实测返回一致），但非文档地址，统一对齐官方文档。
+# ⚠️ 另：文档写明 **X-APP-ID 取自「买家中心 → 已购能力」**，不是「应用管理」里的 AppID ——
+#    取错时表现为「握手通过、能出声但部分文本合成失败」这类半通不通的症状，很难排查。
+TELEAI_ENDPOINT = 'wss://api-maas.teleai.com.cn/aipaas/voice/v1/weizStreamingSuperTts/streaming'
 TELEAI_ORIGIN = 'teleai-cloud-auth-v1'   # 公网鉴权头部（内网为 eop-auth-v1）
 
 # 静音裁剪：首尾的静音按阈值裁掉，各留 30ms 垫（16kHz 下 480 样本）
 TRIM_KEEP_MS = 30
+
+# ---- 有声判定（2026-10-09 实测加上的关键一环）----
+# 踩过的坑：天翼在**高频连续调用**时会「静默降级」——返回一段约 0.22s、峰值仅 20~70 的
+# 近乎静音的 PCM，HTTP/WS 层完全正常、code 仍是 10000。只按「文件够不够大」判断会
+# 把这类产物当成成功写进 audio/voice/，游戏里就表现为「点了没声音」。
+# 因此：落盘前先量**时长与峰值**，不达标就退避重试；重试耗尽才判失败。
+MIN_DUR = 0.25        # 秒：短于此视为没读出来
+MIN_PEAK = 1000       # 16bit 峰值：低于此基本是噪声底（正常语音实测 3000~17000）
+DEFAULT_SLEEP = 5.0   # 两条之间的间隔（秒）：实测 ≤1s 会触发上面的静默降级
+DEFAULT_RETRIES = 3   # 单条最多试几次（退避 1× / 2× / 3× 间隔）
+
+
+# ---------------------------------------------------------------- 文本候选
+# 实测（2026-10-09，两条之间间隔 6s，逐个复测 30 个辅音）：
+#   · 14 个辅音**裸字形**即可读出正确的字母名（ཁ ཅ ཇ ཉ ཐ ད བ ཙ ཚ ཟ ལ ས ཧ ཨ）
+#   · 8 个裸字形读不出，补上**显式元音 ཱ** 才出声（ཀ ཆ ཏ ན ཕ ཛ ར ཤ）
+#   · 8 个两种写法都读不出（ག ང པ མ ཝ ཞ འ ཡ）—— 这几条只能另想办法（见 README「真人录音」）
+# 结论：字母要**逐个试写法**，哪个出声用哪个。ཱ 是藏文的长 a 元音符号，用于把固有的 a 显式写出来，
+# 读出来是偏长的「kaa」，务必过一遍母语者耳朵（与本项目 Gate 2 的审校惯例一致）。
+def candidates_for(vid, base):
+    if vid.startswith('letter_'):
+        return [base, base + 'ཱ']
+    return [base]
+
+
+# ---------------------------------------------------------------- 已知合成不出的条目（2026-10-09 实测钉死）
+# 现象（与「限流降级」区分开的关键）：这两类**都不是**近静音降级，而是稳定复现的空产物——
+#   · 裸字形 ག      → 服务**一个音频字节都不返回**（0 字节）
+#   · ག + 任何元音符号（ཱིེོུ）→ 固定返回 **30ms / 峰值 10~34** 的静音桩
+# 复现强度：10s 间隔 × 每条 4 次 × 两轮，外加 16 种写法变体，共 40+ 次请求全失败；
+# 而**同一分钟里**的 གལ / གས / གངས་རི་ 全部正常 —— 证明不是账号限流、不是网络、不是鉴权，
+# 就是 zhuoma 这套声学模型**发不出这几个独立音节**。
+# 「双写」ག་ག 确实能出声，但 RMS 包络量到**两个**有声段（50-150ms / 230-340ms），
+# 即它念的是「ga ga」两遍；裁一个出来只有 90~160ms，而真正的单读是 130~220ms（约六成），
+# 且配对相似度矩阵（同字母 0.888 vs 跨字母 0.836，**区间重叠**）无法证明裁出来的就是本音。
+# → 结论：不拿「裁一半」的音频充当字母读音（教错了比没声音更糟）。等厂商修或换真人录音。
+KNOWN_BLOCKED = {
+    'letter_03': 'ག', 'letter_04': 'ང', 'letter_13': 'པ', 'letter_16': 'མ',
+    'letter_20': 'ཝ', 'letter_21': 'ཞ', 'letter_23': 'འ', 'letter_24': 'ཡ',
+    'icon_04': 'གཡག',
+}
+MANIFEST_PATH = os.path.join(ROOT, 'scripts', 'tts-manifest.json')
 
 
 # ---------------------------------------------------------------- 文本
@@ -335,11 +382,38 @@ def synthesize(cfg, text):
     return http_synthesize(cfg, text)
 
 
+# ---------------------------------------------------------------- 有声判定
+def wav_stats(wav_bytes):
+    """读 WAV 的（时长秒, 峰值）。解析不了返回 (0,0)。"""
+    try:
+        import io
+        w = wave.open(io.BytesIO(wav_bytes))
+        n = w.getnframes()
+        rate = float(w.getframerate() or 16000)
+        raw = w.readframes(n)
+        a = array.array('h')
+        a.frombytes(raw[:len(raw) // 2 * 2])
+        if not a:
+            return 0.0, 0
+        return n / rate, max(max(a), -min(a))
+    except Exception:
+        return 0.0, 0
+
+
 # ---------------------------------------------------------------- 批处理
-def run(targets, texts, cfg, force, quiet=False):
+def run(targets, texts, cfg, force, quiet=False, sleep=DEFAULT_SLEEP, retries=DEFAULT_RETRIES,
+        try_blocked=False, write_manifest=True):
     os.makedirs(VOICE_DIR, exist_ok=True)
     ok, skip, fail = 0, 0, []
-    for vid in targets:
+    # 清单：记下「这条音频是用哪个写法合成的」——字母有裸字形 / +ཱ 两种写法，
+    # 没有它就无法回答「这个文件念的到底是 ཀ 还是 ཀཱ（长 a）」，母语者审校也无从下手。
+    manifest = {}
+    if os.path.exists(MANIFEST_PATH):
+        try:
+            manifest = json.load(open(MANIFEST_PATH, encoding='utf-8'))
+        except Exception:
+            manifest = {}
+    for i, vid in enumerate(targets):
         text = texts[vid]
         out = os.path.join(VOICE_DIR, vid + '.wav')
         if os.path.exists(out) and not force:
@@ -347,25 +421,66 @@ def run(targets, texts, cfg, force, quiet=False):
             if not quiet:
                 print('  - %-12s 已存在，跳过' % vid)
             continue
+        # 已知合成不出的条目：默认直接跳过并说明原因（否则每条要白等 4 次 × 退避 ≈ 2 分钟）
+        if vid in KNOWN_BLOCKED and not try_blocked:
+            fail.append('%s: 已知合成不出（%s）——见 KNOWN_BLOCKED 注释；' % (vid, KNOWN_BLOCKED[vid]) +
+                        '确要再试加 --try-blocked')
+            continue
+        # 两条之间留间隔：实测连发（≤1s）会让服务「静默降级」成 0.2s 的近静音片段
+        if i and sleep > 0:
+            time.sleep(sleep)
+        last = ''
+        used = text
         try:
-            audio = synthesize(cfg, text)
-            if not audio or len(audio) < 512:
-                raise ValueError('返回音频过小（%d 字节）' % len(audio or b''))
+            audio = None
+            # 字母逐个试写法（裸字形 → +ཱ），哪个真出声用哪个；重试耗尽再换下一种写法
+            for ci, cand in enumerate(candidates_for(vid, text)):
+                for attempt in range(1, retries + 1):
+                    wav = synthesize(cfg, cand)
+                    dur, peak = wav_stats(wav)
+                    if len(wav) >= 512 and peak >= MIN_PEAK and dur >= MIN_DUR:
+                        audio = wav
+                        used = cand
+                        break
+                    last = '写法%d 第 %d 次仅 %.2fs / 峰值 %d（近静音，多半是限流降级）' % (ci + 1, attempt, dur, peak)
+                    if attempt < retries:
+                        time.sleep(sleep * attempt)      # 退避：1× → 2× → …
+                if audio:
+                    break
+            if not audio:
+                raise ValueError(last or '返回音频过小或近静音')
             with open(out, 'wb') as f:
                 f.write(audio)
+            d, p = wav_stats(audio)
             ok += 1
-            print('  ✓ %-12s %-24s → %6d 字节' % (vid, text, len(audio)))
+            form = '' if used == text else '  (写法：%s)' % used
+            print('  ✓ %-12s %-24s → %6d 字节 / %.2fs / 峰值 %d%s'
+                  % (vid, text, len(audio), d, p, form))
+            manifest[vid] = {
+                'text': used,
+                'form': 'base' if used == text else 'alt',
+                'dur': round(d, 3), 'peak': p,
+                'voice': cfg.get('voice'), 'sampleRate': int(cfg['sampleRate']),
+                'ts': time.strftime('%Y-%m-%d %H:%M:%S'),
+            }
         except urllib.error.HTTPError as e:
             fail.append('%s: HTTP %s %s' % (vid, e.code, e.read()[:120]))
         except Exception as e:  # noqa: BLE001 —— 单条失败不能中断整批
             fail.append('%s: %s' % (vid, e))
+    if manifest and write_manifest:
+        json.dump(manifest, open(MANIFEST_PATH, 'w', encoding='utf-8'),
+                  ensure_ascii=False, indent=2, sort_keys=True)
+        print('  清单已写入 %s（%d 条，记录每条用的是哪个藏文写法）'
+              % (os.path.relpath(MANIFEST_PATH, ROOT), len(manifest)))
     print('\n完成：新增 %d 条 / 跳过 %d 条 / 失败 %d 条' % (ok, skip, len(fail)))
     for f in fail[:8]:
         print('  ✗ ' + f)
     if len(fail) > 8:
         print('  … 共 %d 条失败' % len(fail))
     if fail:
-        print('提示：鉴权类失败先跑 python scripts/gen_voice.py --probe 定位；修好后重跑即可（已生成的会跳过）')
+        print('提示：① 鉴权类失败先跑 python scripts/gen_voice.py --probe 定位；')
+        print('      ② 「近静音」类失败先把间隔调大（--sleep 10）再重试（已生成的会跳过）；')
+        print('      ③ 修好后重跑即可，脚本幂等。')
     return len(fail)
 
 
@@ -489,7 +604,9 @@ def self_test():
                 payload = bytes(b ^ mask[i % 4] for i, b in enumerate(payload))
             req = json.loads(payload.decode())
             assert req.get('text'), '请求缺 text'
-            pcm = struct.pack('<%dh' % 800, *[(-1) ** i * 6000 for i in range(800)])   # 50ms 16k 假 PCM
+            # 假 PCM：0.5s / 16k / 峰值 6000 —— 必须长于 MIN_DUR(0.25s) 且峰值高于 MIN_PEAK(1000)，
+            # 否则会被「近静音判定」当成限流降级产物拒收（自测要覆盖真实落盘口径，不能放水）
+            pcm = struct.pack('<%dh' % 8000, *[(-1) ** i * 6000 for i in range(8000)])
             part = b64.b64encode(pcm).decode()
             conn.sendall(frame(json.dumps({'code': 10000, 'result': {'audio': part, 'audio_len': 50, 'is_end': False}})))
             conn.sendall(frame(json.dumps({'code': 10000, 'result': {'audio': part, 'audio_len': 50, 'is_end': True}})))
@@ -513,7 +630,7 @@ def self_test():
     ssl.SSLContext.wrap_socket = plain_wrap
     try:
         subset = list(texts.keys())[:2]
-        fails = run(subset, texts, cfg, force=True, quiet=True)
+        fails = run(subset, texts, cfg, force=True, quiet=True, write_manifest=False)
         made = [v for v in subset if os.path.exists(os.path.join(VOICE_DIR, v + '.wav'))]
         for v in subset:
             p = os.path.join(VOICE_DIR, v + '.wav')
@@ -537,7 +654,13 @@ def main():
     ap.add_argument('--probe', action='store_true', help='只握手一次，验证鉴权')
     ap.add_argument('--only', nargs='+', help='只生成指定条目（如 letter_01 icon_01）')
     ap.add_argument('--force', action='store_true')
+    ap.add_argument('--sleep', type=float, default=DEFAULT_SLEEP,
+                    help='两条之间的间隔秒数（默认 %s；限流降级时调大）' % DEFAULT_SLEEP)
+    ap.add_argument('--retries', type=int, default=DEFAULT_RETRIES,
+                    help='单条最多重试几次（默认 %s，退避重试）' % DEFAULT_RETRIES)
     ap.add_argument('--self-test', action='store_true')
+    ap.add_argument('--try-blocked', action='store_true',
+                    help='连 KNOWN_BLOCKED 里「已知合成不出」的条目也一起试（默认跳过，省时间）')
     args = ap.parse_args()
 
     if args.self_test:
@@ -564,7 +687,9 @@ def main():
     if args.probe:
         sys.exit(probe(cfg))
     print('通道：%s（region=%s，voice=%s，%dHz）' % (cfg['provider'], cfg.get('region'), cfg.get('voice'), cfg.get('sampleRate', 0)))
-    sys.exit(1 if run(targets, texts, cfg, args.force) else 0)
+    print('间隔 %.1fs / 单条最多 %d 次（近静音会自动退避重试）' % (args.sleep, args.retries))
+    sys.exit(1 if run(targets, texts, cfg, args.force, sleep=args.sleep,
+                      retries=args.retries, try_blocked=args.try_blocked) else 0)
 
 
 if __name__ == '__main__':

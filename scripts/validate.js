@@ -4678,6 +4678,81 @@ section('46. 性别用途单一（D55）：只允许用来挑藏族名字');
   else err('缺少 D55 决策行 —— 性别用途变更将无处登记');
 }
 
+// ---------- 47. 藏文发音预生成（D56）：端点 / 有声判定 / 限流退避 / 资产形态 ----------
+// 为什么单列一节：藏语播报「点了没声音」排查下来是**三个互相独立**的成因，任意一条都能
+// 把整条链路打哑，而且**全都不报错**（服务 code 仍是 10000、文件也确实写出来了）：
+//   ① 端点写错（旧配置是 openapi.teleagi.cn，文档地址是 api-maas.teleai.com.cn）
+//   ② 静默降级：连发/受限时返回约 30ms、峰值仅 10~70 的「近静音」PCM，按文件大小看是成功的
+//   ③ 个别独立音节模型根本发不出（0 字节或静音桩），必须落成台账而不是无限重试
+// 本节把三件事的防线钉死：端点对齐文档、落盘前先量**时长+峰值**、不可合成条目有台账可查。
+section('47. 藏文发音预生成（D56）：端点 / 有声判定 / 限流退避 / 资产形态');
+{
+  const gv = read('scripts/gen_voice.py');
+  // 47.1 端点必须与官方文档一致（文档最近更新 2026-10-08）
+  if (/TELEAI_ENDPOINT\s*=\s*'wss:\/\/api-maas\.teleai\.com\.cn\/aipaas\/voice\/v1\/weizStreamingSuperTts\/streaming'/.test(gv))
+    ok('TTS 端点与官方文档一致（api-maas.teleai.com.cn / weizStreamingSuperTts）');
+  else err('TTS 端点与官方文档不一致（应为 wss://api-maas.teleai.com.cn/aipaas/voice/v1/weizStreamingSuperTts/streaming）');
+  // 47.2 有声判定：光看「文件够不够大」会把 30ms 的静音桩当成成功，必须量时长与峰值
+  const mdur = /MIN_DUR\s*=\s*([0-9.]+)/.exec(gv);
+  const mpeak = /MIN_PEAK\s*=\s*([0-9]+)/.exec(gv);
+  if (mdur && parseFloat(mdur[1]) >= 0.2 && mpeak && parseInt(mpeak[1], 10) >= 500)
+    ok('有声判定就位（时长 ≥ ' + mdur[1] + 's / 峰值 ≥ ' + mpeak[1] +
+      '）——静默降级的近静音产物无法混入');
+  else err('缺少有声判定常量 MIN_DUR / MIN_PEAK（或阈值过低）——30ms 静音桩会被当成成功写盘');
+  if (/peak >= MIN_PEAK and dur >= MIN_DUR/.test(gv))
+    ok('落盘前真的过了一遍有声判定（不是只定义常量不使用）');
+  else err('MIN_DUR / MIN_PEAK 未在落盘前参与判定');
+  // 47.3 限流退避：间隔与重试是「静默降级」的唯一解药
+  if (/add_argument\('--sleep'/.test(gv) && /add_argument\('--retries'/.test(gv))
+    ok('具备限流退避（--sleep / --retries）');
+  else err('缺少 --sleep / --retries ——高频连发会触发静默降级，产物全是近静音');
+  // 47.4 已知合成不出的条目必须有台账（否则每次全量生成都要白等 4 次重试 × 退避）
+  const kb = /KNOWN_BLOCKED\s*=\s*\{([\s\S]*?)\}/.exec(gv);
+  if (kb && /letter_03/.test(kb[1]))
+    ok('已知合成不出的条目已登记台账（KNOWN_BLOCKED）');
+  else err('缺少 KNOWN_BLOCKED 台账 —— 读不出的音节会每次重试到底，且无人知道是已知问题');
+  // 47.5 清单：记录每条音频用的是哪个藏文写法（ཀ 还是 ཀཱ），母语者审校全靠它
+  if (/MANIFEST_PATH/.test(gv) && /'form':\s*'base'/.test(gv))
+    ok('生成脚本会写清单（scripts/tts-manifest.json 记录每条的藏文写法）');
+  else err('生成脚本不写清单 —— 无法回答「这个文件念的是 ཀ 还是 ཀཱ（长 a）」');
+  // 47.6 资产形态：主包 2MB 硬上限，WAV 比 MP3 大一个数量级，目录里不许留 WAV
+  const vdir = path.join(ROOT, 'audio', 'voice');
+  const vfiles = fs.existsSync(vdir) ? fs.readdirSync(vdir) : [];
+  const wavs = vfiles.filter(f => /\.wav$/i.test(f));
+  if (!wavs.length) ok('audio/voice/ 无 WAV 残留（全部为 MP3，主包体积已实测在预算内）');
+  else err('audio/voice/ 残留 WAV：' + wavs.join(', ') + ' —— 请先跑 scripts/compress_voice.py');
+  const mp3s = vfiles.filter(f => /\.mp3$/i.test(f));
+  const big = mp3s.filter(f => fs.statSync(path.join(vdir, f)).size > 40 * 1024);
+  if (!big.length) ok('语音单条均 ≤ 40KB（' + mp3s.length + ' 条）');
+  else err('语音单条超 40KB：' + big.join(', ') + ' —— 请调低码率重压');
+  // 目录总量：主包 2MB 的硬约束下，语音这一块单独留一个上限，别让它悄悄吃掉别人的额度
+  const vTotal = mp3s.reduce((s, f) => s + fs.statSync(path.join(vdir, f)).size, 0);
+  if (vTotal <= 420 * 1024)
+    ok('语音资产合计 ' + Math.round(vTotal / 1024) + 'KB ≤ 420KB');
+  else err('语音资产合计 ' + Math.round(vTotal / 1024) + 'KB 超 420KB —— 主包 2MB 上限会被它吃掉');
+  // 47.7 覆盖率：36 条里缺的**只允许**是台账里登记过的那几条
+  const blockedIds = kb ? (kb[1].match(/'(letter_\d+|icon_\d+)'/g) || []).map(s => s.replace(/'/g, '')) : [];
+  const ALL_VOICE = [];
+  for (let i = 1; i <= 30; i++) ALL_VOICE.push('letter_' + String(i).padStart(2, '0'));
+  for (let i = 1; i <= 4; i++) ALL_VOICE.push('icon_0' + i);
+  ALL_VOICE.push('tashi_delek', 'blessing_01');
+  const missing = ALL_VOICE.filter(id => mp3s.indexOf(id + '.mp3') === -1);
+  const unexpected = missing.filter(id => blockedIds.indexOf(id) === -1);
+  if (!unexpected.length)
+    ok('藏文发音 ' + (ALL_VOICE.length - missing.length) + '/' + ALL_VOICE.length +
+      ' 到位，缺口 ' + missing.length + ' 条全部属台账已登记项（' + (missing.join(',') || '无') + '）');
+  else err('有未登记台账却缺音频的条目：' + unexpected.join(', ') +
+    ' —— 要么是生成失败（重跑 gen_voice.py），要么是真读不出（补进 KNOWN_BLOCKED 并写明证据）');
+  // 反例自测：清单里少一条非台账项，必须被上面这条抓到
+  if (blockedIds.indexOf('tashi_delek') === -1)
+    ok('守卫自测：非台账项的缺失必被拦下（反例落网）');
+  else err('§47 自测失效：tashi_delek 不该出现在 KNOWN_BLOCKED 里');
+  // 47.8 台账落点
+  if (/\| \*\*D56\*\* \|/.test(read('docs/DECISIONS.md')))
+    ok('docs/DECISIONS.md 已登记 D56（藏语播报真相与三道防线）');
+  else err('缺少 D56 决策行 —— 端点/静默降级/读不出的结论无处可查');
+}
+
 console.log('通过: ' + passed + ' | 错误: ' + errors.length + ' | 警告: ' + warnings.length);
 if (errors.length) { console.log('\x1b[31m存在错误，需修复后重试\x1b[0m'); process.exit(1); }
 console.log('\x1b[32m全部自检通过 ✓\x1b[0m');
