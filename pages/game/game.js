@@ -39,6 +39,20 @@ var PAGE_PAD = 20;     // 页面左右留白（rpx）
 var PANEL_PAD = 18;    // 底盘内边距（rpx）
 var OUTLINE_PAD = 12;  // 凹槽内边距（rpx）
 var AVAIL_W = 750 - PAGE_PAD * 2 - PANEL_PAD * 2 - OUTLINE_PAD * 2 - 6;
+// ---------------------------------------------------------------- 触觉反馈（D60）
+// 为什么补这一层（2026-10-09 用户「需要真实的投入感」）：盘点了所有交互点的反馈，
+// 发现**频率最高的那几个交互完全没有触觉**——
+//   选中一张牌（每关 12~24 次，只有声音）· 错配（只有声音）· 撞障碍（只有 toast + 抖动）
+// 而消除、通关、点灯是有震动的。结果是「操作有回音但手上没感觉」，
+// 手机外放又会把声音吃掉一部分（尤其 D59 之前的藏文发音轻 12~15dB），
+// 触觉于是成了唯一不会被环境噪声吃掉的通道 —— 它是「投入感」的兜底通道。
+// 分档：light = 选中 / 障碍（高频、轻）；medium = 错配（要能分辨）；heavy = 通关。
+function haptic(type) {
+  try {
+    if (wx.vibrateShort) wx.vibrateShort({ type: type || 'light' });
+  } catch (e) { /* 部分机型不支持震动，静默降级 */ }
+}
+
 var CARD_AUTO_MS = 5200;
 var TOAST_MS = 1700;
 // ---------- 游戏中的「打扰预算」（D57，2026-10-09 用户反馈「跳窗实在太多了」）----------
@@ -470,6 +484,7 @@ Page({
 
     // 障碍物：冰霜/木箱罩住的牌不能直接点（不计入正确率、不惩罚）
     if (obstacles.isBlocked(tile)) {
+      haptic('light');     // D60：撞障碍也要有手上回馈（原来只有 toast + 抖动）
       this.showBlockedTip(idx, tile);
       return;
     }
@@ -478,11 +493,15 @@ Page({
     if (this.firstUid !== null && this.firstUid === tile.uid) {
       this.firstUid = null;
       tile.state = 'idle';
+      haptic('light');
       this.applyPieces('settle');
       return;
     }
 
     audio.tap();
+    // D60：选中是**频率最高**的交互（每关 12~24 次），原来完全没有触觉 ——
+    // 补上轻震，让「点到了」这件事在手上有确认感。
+    haptic('light');
 
     if (tile.golden && !this.goldenSeen) {
       this.goldenSeen = true;
@@ -763,9 +782,9 @@ Page({
       });
     }
     this.setData({ fx: fx, fxOn: true });
-    try {
-      if (wx.vibrateShort) wx.vibrateShort({ type: 'light' });
-    } catch (e) { /* 部分机型不支持，忽略 */ }
+    // D60：通关是全场最重的时刻，用 heavy（错配 medium / 选中 light），
+    // 让「通关」在手上的重量与前两者区分开 —— 触觉分档才成体系。
+    haptic('heavy');
     if (this.fxTimer) clearTimeout(this.fxTimer);
     this.fxTimer = setTimeout(function () {
       that.setData({ fxOn: false, fx: [] });
@@ -777,6 +796,9 @@ Page({
   handleMismatch: function (i, j) {
     var that = this;
     audio.mismatch();
+    // D60：错配要给「身体感」——玩家点错时手上应有回馈，而不是只有声音。
+    // 用 medium（比选中�� light 重一档），和「选中」区分开：手指能分辨这两种。
+    haptic('medium');
     // D34：错配把窗口连击链条整条打断（档位同时归零，下一次消除从等级 1 重新起步）
     this.comboState = praise.onMiss(this.comboState);
     var a = this.board.cells[i];

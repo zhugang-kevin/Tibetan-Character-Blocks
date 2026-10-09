@@ -2318,14 +2318,23 @@ function speak(name) {
   return true;
 }
 
-/* 轻震动（通关瞬间）。浏览器走 navigator.vibrate，缺失时仅计数。 */
-function haptic() {
+/* ---------------- 触觉反馈（D60 · 对应 pages/game/game.js 的 haptic） ----------------
+   ⚠️ 早先这里已经有一个无参的 haptic()（只服务通关），D60 又写了一个带分档的 ——
+      JS 里函数声明会被后一个覆盖，**计数器因此停摆**（test-h5 的「触发轻震动」当场变红）。
+      教训：新增同名工具前先搜一遍，两份合成一份，别指望「后写的赢」。
+   分档与小程序严格一致：light = 选中/障碍（高频轻）、medium = 错配、heavy = 通关。 */
+function haptic(type) {
+  var t = type || 'light';
   state.vibrateCount++;
-  try { if (navigator.vibrate) navigator.vibrate(30); } catch (e) { /* 忽略 */ }
+  state.hapticLog = (state.hapticLog || []).concat([t]);
+  try {
+    if (navigator.vibrate) navigator.vibrate(t === 'heavy' ? 40 : (t === 'medium' ? 25 : 12));
+  } catch (e) { /* 静默 */ }
 }
 
 /* 通关粒子：金色莲花瓣 + 五色风马旗碎片（与小程序 game.js celebrate 同参数） */
 function celebrate() {
+  haptic('heavy');      // D60：通关是全场最重的时刻
   const colors = ['#C0392B', '#1E8449', '#2471A3', '#B7950B', '#FFFFFF'];
   const layer = document.createElement('div');
   layer.className = 'fx-layer';
@@ -2558,6 +2567,7 @@ const state = {
   vibrateCount: 0,                          // 震动次数（情绪引擎，测试断言用）
   // 障碍物（PRD 3.1）：冰霜 / 藏式木箱 —— 遮挡是**牌**的属性，随牌下落
   frostTotal: 0, ropeTotal: 0, crateTotal: 0, brokenCount: 0, cardId: null,
+  hapticLog: [],   // D60：触觉事件流水（自动化测试可断言分档）
   speakLog: [],                             // 语音播放记录（tashi_delek / blessing_01）
   fxCount: 0,                               // 通关粒子数
   // 权益中心（双轨制）可断言状态
@@ -3872,6 +3882,7 @@ function onTapTile(idx) {
 
   // 障碍物：冰霜/木箱罩住的牌不能直接点（不计入正确率、不惩罚）
   if (obsBlocked(tile)) {
+    haptic('light');     // D60：撞障碍也要有手上回馈
     blockedTip(idx, tile);
     return;
   }
@@ -3884,6 +3895,7 @@ function onTapTile(idx) {
   }
 
   audio.tap();
+  haptic('light');   // D60：选中是频率最高的交互，原来完全没有触觉
 
   if (state.firstUid === null) {
     state.firstUid = tile.uid;
@@ -4099,6 +4111,7 @@ function drainQueue() {
 
 function handleMismatch(i, j) {
   audio.mismatch();
+  haptic('medium');     // D60：错配比选中重一档，手指能分辨
   // D34：错配把窗口连击链条整条打断（档位同时归零，下一次消除从等级 1 重新起步）
   state.praiseState = praiseOnMiss(state.praiseState);
   state.combo = 0;

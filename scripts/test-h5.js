@@ -539,7 +539,14 @@ function mockCtx(sink) {
   section('9.5 通关情绪引擎');
   check('通关粒子已生成（≥12 片莲花/风马旗）', $$('.fx-bit').length >= 12, 'bits=' + $$('.fx-bit').length);
   check('粒子含雪山金光层', !!$('.fx-glow'));
-  check('触发轻震动', ev('state.vibrateCount') >= 1, 'vibrate=' + ev('state.vibrateCount'));
+  // D60 触觉分档：通关必须是 heavy（最重），且整局至少出现过 light（选中）
+  const hlog = ev('state.hapticLog') || [];
+  check('触发震动', ev('state.vibrateCount') >= 1, 'vibrate=' + ev('state.vibrateCount'));
+  check('选中牌有轻震动（频率最高的交互必须有触觉）',
+    hlog.indexOf('light') > -1, 'hapticLog=' + JSON.stringify(hlog));
+  check('通关用 heavy 档（与选中的 light 区分开）',
+    hlog[hlog.length - 1] === 'heavy' || hlog.indexOf('heavy') > -1,
+    'hapticLog=' + JSON.stringify(hlog));
   await sleep(1200);
   check('通关藏语语音已触发（tashi_delek）', ev('state.speakLog').indexOf('tashi_delek') > -1,
     'speakLog=' + JSON.stringify(ev('state.speakLog')));

@@ -5061,6 +5061,61 @@ section('50. 牌面藏文排版（150 关逐块复算 · 装不下即红）');
   else err('缺少 D59 决策行');
 }
 
+// ---------- 51. 交互反馈覆盖（D60：投入感 / 情绪） ----------
+// 用户原话：「互动也很重要，因为这个互动就是需要有真实的投入感，
+// 现在还没有将互动完全拉入情绪、情感、互动中」。
+// 先做了一件最基本的事：**把盘面上每个交互点的反馈列全**，结果发现一个结构性问题 ——
+//   消除 / 通关 / 点灯 → 有声音 + **有震动**
+//   选中牌（每关 12~24 次）/ 错配 / 撞障碍 → **只有声音，没有震动**
+// 而选中恰恰是**频率最高**的交互，触觉是最不会被环境噪声吃掉的通道
+//（尤其 D59 之前的藏文发音还轻 12~15dB）。所以「操作有回音、手上没感觉」，
+// 这就是投入感缺口的可测部分。本节把「高频交互必须有触觉」钉成门禁。
+section('51. 交互反馈覆盖（D60）：高频交互必须有触觉，且分档成体系');
+{
+  const gj = read('pages/game/game.js');
+  const th = read('preview/template.html');
+  // 51.1 触觉工具两端各**只有一份**（同名函数重复声明会互相覆盖，计数器静默停摆）
+  const gjHaptic = (gj.match(/function haptic\(/g) || []).length;
+  const thHaptic = (th.match(/function haptic\(/g) || []).length;
+  if (gjHaptic === 1 && thHaptic === 1)
+    ok('触觉工具两端各只有一份定义（无同名覆盖）');
+  else err('haptic() 定义出现 ' + gjHaptic + '(小程序) / ' + thHaptic + '(体验版) 次 —— 同名声明会互相覆盖');
+  // 51.2 三个高频交互都必须有触觉
+  const need = [
+    ['选中牌', /haptic\('light'\)/],
+    ['错配', /haptic\('medium'\)/],
+    ['通关', /haptic\('heavy'\)/]
+  ];
+  const missing = need.filter(x => !x[1].test(gj)).map(x => x[0]);
+  if (!missing.length) ok('小程序端：选中/错配/通关 三处触觉齐全且分档 light/medium/heavy');
+  else err('小程序端缺触觉反馈：' + missing.join(', '));
+  const missingT = need.filter(x => !x[1].test(th)).map(x => x[0]);
+  if (!missingT.length) ok('体验版同契：三处触觉分档一致');
+  else err('体验版缺触觉反馈：' + missingT.join(', '));
+  // 51.3 撞障碍也要有（它是最容易被反复点的负反馈点）
+  // ⚠️ 正则要允许中间夹注释 —— 早先写成 /haptic\('light'\);\s*\n\s*this\.showBlockedTip/
+  // 结果代码明明写了却报「没有触觉反馈」：行尾的说明文字把正则挡掉了。
+  // 门禁的正则要匹配「意图」，不要匹配「排版」。
+  if (/haptic\('light'\);[^\n]*\n\s*this\.showBlockedTip/.test(gj))
+    ok('撞障碍也有触觉（负反馈点同样要有身体感）');
+  else err('撞障碍没有触觉反馈');
+  // 51.4 体验版要能断言分档（自动化可测），否则这套反馈无法回归验证
+  if (/hapticLog: \[\]/.test(th) && /state\.hapticLog/.test(th))
+    ok('体验版记录 hapticLog（触觉分档可被自动化断言）');
+  else err('体验版没有 hapticLog —— 触觉分档无法回归验证');
+  // 51.5 反例自测：三档必须真的不同（都写成 light 等于没分档）
+  {
+    const tiers = (gj.match(/haptic\('(light|medium|heavy)'\)/g) || []);
+    const uniq = [...new Set(tiers.map(t => t.match(/'(light|medium|heavy)'/)[1]))];
+    if (uniq.length >= 2)
+      ok('触觉确实分了 ' + uniq.length + ' 档（' + uniq.join('/') + '）而不是一档到底');
+    else err('触觉只有一档 —— 分不出「选中 / 错配 / 通关」，等于没做');
+  }
+  if (/\| \*\*D60\*\* \|/.test(read('docs/DECISIONS.md')))
+    ok('docs/DECISIONS.md 已登记 D60');
+  else err('缺少 D60 决策行 —— 互动投入感的取舍依据无处可查');
+}
+
 console.log('通过: ' + passed + ' | 错误: ' + errors.length + ' | 警告: ' + warnings.length);
 if (errors.length) { console.log('\x1b[31m存在错误，需修复后重试\x1b[0m'); process.exit(1); }
 console.log('\x1b[32m全部自检通过 ✓\x1b[0m');
