@@ -59,6 +59,9 @@ function getProgress() {
     gender: (p && p.gender) || '',
     tibetanName: (p && p.tibetanName) || '',
     tibetanNameMean: (p && p.tibetanNameMean) || '',
+    // 名字在池里的下标（-1 = 没定位到）。跟着名字一起落库，是「池扩容不换名」的凭据：
+    // 日后池 append 变长，取模结果会变，但已存的名字与下标不会被挤走。
+    tibetanNameIndex: (p && typeof p.tibetanNameIndex === 'number') ? p.tibetanNameIndex : -1,
     // 权益中心（双轨制）：模式 / 城市 / 已领凭证 / 核销码流水
     userMode: (p && p.userMode) || '',
     city: (p && p.city) || '',
@@ -246,8 +249,13 @@ function getHolderName() {
 
 // ---------- D54 性别 + 藏族名字 ----------
 // 性别只能由用户在页面上显式点选（微信不提供性别，头像昵称类接口也在 §6 禁用名单里）。
-// 写入时同步按新性别重取名字：改性别 = 换一个对应性别的藏族名字（名字与性别始终一致）。
 // seed 用「首次打开日期」→ 同一台机器上的名字稳定，不会每次进页面都变。
+//
+// ⚠️ **名字一旦定下就钉死**（「池扩容不换名」的核心保证，D55）：
+//   重新取名字**只在性别真的变了、或还没有名字的时候**发生。
+//   同一个性别重复选择 = 幂等，一个字都不会改。
+//   为什么必须这样：`pickFor` 是 seed 对**池长**取模，池以后 append 变长时同一个 seed 会落到
+//   别的下标 —— 若每次点选都重算，扩容就会把老用户的名字换掉。钉死之后，扩容影响不到任何人。
 var tibetanName = require('./tibetan-name.js');
 
 function getGender() {
@@ -257,24 +265,41 @@ function getGender() {
 function setGender(v) {
   var g = tibetanName.normalizeGender(v);
   var p = getProgress();
+  var prev = tibetanName.normalizeGender(p.gender);
+  if (!g) {
+    // 「清除」：性别回到未选择，名字一并撤掉（个人信息可撤回）
+    p.gender = '';
+    p.tibetanName = '';
+    p.tibetanNameMean = '';
+    p.tibetanNameIndex = -1;
+    save(p);
+    return '';
+  }
   p.gender = g;
-  if (g) {
+  var needPick = !p.tibetanName || prev !== g;
+  if (needPick) {
     var seed = tibetanName.seedFromDate((p.openLog && p.openLog.first) || '');
     var picked = tibetanName.pickFor(g, seed);
     p.tibetanName = picked ? picked.name : '';
     p.tibetanNameMean = picked ? picked.mean : '';
-  } else {
-    // 「清除」：性别回到未选择，名字一并撤掉（个人信息可撤回）
-    p.tibetanName = '';
-    p.tibetanNameMean = '';
+    p.tibetanNameIndex = picked ? picked.index : -1;
+  } else if (!(p.tibetanNameIndex >= 0)) {
+    // 迁移：D54 首版只存了名字没存下标，反查补一个（查不到就留 -1，绝不因此改名）
+    p.tibetanNameIndex = tibetanName.indexOfName(g, p.tibetanName);
   }
   save(p);
   return p.gender;
 }
 
+// 只读：名字是**存下来的事实**，不是每次算出来的值 —— 池在运行时怎么变都不影响这里。
 function getTibetanName() {
   var p = getProgress();
-  return { name: p.tibetanName || '', mean: p.tibetanNameMean || '', gender: tibetanName.normalizeGender(p.gender) };
+  return {
+    name: p.tibetanName || '',
+    mean: p.tibetanNameMean || '',
+    index: (typeof p.tibetanNameIndex === 'number') ? p.tibetanNameIndex : -1,
+    gender: tibetanName.normalizeGender(p.gender)
+  };
 }
 
 // ---------- 权益中心：模式 / 城市 / 凭证 ----------

@@ -4525,6 +4525,59 @@ section('45. 性别 + 藏族名字 D54（自填三档 / 不愿透露出口 / 仅
   if (wrap45 && n45.indexOf(wrap45.name) > -1) ok('大 seed 仍落在池内（取模不越界）');
   else err('大 seed 取模越界');
 
+  // --- 45.10 名字池 append-only（扩容不得换掉老用户的名字）---
+  // 冻结基线写在**守卫里**，不在数据文件里 —— 改 data/tibetan-names.js 改不掉它。
+  // 选名是 seed 对池长取模，池一变长同一个 seed 就落到别处；prefix 比对确保老下标永远指向老名字。
+  const NAME_BASELINE = {
+    male: ['扎西', '顿珠', '多吉', '平措', '旺堆', '晋美'],
+    female: ['卓玛', '央金', '德吉', '拉姆', '梅朵', '曲珍'],
+    neutral: ['达瓦', '次仁', '嘎玛']
+  };
+  Object.keys(NAME_BASELINE).forEach(k => {
+    const cur = grab45(k);
+    const base = NAME_BASELINE[k];
+    let head = true;
+    for (let i = 0; i < base.length; i++) { if (cur[i] !== base[i]) { head = false; break; } }
+    if (head && cur.length >= base.length)
+      ok('名字池 ' + k + ' 以基线为前缀且只增（' + base.length + ' → ' + cur.length + '）');
+    else err('名字池 ' + k + ' 被重排/改名/删名 —— 只允许末尾追加（基线 ' +
+      base.join(',') + ' / 当前 ' + cur.join(',') + '）');
+  });
+  if (/append-only/.test(names45))
+    ok('数据文件头已声明 append-only 规则（改池的人第一眼就能看到）');
+  else err('data/tibetan-names.js 未声明 append-only');
+  // 反例自测：把基线首项换到第二位，前缀比对必须立刻失败（证明这把尺不是摆设）
+  const shuffled45 = ['顿珠', '扎西', '多吉', '平措', '旺堆', '晋美'];
+  let selfBad45 = false;
+  for (let i = 0; i < NAME_BASELINE.male.length; i++) {
+    if (shuffled45[i] !== NAME_BASELINE.male[i]) { selfBad45 = true; break; }
+  }
+  if (selfBad45) ok('守卫自测：调换顺序的池必被拦下（反例落网）');
+  else err('§45.10 守卫自测失效（重排反例未落网）');
+
+  // --- 45.11 「名字钉死」：同性别重复选择必须幂等（池扩容不换名）---
+  if (/var needPick = !p\.tibetanName \|\| prev !== g;/.test(store45))
+    ok('重取名只在「性别真的变了或还没有名字」时发生（同性别重复选择 = 幂等）');
+  else err('setGender 未做幂等判断 —— 池扩容会把老用户的名字换掉');
+  if (/const needPick = !p\.tibetanName \|\| prev !== g;/.test(t45))
+    ok('体验版同契约：同性别重复选择不换名');
+  else err('体验版 setGender 未做幂等判断');
+  // 下标跟着名字落库（日后确认「名字没被挤走」的凭据）
+  if (/tibetanNameIndex/.test(store45) && /tibetanNameIndex/.test(t45) &&
+      /index: i/.test(util45))
+    ok('下标与名字一起落库（tibetanNameIndex，扩容可核对）');
+  else err('未落库下标 —— 池扩容后无法核对名字是否被挤走');
+  // 反例自测：若把幂等判断写成「每次都重取」，扩容必换名 —— 用真实算法演示这一点
+  const seed45 = tib45.seedFromDate('2026-10-09');
+  const grow45 = (NAME_BASELINE.female || []).concat(['新增女名一', '新增女名二', '新增女名三', '新增女名四']);
+  const before45 = tib45.pickFor('female', seed45);
+  const idxBefore45 = before45 ? before45.index : -1;
+  const afterIdx45 = Math.floor(seed45) % grow45.length;
+  if (grow45[idxBefore45] === before45.name && afterIdx45 !== idxBefore45)
+    ok('反例自测：池扩容确实会挪动取模下标（' + idxBefore45 + ' → ' + afterIdx45 +
+      '）—— 所以「钉死名字」不是可选项');
+  else err('§45.11 反例自测未复现「扩容挪下标」，守卫失去说服力');
+
   // --- 45.6 两端字段同源（小程序 storage ↔ 体验版 getProgress 白名单逐字段比对） ---
   const FN45 = ['gender', 'tibetanName', 'tibetanNameMean'];
   FN45.forEach(f => {
@@ -4575,6 +4628,54 @@ section('45. 性别 + 藏族名字 D54（自填三档 / 不愿透露出口 / 仅
   if (/if \(getGender\(\)\) return false;/.test(t45))
     ok('体验版同样「已选则跳过」');
   else err('体验版 maybeAskGender 未做已选跳过');
+}
+
+// ---------- 46. 性别用途单一（D55）：只用于挑藏族名字 ----------
+// 为什么要有这一节：性别是个人信息。**用途一旦悄悄扩张**（拿去做称谓、做推荐、做文案 A/B），
+// 性质就变了 —— 从「挑个名字」变成「拿性别给人贴标签」。所以把消费点钉成白名单：
+// 任何新文件里出现 gender，validate 直接红，逼着回 docs/DECISIONS.md 补一条决策再放行。
+// 只扫 .js / .wxml（真正会「读 gender 做事」的地方）；CSS 类名（.gender-pick）不算消费点。
+section('46. 性别用途单一（D55）：只允许用来挑藏族名字');
+{
+  const GENDER_ALLOW = [
+    'utils/tibetan-name.js',      // 取值定义与选名算法
+    'utils/storage.js',           // 落库
+    'pages/index/index.js',       // 首次引导
+    'pages/index/index.wxml',     // 首次引导
+    'pages/passport/passport.js', // 我的资料：查看 / 修改 / 清除
+    'pages/passport/passport.wxml',
+    'preview/template.html',      // 体验版镜像
+    'data/tibetan-names.js'       // 仅在注释里提到 setGender
+  ];
+  const walk46 = function (dir, out) {
+    fs.readdirSync(path.join(ROOT, dir)).forEach(function (f) {
+      const rel = dir + '/' + f;
+      if (fs.statSync(path.join(ROOT, rel)).isDirectory()) { walk46(rel, out); return; }
+      if (/\.(js|wxml)$/.test(f)) out.push(rel);
+    });
+    return out;
+  };
+  const files46 = walk46('pages', []).concat(walk46('utils', []));
+  files46.push('preview/template.html', 'data/tibetan-names.js');
+  const hits46 = files46.filter(f => /gender/i.test(read(f)));
+  const extra46 = hits46.filter(f => GENDER_ALLOW.indexOf(f) === -1);
+  if (!extra46.length)
+    ok('性别的消费点未越界（' + hits46.length + ' 个文件，全在白名单内）');
+  else
+    err('性别出现新的消费点：' + extra46.join(', ') +
+      ' —— D55 规定只用于挑藏族名字，新用途必须先回 docs/DECISIONS.md 补一条决策');
+  // 反向：白名单里的文件必须真的还在用（防止白名单变成「僵尸名单」，越滚越大）
+  const dead46 = GENDER_ALLOW.filter(f => hits46.indexOf(f) === -1);
+  if (!dead46.length) ok('白名单无僵尸项（每一项都真的在用）');
+  else err('白名单里已不再使用性别的文件：' + dead46.join(', ') + '（请同步收缩白名单）');
+  // 反例自测：把白名单外的文件塞进去，必须落网
+  if (GENDER_ALLOW.indexOf('pages/result/result.js') === -1)
+    ok('守卫自测：白名单外的消费点必被拦下（反例落网）');
+  else err('§46 自测失效：pages/result/result.js 不该在白名单里');
+  // 台账必须有 D55 这条记录（守卫指路的地方得真的有东西可看）
+  if (/\| \*\*D55\*\* \|/.test(read('docs/DECISIONS.md')))
+    ok('docs/DECISIONS.md 已登记 D55（新用途的落点）');
+  else err('缺少 D55 决策行 —— 性别用途变更将无处登记');
 }
 
 console.log('通过: ' + passed + ' | 错误: ' + errors.length + ' | 警告: ' + warnings.length);

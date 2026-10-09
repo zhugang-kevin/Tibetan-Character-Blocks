@@ -1060,26 +1060,59 @@ function mockCtx(sink) {
     check('相邻消除一次松一股（2 → 1）', ropeHpAfter === ropeHpBefore - 1,
       ropeHpBefore + ' → ' + ropeHpAfter);
     // 再消一对相邻的：第二股也松开 → DOM 罩层移除
-    let ropePair2 = null;
-    for (let n = 0; n < ropeNbs.length && !ropePair2; n++) {
-      const nb = ropeNbs[n];
-      if (!tiles()[nb] || obsIsBlockedInTest(nb)) continue;
-      for (let j = 0; j < tiles().length; j++) {
-        if (j === nb || tiles()[j].id !== tiles()[nb].id) continue;
-        if (tiles()[j].state !== 'idle' || obsIsBlockedInTest(j)) continue;
-        ropePair2 = [nb, j]; break;
+    //
+    // ⚠️ 原写法的偶发失败根因：第一次消除后**上方方块下落 + 顶部补充**，牌会换格
+    // （本文件上面已经为此改成按 uid 追踪绳结牌），但 `ropeNbs` 还是**消除前**算的格号 ——
+    // 第二次按旧格号配对，配到的牌已经不在绳结旁边了，于是消除成功但 hp 不减（表现为 hp=1）。
+    // 修法：**每一轮都按绳结牌的当前格号重算邻居**；若一时找不到贴着绳结的可消对子，
+    // 就先随便消一对让盘面流动再找（盘面会持续从补充池进货，所以必然收敛）。
+    const findFreePair36 = function () {
+      const t = tiles();
+      const map = {};
+      for (let i = 0; i < t.length; i++) {
+        if (!t[i] || t[i].state !== 'idle' || obsIsBlockedInTest(i)) continue;
+        if (map[t[i].id] === undefined) map[t[i].id] = i;
+        else return [map[t[i].id], i];
       }
-    }
-    if (ropePair2 && ropeHpAfter === 1) {
-      await clickTile(ropePair2[0]);
-      await clickTile(ropePair2[1]);
+      return null;
+    };
+    const findPairBesideRope = function () {
+      const rIdx = ropeIdxOf(ropeUid);
+      if (rIdx < 0) return null;
+      const nbs = ev('obsNeighbors(' + rIdx + ', state.cols, state.rows)');
+      for (let n = 0; n < nbs.length; n++) {
+        const nb = nbs[n];
+        if (!tiles()[nb] || obsIsBlockedInTest(nb)) continue;
+        for (let j = 0; j < tiles().length; j++) {
+          if (j === nb || tiles()[j].id !== tiles()[nb].id) continue;
+          if (tiles()[j].state !== 'idle' || obsIsBlockedInTest(j)) continue;
+          return [nb, j];
+        }
+      }
+      return null;
+    };
+    let ropeHpFinal = -1;
+    for (let round = 0; round < 6 && ropeHpAfter === 1; round++) {
+      const p2 = findPairBesideRope();
+      if (!p2) {
+        // 暂时没有贴着绳结的可消对子：消任意一对让牌流动，下一轮再找
+        const any = findFreePair36();
+        if (!any) break;
+        await clickTile(any[0]);
+        await clickTile(any[1]);
+        await sleep(400);
+        continue;
+      }
+      await clickTile(p2[0]);
+      await clickTile(p2[1]);
       await sleep(400);
-      const ropeFinal = ropeOf(ropeUid);
-      const ropeHpFinal = ropeFinal ? ropeFinal.rope : -1;
-      check('第二次相邻消除后绳结解开（hp = 0）', ropeHpFinal === 0, 'hp=' + ropeHpFinal);
-      check('解开后 DOM 罩层移除',
-        !doc.querySelector('#board .tile[data-index="' + ropeIdxOf(ropeUid) + '"] .rope'));
+      const rf = ropeOf(ropeUid);
+      ropeHpFinal = rf ? rf.rope : -1;
+      if (ropeHpFinal === 0) break;
     }
+    check('第二次相邻消除后绳结解开（hp = 0）', ropeHpFinal === 0, 'hp=' + ropeHpFinal);
+    check('解开后 DOM 罩层移除',
+      !doc.querySelector('#board .tile[data-index="' + ropeIdxOf(ropeUid) + '"] .rope'));
   }
 
   // 文化卡：藏纸卷轴形态（卷轴杆 + 喇叭 + 知道了）
@@ -2271,6 +2304,33 @@ function mockCtx(sink) {
     ev("document.querySelector('#pp-clear').click()");
     check('护照页清除后回到未选择', $('#pp-gender').textContent === '未选择', $('#pp-gender').textContent);
     ev("showScreen('home')");
+
+    // 36.8 「名字钉死」：池扩容不得换掉老用户的名字（D55①）
+    //     —— 选名是 seed 对池长取模，池一变长同一个 seed 就落到别处；
+    //        靠「同性别重复选择幂等 + 名字存下来就是事实」两层保证换不掉。
+    ev("setGender('female')");
+    const pinned36 = ev('getTibetanName().name');
+    const idx36 = ev('getTibetanName().index');
+    check('下标跟着名字一起落库（index=' + idx36 + '）', idx36 >= 0);
+    check('已存名字与下标自洽（resolveStored ok）',
+      ev("nameResolveStored(getGender(), getTibetanName().name, getTibetanName().index).ok") === true);
+    // 把女名池临时「扩容」（只加不改序，符合 append-only）
+    const naiveBefore36 = ev("namePickFor('female', 7).name");
+    ev("TIB_NAMES.female.push({ name: '新女名一', mean: '新增' }, { name: '新女名二', mean: '新增' })");
+    const naiveAfter36 = ev("namePickFor('female', 7).name");
+    check('扩容确实挪动了取模结果（seed7：' + naiveBefore36 + ' → ' + naiveAfter36 +
+      '）—— 所以「钉死名字」不是可选项', naiveBefore36 !== naiveAfter36);
+    ev("setGender('female')");   // 同一个性别再选一次
+    check('扩容后重复选同性别：名字不变（' + pinned36 + '）',
+      ev('getTibetanName().name') === pinned36, ev('getTibetanName().name'));
+    check('扩容后已存名字仍能在池里定位到（只是位置可能后移，名字本身没变）',
+      ev("TIB_NAMES.female.some(function (x) { return x.name === getTibetanName().name; })") === true);
+    ev("TIB_NAMES.female.length = TIB_NAMES.female.length - 2");   // 还原池
+    // 性别真的变了才换名（这是唯一允许的换名时机）
+    ev("setGender('male')");
+    check('性别真的变了才换名（男 ≠ ' + pinned36 + '）',
+      ev('getTibetanName().name') !== pinned36, ev('getTibetanName().name'));
+    ev("setGender('')");
   }
 
   /* ---------- 汇总 ---------- */

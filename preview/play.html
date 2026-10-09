@@ -1673,6 +1673,8 @@ function getProgress() {
     gender: (p && p.gender) || '',
     tibetanName: (p && p.tibetanName) || '',
     tibetanNameMean: (p && p.tibetanNameMean) || '',
+    // 名字在池里的下标（-1 = 没定位到）：「池扩容不换名」的凭据，与小程序同名字段
+    tibetanNameIndex: (p && typeof p.tibetanNameIndex === 'number') ? p.tibetanNameIndex : -1,
     // 权益中心（双轨制）：模式 / 城市 / 已领凭证 / 核销码流水
     userMode: (p && p.userMode) || '',
     city: (p && p.city) || '',
@@ -2047,14 +2049,30 @@ function namePoolOf(v) {
   if (k === 'female') return TIB_NAMES.female || [];
   return TIB_NAMES.neutral || [];
 }
-/* 确定性选名：同一 seed 永远同一个名字（不会每次刷新都变） */
+/* 确定性选名：同一 seed 永远同一个名字（不会每次刷新都变）。
+   返回带 index —— 下标要跟着名字一起落库，日后池扩容时凭它确认名字没被挤走。 */
 function namePickFor(gender, seed) {
   const pool = namePoolOf(gender);
   if (!pool.length) return null;
   let n = Number(seed);
   if (!isFinite(n) || n < 0) n = 0;
   const i = Math.floor(n) % pool.length;
-  return { name: pool[i].name, mean: pool[i].mean, gender: normalizeGender(gender) };
+  return { name: pool[i].name, mean: pool[i].mean, index: i, gender: normalizeGender(gender) };
+}
+/* 反查下标：老数据只存了名字没存下标时补一个；查不到留 -1（绝不因查不到就改名） */
+function nameIndexOf(gender, name) {
+  const pool = namePoolOf(gender);
+  for (let i = 0; i < pool.length; i++) { if (pool[i].name === name) return i; }
+  return -1;
+}
+/* 诊断用（不用于改名）：已存的名字是否还坐在当年的位置上 */
+function nameResolveStored(gender, name, index) {
+  const pool = namePoolOf(gender);
+  if (!pool.length) return { ok: false, reason: 'empty-pool' };
+  const i = Number(index);
+  if (!(i >= 0 && i < pool.length)) return { ok: false, reason: 'index-out-of-range' };
+  if (pool[i].name !== name) return { ok: false, reason: 'pool-shifted' };
+  return { ok: true, reason: '' };
 }
 function nameSeedFromDate(dayStr) {
   const s = String(dayStr || '');
@@ -2066,22 +2084,38 @@ function nameSeedFromDate(dayStr) {
   return sum;
 }
 function getGender() { return normalizeGender(getProgress().gender); }
+/* 只读：名字是**存下来的事实**，不是每次算出来的值 —— 池在运行时怎么变都不影响这里 */
 function getTibetanName() {
   const p = getProgress();
-  return { name: p.tibetanName || '', mean: p.tibetanNameMean || '', gender: normalizeGender(p.gender) };
+  return {
+    name: p.tibetanName || '', mean: p.tibetanNameMean || '',
+    index: (typeof p.tibetanNameIndex === 'number') ? p.tibetanNameIndex : -1,
+    gender: normalizeGender(p.gender)
+  };
 }
-/* 写性别 = 同步换一个对应性别的藏族名字；传 '' = 清除（性别与名字一并撤掉） */
+/* 写性别；传 '' = 清除（性别与名字一并撤掉）。
+   ⚠️ 重新取名字**只在性别真的变了或还没有名字时**发生（D55「名字钉死」）：
+      `namePickFor` 是 seed 对**池长**取模，池以后 append 变长时同一个 seed 会落到别的下标 ——
+      若每次点选都重算，扩容就会把老用户的名字换掉。幂等之后，扩容影响不到任何人。 */
 function setGender(v) {
   const g = normalizeGender(v);
   const p = getProgress();
+  const prev = normalizeGender(p.gender);
+  if (!g) {
+    p.gender = ''; p.tibetanName = ''; p.tibetanNameMean = ''; p.tibetanNameIndex = -1;
+    saveProgress(p);
+    return '';
+  }
   p.gender = g;
-  if (g) {
+  const needPick = !p.tibetanName || prev !== g;
+  if (needPick) {
     const picked = namePickFor(g, nameSeedFromDate((p.openLog && p.openLog.first) || ''));
     p.tibetanName = picked ? picked.name : '';
     p.tibetanNameMean = picked ? picked.mean : '';
-  } else {
-    p.tibetanName = '';
-    p.tibetanNameMean = '';
+    p.tibetanNameIndex = picked ? picked.index : -1;
+  } else if (!(p.tibetanNameIndex >= 0)) {
+    // 迁移：首版只存了名字没存下标，反查补一个（查不到留 -1，绝不因此改名）
+    p.tibetanNameIndex = nameIndexOf(g, p.tibetanName);
   }
   saveProgress(p);
   return p.gender;

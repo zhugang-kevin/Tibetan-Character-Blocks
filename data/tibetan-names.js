@@ -15,6 +15,14 @@
 //
 // 结构：{ name: 中文音译, mean: 词义 }。池内顺序固定，选名走**确定性算法**（见 utils/tibetan-name.js），
 // 同一个人每次拿到的名字一致，不会每次刷新都变。
+//
+// ⚠️⚠️ **池是 append-only，只能在末尾追加** —— 不得重排、不得改名、不得删名。
+//   原因：选名是 seed 对**池长**取模，池一变长同一个 seed 就落到别的位置，老用户会被换名字。
+//   双重保险：① 名字落库即钉死（utils/storage.js#setGender 只在性别真的变了才重取）；
+//            ② validate §45.10 持有一份**冻结基线**（写在 validate.js 里，改本文件改不掉它），
+//               逐池做前缀比对 —— 重排 / 改名 / 删名会立刻红。
+//   要改池的正确姿势：末尾追加 → 同步更新 scripts/validate.js 的 NAME_BASELINE
+//                → 回 docs/DECISIONS.md 补一条记录。有意制造摩擦，避免随手重排。
 module.exports = {
   male: [
     { name: '扎西', mean: '吉祥' },
