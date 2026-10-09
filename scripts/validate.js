@@ -4711,6 +4711,22 @@ section('47. 藏文发音预生成（D56）：端点 / 有声判定 / 限流退�
   if (kb && /letter_03/.test(kb[1]))
     ok('已知合成不出的条目已登记台账（KNOWN_BLOCKED）');
   else err('缺少 KNOWN_BLOCKED 台账 —— 读不出的音节会每次重试到底，且无人知道是已知问题');
+  // 47.5b 体检脚本：这一条同时约束**真人录音**——文件有人放进目录 ≠ 它真的有声，
+  // 录音漏录/只录进底噪/导出错声道，症状和 TTS 静默降级一模一样（都是「点了没声音」）
+  if (exists('scripts/check_voice.py') &&
+      /MIN_DUR\s*=\s*0?\.[0-9]+/.test(read('scripts/check_voice.py')) &&
+      /MIN_PEAK_DB\s*=\s*-?[0-9.]+/.test(read('scripts/check_voice.py')))
+    ok('录音体检脚本就位（scripts/check_voice.py）——真人录音也过同一道有声判定');
+  else err('缺少 scripts/check_voice.py —— 真人录音无法验证有声，静默文件会直接进包');
+  // 与 gen_voice.py 的口径必须一致（两边漂移 = 防线失效）
+  {
+    const cv = read('scripts/check_voice.py');
+    const gd = /MIN_DUR\s*=\s*([0-9.]+)/.exec(gv);
+    const cd = /MIN_DUR\s*=\s*([0-9.]+)/.exec(cv);
+    if (gd && cd && parseFloat(gd[1]) === parseFloat(cd[1]))
+      ok('两处判据同源同值（gen_voice.py 与 check_voice.py 的 MIN_DUR 一致）');
+    else err('gen_voice.py 与 check_voice.py 的 MIN_DUR 不一致 —— 同一类产物两套标准');
+  }
   // 47.5 清单：记录每条音频用的是哪个藏文写法（ཀ 还是 ཀཱ），母语者审校全靠它
   if (/MANIFEST_PATH/.test(gv) && /'form':\s*'base'/.test(gv))
     ok('生成脚本会写清单（scripts/tts-manifest.json 记录每条的藏文写法）');
