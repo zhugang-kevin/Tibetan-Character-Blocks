@@ -86,12 +86,12 @@ SECRETS = load_secrets()
 
 ITEMS = dict(PRAISE)
 ITEMS.update(SECRETS)
-# 燃灯播报（D50，用户点名）：点亮酥油灯后播《嗡 嘛 呢 叭 咪 吽》。
-# 字与字之间留空格 → 逐字庄重；走 RATE_SECRET（-8% 慢速）。6 字短句 24kbps 足够。
-ITEMS['mantra'] = ('嗡 嘛 呢 叭 咪 吽', 24)
+# ⚠️ 六字真言 mantra **已于 D58 移出本脚本**：D50 时它是「中文念『嗡嘛呢叭咪吽』」，
+#    玩家听到的根本不是藏语（D57 用户反馈「藏文发音不准确」的真正原因）。
+#    现在改由 scripts/gen_voice.py 用天翼卫藏 TTS 真正念藏文（文本：ཨོཾ་མ་ཎི་པདྨེ་ཧཱུྃ།）。
+#    留在本脚本里会有一个真实的坑：谁重跑一次 generate_chinese_voice，藏语就被覆盖回中文。
 # 单条体积上限（KB）：讲解 22KB；激励 8KB
 LIMIT = {k: (8 if k.startswith('praise') else 22) for k in ITEMS}
-LIMIT['mantra'] = 18
 # D52：讲解改为播整段（约 130 字 @10kbps ≈ 26KB）→ 单条上限随之放宽到 30KB；
 #      仍要卡上限：一旦有人把 bitrate 调回 16k 或塞进更长的正文，这里会先红。
 for _k in SECRETS:

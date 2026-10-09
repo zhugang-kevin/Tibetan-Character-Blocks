@@ -4031,9 +4031,9 @@ section('41. 灯火跳窗改版（释迦牟尼底图 / 真实酥油灯 / 静→�
     ok('体验版点亮后挂 .lit');
   else err('体验版点亮后未挂 .lit');
 
-  // 41.5 燃灯播报《嗡 嘛 呢 叭 咪 吽》（用户要求 5）：mp3 资产 + 两端接线
+  // 41.5 燃灯播报六字真言（D58：从中文改真藏文）：mp3 资产 + 两端接线 + **来源**
   if (exists('audio/voice/mantra.mp3')) {
-    const mk = fs.statSync(path.join(ROOT, 'audio/voice/mantra.mp3')).size / 1024;
+    const mk = fs.statSync(path.join(ROOT, 'audio', 'voice', 'mantra.mp3')).size / 1024;
     if (mk <= 18) ok('audio/voice/mantra.mp3 体积 ' + mk.toFixed(1) + 'KB ≤ 18KB');
     else err('mantra.mp3 超预算：' + mk.toFixed(1) + 'KB > 18KB');
   } else err('缺少 audio/voice/mantra.mp3（燃灯播报）');
@@ -4041,6 +4041,43 @@ section('41. 灯火跳窗改版（释迦牟尼底图 / 真实酥油灯 / 静→�
   else err('小程序 onLightLamp 未播报 mantra');
   if (t41.indexOf("speak('mantra')") > -1) ok('体验版 lightLamp 播报 mantra');
   else err('体验版 lightLamp 未播报 mantra');
+  // 41.5b **来源必须是藏文 TTS**（D58 的核心守卫）
+  // 背景：D50 这条音频是用 Edge TTS 念**中文**「嗡 嘛 呢 叭 咪 吽」，
+  // 玩家在跳窗里听到的压根不是藏语，却一直没人发现 —— 音频文件在、体检在、体积达标，
+  // 只有「它是用什么合成的」这一条没人钉。这次把它钉死。
+  {
+    const cn = read('scripts/gen_chinese_voice.py');
+    if (!/ITEMS\[['\"]mantra['\"]\]/.test(cn) && !/'嗡\s*嘛/.test(cn))
+      ok('中文播报脚本已不再定义 mantra（不会被重跑覆盖回中文）');
+    else err('gen_chinese_voice.py 仍定义 mantra —— 重跑一次就会把藏语覆盖回中文');
+
+    const gv58 = read('scripts/gen_voice.py');
+    // 规范写法：པདྨེ 是一个音节（padme），写成 པ་དྨེ 就成了两个音节
+    if (/'mantra':\s*'ཨོཾ་མ་ཎི་པདྨེ་ཧཱུྃ།'/.test(gv58))
+      ok('六字真言文本为规范写法 ཨོཾ་མ་ཎི་པདྨེ་ཧཱུྃ།（padme 连写，非 པ་དྨེ）');
+    else err('六字真言文本不是规范写法 —— པདྨེ 必须连写，中间不能插 tsheg');
+    if (/RATE_OVERRIDE\s*=\s*\{\s*'mantra':\s*0\.[0-9]/.test(gv58))
+      ok('六字真言单独降语速（唱诵，0.9 太赶）');
+    else err('六字真言未单独设置语速 —— 会与字母同速，听起来不像唱诵');
+
+    // 清单里必须记着它是天翼 zhuoma 合成的（可追溯到具体引擎与语速）
+    let man = null;
+    try { man = JSON.parse(read('scripts/tts-manifest.json')).mantra; } catch (e) { /* 下面报错 */ }
+    if (man && man.voice === 'zhuoma' && man.text === 'ཨོཾ་མ་ཎི་པདྨེ་ཧཱུྃ།')
+      ok('清单记录 mantra 由天翼 zhuoma 合成（voice/text 可追溯）');
+    else err('tts-manifest.json 未记录 mantra 的引擎与文本 —— 无法证明它不是中文');
+    // 时长下限：中文版 3.79s 是逐字念汉字；藏文唱诵实测 2.08s。
+    // ⚠️ 这里读**清单里生成时实测的时长**，不起 ffprobe —— 一是 validate 必须零外部依赖，
+    //    二是清单那个数是「落盘前已通过有声判定」的值，比事后量更可信。
+    if (man && typeof man.dur === 'number' && man.dur >= 1.2)
+      ok('mantra 时长 ' + man.dur + 's（≥1.2s，不像漏念六字）');
+    else err('mantra 时长异常或缺失 —— 过短多半是没念全（当前 ' +
+      (man && man.dur) + '）');
+    // 反例自测：把 padme 拆开必须被上面那条文本守卫抓到
+    if (!/'mantra':\s*'[^']*པ་དྨེ/.test(gv58))
+      ok('守卫自测：把 པདྨེ 拆成 པ་དྨེ 必被拦下');
+    else err('§41.5b 自测失效：mantra 文本里已经出现了拆分写法');
+  }
 
   // 41.6 按钮文案（用户要求 6）：文案在 data/lamp.js 单一来源，两端取用
   if (lamp41.indexOf("thanksText: '感谢您为世界和平祈福'") > -1 && lamp41.indexOf("closeText: '点击关闭'") > -1)
@@ -4864,6 +4901,95 @@ section('48. 打扰预算 + 发音诚实（D57）：不多弹窗 / 不假装能�
   if (/\| \*\*D57\*\* \|/.test(read('docs/DECISIONS.md')))
     ok('docs/DECISIONS.md 已登记 D57（打扰预算与发音诚实的依据）');
   else err('缺少 D57 决策行 —— 打扰预算的取舍依据无处可查');
+}
+
+// ---------- 49. 藏文正字法（D58：六字真言写错引出的全仓体检） ----------
+// 起因：用户指出跳窗里那条「藏文发音」不准。查下来那条音频压根是**中文**（已由 D58 修），
+// 但顺着这件事把全仓 507 条藏文串过了一遍正字法，结论有两条值得永久钉住：
+//   ① **可机械判定**的：下加字（ྲ ླ ྭ ྱ ྰ ྫ ྐ ྵ）必须紧跟基字；元音/鼻音符号必须有基字。
+//      这两类一旦写错，字形会直接散架（渲染成两个独立字符），属必修项。
+//   ② **不可机械判定**的：把一个音节拆成两个（པ་དྨེ 应为 པདྨེ）。
+//      它的外形和正确的 ཆོས་ཀྱི、དུ་བྱུང 完全一样，规则无法区分 ——
+//      所以正文里只对**六字真言这一条**用文本守卫（见 §41.5b），不做全仓通用规则。
+//      ⚠️ 试过「前一个音节是光杆辅音就报」这种启发式，被 ཆོས་ཀྱི 等合法写法大量误报，已弃用。
+// 豁免：教学部件表（VOWELS / SUBS 里的单个组合符号）本身不是词，不参与判定。
+section('49. 藏文正字法（下加字 / 元音必须挂在基字上）');
+{
+  const TIB = /[\u0F00-\u0FFF][\u0F00-\u0FFF]*/g;
+  const SUBS = 'ྲླྭྱྰྫྐྵ';
+  const VOW = 'ཱིེོུ';
+  const NAS = 'ྀྀྃྂ';
+  const isBase = function (ch) {
+    if (!ch) return false;
+    const c = ch.charCodeAt(0);
+    return c >= 0x0F40 && c <= 0x0F7D && VOW.indexOf(ch) === -1;
+  };
+  // 收集要扫的文件：数据层 + 页面 + 工具 + 体验版模板
+  const files49 = [];
+  ['data', 'pages', 'utils'].forEach(function (d) {
+    (function walk(rel) {
+      for (const e of fs.readdirSync(path.join(ROOT, rel), { withFileTypes: true })) {
+        const r = rel + '/' + e.name;
+        if (e.isDirectory()) walk(r);
+        else if (/\.(js|wxml)$/.test(e.name)) files49.push(r);
+      }
+    })(d);
+  });
+  files49.push('preview/template.html');
+
+  let nStr = 0;
+  const badSub = [], badVow = [];
+  files49.forEach(function (rel) {
+    const src = read(rel);
+    let m;
+    TIB.lastIndex = 0;
+    while ((m = TIB.exec(src))) {
+      const s = m[0];
+      nStr++;
+      // 教学部件：整串只有一个组合符号 → 不是词，跳过（否则 30 个辅音表会被误报成片）
+      if (s.length === 1 && (SUBS.indexOf(s) > -1 || VOW.indexOf(s) > -1 || NAS.indexOf(s) > -1)) continue;
+      for (let i = 0; i < s.length; i++) {
+        const ch = s[i], prev = i ? s[i - 1] : '';
+        if (SUBS.indexOf(ch) > -1) {
+          if (prev === '་') badSub.push(rel + ' 「' + s + '」下加字前有 tsheg');
+          else if (!prev || prev === ' ') badSub.push(rel + ' 「' + s + '」下加字没有基字');
+          else if (VOW.indexOf(prev) > -1 || NAS.indexOf(prev) > -1)
+            badSub.push(rel + ' 「' + s + '」下加字夹在元音之后');
+        }
+        if (VOW.indexOf(ch) > -1 || NAS.indexOf(ch) > -1) {
+          if (!prev || prev === '་' || prev === ' ')
+            badVow.push(rel + ' 「' + s + '」元音/鼻音符号没有基字');
+        }
+      }
+    }
+  });
+  ok('扫描藏文串 ' + nStr + ' 条 / ' + files49.length + ' 个文件');
+  if (!badSub.length) ok('下加字全部紧跟基字（无「ྲ 前插 tsheg」这类散架写法）');
+  else err('下加字位置错误 ' + badSub.length + ' 处：' + badSub.slice(0, 3).join('；'));
+  if (!badVow.length) ok('元音 / 鼻音符号全部有基字');
+  else err('元音/鼻音符号缺基字 ' + badVow.length + ' 处：' + badVow.slice(0, 3).join('；'));
+  // 反例自测：两条判据都必须能抓到坏样本（否则等于没检查）
+  const probeSub = 'བས' + '་' + 'ྲ' + 'ོ';   // ས 后面插了 tsheg 再接下加字 → 必须报
+  const probeVow = 'ཀ' + '་' + 'ི';          // tsheg 后孤零零一个元音 → 必须报
+  const catchSub = (function () {
+    for (let i = 0; i < probeSub.length; i++) {
+      if (SUBS.indexOf(probeSub[i]) > -1 && probeSub[i - 1] === '་') return true;
+    }
+    return false;
+  })();
+  const catchVow = (function () {
+    for (let i = 0; i < probeVow.length; i++) {
+      if (VOW.indexOf(probeVow[i]) > -1 && probeVow[i - 1] === '་') return true;
+    }
+    return false;
+  })();
+  if (catchSub && catchVow)
+    ok('守卫自测：坏样本（tsheg 后接下加字 / 元音）必被拦下');
+  else err('§49 自测失效：判据抓不到反例');
+  // 六字真言的 padme 连写，靠 §41.5b 的文本守卫，这里只做交叉提醒
+  if (/\| \*\*D58\*\* \|/.test(read('docs/DECISIONS.md')))
+    ok('docs/DECISIONS.md 已登记 D58（六字真言改真藏文 + 正字法体检结论）');
+  else err('缺少 D58 决策行');
 }
 
 console.log('通过: ' + passed + ' | 错误: ' + errors.length + ' | 警告: ' + warnings.length);

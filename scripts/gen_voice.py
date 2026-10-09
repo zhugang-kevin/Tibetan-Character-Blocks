@@ -52,7 +52,17 @@ CARDS_PATH = os.path.join(ROOT, 'data', 'cards.js')
 EMOTION_TEXTS = {
     'tashi_delek': 'བཀྲ་ཤིས་བདེ་ལེགས',
     'blessing_01': 'སེམས་ཁྲལ་མེད་པར་སྤྲོ་པོ་ཡོང་བར་ཤོག',
+    # 六字真言（D58）。**原来这条是中文**——D50 用 Edge TTS 念「嗡 嘛 呢 叭 咪 吽」，
+    # 玩家听到的根本不是藏语（D57 用户反馈「藏文发音不准确」的真正原因）。
+    # 现改为天翼卫藏 TTS 真正念藏文，文本取**规范写法**：
+    #   ༀ/ཨོཾ མ ཎི པདྨེ ཧཱུྃ
+    # ⚠️ 第四个字是 **པདྨེ（padme，一个音节）**，不能写成 པ་དྨེ ——
+    #    中间多一个 tsheg 就变成「pa-dme」两个音节，念出来是错的。
+    'mantra': 'ཨོཾ་མ་ཎི་པདྨེ་ཧཱུྃ།',
 }
+
+# 逐条语速覆盖：六字真言是**唱诵**，默认 0.9 太赶（实测 0.9 → 1.63s，0.7 → 2.08s）
+RATE_OVERRIDE = {'mantra': 0.7}
 
 # 天翼默认参数（可在 tts-config.json 里覆盖）
 # 2026-10-09 核对官方文档（8005200036，最近更新 2026-10-08）：公网接入点为
@@ -436,7 +446,11 @@ def run(targets, texts, cfg, force, quiet=False, sleep=DEFAULT_SLEEP, retries=DE
             # 字母逐个试写法（裸字形 → +ཱ），哪个真出声用哪个；重试耗尽再换下一种写法
             for ci, cand in enumerate(candidates_for(vid, text)):
                 for attempt in range(1, retries + 1):
-                    wav = synthesize(cfg, cand)
+                    # 逐条语速（六字真言要唱诵，0.9 太赶）；用副本，别污染全局配置
+                    cfg_i = dict(cfg)
+                    if vid in RATE_OVERRIDE:
+                        cfg_i['speechRate'] = RATE_OVERRIDE[vid]
+                    wav = synthesize(cfg_i, cand)
                     dur, peak = wav_stats(wav)
                     if len(wav) >= 512 and peak >= MIN_PEAK and dur >= MIN_DUR:
                         audio = wav
@@ -461,6 +475,7 @@ def run(targets, texts, cfg, force, quiet=False, sleep=DEFAULT_SLEEP, retries=DE
                 'form': 'base' if used == text else 'alt',
                 'dur': round(d, 3), 'peak': p,
                 'voice': cfg.get('voice'), 'sampleRate': int(cfg['sampleRate']),
+                'speechRate': float(RATE_OVERRIDE.get(vid, cfg['speechRate'])),
                 'ts': time.strftime('%Y-%m-%d %H:%M:%S'),
             }
         except urllib.error.HTTPError as e:

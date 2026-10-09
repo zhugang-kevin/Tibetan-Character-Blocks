@@ -233,6 +233,16 @@
     "ts": "2026-10-09 12:46:18",
     "voice": "zhuoma"
   },
+  "mantra": {
+    "dur": 2.082,
+    "form": "base",
+    "peak": 5377,
+    "sampleRate": 16000,
+    "speechRate": 0.7,
+    "text": "ཨོཾ་མ་ཎི་པདྨེ་ཧཱུྃ།",
+    "ts": "2026-10-09 19:52:44",
+    "voice": "zhuoma"
+  },
   "tashi_delek": {
     "dur": 0.812,
     "form": "base",
