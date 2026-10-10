@@ -5821,6 +5821,56 @@ section('57. 外部依赖选型纪律（D68：禁止凭直觉选服务商）');
   else err('缺少 D68 决策行');
 }
 
+// ---------- 58. 探针必须校验自己的输入（D69：三探针「全挂」其实测的是我的输入错误） ----------
+// 事故：D67 的三条验收探针报出「三项全挂」，看起来非常正式 —— 但
+//   · P1 把 `letter_01` 这串**拉丁字母**喂给了藏文 TTS（ids 不是藏文，藏文在 elements.js）
+//   · P2 比较的两个样本**都是静音桩**（时长都 ≈0.03s）
+//   · P3 的短式本身就是静音桩，分母趋近 0
+// **探针不校验输入，就会产出「格式完整、结论完全错误」的报告 —— 比没有报告更糟。**
+// 本节把「输入校验」钉成硬性要求。
+section('58. 探针输入校验（D69：先证明喂对了，再给引擎下结论）');
+{
+  if (exists('scripts/tts_bakeoff.py')) {
+    const bk = read('scripts/tts_bakeoff.py');
+    // 58.1 必须存在「待合成文本是藏文」的校验
+    if (/def assert_tibetan\(/.test(bk) && /assert_tibetan\(/.test(bk.replace(/def assert_tibetan\(/, '')))
+      ok('探针校验「待合成文本必须是藏文」并在合成前调用（防把 id 当藏文喂进去）');
+    else err('探针没有校验输入文本是否为藏文 —— D69 的 P1 就是栽在这里');
+    // 58.2 对比类探针必须先确认两侧可闻
+    if (/def assert_audible\(/.test(bk))
+      ok('对比类探针必须两侧均可闻（防拿静音桩做对比）');
+    else err('缺少 assert_audible —— 拿两个静音桩比出的「无差异」会被当成引擎缺陷');
+    // 58.3 探针文本必须是**框架形态**（裸单音节是静音桩，测不出东西）
+    if (/ཀ་ཀ་ཀ/.test(bk))
+      ok('探针对比使用框架形态输入（裸单音节是静音桩，测不出任何东西）');
+    else err('探针仍用裸单音节做对比 —— 那会用静音桩得出假结论');
+    // 58.4 藏文文本必须来自 elements.js 的 .tibetan，而不是 id
+    if (/elements\.js/.test(bk) && /\.tibetan/.test(bk))
+      ok('评测集从 elements.js 的 .tibetan 取藏文（id 不是藏文）');
+    else err('评测集来源可疑 —— id ≠ 藏文，必须取 .tibetan');
+  } else err('缺少 scripts/tts_bakeoff.py');
+
+  // 58.5 框架法工具必须在册（D69 的正解）
+  if (exists('scripts/synth_letters_by_frame.py')) {
+    const sf = read('scripts/synth_letters_by_frame.py');
+    if (/FRAMES/.test(sf) && /མ། མ།|\{c\}། \{c\}། \{c\}།/.test(sf))
+      ok('框架法工具在册，且含 shad 回退链（tsheg 切不开时换句号分隔）');
+    else err('框架法工具缺少回退链 —— མ / ལ 会被连读成一片，tsheg 框架切不开');
+    if (/>= 3|len\(runs\) < 3/.test(sf))
+      ok('裁切要求「至少 3 段」才取中段（2 段时的"中段"其实是连读）');
+    else err('裁切未要求 ≥3 段 —— 2 段情况下取出的可能是连读的两个音节');
+  } else err('缺少 scripts/synth_letters_by_frame.py（D69 的正解工具）');
+
+  // 58.6 台账必须记录这次更正（否则错误的结论会继续被引用）
+  if (/\| \*\*D69\*\* \|/.test(read('docs/DECISIONS.md')))
+    ok('docs/DECISIONS.md 已登记 D69（错误结论的更正与真实结论）');
+  else err('缺少 D69 —— 被推翻的旧结论没有更正记录，会被继续引用');
+  // 评估文档必须标注更正
+  if (/重大更正/.test(read('docs/tts-provider-evaluation.md')))
+    ok('评估文档已标注「重大更正」（旧结论明确作废）');
+  else err('评估文档未标注更正 —— 错误结论会以正式文档的形式继续流传');
+}
+
 console.log('通过: ' + passed + ' | 错误: ' + errors.length + ' | 警告: ' + warnings.length);
 if (errors.length) { console.log('\x1b[31m存在错误，需修复后重试\x1b[0m'); process.exit(1); }
 console.log('\x1b[32m全部自检通过 ✓\x1b[0m');

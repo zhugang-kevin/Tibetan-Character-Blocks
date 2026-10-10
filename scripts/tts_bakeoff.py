@@ -34,6 +34,7 @@ import io
 import json
 import math
 import os
+import re
 import struct
 import sys
 import wave
@@ -68,6 +69,32 @@ def is_audible(st, min_dur=0.12, min_peak=0.02):
         return False
     d, p, r = st
     return d >= min_dur and p >= min_peak and r > 0.004
+
+
+# ---- 输入校验（D69：防止「测的是自己的错误输入」）------------------------
+# 这个 guard 是补一次真实事故：D67 的三条探针「三项全挂」，看起来很正式，
+# 但**测的全是我的输入错误** ——
+#   · P1 把 `letter_01` 这串**拉丁字母**喂给了藏文 TTS（ids 不是藏文，藏文在 elements.js）
+#   · P2 比较的是**两个静音桩**（裸 ཨོཾ / ཨོ 都发不出声，时长都≈0.03s → "无差异"）
+#   · P3 的短式本身就是静音桩
+# **探针不校验输入，就会给出一个格式完整、结论错误的报告。** 比没有报告更糟。
+TIB = re.compile(u'[\u0F00-\u0FFF]')
+
+
+def assert_tibetan(text, where=''):
+    """待合成文本必须**至少含一个藏文字符**，否则就是在测别的东西。"""
+    if not TIB.search(text or ''):
+        raise ValueError('输入校验失败%s：%r 不含任何藏文字符（U+0F00–U+0FFF）—— '
+                         '先修调用方，别急着给引擎下结论' % (where, text[:30]))
+    return True
+
+
+def assert_audible(st, where=''):
+    """两个样本做对比前，**每个**都必须先通过「可闻」判据。"""
+    if not is_audible(st):
+        raise ValueError('输入校验失败%s：样本本身不可闻（%s）—— 拿静音桩做对比没有意义'
+                         % (where, 'None' if not st else '%.2fs 峰值 %.3f' % (st[0], st[1])))
+    return True
 
 
 # ---- 服务商注册表 --------------------------------------------------------
@@ -136,6 +163,7 @@ def probe_coverage(fn, items, sleep=0.0):
     ok, bad = [], []
     for vid, text in items:
         try:
+            assert_tibetan(text, '（P1 %s）' % vid)   # ← 先校验再合成
             b, meta = fn(text, 0.9)
             st = wav_stats(b)
             (ok if is_audible(st) else bad).append((vid, st))
@@ -147,11 +175,15 @@ def probe_coverage(fn, items, sleep=0.0):
 def probe_marks(fn, base, with_mark, sleep=0.0):
     """P2：变音符号敏感度。base=ཨོ，with_mark=ཨོཾ。
     返回 (相对长度变化, 波形是否不同)。**长度完全相同 ⇒ 符号没发音**。"""
+    assert_tibetan(base, '（P2 base）')
+    assert_tibetan(with_mark, '（P2 with_mark）')
     b1, _ = fn(base, 0.9)
     b2, _ = fn(with_mark, 0.9)
     s1, s2 = wav_stats(b1), wav_stats(b2)
-    if not s1 or not s2 or s1[0] <= 0:
-        return None, None
+    # ⚠️ 两侧都必须**可闻**才允许比较。此前拿两个静音桩比出来的「Δ=0%」
+    # 被记成「引擎不发音」—— 实际是两边都没发声，两个变量都没被真正测到。
+    assert_audible(s1, '（P2 base=%s）' % base)
+    assert_audible(s2, '（P2 with_mark=%s）' % with_mark)
     delta = (s2[0] - s1[0]) / s1[0]
     wave_diff = b1 != b2
     return delta, wave_diff
@@ -191,18 +223,25 @@ def load_items():
     p = os.path.join(ROOT, 'data', 'voices.js')
     if not os.path.exists(p):
         return []
-    r = subprocess.run(
-        ['node', '-e', "console.log(JSON.stringify(require('./data/voices.js').ids||[]))"],
+    # ⚠️ **这里曾经把整个 P1 结论都弄错了**：`voices.js` 的 ids 是 `letter_01`
+    #    这种**id 字符串**，不是藏文字符。我误以为「id 即藏文」，于是把 "letter_01"
+    #    这串拉丁字母喂给藏文 TTS —— 出来的自然是垃圾/失败，我却把它记成
+    #    「天翼覆盖率只有 60%」。**那个数字是无效的，已作废。**
+    #    正确做法：从 data/elements.js 取 `.tibetan` 字段作为待合成文本。
+    r = subprocess.run(['node', '-e',
+        "const e=require('./data/elements.js');"
+        "console.log(JSON.stringify(Object.keys(e)"
+        ".filter(k=>k.indexOf('letter_')===0)"
+        ".map(k=>({id:k,tibetan:e[k].tibetan}))))"],
         cwd=ROOT, capture_output=True, text=True, timeout=60)
     if r.returncode != 0:
-        sys.stderr.write('读取 voices.js 失败：%s\n' % r.stderr.strip()[:120])
+        sys.stderr.write('读取 elements.js 失败：%s\n' % r.stderr.strip()[:120])
         return []
     try:
-        ids = json.loads(r.stdout.strip() or '[]')
+        pairs = json.loads(r.stdout.strip() or '[]')
     except ValueError:
         return []
-    # id 即藏文文本（data/elements.js 里 id 与藏文同形），这里以 ids 本身作待合成文本
-    return [(i, i) for i in ids]
+    return [(p['id'], p['tibetan']) for p in pairs]
 
 
 def main():
@@ -242,15 +281,20 @@ def main():
             r = {}
 
             # P2 / P3 探针（先跑这两个：快，且是致死项）
+            # 探针文本必须选**已被证明能出声**的形态（E 系列：裸单音节发不出来，
+            # 需走框架法）。这里用 ཀ / ཀཱ 这一对：两者都能出声，
+            # 才能真正测出「引擎区分不区分 ཱ」。
+            # ⚠️ 必须用**框架形态**（多音节）当探针输入：裸单音节是静音桩，
+            #    拿它做对比会被 assert_audible 拦下（这正是 D69 修掉的那个坑）。
             try:
-                d, wd = probe_marks(fn, 'ཨོ', 'ཨོཾ')
+                d, wd = probe_marks(fn, 'ཀ་ཀ་ཀ', 'ཀཱ་ཀཱ་ཀཱ')
                 r['p2_delta'] = d
                 r['p2_verdict'] = (d is not None and abs(d) >= P2_MIN_DELTA)
             except Exception as e:
                 r['p2_verdict'] = False
                 r['p2_error'] = str(e)[:60]
             try:
-                ratio, why = probe_vowel(fn, 'ཀ', 'ཀཱ')
+                ratio, why = probe_vowel(fn, 'ཀ་ཀ་ཀ', 'ཀཱ་ཀཱ་ཀཱ')
                 r['p3_ratio'] = ratio
                 r['p3_note'] = why
                 r['p3_verdict'] = (ratio is not None and ratio >= P3_MIN_RATIO)
@@ -268,16 +312,24 @@ def main():
             print('  P1 覆盖率        %s' % (
                 ('%.0f%%（缺 %d 条）' % (r['coverage'] * 100, len(r.get('missing', []))))
                 if r.get('coverage') is not None else '（未跑，用 --probe-only）'))
-            print('  P2 变音符号敏感  %s' % (
-                'Δ时长 = %+.1f%%（判据 ≥%d%%）→ %s'
-                % (r['p2_delta'] * 100, P2_MIN_DELTA * 100,
-                   '通过' if r['p2_verdict'] else '**不通过：符号很可能没发音**')))
+            # 报告必须能承受「探针被输入校验拦下」这种情况 ——
+            # 早先直接取 r['p2_delta']，一被拦就 KeyError，把「校验失败」显示成了「未测」。
+            if r.get('p2_delta') is None:
+                print('  P2 变音符号敏感  %s' % (
+                    '探针未生效 → 不计入结论（%s）' % r.get('p2_error', '输入校验拦截')))
+            else:
+                print('  P2 变音符号敏感  %s' % (
+                    'Δ时长 = %+.1f%%（判据 ≥%d%%）→ %s'
+                    % (r['p2_delta'] * 100, P2_MIN_DELTA * 100,
+                       '通过' if r['p2_verdict'] else '**不通过：符号很可能没发音**')))
             print('  P3 长短元音区分  %s' % (
                 ('ཀཱ/ཀ = %.2f（判据 ≥%.2f）→ %s' % (r['p3_ratio'], P3_MIN_RATIO,
                         '通过' if r['p3_verdict'] else '**不通过：长短 a 不分**'))
                 if r.get('p3_ratio') is not None else
                 '无法判定 → **不通过**（%s）' % r.get('p3_note', '未知原因')))
-            verdicts = [v for k2, v in r.items() if k2.endswith('_verdict')]
+            # 只把「真正跑到的」探针计入总判：输入校验拦下的，既不算通过也不算不通过
+            verdicts = [v for k2, v in r.items()
+                        if k2.endswith('_verdict') and (k2 != 'p2_verdict' or r.get('p2_delta') is not None)]
             r['overall'] = all(verdicts) if verdicts else None
             print('  总判            %s' % ('**合格**' if r['overall'] else '不合格'))
             results[key] = r
