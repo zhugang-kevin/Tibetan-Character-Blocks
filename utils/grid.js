@@ -114,18 +114,25 @@ function measureTibetanSyllable(text, fontSizePx, measureWidth) {
       return { width: w, height: Math.max(fs, layersOf(t) * 0.62 * fs) };
     }
   }
-  // 兜底估算（无量算通道 / 量算失败）：宽 ≈ 0.55 × 字号 × 层数 + 0.158 × 字号 × 分隔符数
-  //   ⚠️ 0.158 是**实测值，不是估计值**：用 NotoSerifTibetan-Bold.ttf 在 100px 字号下
-  //      逐字量得的 advance（见 .workbuddy 的测量脚本输出，记录在 docs/tibetan-orthography.md）：
-  //        基字 ཀ/ཁ/ག/ང = 0.426 em ｜ tsheg ་ = **0.158 em** ｜ shad ། = 0.137 em
-  //      即 tsheg 只有基字的 **0.371 倍**，远窄于一个字。
-  //      第一版我随手写 0.28（猜的），改成实测 0.158 —— **能测的常数不要猜。**
+  // 兜底估算（无量算通道 / 量算失败）：宽 ≈ 0.55 × 字号 × 层数 + 0.284 × 字号 × 分隔符数
+  //   ⚠️ 0.284 是**真字体的实测值**（`scripts/measure_font_metrics.py`，带两条自证）：
+  //        基字 ཀ = **0.748 em**（ཁ 0.723 / ག 0.762 / ང 0.617 —— 各不相同）
+  //        tsheg ་ = **0.284 em** ｜ shad ། = 0.296 em
+  //        tsheg / 基字 = **0.3797**
+  //   沿革（务必保留，这是本项目最贵的一课）：
+  //     ① 最初我随手猜 0.28；
+  //     ② 后来"实测"出 0.158 —— 但**那次测量用的是坏字体**（文件其实是 HTML）＋
+  //        canvas 在字体就绪前就画了 → 量到的是**回退字体**；
+  //     ③ 现在用正版 Noto（2,063,504 字节完整文件）重测，得 **0.284**。
+  //   三次里只有第三次可信 —— 因为它自带**对照组自证**：
+  //     与「必然回退」的渲染结果对比；若两者相同则判定测量作废。
+  //   **能测的常数不要猜；但更要紧的是：先证明尺子是对的。**
   var seps = 0;
   for (var k = 0; k < t.length; k++) {
     var cc = t.charCodeAt(k);
     if (cc === 0x0F0B || cc === 0x0F0C || cc === 0x0F0D || cc === 0x0F0E) seps++;
   }
-  return { width: (0.55 * layersOf(t) + 0.158 * seps) * fs,
+  return { width: (0.55 * layersOf(t) + 0.284 * seps) * fs,
            height: Math.max(fs, layersOf(t) * 0.62 * fs) };
 }
 
