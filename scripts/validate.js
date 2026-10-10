@@ -5997,6 +5997,78 @@ section('60. 牌面视觉一致性（填充率 / 行首 tsheg / 装得下）');
   else err('缺少 D71 决策行');
 }
 
+// ---------- 61. 二进制资产必须验「magic bytes」（D72：唯一字体其实是 HTML） ----------
+// 事故（2026-10-10，做藏文视觉重心测量时偶然发现）：
+//   `assets-src/fonts/NotoSerifTibetan-Bold.ttf` **根本不是字体** ——
+//   它是一份 270KB 的 **HTML 文档**（文件头 `<!DOCTYP`）。
+//   而它是**项目里唯一的字体文件**，`scripts/make_logo.py` 用它渲染
+//   藏文金字（བཀྲ་ཤིས་བདེ་ལེགས）与中心 ཀ —— 也就是说**那两个产物是在
+//   字体加载失败的状态下生成的**，而且**没有任何门禁报红**。
+//   更糟的是：我做 D70「tsheg 字宽实测」时量到的 0.426em 等数字，
+//   也是**回退字体**的结果（各字母宽度完全相同 42.64px 就是回退/tofu 的特征），
+//   不是 Noto 的真实度量。
+// 教训与 §53.5（图片只查存在不查有效）**同源**：**二进制资产必须验magic bytes**。
+section('61. 二进制资产 magic bytes（D72：唯一字体其实是 HTML）');
+{
+  function head(rel, n) {
+    try {
+      const fd = fs.openSync(path.join(ROOT, rel), 'r');
+      const buf = Buffer.alloc(n || 8);
+      fs.readSync(fd, buf, 0, buf.length, 0);
+      fs.closeSync(fd);
+      return buf;
+    } catch (e) { return null; }
+  }
+  // 61.1 字体必须是真字体
+  const FONT_CANDIDATES = [
+    'assets-src/fonts/NotoSerifTibetan-Bold.ttf'
+  ];
+  FONT_CANDIDATES.forEach(function (rel) {
+    if (!exists(rel)) { warn(rel + ' 不存在（字体源缺失，生成脚本会回退到系统字体）'); return; }
+    const h = head(rel, 4);
+    if (!h) { err(rel + ' 无法读取'); return; }
+    const isTTF = h[0] === 0x00 && h[1] === 0x01 && h[2] === 0x00 && h[3] === 0x00;
+    const isOTF = h.toString('latin1') === 'OTTO';
+    const isWOFF = h.toString('latin1').slice(0, 4) === 'wOFF';
+    if (isTTF || isOTF || isWOFF)
+      ok(rel + ' 是真字体（magic bytes 正确）');
+    else
+      err(rel + ' **不是字体文件**（前 4 字节 ' + h.toString('hex') +
+        '；TTF 应为 00010000）—— 它是 ' + (h.toString('latin1').trim().startsWith('<') ? 'HTML/文本' : '未知格式') +
+        '。用它渲染藏文的脚本会**静默回退到系统字体**，产物是错的却不会报错');
+  });
+  // 61.2 位图资产 magic bytes（PNG / JPEG）
+  [['images/logo-144.png', 'png'], ['images/bg-global.jpg', 'jpg']].forEach(function (pair) {
+    const rel = pair[0], kind = pair[1];
+    if (!exists(rel)) { err(rel + ' 缺失'); return; }
+    const h = head(rel, 8);
+    if (!h) { err(rel + ' 无法读取'); return; }
+    const okPng = h[0] === 0x89 && h.toString('latin1', 1, 4) === 'PNG';
+    const okJpg = h[0] === 0xFF && h[1] === 0xD8;
+    if ((kind === 'png' && okPng) || (kind === 'jpg' && okJpg)) ok(rel + ' magic bytes 正确');
+    else err(rel + ' magic bytes 不对（期望 ' + kind.toUpperCase() + '）—— 文件可能被静默损坏');
+  });
+  // 61.3 音频资产 magic bytes（MP3 需 ID3 或帧同步）
+  {
+    const p = 'audio/voice/letter_01.mp3';
+    if (exists(p)) {
+      const h = head(p, 3);
+      const okMp3 = (h.toString('latin1', 0, 3) === 'ID3') || (h[0] === 0xFF && (h[1] & 0xE0) === 0xE0);
+      if (okMp3) ok(p + ' magic bytes 正确（MP3）');
+      else err(p + ' 不是有效 MP3（magic bytes ' + h.toString('hex') + '）');
+    } else warn('audio/voice/letter_01.mp3 不存在，跳过音频 magic 校验');
+  }
+  // 61.4 这批字体/图片的**来源与许可**必须可追溯（配合 §57）
+  if (exists('assets-src/fonts/README.md')) {
+    const rd = read('assets-src/fonts/README.md');
+    if (/OFL/.test(rd) && /Noto/.test(rd)) ok('字体来源与许可在册（Noto / OFL-1.1）');
+    else warn('字体 README 未写明来源或许可');
+  }
+  if (/\| \*\*D72\*\* \|/.test(read('docs/DECISIONS.md')))
+    ok('docs/DECISIONS.md 已登记 D72（字体损坏与二进制资产校验）');
+  else err('缺少 D72 决策行 —— 这次事故没有留下可查的记录');
+}
+
 console.log('通过: ' + passed + ' | 错误: ' + errors.length + ' | 警告: ' + warnings.length);
 if (errors.length) { console.log('\x1b[31m存在错误，需修复后重试\x1b[0m'); process.exit(1); }
 console.log('\x1b[32m全部自检通过 ✓\x1b[0m');
