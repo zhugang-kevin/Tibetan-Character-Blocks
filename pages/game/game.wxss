@@ -233,12 +233,19 @@
 }
 
 /* 藏文字母：暖金色浮雕字，居中、字号为格子 60%（由 JS 传入） */
+/* D75 视觉重心补偿（**实测**，非推断）
+   藏文 Uchen 字形挂在顶线上，墨迹整体偏**上** —— 实测「墨心 vs 格子中心」：
+     ཀ་ -0.054em ／ ཀི་ -0.148em ／ བཀྲ་ -0.202em ／ ངའི་ -0.410em
+   平均 **-0.203em**（负 = 墨心在格子中心上方）。
+   注意方向：字形是**偏高**，不是偏低（与最初"居中偏下"的猜测相反 —— 所以必须量）。
+   补偿：整体**向下**移 0.2em。效果：最大偏差从 0.41em 收敛到约 0.21em。
+   测量方法见 scripts/measure_ink_bounds.py（PNG 逐像素 + 对照组自证）。 */
 .glyph {
   font-weight: 600;
   line-height: 1;
   color: #FFF6DC;
   text-shadow: 0 3rpx 0 rgba(0, 0, 0, 0.45), 0 -1rpx 0 rgba(255, 255, 255, 0.42);
-  transform: translateY(-2%);
+  transform: translateY(0.2em);
 }
 
 .glyph-img {

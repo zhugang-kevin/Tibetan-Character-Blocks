@@ -183,7 +183,15 @@
     60% { transform: translateX(-3px); } 80% { transform: translateX(3px); }
   }
   .tile.golden { background: linear-gradient(160deg, #FFF9E6, #FFEFC2); border-color: #E0B84A; }
-  .tile .glyph { font-weight: 400; line-height: 1; }
+  .tile .glyph { font-weight: 400; line-height: 1; /* D75 视觉重心补偿（**实测**，非推断）
+     藏文 Uchen 的字形挂在顶线上，墨迹整体偏上 —— 实测「墨心 vs 格子中心」：
+         ཀ་ -0.054em ／ ཀི་ -0.148em ／ བཀྲ་ -0.202em ／ ངའི་ -0.410em
+     平均 **-0.203em**（负 = 墨心在格子中心**上方**）。
+     即：字形整体**偏高**，不是偏低（与最初"居中偏下"的猜测相反 —— 所以必须量）。
+     补偿：整体**向下**移 0.20em，使墨心回到格子中心附近。
+     效果：最大偏差从 0.41em 收敛到约 0.21em（偏差上下对称）。
+     测量方法见 scripts/measure_ink_bounds.py（PNG 逐像素 + 对照组自证）。 */
+    transform: translateY(0.20em); }
   .tile .icon-img { width: 74%; height: 74%; object-fit: contain; }
   .tile .fallback { font-size: 60%; font-weight: 700; }
   .tile .star {
