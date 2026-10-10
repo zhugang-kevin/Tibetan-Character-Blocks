@@ -5871,6 +5871,66 @@ section('58. 探针输入校验（D69：先证明喂对了，再给引擎下结�
   else err('评估文档未标注更正 —— 错误结论会以正式文档的形式继续流传');
 }
 
+// ---------- 59. 藏文书写规范（D70：每条规则都必须有出处） ----------
+// 用户 2026-10-10：「你没有实际参照参考任何真实来源信息……是文盲做出来的内容」。
+// 复盘：项目里从来没有一份写清藏文标点规则的文档，也从没人对照过出处 ——
+// 实测「碰巧没写错」，但**碰巧 ≠ 正确**：没有出处的规则随时可能被写错而无人发现。
+// 本节把「出处 → 判据 → 机械检验」这条链钉死。
+section('59. 藏文书写规范（出处 / 判据 / 机械检验）');
+{
+  // 59.1 规范文档必须在册，且**必须附出处**（不是凭印象写的规则）
+  if (exists('docs/tibetan-orthography.md')) {
+    const doc59 = read('docs/tibetan-orthography.md');
+    const SRC = ['W3C', 'DigitalTibetan', 'TibetanLanguage.school', 'Tsadra', 'freetibet'];
+    const lack = SRC.filter(s => doc59.indexOf(s) === -1);
+    if (!lack.length) ok('规范文档在册，且列明 5 个来源（W3C 标准 / 排版规范 / 教材 / 文法）');
+    else err('规范文档缺少来源：' + lack.join('、') + ' —— 没出处的规则等于凭印象');
+    // 五条硬规则必须都在
+    const RULES = ['R1', 'R2', 'R3', 'R4', 'R5'];
+    const lackR = RULES.filter(r => doc59.indexOf('### ' + r) === -1);
+    if (!lackR.length) ok('五条硬规则 R1–R5 齐全（含「tsheg 不得紧接 shad」等例外）');
+    else err('规范文档缺少规则：' + lackR.join('、'));
+  } else err('缺少 docs/tibetan-orthography.md —— 藏文规范无出处可查');
+
+  // 59.2 审计脚本必须在册且能跑（判据可机械检验）
+  if (exists('scripts/audit_tibetan_punct.py')) {
+    const au = read('scripts/audit_tibetan_punct.py');
+    if (/R2/.test(au) && /R3/.test(au) && /R4/.test(au) && /R5/.test(au))
+      ok('审计脚本在册，覆盖 R2–R5 四条硬规则');
+    else err('审计脚本未覆盖全部硬规则');
+    // 审计必须能排除自身正则造成的误报（曾有 6 处 [་།] 字符类被误判）
+    if (/SKIP_FILES|误报/.test(au))
+      ok('审计已处理「自身正则字符类」的误报（曾把 [་།] 判成违规）');
+    else warn('审计未显式处理自身正则误报，可能给出假违规');
+  } else err('缺少 scripts/audit_tibetan_punct.py —— 规则无法机械检验');
+
+  // 59.3 尾随 tsheg（用户规则 1、2）必须在两端实现，且例外正确
+  {
+    const tt = read('utils/tibetan-text.js');
+    if (/function withTseg/.test(tt) && /u0F0B/.test(tt))
+      ok('withTseg 在册（字母/音节补尾随 tsheg —— 用户规则 1、2）');
+    else err('缺少 withTseg —— 用户规则 1、2 未落地');
+    const tpl59 = read('preview/template.html');
+    if (/function withTseg/.test(tpl59))
+      ok('体验版同契实现 withTseg（两端规则一致）');
+    else err('体验版缺少 withTseg —— 两端不一致');
+    // 例外必须写进实现：已以 tsheg/shad/visarga 收尾的不动
+    if (/u0F0D/.test(tt) && /u0F7F/.test(tt))
+      ok('withTseg 已实现例外（R2 不以 tsheg 接 shad / R5 visarga 后不加）');
+    else err('withTseg 缺例外 —— 会写出「བཀྲ་ཤིས་།」这类错形');
+  }
+
+  // 59.4 牌面真的用了它（否则工具写了也是死的）
+  if (/tibText\.withTseg\(/.test(read('pages/game/game.js')))
+    ok('牌面文本生成处已调用 withTseg（不是只定义不调用）');
+  else err('战斗牌面未调用 withTseg —— 字母牌仍显示裸字');
+
+  // 59.5 台账
+  if (/\| \*\*D70\*\* \|/.test(read('docs/DECISIONS.md')))
+    ok('docs/DECISIONS.md 已登记 D70（藏文规范与出处）');
+  else err('缺少 D70 决策行');
+}
+
 console.log('通过: ' + passed + ' | 错误: ' + errors.length + ' | 警告: ' + warnings.length);
 if (errors.length) { console.log('\x1b[31m存在错误，需修复后重试\x1b[0m'); process.exit(1); }
 console.log('\x1b[32m全部自检通过 ✓\x1b[0m');

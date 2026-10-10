@@ -137,9 +137,27 @@ function isWellFormedSentence(text) {
   return { ok: reasons.length === 0, reasons: reasons };
 }
 
+
+// 补尾随 tsheg（D70 · 依据 docs/tibetan-orthography.md R1）
+//   [TS]：「tsheg must invariably be put down at the end of each written syllable,
+//          except before a shad」—— 即独立的音节/字母单位**应当以 ་ 收尾**。
+//   ⚠️ 例外必须同时遵守（否则会写出错形）：
+//     · 已以 ་（U+0F0B）/ ༌（U+0F0C）/ །（U+0F0D）/ ཿ（U+0F7F）收尾 → 不动
+//       （R2：tsheg 不得紧接 shad；R5：visarga 后不得有 tsheg）
+//     · 非藏文文本 → 不动
+//   幂等：对已补过的文本再调用不会重复添加。
+function withTseg(text) {
+  var t = String(text == null ? '' : text);
+  if (!t) return t;
+  if (!/[\u0F00-\u0FFF]/.test(t)) return t;          // 不含藏文：不动
+  if (/[\u0F0B\u0F0C\u0F0D\u0F7F]$/.test(t)) return t; // 已有收尾符：不动
+  return t + '\u0F0B';
+}
+
 module.exports = {
   tokenize: tokenize,
   wrapTibetan: wrapTibetan,
+  withTseg: withTseg,
   drawTibetanWrapped: drawTibetanWrapped,
   isWellFormedSentence: isWellFormedSentence,
   TSHEG: TSHEG,

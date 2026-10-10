@@ -13,6 +13,7 @@
 //           连击极易不断链（实测 90% 正确率下最高档占 56%）→ 裸连击分级会退化。详见 utils/praise.js 头注。
 var levelsData = require('../../data/levels');
 var elements = require('../../data/elements');
+var tibText = require('../../utils/tibetan-text');
 var cardsData = require('../../data/cards');
 var revealsData = require('../../data/reveals');
 var audio = require('../../utils/audio');
@@ -353,7 +354,8 @@ Page({
       uid: uid,
       id: id,
       type: el.type,
-      tibetan: el.tibetan || '',
+      // D70：牌面藏文补尾随 tsheg（依据 docs/tibetan-orthography.md R1）
+      tibetan: tibText.withTseg(el.tibetan || ''),
       color: el.color,
       fallbackText: el.char || '',
       golden: id === this.goldenId,

@@ -2566,6 +2566,16 @@ function tokenize(text) {
   if (cur) units.push(cur);
   return units;
 }
+/* D70 补尾随 tsheg（对应 utils/tibetan-text.js 的 withTseg）——
+   规则与例外必须两端一致：已以 ་/༌/།/ཿ 收尾的不动（否则违反 R2/R5）。 */
+function withTseg(text) {
+  const t = String(text == null ? '' : text);
+  if (!t) return t;
+  if (!/[\u0F00-\u0FFF]/.test(t)) return t;
+  if (/[\u0F0B\u0F0C\u0F0D\u0F7F]$/.test(t)) return t;
+  return t + '\u0F0B';
+}
+
 function wrapTibetan(measure, text, maxWidth) {
   const units = tokenize(text);
   const lines = [];
@@ -3801,7 +3811,7 @@ function tileInner(t) {
   if (t.sprite) {
     inner += '<div class="ka-sprite ka-v' + t.variant + '"><img src="' + IMAGES.spriteKa + '" alt=""></div>';
   } else if (t.type === 'letter') {
-    inner += '<span class="glyph tib">' + t.tibetan + '</span>';
+    inner += '<span class="glyph tib">' + withTseg(t.tibetan) + '</span>';
   } else {
     inner += '<img class="icon-img" src="' + tileIconDataUrl(t.id, t.golden) + '" alt="">';
   }
