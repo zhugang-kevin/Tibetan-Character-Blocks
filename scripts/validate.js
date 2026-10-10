@@ -6021,7 +6021,7 @@ section('61. 二进制资产 magic bytes（D72：唯一字体其实是 HTML）')
   }
   // 61.1 字体必须是真字体
   const FONT_CANDIDATES = [
-    'assets-src/fonts/NotoSerifTibetan-Bold.ttf'
+    'assets-src/fonts/NotoSerifTibetan-Variable.ttf'
   ];
   FONT_CANDIDATES.forEach(function (rel) {
     if (!exists(rel)) { warn(rel + ' 不存在（字体源缺失，生成脚本会回退到系统字体）'); return; }

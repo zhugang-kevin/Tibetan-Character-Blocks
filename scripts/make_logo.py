@@ -23,7 +23,11 @@ import subprocess
 from PIL import Image
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-FONT = os.path.join(ROOT, 'assets-src', 'fonts', 'NotoSerifTibetan-Bold.ttf')
+FONT = os.path.join(ROOT, 'assets-src', 'fonts', 'NotoSerifTibetan-Variable.ttf')
+# ⚠️ D72：原 NotoSerifTibetan-Bold.ttf **根本不是字体**（是 270KB 的 HTML），
+#    已删除并用正版 Noto Serif Tibetan **可变字体**（OFL-1.1，796KB，来自 google/fonts）替代。
+#    本文件只在**构建期**使用（assets-src/ 不入包），所以体积不影响小程序包体。
+#    可变字体请用 font-weight: 700 取 Bold。
 OUT = os.path.join(ROOT, 'assets-src', 'logo')
 TMP = os.path.join(ROOT, 'preview', '_v2')
 CHROME = os.environ.get(
