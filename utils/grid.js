@@ -83,12 +83,24 @@ function boardSize(lv, screenWidth, gap) {
 function layersOf(text) {
   // 藏文的横向视觉「层数」：基字层 + 上加字（在前）+ 下加字/元音/后加字（在后，占位不同）
   // 简化模型用来做无 canvas 时的估算 / 兜底，不追求精确（精确值由 measureText 覆盖）
+  //
+  // ⚠️ D70 修：**tsheg / shad 必须排除在「层」之外**。
+  //    旧实现把所有 U+0F00–U+0FFF 一律算作一个整字宽，于是给牌面补尾随 tsheg（D70）
+  //    之后，估算宽度凭空多出一「层」→ 字号被无谓缩小：
+  //        གཁེ  41px  →  གཁེ་  31px（−24%）
+  //    而 §50 的「装得下」检查抓不到 —— 因为**门禁与实现用的是同一个错误模型**，
+  //    两边的错互相抵消（缩小后当然装得下）。这正是 D63 那类「循环校验」的变体。
+  //    真实情况：tsheg 是个小圆点，横向占位远小于一个基字。
   var t = String(text || '');
   var n = 0;
   for (var i = 0; i < t.length; i++) {
     var c = t.charCodeAt(i);
-    if (c >= 0x0F00 && c <= 0x0FFF) n++;
+    if (c < 0x0F00 || c > 0x0FFF) continue;
+    // 分隔/标点类：tsheg(U+0F0B)、tsheg bstar(U+0F0C)、shad(U+0F0D)、nyis shad(U+0F0E)
+    if (c === 0x0F0B || c === 0x0F0C || c === 0x0F0D || c === 0x0F0E) continue;
+    n++;
   }
+  // 纯分隔符文本（理论上不会出现）也要保证 ≥1，避免除零
   return Math.max(1, n);
 }
 
@@ -102,8 +114,19 @@ function measureTibetanSyllable(text, fontSizePx, measureWidth) {
       return { width: w, height: Math.max(fs, layersOf(t) * 0.62 * fs) };
     }
   }
-  // 兜底估算（无量算通道 / 量算失败）：宽 ≈ 0.55 × 字号 × 层数，高同上
-  return { width: 0.55 * fs * layersOf(t), height: Math.max(fs, layersOf(t) * 0.62 * fs) };
+  // 兜底估算（无量算通道 / 量算失败）：宽 ≈ 0.55 × 字号 × 层数 + 0.158 × 字号 × 分隔符数
+  //   ⚠️ 0.158 是**实测值，不是估计值**：用 NotoSerifTibetan-Bold.ttf 在 100px 字号下
+  //      逐字量得的 advance（见 .workbuddy 的测量脚本输出，记录在 docs/tibetan-orthography.md）：
+  //        基字 ཀ/ཁ/ག/ང = 0.426 em ｜ tsheg ་ = **0.158 em** ｜ shad ། = 0.137 em
+  //      即 tsheg 只有基字的 **0.371 倍**，远窄于一个字。
+  //      第一版我随手写 0.28（猜的），改成实测 0.158 —— **能测的常数不要猜。**
+  var seps = 0;
+  for (var k = 0; k < t.length; k++) {
+    var cc = t.charCodeAt(k);
+    if (cc === 0x0F0B || cc === 0x0F0C || cc === 0x0F0D || cc === 0x0F0E) seps++;
+  }
+  return { width: (0.55 * layersOf(t) + 0.158 * seps) * fs,
+           height: Math.max(fs, layersOf(t) * 0.62 * fs) };
 }
 
 // ---- ④ 缩放 ----

@@ -536,7 +536,7 @@ Page({
     // 藏文大字（tsheg 断行、shad 家族不落行首）；行数由绘制函数返回，供下方排版
     ctx.fillStyle = '#C0392B';
     ctx.font = '500 60px "Noto Serif Tibetan", "Microsoft Himalaya", serif';
-    var tibLines = tibText.drawTibetanWrapped(ctx, card.tibetan, W / 2, 226, W - 200, 84);
+    var tibLines = tibText.drawTibetanWrapped(ctx, tibText.withTseg(card.tibetan), W / 2, 226, W - 200, 84);
     var y = 226 + Math.max(1, tibLines) * 84 + 26;
 
     // 拉丁转写（有才印）+ 中文释义

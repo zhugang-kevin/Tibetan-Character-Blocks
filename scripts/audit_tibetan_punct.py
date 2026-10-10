@@ -54,7 +54,11 @@ SUPER = u'ྲླྭྱ'           # 上加字（与下加字同形，位置由�
 # 收集项目里所有含藏文的字符串
 SCAN_DIRS = ['data', 'pages', 'utils', 'scripts']
 SCAN_EXT = ('.js', '.wxml', '.json', '.py', '.md')
-SKIP_FILES = {'tts-provider-evaluation.md', 'DECISIONS.md'}   # 文档里有"反例"，不算内容
+# 规范/复盘文档里**故意引用错形当反例**；门禁脚本里含**正则字符类** `[་།]`（是代码不是内容）。
+# 审计必须把「内容」与「我们引用的反例 / 代码里的字符类」分开，否则每次写规范都会报红，
+# 最后大家就会习惯性忽略它 —— 那才是真正危险的。
+SKIP_FILES = {'tts-provider-evaluation.md', 'DECISIONS.md', 'tibetan-orthography.md',
+              'validate.js', 'test-h5.js', 'audit_tibetan_punct.py'}
 
 
 def collect():

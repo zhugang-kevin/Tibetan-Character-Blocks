@@ -2836,7 +2836,7 @@ function blessingCard(greeting, today) {
   if (!greeting) return null;
   const n = colDayNumber(today || '');
   return {
-    tibetan: greeting.tibetan || '',
+    tibetan: withTseg(greeting.tibetan || ''),
     roman: greeting.roman || '',
     cn: greeting.cn || '',
     tip: greeting.tip || '',
@@ -2921,7 +2921,7 @@ const CARD_ORDER = Object.keys(ELEMENTS).map(function (id) {
   const el = ELEMENTS[id];
   return {
     id: id,
-    label: el.type === 'letter' ? el.tibetan : (el.char || ''),
+    label: el.type === 'letter' ? withTseg(el.tibetan) : (el.char || ''),
     isLetter: el.type === 'letter',
     color: el.color
   };
@@ -3053,7 +3053,7 @@ function openPanel(key) {
     $('signin-btn').addEventListener('click', doSignIn);
   } else if (key === 'daily') {
     const g = pickDaily(DAILY.greetings, colDayNumber(colToday()));
-    body.innerHTML = '<div class="daily-tib tib">' + g.tibetan + '</div>' +
+    body.innerHTML = '<div class="daily-tib tib">' + withTseg(g.tibetan) + '</div>' +
       '<div class="daily-roman">' + (g.roman || '') + '</div>' +
       '<div class="daily-cn">' + g.cn + '</div>' +
       '<div class="entry-note">' + g.tip + '</div>' +
@@ -3616,7 +3616,7 @@ function makeTile(id, uid) {
   const el = ELEMENTS[id];
   const t = {
     uid: uid, id: id, type: el.type,
-    tibetan: el.tibetan || '', color: el.color,
+    tibetan: withTseg(el.tibetan || ''), color: el.color,
     fallbackText: el.char || '',
     golden: id === state.goldenId,
     pieceStyle: pieceStyle(el.color),
@@ -4371,7 +4371,7 @@ function renderResult() {
       '<div class="reveal-head"><span class="reveal-tag">秘境图揭晓</span>' +
         '<span class="reveal-name">' + rvItem.name + '</span></div>' +
       '<img class="reveal-art" src="' + rvItem.img + '" alt="">' +
-      '<div class="reveal-tib"><span class="rt-t tib">' + rvItem.tibetan + '</span>' +
+      '<div class="reveal-tib"><span class="rt-t tib">' + withTseg(rvItem.tibetan) + '</span>' +
         '<span class="rt-roman">' + rvItem.roman + '</span></div>' +
       '<div class="reveal-desc">' + rvItem.desc + '</div>' +
       '<div class="reveal-note">已收入文化护照 · 揭示图鉴 ' + rvGot + ' / ' + REVEALS.length + '</div>' +
@@ -4980,7 +4980,7 @@ function drawBlessingCard(card, done) {
 
   // 藏文大字（tsheg 断行，shad 类符号不落行首）；行数决定下方排版起点
   const measure = function (s) { ctx.font = '500 60px ' + TIB_FONT; return ctx.measureText(s).width; };
-  const tibLines = wrapTibetan(measure, card.tibetan, W - 200);
+  const tibLines = wrapTibetan(measure, withTseg(card.tibetan), W - 200);
   ctx.fillStyle = '#C0392B';
   let y = 226;
   tibLines.forEach(function (ln) {

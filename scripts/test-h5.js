@@ -1509,9 +1509,11 @@ function mockCtx(sink) {
   check('未收藏槽位只显示「?」，不剧透下一张的名字', $$('#res-journey .j-unknown').every(function (n) {
     return n.textContent.trim() === '?';
   }), $$('#res-journey .j-unknown').map(function (n) { return n.textContent; }).join('|'));
-  check('已收藏槽位显示真实字形', $$('#res-journey .j-slot.got').map(function (n) {
+  // D70：字母单位带尾随 tsheg（用户确认「每张牌各自带 ་」）——
+  // 断言随之更新为 ཀ་ཁ་。**这是预期的行为变更，不是回归。**
+  check('已收藏槽位显示真实字形（带尾随 tsheg）', $$('#res-journey .j-slot.got').map(function (n) {
     return n.textContent.trim();
-  }).join('') === 'ཀཁ', $$('#res-journey .j-slot.got').map(function (n) { return n.textContent; }).join('|'));
+  }).join('') === 'ཀ་ཁ་', $$('#res-journey .j-slot.got').map(function (n) { return n.textContent; }).join('|'));
   check('进度锚有课程锚点（第 1 / 10 课）',
     ($('#res-journey .j-step') || {}).textContent === '第 1 / 10 课',
     ($('#res-journey .j-step') || {}).textContent);

@@ -678,7 +678,7 @@ Page({
       praiseLevel: dec.level,
       praiseZh: dec.text.zh,
       praiseBo: dec.text.bo,
-      praiseTibetan: dec.tibetan,
+      praiseTibetan: tibText.withTseg(dec.tibetan),
       praiseBurst: dec.burst
     });
     if (this.praiseTimer) clearTimeout(this.praiseTimer);

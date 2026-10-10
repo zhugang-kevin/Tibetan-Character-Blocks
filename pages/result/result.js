@@ -34,7 +34,7 @@ var CARD_ORDER = Object.keys(elements).map(function (id) {
   var el = elements[id];
   return {
     id: id,
-    label: el.type === 'letter' ? el.tibetan : (el.char || ''),
+    label: el.type === 'letter' ? tibText.withTseg(el.tibetan) : (el.char || ''),
     isLetter: el.type === 'letter',
     color: el.color
   };
@@ -206,7 +206,7 @@ Page({
       // 秘境揭图（D31）：completeLevel 已落库，此处揭晓本关的图 + 报图鉴进度
       reveal: (function () {
         var rv = revealsData[level - 1];
-        return rv ? { name: rv.name, tibetan: rv.tibetan, roman: rv.roman, img: rv.img, desc: rv.desc } : null;
+        return rv ? { name: rv.name, tibetan: tibText.withTseg(rv.tibetan), roman: rv.roman, img: rv.img, desc: rv.desc } : null;
       })(),
       revealGot: storage.getProgress().completedLevels.filter(function (n) { return n >= 1 && n <= 10; }).length,
       // 藏地密码：本关解锁一则小知识（completeLevel 已落库，解锁判定与揭示图鉴同源）
