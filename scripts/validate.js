@@ -5931,6 +5931,72 @@ section('59. 藏文书写规范（出处 / 判据 / 机械检验）');
   else err('缺少 D70 决策行');
 }
 
+// ---------- 60. 牌面视觉一致性（D71：观感也要有判据，不能只靠眼睛） ----------
+// 起因（用户 2026-10-10）：「需要完美的解决排版的问题……需要考虑所有关卡的体验感、
+// 视觉感、情绪感等，虽然添加的仅仅是一个符号，但排版要能完全跟进」。
+//
+// 量化后发现两个**观感缺陷**（此前从没人量过）：
+//   ① **填充率严重不一致**：加 tsheg 后 L1 = 0.51，而 L4 以后 = 0.90~1.00 ——
+//      也就是**第 1 关的字最小**，而 L1 恰恰是玩家形成第一印象、也最需要看清字形的一关。
+//   ② 字号回归 305/770（加 ་ 的物理代价，tsheg 实测占 0.158em）。
+// 处置：给 layoutTile 加**填充率下限**（目标 0.82，上限 1.60×），L1 从 0.51 → **0.81**，
+// 全关填充率收敛到 **0.81~1.00**。本节把这条观感标准钉住。
+section('60. 牌面视觉一致性（填充率 / 行首 tsheg / 装得下）');
+{
+  const learning60 = require('../utils/learning.js');
+  const data60 = require('../data/learning.js');
+  const grid60 = require('../utils/grid.js');
+  const tt60 = require('../utils/tibetan-text.js');
+  let n = 0, badStart = 0, noFit = 0, minFill = 9, maxFill = 0;
+  const byLv = {};
+  for (let lv = 1; lv <= 15; lv++) {
+    const L = data60.byLevel(lv);
+    if (!L) continue;
+    const cell = grid60.cellPx(lv, 375);
+    const base = Math.round(cell * grid60.FONT_RATIO);
+    for (let st = 1; st <= L.stages; st++) {
+      const cfg = learning60.buildStage(lv, st);
+      if (!cfg) continue;
+      for (const title of cfg.titles) {
+        n++;
+        const f = grid60.layoutTile(tt60.withTseg(title), cell, base, null);
+        if (!f.fits) noFit++;
+        f.lines.forEach(function (ln) { if (ln[0] === '\u0F0B') badStart++; });
+        const fill = f.fill != null ? f.fill : (Math.max(f.width, f.height) / f.avail);
+        byLv[lv] = byLv[lv] || [];
+        byLv[lv].push(fill);
+        if (fill < minFill) minFill = fill;
+        if (fill > maxFill) maxFill = fill;
+      }
+    }
+  }
+  ok('复算 ' + n + ' 个牌面（含尾随 tsheg）');
+  if (!noFit) ok('全部装得下（放大后仍未越界）');
+  else err('有 ' + noFit + ' 个牌面装不下');
+  // 行首不得出现 tsheg（W3C：换行只能发生在 tsheg 之后）
+  if (!badStart) ok('无「行首 tsheg」（W3C：换行只能发生在 tsheg 之后）');
+  else err('有 ' + badStart + ' 行以 tsheg 开头 —— 违反 W3C 换行规则');
+  // 填充率一致性：这是「视觉感」的可量化代理指标
+  const FILL_MIN = 0.75;
+  if (minFill >= FILL_MIN)
+    ok('填充率下限 ' + minFill.toFixed(2) + ' ≥ ' + FILL_MIN +
+      '（第 1 关不再是最小的一关 —— 首印象关的字现在够大）');
+  else err('有牌面填充率仅 ' + minFill.toFixed(2) + ' < ' + FILL_MIN +
+    ' —— 视觉忽大忽小，观感不一致');
+  if (maxFill - minFill <= 0.35)
+    ok('填充率区间跨度 ' + (maxFill - minFill).toFixed(2) + ' ≤ 0.35（逐关观感收敛）');
+  else warn('填充率跨度 ' + (maxFill - minFill).toFixed(2) + ' 偏大，逐关观感可能忽满忽空');
+  // 向上放大的能力必须存在（否则「第 1 关最小」的老问题会回来）
+  const gj60 = read('utils/grid.js');
+  if (/FILL_TARGET/.test(gj60) && /UP_LIMIT/.test(gj60))
+    ok('layoutTile 具备填充率下限与放大上限（防「短内容永远填不满」回归）');
+  else err('layoutTile 缺少填充率下限 —— 单字母牌面会再次变成最小的一档');
+
+  if (/\| \*\*D71\*\* \|/.test(read('docs/DECISIONS.md')))
+    ok('docs/DECISIONS.md 已登记 D71（排版跟进与视觉一致性）');
+  else err('缺少 D71 决策行');
+}
+
 console.log('通过: ' + passed + ' | 错误: ' + errors.length + ' | 警告: ' + warnings.length);
 if (errors.length) { console.log('\x1b[31m存在错误，需修复后重试\x1b[0m'); process.exit(1); }
 console.log('\x1b[32m全部自检通过 ✓\x1b[0m');

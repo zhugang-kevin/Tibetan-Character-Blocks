@@ -225,6 +225,28 @@ function layoutTile(text, cell, fontSizePx, measureWidth) {
       font = f; m = mm; fits = true;
     }
   }
+  // ---- D71：填充率下限（视觉一致性）----
+  // 量化发现：加尾随 tsheg 后逐关填充率（字墨/可用边长）是 **L1 = 0.51、L4 以后 = 0.90~1.00**。
+  // 也就是说**第 1 关的字最小** —— 而 L1 恰恰是玩家形成第一印象的地方，
+  // 也是「看清字形」这件事最重要的地方。字号被 FONT_RATIO（0.62×格宽）封顶，
+  // 短内容（单字母）永远填不满格子，于是「第 1 关最小、越到后面越满」，观感是反的。
+  // 做法：**允许短内容向上放大**，直到填充率达到目标或触到上限。
+  //   · 目标 0.82：比当前 L1 的 0.51 明显改善，又留出呼吸感（不贴边）
+  //   · 上限 1.60×：实测 1.45× 时 L1 只到 0.74（仍是最低关）——
+  //     L1 是**第一印象关**，也是「看清字形」最重要的一关，值得再放一档；
+  //     1.60× 下 L1 达标 0.82，且垂直向仍有 0.61×格宽的余量（不贴边）
+  var FILL_TARGET = 0.82, UP_LIMIT = 1.60;
+  if (fits) {
+    for (var up = 1.02; up <= UP_LIMIT; up += 0.02) {
+      var f2 = Math.round(base * up);
+      if (f2 <= font) continue;
+      var m2 = measureLines(w.lines, f2, measureWidth);
+      var fill2 = Math.max(m2.width, m2.height) / avail;
+      if (m2.width > avail + FIT_TOL || m2.height > avail + FIT_TOL) break;
+      font = f2; m = m2;
+      if (fill2 >= FILL_TARGET) break;
+    }
+  }
   return {
     lines: w.lines,
     font: font,
@@ -232,6 +254,7 @@ function layoutTile(text, cell, fontSizePx, measureWidth) {
     width: Math.round(m.width),
     height: Math.round(m.height),
     avail: Math.round(avail),
+    fill: Math.round(Math.max(m.width, m.height) / avail * 100) / 100,
     fits: fits
   };
 }
