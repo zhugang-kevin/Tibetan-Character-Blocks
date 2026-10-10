@@ -5688,6 +5688,51 @@ section('55. 真机底线：安全区 / CI / 修补脚本（D65）');
   else err('缺少 D65 决策行');
 }
 
+// ---------- 56. TTS 服务商选型验收（D67：我把「能出声」当成了「质量合格」） ----------
+// 用户 2026-10-10 指出：天翼质量并不好，我却强烈推荐，之后暴露出大量问题。
+// 复盘：**根因不是选错了服务商，是「选型时没有任何验收标准」**。
+// 本节把那条缺失的尺子补上，并防止「换个名字又推荐一遍没验收过的服务商」。
+section('56. TTS 服务商选型验收（D67：先验收，再推荐）');
+{
+  // 56.1 市场调研必须在册，且**不能只有我们正在用的那一家**
+  if (exists('docs/tts-provider-evaluation.md')) {
+    const doc = read('docs/tts-provider-evaluation.md');
+    const NAMES = ['Luel', 'Azure', '阿里云', 'Edge', 'MMS'];
+    const missing = NAMES.filter(n => doc.indexOf(n) === -1);
+    if (!missing.length)
+      ok('选型评估在册，且覆盖 ' + NAMES.length + ' 家（含商用 API 与开源模型）');
+    else err('评估文档没提到：' + missing.join('、') +
+      ' —— 只调研「正在用的那一家」正是 D67 犯的错');
+  } else err('缺少 docs/tts-provider-evaluation.md —— 没有市场调研就没有选型依据');
+
+  // 56.2 验收工具必须在册（这是那把"尺子"）
+  if (exists('scripts/tts_bakeoff.py')) {
+    const bk = read('scripts/tts_bakeoff.py');
+    const probes = ['probe_coverage', 'probe_marks', 'probe_vowel'];
+    const lack = probes.filter(p => bk.indexOf('def ' + p) === -1);
+    if (!lack.length) ok('验收工具在册，三条探针齐全（覆盖率 / 变音符号 / 长短元音）');
+    else err('验收工具缺少探针：' + lack.join('、'));
+    // 服务商可插拔：注册表里必须有多家（不能又变成只跑一家）
+    const reg = (bk.match(/PROVIDERS\['([a-z_]+)'\]/g) || []).length;
+    if (reg >= 4) ok('服务商注册表含 ' + reg + ' 家（新增一家只需加一条，不改游戏代码）');
+    else err('服务商注册表只有 ' + reg + ' 家 —— 仍被单家锁死');
+  } else err('缺少 scripts/tts_bakeoff.py —— 选型仍无验收标准');
+
+  // 56.3 **最关键的一条**：文档不得把「未通过验收的服务商」写成推荐
+  if (exists('docs/tts-provider-evaluation.md')) {
+    const doc = read('docs/tts-provider-evaluation.md');
+    // 天翼必须在文档里被明确标注为「不合格 / 实测三项全挂」
+    const flagged = /实测三项全挂|❌.*不合格|P2.*不通过|鼻音.*没发音/.test(doc);
+    if (flagged) ok('当前使用的天翼已被明确标注为未通过验收（不得再被推荐）');
+    else err('文档没有如实标注天翼的验收结果 —— 这正是 D67 的原始问题');
+  }
+
+  // 56.4 台账必须留下这次失败的记录（避免以后重蹈覆辙）
+  if (/\| \*\*D67\*\* \|/.test(read('docs/DECISIONS.md')))
+    ok('docs/DECISIONS.md 已登记 D67（选型失败复盘与验收标准）');
+  else err('缺少 D67 决策行 —— 这次选型失败没有留下可查的依据');
+}
+
 console.log('通过: ' + passed + ' | 错误: ' + errors.length + ' | 警告: ' + warnings.length);
 if (errors.length) { console.log('\x1b[31m存在错误，需修复后重试\x1b[0m'); process.exit(1); }
 console.log('\x1b[32m全部自检通过 ✓\x1b[0m');
