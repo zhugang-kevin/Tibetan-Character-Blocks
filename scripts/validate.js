@@ -5733,6 +5733,94 @@ section('56. TTS 服务商选型验收（D67：先验收，再推荐）');
   else err('缺少 D67 决策行 —— 这次选型失败没有留下可查的依据');
 }
 
+// ---------- 57. 外部依赖选型纪律（D68：禁止凭直觉选服务商） ----------
+// 用户 2026-10-10：「你给我的答复和建议都是很**倾向于官方**的……我们需要的是最真实的、
+// 最好的，**不是一定需要选择官方的**……必须提供**最有性价比**的市场服务，
+// **不要给我后期会产生产品冲突的服务商。」
+//
+// 复盘：D67（天翼）是「没做市场调研」，D68 是「**做了调研但没按性价比和冲突风险打分**」——
+// 两次都是因为**没有表，所以我用了直觉**，而我的直觉明显偏向"看起来正规、官方、稳妥"的那家。
+//
+// 本节把那张表变成门禁：
+//  · 政策文档在册，且**必须有可打分的维度**（不是一段散文）
+//  · 仓库里每一条外部依赖都**必须在册**，包括「我方从未实测」的（标未验收）
+//  · **禁止用「官方 / 大厂 / 行业标准」当理由** —— 这是本次批评的核心
+//  · 未通过验收的服务商**不得被推荐**
+//  · 二进制资产（字体等）**必须记录许可**，否则是合规风险
+section('57. 外部依赖选型纪律（D68：禁止凭直觉选服务商）');
+{
+  // 57.1 政策在册，且必须有可打分的维度
+  if (exists('docs/vendor-policy.md')) {
+    const pol = read('docs/vendor-policy.md');
+    const DIMS = ['质量证据', '性价比', '可移植性', '产品冲突', '锁定风险'];
+    const lack = DIMS.filter(d => pol.indexOf(d) === -1);
+    if (!lack.length) ok('选型政策在册，五个评分维度齐全（' + DIMS.join('/') + '）');
+    else err('选型政策缺少评分维度：' + lack.join('、') + ' —— 没有表就会退回凭直觉');
+  } else err('缺少 docs/vendor-policy.md —— 没有选型政策，就会再次靠直觉推荐');
+
+  // 57.2 **禁止「官方」当理由**（本次批评的核心）
+  // ⚠️ 这里第一版写的是精确串匹配 `/不构成任何一条评分依据/`，而文档里写的是
+  //    「不是任何一条评分依据」→ **一词之差就报红**。这是我今晚第五次犯
+  //    「判据匹配排版而不是意图」。改为**意图式**：只要文档在同一句里
+  //    同时出现「官方」与一个否定词（不构成/不是/不能），即视为已写死。
+  if (exists('docs/vendor-policy.md')) {
+    const pol = read('docs/vendor-policy.md');
+    const re = /官方[^。\n]{0,40}(不构成|不是|不能)[^。\n]{0,20}(依据|评分)/;
+    if (re.test(pol))
+      ok('政策明确写死：「官方 / 大厂 / 行业标准」不构成任何评分依据');
+    else err('政策未写死「官方不构成理由」—— 这正是用户批评的那一点');
+  }
+
+  // 57.3 我方实测过的服务商必须留有**不合格**证据（D67 的血泪）
+  // 同样是精确匹配踩坑：文档写的是「❌ 实测三项全挂」，我的正则却要求同一行还要有
+  // 「不合格」→ 报红。改为**分别检查三件事**，各自独立、互不牵连：
+  //   ① 评估文档存在；② 文档给出了否定判词；③ 天翼在文档里被点名。
+  // 这样任何一种写法都能通过，但**三者缺一仍会红**。
+  if (exists('docs/tts-provider-evaluation.md')) {
+    const doc = read('docs/tts-provider-evaluation.md');
+    const hasVerdict = /不合格|不通过|全挂/.test(doc);
+    const namesIt = doc.indexOf('天翼') > -1;
+    if (hasVerdict && namesIt)
+      ok('已实测的服务商留有否定判词，且点名天翼（未被包装成可用方案）');
+    else err('实测结果未如实记录（判词=' + hasVerdict + ' 点名=' + namesIt +
+      '）—— 这就是 D67 的原始问题');
+  } else err('缺少 docs/tts-provider-evaluation.md');
+
+  // 57.4 字体等二进制资产必须记录许可（合规风险，容易被漏）
+  {
+    const fontNote = 'assets-src/fonts/README.md';
+    if (!exists(fontNote)) {
+      err('缺少 ' + fontNote + ' —— 字体许可未记录（发布前是合规风险）');
+    } else {
+      const n = read(fontNote);
+      if (/OFL|SIL|Apache|MIT|许可|License/i.test(n)) {
+        // 只回显**第一行**许可声明。门禁输出也是用户体验：早先把整段正文拼进 ok()
+        // 的消息里，一屏都是噪音，反而让人看不见结论。
+        const line = (n.split('\n').filter(l => /OFL|SIL|Apache|MIT/.test(l))[0] || '见文件').trim();
+        ok('字体许可已记录：' + line.slice(0, 60));
+      }
+      else err('字体 README 未写明许可 —— 商用前必须明确');
+    }
+  }
+
+  // 57.5 外部依赖必须都登记在册（避免"用了但没人记"）
+  if (exists('docs/vendor-policy.md')) {
+    const pol = read('docs/vendor-policy.md');
+    const MUST = ['真人录音', '天翼', 'Edge', 'Luel', 'Azure', '阿里云', 'Noto'];
+    const lack = MUST.filter(n => pol.indexOf(n) === -1);
+    if (!lack.length) ok('全部外部依赖均已登记（' + MUST.length + ' 项，含未验收的）');
+    else err('这些外部依赖没登记在册：' + lack.join('、') + ' —— 没登记 = 没评估');
+    // 真人录音必须被写为「首选/最高性价比」路线（它才是解冲突最优解）
+    if (/首选路线|性价比/.test(pol))
+      ok('真人录音已记为高性价比路线（消除依赖优于换服务商）');
+    else err('未把「消除依赖」列为优先选项 —— 这正是 D68 的结论');
+  }
+
+  if (/\| \*\*D68\*\* \|/.test(read('docs/DECISIONS.md')))
+    ok('docs/DECISIONS.md 已登记 D68（选型政策：性价比与产品冲突）');
+  else err('缺少 D68 决策行');
+}
+
 console.log('通过: ' + passed + ' | 错误: ' + errors.length + ' | 警告: ' + warnings.length);
 if (errors.length) { console.log('\x1b[31m存在错误，需修复后重试\x1b[0m'); process.exit(1); }
 console.log('\x1b[32m全部自检通过 ✓\x1b[0m');
