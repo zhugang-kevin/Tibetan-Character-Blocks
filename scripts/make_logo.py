@@ -34,16 +34,85 @@ CHROME = os.environ.get(
     'WB_CHROME',
     os.path.expanduser('~/AppData/Local/ms-playwright/chromium_headless_shell-1228/'
                        'chrome-headless-shell-win64/chrome-headless-shell.exe'))
+# ⚠️ D73：必须用**完整版 Chromium**；chrome-headless-shell（精简版）对 Noto Serif Tibetan
+#    这类大字体报 NetworkError 并**静默回退**（不报错，只是把藏文画成别的字体）。
+_FULL_CHROME = os.path.expanduser(
+    '~/AppData/Local/ms-playwright/chromium-1228/chrome-win64/chrome.exe')
+if os.path.exists(_FULL_CHROME):
+    CHROME = _FULL_CHROME
 
 FONT_CSS = None
+_HTTPD = None
+
+
+def _serve_root():
+    """起本地 HTTP 服务器（同源伺服字体与页面）。
+
+    ⚠️ D73：原先用 `@font-face` + **base64 data URL** 内嵌字体。
+    Noto Serif Tibetan 可变字体有 **2MB**（base64 后约 2.8MB），
+    Chrome 对大体积 data URL 报 `NetworkError` → **静默回退到系统字体**，
+    于是生成的藏文图是错的却毫无提示（这正是 D72 那次的真实成因）。
+    改为 HTTP 伺服后字体确认可加载（`document.fonts.check` 为 true）。
+    """
+    global _HTTPD
+    if _HTTPD is None:
+        import functools
+        import http.server
+        import socketserver
+        import threading
+        handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=ROOT)
+        _HTTPD = socketserver.TCPServer(('127.0.0.1', 0), handler)
+        threading.Thread(target=_HTTPD.serve_forever, daemon=True).start()
+    return _HTTPD.server_address[1]
 
 
 def font_css():
+    """返回 @font-face 的 src URL（HTTP 同源，非 base64）。"""
     global FONT_CSS
     if FONT_CSS is None:
-        with open(FONT, 'rb') as f:
-            FONT_CSS = base64.b64encode(f.read()).decode()
+        port = _serve_root()
+        FONT_CSS = 'http://127.0.0.1:%d/assets-src/fonts/%s' % (port, os.path.basename(FONT))
     return FONT_CSS
+
+
+def _page_url(local_path):
+    """把 ROOT 内的本地路径转成 HTTP URL（同源，字体才能加载）。"""
+    rel = os.path.relpath(local_path, ROOT).replace('\\', '/')
+    if not rel.startswith('..'):
+        return 'http://127.0.0.1:%d/%s' % (_serve_root(), rel)
+    return 'file:///' + local_path.replace('\\', '/')
+
+
+def verify_font_loads():
+    """**渲染前的自证**：同一段藏文分别用目标字体与「必然不存在的字体」渲染，
+    若结果完全相同 ⇒ 字体没加载 ⇒ 直接报错退出，不产出错图。
+
+    这是补 D72 的根因：当时字体没加载，脚本照样"成功"产出了错图，无人知晓。
+    """
+    probe = ('<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200">'
+             '<style>@font-face{font-family:NST;src:url(\'%s\') format(\'truetype\');font-weight:100 900;}'
+             'text{font-size:120px;fill:#000}</style>'
+             '<text x="20" y="150" font-family="NST">\u0F40\u0F41\u0F42</text>'
+             '<text x="20" y="150" font-family="__NOPE__" opacity="0">\u0F40\u0F41\u0F42</text>'
+             '</svg>') % font_css()
+    hp = os.path.join(TMP, '_fontprobe.html')
+    os.makedirs(TMP, exist_ok=True)
+    with open(hp, 'w', encoding='utf-8') as f:
+        f.write(probe)
+    a = os.path.join(TMP, '_fp_a.png')
+    b = os.path.join(TMP, '_fp_b.png')
+    # 用目标字体
+    shoot(probe.replace('font-family="NST"', 'font-family="NST"'), a, 400, 200)
+    # 用必然回退的字体名
+    shoot(probe.replace('font-family="NST"', 'font-family="__NOPE__"'), b, 400, 200)
+    if os.path.exists(a) and os.path.exists(b):
+        import hashlib
+        ha = hashlib.md5(open(a, 'rb').read()).hexdigest()
+        hb = hashlib.md5(open(b, 'rb').read()).hexdigest()
+        if ha == hb:
+            raise SystemExit('✗ 字体未加载：目标字体与回退渲染结果完全相同。'
+                             '拒绝产出错误图片（D72 教训）。')
+    return True
 
 
 def shoot(html, out_png, w, h):
@@ -54,7 +123,7 @@ def shoot(html, out_png, w, h):
     cmd = [CHROME, '--headless', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage',
            '--hide-scrollbars', '--force-device-scale-factor=1',
            '--virtual-time-budget=4000', '--default-background-color=00000000',
-           '--screenshot=' + out_png, '--window-size=%d,%d' % (w, h), 'file:///' + hp.replace('\\', '/')]
+           '--screenshot=' + out_png, '--window-size=%d,%d' % (w, h), _page_url(hp)]
     r = subprocess.run(cmd, capture_output=True, timeout=120)
     if not os.path.exists(out_png):
         raise SystemExit('截图失败：%s' % r.stderr.decode('utf-8', 'ignore')[:400])
@@ -63,7 +132,7 @@ def shoot(html, out_png, w, h):
 
 def page(body, w, h, extra_css=''):
     return """<!doctype html><html><head><meta charset="utf-8"><style>
-@font-face{font-family:NST;src:url(data:font/ttf;base64,%s) format('truetype');}
+@font-face{font-family:NST;src:url('%s') format('truetype');font-weight:100 900;}
 html,body{margin:0;padding:0;background:transparent;width:%dpx;height:%dpx;overflow:hidden;}
 %s
 </style></head><body>%s</body></html>""" % (font_css(), w, h, extra_css, body)
@@ -212,6 +281,8 @@ def do_tashi():
 
 
 def main():
+    # D73：产出任何图之前，先自证字体真的加载了（否则宁可不产出）
+    verify_font_loads()
     ap = argparse.ArgumentParser(description='品牌 Logo 与藏文金字生成（规格书 §五）')
     ap.add_argument('--logo', action='store_true')
     ap.add_argument('--tashi', action='store_true')

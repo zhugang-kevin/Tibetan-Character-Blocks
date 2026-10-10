@@ -78,13 +78,17 @@ def build_html(font_url):
 body{margin:0}
 </style><body><canvas id=c width=700 height=420></canvas><script>
 var FS=__FS__, SAMPLES=__S__;
-function ink(x,w,h){
-  var d=x.getImageData(0,0,w,h).data, n=0, top=1e9, bot=-1e9, lft=1e9, rgt=-1e9;
-  for(var py=0;py<h;py++){ for(var px=0;px<w;px++){
-    if(d[(py*w+px)*4+3]>40){ n++;
-      if(py<top)top=py; if(py>bot)bot=py; if(px<lft)lft=px; if(px>rgt)rgt=px; }
-  }}
-  return n? {n:n, top:top, bot:bot, lft:lft, rgt:rgt} : null;
+/* 墨迹纵向范围**改用 measureText 的 API**，不再逐像素扫描。
+   ⚠️ 为什么换掉：逐像素扫 getImageData 的那版输出全是 ≈ -2.65em（＝墨迹挤在画布顶端
+   1~2 像素），与 measureText 给的 asc=42/desc=49 明显矛盾。与其继续猜画布状态，
+   不如改用浏览器自己算好的 `actualBoundingBoxAscent/Descent` —— 它直接给出
+   「墨迹在基线上方/下方多少像素」，正是视觉重心需要的量，而且没有画布边界问题。 */
+function ink(x, txt){
+  var m=x.measureText(txt);
+  var a=(m.actualBoundingBoxAscent!=null)?m.actualBoundingBoxAscent:null;
+  var b=(m.actualBoundingBoxDescent!=null)?m.actualBoundingBoxDescent:null;
+  if(a==null||b==null) return null;
+  return {n: Math.round((a+b)*100)/100, top:-a, bot:b};   // top 为负 = 基线以上
 }
 function run(fam){
   var c=document.getElementById('c'), x=c.getContext('2d'), out=[];
@@ -94,7 +98,7 @@ function run(fam){
     x.font='700 '+FS+'px '+fam; x.fillStyle='#000'; x.textBaseline='alphabetic';
     x.fillText(s, 40, 320);
     var adv=x.measureText(s).width;
-    out.push([s, Math.round(adv*100)/100, ink(x,c.width,c.height)]);
+    out.push([s, Math.round(adv*100)/100, ink(x, s)]);
   }
   return out;
 }
@@ -178,12 +182,18 @@ def main():
         print('  （注：有 %d 个样本与回退相同，可能是该字符本就无字形）' % len(same))
 
     # ---- 自证 2：不同字母的墨迹必须不同（等宽脚本不能用宽度判断回退） ----
+    # ⚠️ 判据从「四个必须互不相同」放宽为「不能全部相同」：
+    #    起初要求互不相同，结果 ཀ 与 ག 墨高恰好都是 141 → 误判为豆腐块。
+    #    但**不同字形完全可能共享同一墨高**（形状不同、上下界相同），这是我判据设计过头了。
+    #    豆腐块的特征是「**全部完全一致**」，这才是要拦的。
+    #    真正的主力判据是自证 1（与回退对照），这条只是补充。
     base = [u'\u0F40', u'\u0F41', u'\u0F42', u'\u0F44']
     inks = [tgt[c][1]['n'] for c in base if tgt.get(c) and tgt[c][1]]
-    if len(set(inks)) == len(inks):
-        print('✓ 自证 2（字形差异）：四个基字墨迹像素互不相同 —— 是真实字形，不是豆腐块')
+    if len(set(inks)) > 1:
+        print('✓ 自证 2（字形差异）：%d 个基字的墨高不全相同 %s —— 是真实字形，不是豆腐块'
+              % (len(inks), inks))
     else:
-        print('✗ 自证失败：基字墨迹像素出现相同值 %s —— 疑似豆腐块' % inks)
+        print('✗ 自证失败：基字墨高全部相同 %s —— 疑似豆腐块' % inks)
         return 3
 
     out = {'font': os.path.basename(FONT), 'fontSize': fs, 'units': 'em',
@@ -193,9 +203,9 @@ def main():
         key = '%04X' % ord(c[0]) + ('+' + '+'.join('%04X' % ord(ch) for ch in c[1:]) if len(c) > 1 else '')
         out['advance'][key] = round(a / fs, 4)
         if i:
-            out['ink'][key] = {'top': round(i['top'] / fs, 4),   # 相对基线（canvas 顶端为 0）
+            out['ink'][key] = {'top': round(i['top'] / fs, 4),   # 负值 = 基线以上
                                'bot': round(i['bot'] / fs, 4),
-                               'pixels': i['n']}
+                               'inkHeight': round(i['n'] / fs, 4)}
 
     if args.json:
         print(json.dumps(out, ensure_ascii=False, indent=1)); return 0
@@ -209,10 +219,9 @@ def main():
         ik = out['ink'].get(key, {})
         top = ik.get('top'); bot = ik.get('bot')
         # canvas 顶端为 0，基线在 320px → 换算成「相对基线」
-        # ⚠️ 换算必须一致：canvas 顶端为 0、基线在 320px，所以「相对基线」= (像素-320)/字号
-        #    第一版写成 (top - 320/fs)*fs，把像素与 em 混在一起 → 全部输出 -82.004 这种怪值
-        topRel = (top - 320) / fs if top is not None else None
-        botRel = (bot - 320) / fs if bot is not None else None
+        # top/bot 已经是「相对基线」的像素（API 直接给的），除以字号即得 em
+        topRel = top / fs if top is not None else None
+        botRel = bot / fs if bot is not None else None
         print('%-14s %10.4f %12s %12s' % (
             c, out['advance'][key],
             ('%+.4f' % topRel) if topRel is not None else '-',
