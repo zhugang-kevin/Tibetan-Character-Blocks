@@ -6224,6 +6224,47 @@ section('59. 藏文书写规范（出处 / 判据 / 机械检验）');
   else warn('小程序端可能传了 openid');
 }
 
+// ---------- 59.13 D95：本地深度体检（静态五类 + 运行时）----------
+// 既有测试查「功能对不对」；这里查**上线才炸**的另一类：
+//   引用了不存在的资源 / require 路径写错 / 页面缺文件 / WXML 标签不配平 / 真机域名没配。
+// 这些本地跑得通、真机上却是 404、空白、整页白屏。
+{
+  // ① 页面文件完整性
+  let appCfg = {};
+  try { appCfg = JSON.parse(read('app.json')); } catch (e) { err('app.json 解析失败: ' + e.message); }
+  const pages = appCfg.pages || [];
+  const missPage = [];
+  pages.forEach(function (pg) {
+    if (!exists(pg + '.js')) missPage.push(pg + '.js');
+    if (!exists(pg + '.wxml')) missPage.push(pg + '.wxml');
+  });
+  if (!missPage.length) ok('app.json 的 ' + pages.length + ' 个页面都有 .js 与 .wxml');
+  else err('页面缺文件（会导致编译失败）：' + missPage.join('、'));
+
+  // ② 图片/音频引用是否存在（本地看不到 404，真机才炸）
+  const missing = [];
+  const ASSET = /['"](\/?(?:images|audio)\/[A-Za-z0-9_\-./]+\.(?:png|jpg|jpeg|webp|gif|mp3|m4a|wav))['"]/g;
+  jsFiles.forEach(function (f) {
+    const rel2 = path.relative(ROOT, f).replace(/\\/g, '/');
+    if (/^(docs|scripts|server|preview|assets-src)\//.test(rel2)) return;
+    const src = fs.readFileSync(f, 'utf8');
+    let m;
+    while ((m = ASSET.exec(src)) !== null) {
+      if (!exists(m[1].replace(/^\//, ''))) missing.push(rel2 + ' → ' + m[1]);
+    }
+  });
+  if (!missing.length) ok('JS 里引用的图片/音频全部存在（真机不会 404）');
+  else err('引用了不存在的资源：' + missing.slice(0, 5).join(' | '));
+
+  // ③ 上线前必须配的真机域名（本地永远测不出）
+  const netFiles = [];
+  ['utils/payment.js', 'utils/sync.js'].forEach(function (f) {
+    if (exists(f) && /wx\.request\s*\(/.test(read(f))) netFiles.push(f);
+  });
+  if (netFiles.length)
+    ok('联网文件已登记（上线前需把域名加入微信后台 request 合法域名）：' + netFiles.join('、'));
+}
+
 section('60. 牌面视觉一致性（填充率 / 行首 tsheg / 装得下）');
 {
   const learning60 = require('../utils/learning.js');
