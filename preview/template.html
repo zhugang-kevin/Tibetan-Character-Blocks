@@ -2658,6 +2658,52 @@ function wrapTibetan(measure, text, maxWidth) {
   return lines;
 }
 
+/* ---------- D81 逐牌面排版（与 utils/grid.js 的 layoutTile 同契） ----------
+   ⚠️ 体验版此前对**所有**牌面用同一个字号 `state.glyphSize = tile * 0.62`，
+   **完全不看内容长度** → 长内容必然溢出被裁切。实测 L12：体验版 68px（墨迹 105px
+   挤在 109px 格子里、已裁切），而小程序修复后是 24px。也就是说**我们一直用体验版做验证，
+   而它上面的多行牌面是坏的**。
+   本段把 grid.js 的逻辑镜像过来（含 D79 实测行高、D80 每步重新断行）。 */
+var TILE_INNER = 0.86;
+var TILE_TIB = {};   // uid → 藏文文本（供重排时逐牌面重算字号）                 // 与 grid.js 的 INNER 同值
+var _mctx = document.createElement('canvas').getContext('2d');
+function measureAt(str, fs) { _mctx.font = fs + 'px ' + TIB_FONT; return _mctx.measureText(str).width; }
+function measureLinesAt(lines, font) {
+  var w = 0, h = 0;
+  for (var i = 0; i < lines.length; i++) {
+    w = Math.max(w, measureAt(lines[i], font));
+    h += (i > 0 ? INK_LINE_PITCH : INK_ONE_LINE) * font;   // D79 实测行高
+  }
+  return { width: w, height: h };
+}
+function wrapTileAt(text, cell, font) {
+  return wrapTibetan(function (x) { return measureAt(x, font); }, text, cell * TILE_INNER);
+}
+function tileLayout(text, cell) {
+  var base = Math.round(cell * 0.62), avail = cell * TILE_INNER, TOL = 0.5;
+  var lines = wrapTileAt(text, cell, base), font = base, m = measureLinesAt(lines, font);
+  var fits = m.width <= avail + TOL && m.height <= avail + TOL;
+  // D80：收缩时**每步重新断行**（字号越小、每行放得下的音节越多、行数越少）
+  for (var k = 0.99; !fits && k >= 0.12; k -= 0.01) {
+    var f2 = Math.max(8, Math.round(base * k));
+    if (f2 === font) continue;
+    var l2 = wrapTileAt(text, cell, f2), m2 = measureLinesAt(l2, f2);
+    if (m2.width <= avail + TOL && m2.height <= avail + TOL) { lines = l2; font = f2; m = m2; fits = true; }
+  }
+  // D71 同契：填充率下限（短内容向上放大，避免「第 1 关字最小」）
+  if (fits) {
+    for (var up = 1.02; up <= 1.60; up += 0.02) {
+      var f3 = Math.round(base * up);
+      if (f3 <= font) continue;
+      var l3 = wrapTileAt(text, cell, f3), m3 = measureLinesAt(l3, f3);
+      if (m3.width > avail + TOL || m3.height > avail + TOL) break;
+      lines = l3; font = f3; m = m3;
+      if (Math.max(m3.width, m3.height) / avail >= 0.82) break;
+    }
+  }
+  return { font: font, lines: lines, fits: fits };
+}
+
 /* ---------------- 游戏状态 ---------------- */
 const GUIDE = [
   { title: '如何使用', text: '点击两张相同的藏文字母或文化图标，它们就会一起消失。' },
@@ -3812,6 +3858,7 @@ function layoutBoard() {
   state.tileW = tile;
   state.tileH = tileH;
   state.gap = gap;
+  // D81：不再有全局字号（逐牌面排版见 tileLayout）；保留字段仅为兼容旧引用
   state.glyphSize = Math.round(tile * 0.62);
   // 位置步进（% of 元素自身宽高）：行列号 × step = 该牌要走的百分比位移
   state.stepX = (tile + gap) / tile * 100;
@@ -3822,7 +3869,15 @@ function layoutBoard() {
   board.style.width = (state.cols * tile + (state.cols - 1) * gap) + 'px';
   board.style.height = (state.rows * tileH + (state.rows - 1) * gap) + 'px';
 
-  board.querySelectorAll('.glyph').forEach(function (g) { g.style.fontSize = state.glyphSize + 'px'; });
+  // ⚠️ D81：**不能再统一设字号** —— 那会覆盖每张牌自己的内联字号
+  //    （逐牌面排版的关键就是「同一屏里的牌可以有不同字号」）。
+  //    改为按各自的内容重新算一次，保证 resize / 重排后仍正确。
+  board.querySelectorAll('.tile').forEach(function (el) {
+    var g = el.querySelector('.glyph'); if (!g) return;
+    var txt = TILE_TIB[el.getAttribute('data-uid') || (el.dataset && el.dataset.uid) || ''];
+    if (!txt) return;
+    g.style.fontSize = tileLayout(txt, state.tileW).font + 'px';
+  });
 
   layoutPieces();
   syncRevealBox();
@@ -3880,8 +3935,11 @@ function tileInner(t) {
   if (t.sprite) {
     inner += '<div class="ka-sprite ka-v' + t.variant + '"><img src="' + IMAGES.spriteKa + '" alt=""></div>';
   } else if (t.type === 'letter') {
-    inner += '<span class="glyph tib" style="transform:translateY(' +
-      opticalShift(t.tibetan) + 'em)">' + withTseg(t.tibetan) + '</span>';
+    var _tseg = withTseg(t.tibetan);
+    var _lay = tileLayout(_tseg, state.tileW);   // D81：逐牌面字号（不再全盘同一字号）
+    inner += '<span class="glyph tib" style="font-size:' + _lay.font + 'px;transform:translateY(' +
+      opticalShift(t.tibetan) + 'em)">' + _lay.lines.join('<br>') + '</span>';
+    TILE_TIB[t.uid] = _tseg;   // 供重排时逐牌面重算字号
   } else {
     inner += '<img class="icon-img" src="' + tileIconDataUrl(t.id, t.golden) + '" alt="">';
   }
@@ -3948,7 +4006,15 @@ function renderBoard(opts) {
     if (d && d.parentNode) d.parentNode.removeChild(d);
     delete tileEls[uid];
   });
-  board.querySelectorAll('.glyph').forEach(function (g) { g.style.fontSize = state.glyphSize + 'px'; });
+  // ⚠️ D81：**不能再统一设字号** —— 那会覆盖每张牌自己的内联字号
+  //    （逐牌面排版的关键就是「同一屏里的牌可以有不同字号」）。
+  //    改为按各自的内容重新算一次，保证 resize / 重排后仍正确。
+  board.querySelectorAll('.tile').forEach(function (el) {
+    var g = el.querySelector('.glyph'); if (!g) return;
+    var txt = TILE_TIB[el.getAttribute('data-uid') || (el.dataset && el.dataset.uid) || ''];
+    if (!txt) return;
+    g.style.fontSize = tileLayout(txt, state.tileW).font + 'px';
+  });
 }
 
 /* 双 rAF：保证 'in' 那一帧真的被浏览器画过，下一帧改坐标才会触发 transition */

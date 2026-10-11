@@ -5989,6 +5989,30 @@ section('59. 藏文书写规范（出处 / 判据 / 机械检验）');
   } catch (e) { warn('断行核对失败：' + String(e).slice(0, 50)); }
 }
 
+// ---------- 59.7 D81：两端「逐牌面排版」必须一致 ----------
+// 事故：体验版**没有** layoutTile —— 它对所有牌面用同一个字号 `tile × 0.62`，
+// 完全不看内容长度 → L12/L13 的长内容被裁切（实测 68px vs 小程序 24px，墨迹 105px/格子 109px）。
+// **而我们一直用体验版做验证（设备审计 / test-h5），等于在用坏的牌面做验证。**
+// 且两端公式还差一处：grid.js 曾对每行都用行距 1.0（3 行=3.0em），
+// 而实测是「首行 1.15 + 其余 1.0」（3 行=3.15em）→ 差 4px 字号。
+{
+  const tplS = read('preview/template.html');
+  if (tplS.indexOf('function tileLayout(') > -1)
+    ok('体验版已实现逐牌面排版 tileLayout（不再全盘同一字号）');
+  else err('体验版缺少逐牌面排版 —— 长内容牌面会被裁切，且它是我们的验证环境');
+  // 逐牌面而不是全局字号
+  // 判据是「不得用它去设字号」，不是「字段必须不存在」
+  if (/style\.fontSize = state\.glyphSize/.test(tplS))
+    err('体验版仍用全局字号覆盖每张牌 —— 会破坏逐牌面排版');
+  else ok('体验版不再用全局字号覆盖每张牌（同一屏内允许不同字号）');
+  // 行高公式两端同源
+  const gjS = read('utils/grid.js');
+  const f1 = /\(i > 0 \? INK_LINE_PITCH : INK_ONE_LINE\) \* font/.test(gjS);
+  const f2 = /\(i > 0 \? INK_LINE_PITCH : INK_ONE_LINE\) \* font/.test(tplS);
+  if (f1 && f2) ok('两端行高公式同源（首行 1.15em + 其余 1.0em，与实测一致）');
+  else err('两端行高公式不一致（实测为「首行 1.15 + 其余 1.0」，对每行都用 1.0 会系统性低估）');
+}
+
 section('60. 牌面视觉一致性（填充率 / 行首 tsheg / 装得下）');
 {
   const learning60 = require('../utils/learning.js');

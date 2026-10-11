@@ -207,7 +207,11 @@ function measureLines(lines, font, measureWidth) {
   for (var i = 0; i < lines.length; i++) {
     var m = measureTibetanSyllable(lines[i], font, measureWidth);
     if (m.width > width) width = m.width;
-    height += INK_LINE_PITCH * font;   // D79 实测行距（见下方常量）
+    // D81：首行用**单行墨高** 1.15em，其余行用**行距** 1.0em —— 与实测一致
+    // （实测 1 行 1.15em ／ 2 行 2.15em ／ 3 行 3.15em）。
+    // 旧写法对每行都用 1.0 → 1 行算 1.00em、3 行算 3.00em，**系统性低估**，
+    // 也是「体验版 33px vs 小程序 37px」两端不一致的根因。
+    height += (i > 0 ? INK_LINE_PITCH : INK_ONE_LINE) * font;
   }
   return { width: width, height: height };
 }
