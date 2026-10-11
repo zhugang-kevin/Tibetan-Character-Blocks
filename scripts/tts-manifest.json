@@ -8,6 +8,56 @@
     "ts": "2026-10-09 12:47:08",
     "voice": "zhuoma"
   },
+  "greet_03": {
+    "dur": 2.005,
+    "form": "base",
+    "peak": 5454,
+    "sampleRate": 16000,
+    "speechRate": 0.9,
+    "text": "ཁྱེད་རང་བདེ་མོ་ཡིན་པས་དགའ་པོ་ཡོད།",
+    "ts": "2026-10-11 23:40:45",
+    "voice": "zhuoma"
+  },
+  "greet_04": {
+    "dur": 1.665,
+    "form": "base",
+    "peak": 6212,
+    "sampleRate": 16000,
+    "speechRate": 0.9,
+    "text": "ཞི་བདེ་དང་བཀྲ་ཤིས་ཡོང་བར་ཤོག་",
+    "ts": "2026-10-11 23:40:51",
+    "voice": "zhuoma"
+  },
+  "greet_05": {
+    "dur": 1.482,
+    "form": "base",
+    "peak": 6322,
+    "sampleRate": 16000,
+    "speechRate": 0.9,
+    "text": "ལོ་གསར་བཀྲ་ཤིས་བདེ་ལེགས་",
+    "ts": "2026-10-11 23:40:57",
+    "voice": "zhuoma"
+  },
+  "greet_06": {
+    "dur": 0.687,
+    "form": "base",
+    "peak": 5757,
+    "sampleRate": 16000,
+    "speechRate": 0.9,
+    "text": "ཐུགས་རྗེ་ཆེ།",
+    "ts": "2026-10-11 23:24:29",
+    "voice": "zhuoma"
+  },
+  "greet_07": {
+    "dur": 0.96,
+    "form": "base",
+    "peak": 6155,
+    "sampleRate": 16000,
+    "speechRate": 0.9,
+    "text": "བདེ་ལེགས་སམ།",
+    "ts": "2026-10-11 23:41:03",
+    "voice": "zhuoma"
+  },
   "icon_01": {
     "dur": 0.714,
     "form": "base",

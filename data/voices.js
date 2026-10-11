@@ -52,6 +52,11 @@ module.exports = {
   // 非元素类语音（情绪 / 中文讲解），键到 id 不存在时才查这里
   extras: [
     'blessing_01',
+    'greet_03',
+    'greet_04',
+    'greet_05',
+    'greet_06',
+    'greet_07',
     'mantra',
     'praise_2',
     'praise_3',

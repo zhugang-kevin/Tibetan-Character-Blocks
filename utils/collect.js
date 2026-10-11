@@ -92,6 +92,7 @@ function blessingCard(greeting, today) {
   var n = dayNumber(today || '');
   return {
     tibetan: greeting.tibetan || '',
+    voice: greeting.voice || '',
     roman: greeting.roman || '',
     cn: greeting.cn || '',
     tip: greeting.tip || '',

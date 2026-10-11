@@ -6295,6 +6295,32 @@ section('59. 藏文书写规范（出处 / 判据 / 机械检验）');
   else warn('道具铺入口仍在');
 }
 
+// ---------- 59.15 D97：页面 JS 不得「用了但没引入」 ----------
+// 事故：D96 给首页加学习体系面板时用了 learningData，**却漏了那行 require** ——
+//   `node --check` 只查语法，**查不出这种错**；它要等到用户真的点开那个面板才抛 ReferenceError，
+//   表现为「面板一点就崩」。这正是「本地跑得动、某条路径一用就炸」的典型。
+// 判据：页面 JS 里 `名字.` 形式的调用，若该名字既没 require 也没声明，即报错。
+{
+  const MODS = ['tracker','audio','storage','collect','privacy','certificate','elements','cards',
+                'levelsData','dailyData','learningData','lampData','comboData','ladder','lamp','regionsData'];
+  const pageFiles = jsFiles.map(function (f) { return path.relative(ROOT, f).replace(/\\/g, '/'); })
+    .filter(function (r) { return r.indexOf('pages/') === 0; });
+  const bad = [];
+  pageFiles.forEach(function (rel) {
+    const src = read(rel);
+    MODS.forEach(function (m) {
+      // 用了（`m.` 不是 `this.m.` / `xxx.m.`）
+      const used = new RegExp('(^|[^A-Za-z0-9_.$])' + m + '\\s*\\.', 'm').test(src);
+      // 声明了（var m = … 或 m = require(…)）
+      const declared = new RegExp('var\\s+' + m + '\\b').test(src) ||
+                       new RegExp('\\b' + m + '\\s*=\\s*require').test(src);
+      if (used && !declared) bad.push(rel + ' → ' + m);
+    });
+  });
+  if (!bad.length) ok('页面 JS 无「用了但没引入」的模块（node --check 查不出的那类）');
+  else err('页面引用了未声明的模块（运行到该路径会 ReferenceError）：' + bad.slice(0, 6).join(' | '));
+}
+
 section('60. 牌面视觉一致性（填充率 / 行首 tsheg / 装得下）');
 {
   const learning60 = require('../utils/learning.js');

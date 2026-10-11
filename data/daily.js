@@ -3,13 +3,13 @@
 module.exports = {
   // 雪域日签：藏语祝福 + 中文翻译 + 小知识（7 天一循环）
   greetings: [
-    { tibetan: 'བཀྲ་ཤིས་བདེ་ལེགས་', roman: 'tashi delek', cn: '吉祥如意', tip: '藏地最常用的问候，见面与道别都能用。' },
-    { tibetan: 'སེམས་ཁྲལ་མེད་པར་སྤྲོ་པོ་ཡོང་བར་ཤོག་', roman: 'sem tral me par dro po yong war shok', cn: '愿你无忧无虑，心生欢喜', tip: '安慰与祝福他人时最温柔的一句。' },
-    { tibetan: 'ཁྱེད་རང་བདེ་མོ་ཡིན་པས་དགའ་པོ་ཡོད།', roman: 'khyé rang dé mo yin pé ga po yö', cn: '你安好，我便欢喜', tip: '藏语里表达牵挂的方式很含蓄。' },
-    { tibetan: 'ཞི་བདེ་དང་བཀྲ་ཤིས་ཡོང་བར་ཤོག་', roman: 'zhi dé dang ta shi yong war shok', cn: '愿平安与吉祥常伴', tip: '常写在风马旗与门楣上的祈愿。' },
-    { tibetan: 'ལོ་གསར་བཀྲ་ཤིས་བདེ་ལེགས་', roman: 'lo sar ta shi de lek', cn: '新年吉祥', tip: '藏历新年的标准祝词。' },
-    { tibetan: 'ཐུགས་རྗེ་ཆེ།', roman: 'thuk jé ché', cn: '谢谢（字面：大慈悲）', tip: '道谢用的词，本身带着「心怀慈悲」的意思。' },
-    { tibetan: 'བདེ་ལེགས་སམ།', roman: 'de lek sam', cn: '你好吗？', tip: '字面是「吉祥吗」，回答可以说「བདེ་ལེགས་」（很好）.' }
+    { tibetan: 'བཀྲ་ཤིས་བདེ་ལེགས་', voice: 'tashi_delek', roman: 'tashi delek', cn: '吉祥如意', tip: '藏地最常用的问候，见面与道别都能用。' },
+    { tibetan: 'སེམས་ཁྲལ་མེད་པར་སྤྲོ་པོ་ཡོང་བར་ཤོག་', voice: 'blessing_01', roman: 'sem tral me par dro po yong war shok', cn: '愿你无忧无虑，心生欢喜', tip: '安慰与祝福他人时最温柔的一句。' },
+    { tibetan: 'ཁྱེད་རང་བདེ་མོ་ཡིན་པས་དགའ་པོ་ཡོད།', voice: 'greet_03', roman: 'khyé rang dé mo yin pé ga po yö', cn: '你安好，我便欢喜', tip: '藏语里表达牵挂的方式很含蓄。' },
+    { tibetan: 'ཞི་བདེ་དང་བཀྲ་ཤིས་ཡོང་བར་ཤོག་', voice: 'greet_04', roman: 'zhi dé dang ta shi yong war shok', cn: '愿平安与吉祥常伴', tip: '常写在风马旗与门楣上的祈愿。' },
+    { tibetan: 'ལོ་གསར་བཀྲ་ཤིས་བདེ་ལེགས་', voice: 'greet_05', roman: 'lo sar ta shi de lek', cn: '新年吉祥', tip: '藏历新年的标准祝词。' },
+    { tibetan: 'ཐུགས་རྗེ་ཆེ།', voice: 'greet_06', roman: 'thuk jé ché', cn: '谢谢（字面：大慈悲）', tip: '道谢用的词，本身带着「心怀慈悲」的意思。' },
+    { tibetan: 'བདེ་ལེགས་སམ།', voice: 'greet_07', roman: 'de lek sam', cn: '你好吗？', tip: '字面是「吉祥吗」，回答可以说「བདེ་ལེགས་」（很好）.' }
   ],
   // 祈福长明灯：7 天循环签到奖励（纯本地点数/道具，无金额、无券）
   signInRewards: [

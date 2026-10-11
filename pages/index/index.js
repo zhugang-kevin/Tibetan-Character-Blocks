@@ -17,6 +17,7 @@ var photoAssets = require('../../data/photo-assets');
 var privacy = require('../../utils/privacy');
 // D54 性别 + 藏族名字：三档取值与选名算法（纯函数，与护照页同一份）
 var tibetanName = require('../../utils/tibetan-name.js');
+var learningData = require('../../data/learning');   // D96 学习体系（150 关）
 
 // 视口高度：优先用 wx.getWindowInfo（基础库 2.20.1+），旧设备回退 getSystemInfoSync，
 // 两者都取不到时用 667 兜底。getSystemInfoSync 已标记不再维护，不再作为首选路径。
@@ -536,6 +537,9 @@ Page({
       wx.showToast({ title: '日签还没准备好，稍后再试', icon: 'none' });
       return;
     }
+    // D97：播放这句祈福的藏文读音。**按显式标注的 ID 播**（不做文本匹配）。
+    // 之前 7 句里只有 2 句有音频，其余点了没声 —— 现已补齐（缺的 5 句单独生成并校验通过）。
+    if (card.voice) audio.speak(card.voice);
     var that = this;
     var W = 750, H = 1000;
     var canvas, ctx;

@@ -120,6 +120,34 @@ MANIFEST_PATH = os.path.join(ROOT, 'scripts', 'tts-manifest.json')
 
 
 # ---------------------------------------------------------------- 文本
+def read_greetings():
+    """D97：从 data/daily.js 的 greetings 取祈福句 → {'greet_01': ...}。
+
+    用户反馈「开局跳窗祈福读音不完整」：greetings 有 7 句，但此前只有 2 句有音频
+    （tashi_delek / blessing_01）—— 因为 read_texts() 只读 data/cards.js，
+    **祈福句从来没进过生成清单**。
+    不用正则：反斜杠写进文件时容易被转义搞坏（本项目已踩过两次），改逐行扫描。
+    """
+    path = os.path.join(ROOT, 'data', 'daily.js')
+    if not os.path.exists(path):
+        return {}
+    out = {}
+    inside = False
+    for line in open(path, encoding='utf-8'):
+        if 'greetings:' in line and '[' in line:
+            inside = True
+            continue
+        if inside and line.strip().startswith(']'):
+            break
+        if not inside or 'tibetan:' not in line:
+            continue
+        q1 = line.find(chr(39), line.find('tibetan:'))
+        q2 = line.find(chr(39), q1 + 1) if q1 >= 0 else -1
+        if q1 >= 0 and q2 > q1:
+            out['greet_%02d' % (len(out) + 1)] = line[q1 + 1:q2].strip()
+    return out
+
+
 def read_texts():
     """从 data/cards.js 提取 34 条元素文本 + 2 条情绪语音 → {id: text}（顺序稳定）。"""
     src = open(CARDS_PATH, encoding='utf-8').read()
@@ -135,6 +163,7 @@ def read_texts():
             else:
                 print('  ⚠️ %s 找不到藏文文本（跳过）：%s' % (eid, subtitle))
     texts.update(EMOTION_TEXTS)
+    texts.update(read_greetings())
     return texts
 
 
