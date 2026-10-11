@@ -133,7 +133,7 @@ function tier(level) {
 }
 
 // ---- 背景音乐（PRD 3.3）----
-// audio/bgm.wav：高原晨雾 v2（慢速 · 软起音 · 长衰减，2026-10-07 用户反馈「太狂躁」后重做），
+// audio/bgm.mp3：高原晨雾 v2（原 WAV 转 MP3，省包体）（慢速 · 软起音 · 长衰减，2026-10-07 用户反馈「太狂躁」后重做），
 // 两小节无缝循环，由 scripts/make_bgm.py 程序合成（零版权）。与音效**分开建 ctx**：
 // loop 循环播放、音量压到 0.28，绝不参与 play() 的 stop/play 瞬时抢占。
 // 偏好位 bgmOff 存 progress（与 praiseOff 同一条三处同步链路）。
@@ -166,7 +166,7 @@ var bgmCtx = null;
 function bgmContext() {
   if (!bgmCtx) {
     bgmCtx = wx.createInnerAudioContext();
-    bgmCtx.src = '/audio/bgm.wav';
+    bgmCtx.src = '/audio/bgm.mp3';   // D83：WAV(105KB)→MP3(26KB)，省 78KB 用于内嵌字体
     bgmCtx.loop = true;
     bgmCtx.volume = BGM_VOLUME;
     bgmCtx.obeyMuteSwitch = true;

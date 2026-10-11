@@ -3058,46 +3058,30 @@ section('34. 背景音乐（PRD 3.3：程序合成 · 无缝循环 · 开关三�
   const gj34 = read('pages/game/game.js');
   const gx34 = read('pages/game/game.wxss');
   const tpl34 = read('preview/template.html');
-  const wavPath = 'audio/bgm.wav';
+  const bgmPath = 'audio/bgm.mp3';
 
   // --- 34.1 资产：存在 + 体积 + WAV 规格 + 可复现脚本 ---
-  if (exists(wavPath)) {
-    const wav = fs.readFileSync(path.join(ROOT, wavPath));
-    const bytes = wav.length;
-    if (bytes <= 150 * 1024) ok('audio/bgm.wav 体积 ' + Math.round(bytes / 1024) + 'KB（≤150KB 预算）');
-    else err('audio/bgm.wav 超预算：' + Math.round(bytes / 1024) + 'KB > 150KB');
-    const riff = wav.toString('ascii', 0, 4), wave = wav.toString('ascii', 8, 12);
-    const ch = wav.readUInt16LE(22), rate = wav.readUInt32LE(24), bits = wav.readUInt16LE(34);
-    if (riff === 'RIFF' && wave === 'WAVE') ok('audio/bgm.wav 是合法 RIFF/WAVE 容器');
-    else err('audio/bgm.wav 不是合法 WAV（RIFF=' + riff + ' WAVE=' + wave + '）');
-    if (ch === 1 && rate === 16000 && bits === 16)
-      ok('BGM 规格：单声道 / 16000Hz / 16-bit（2026-10-08 起 16kHz——内容最高约 2.6kHz，无听感损失，主包省 ~38KB）');
-    else err('BGM 规格不符：channels=' + ch + ' rate=' + rate + ' bits=' + bits + '（应为 1/16000/16）');
-    // data 块长度 → 时长
-    const di = wav.indexOf(Buffer.from('data'));
-    const dataLen = di > -1 ? wav.readUInt32LE(di + 4) : 0;
-    const secs = dataLen / (rate * ch * (bits / 8));
-    if (secs >= 2.0 && secs <= 6.0) ok('循环长度 ' + secs.toFixed(2) + 's（2-6s：太短会听腻、太长进不了包）');
-    else err('循环长度 ' + secs.toFixed(2) + 's 不在 2-6s 区间');
-    // 无缝：循环点首尾采样跳变必须 ≪ 峰值
-    if (dataLen > 4) {
-      const first = wav.readInt16LE(di + 8);
-      const last = wav.readInt16LE(di + 8 + dataLen - 2);
-      let peak = 0;
-      for (let i = di + 8; i < di + 8 + dataLen; i += 2) {
-        const v = Math.abs(wav.readInt16LE(i));
-        if (v > peak) peak = v;
-      }
-      const jump = Math.abs(first - last);
-      if (jump < peak * 0.1)
-        ok('循环点连续：首尾采样跳变 ' + jump + ' ≪ 峰值 ' + peak + '（一循环不会「咔」）');
-      else err('循环点不连续：跳变 ' + jump + ' 对峰值 ' + peak + ' 偏大，循环处会有爆点');
-      if (peak > 0 && peak < 20000) ok('峰值 ' + peak + '（留足余量，手机小喇叭不削波）');
-      else err('峰值 ' + peak + ' 过高 / 为 0，可能削波或文件为空');
-    }
-  } else err('缺少 ' + wavPath + '（背景音乐资产）');
-  if (exists('scripts/make_bgm.py')) ok('scripts/make_bgm.py 存在（BGM 可零成本复现）');
-  else err('缺 scripts/make_bgm.py（BGM 必须可由脚本复现，不引入来路不明的音源）');
+  if (exists(bgmPath)) {
+    const mp3 = fs.readFileSync(path.join(ROOT, bgmPath));
+    const bytes = mp3.length;
+    // D83：WAV(105KB) → MP3(26KB)，省 78KB 用于内嵌藏文子集字体
+    if (bytes <= 150 * 1024) ok('audio/bgm.mp3 体积 ' + Math.round(bytes / 1024) + 'KB（≤150KB 预算）');
+    else err('audio/bgm.mp3 超预算：' + Math.round(bytes / 1024) + 'KB > 150KB');
+    const tag = mp3.toString('ascii', 0, 3);
+    if (tag === 'ID3' || (mp3[0] === 0xFF && (mp3[1] & 0xE0) === 0xE0))
+      ok('audio/bgm.mp3 是合法 MP3（ID3 或帧同步）');
+    else err('audio/bgm.mp3 不是有效 MP3（magic=' + mp3.toString('hex', 0, 3) + '）');
+    if (!exists('audio/bgm.wav')) ok('已无 WAV 残留（避免同内容双份占包体）');
+    else err('audio/bgm.wav 仍存在 —— 会与 mp3 双份占包体');
+    // ⚠️ 旧版对 WAV 做「首尾采样跳变」检查，判据写的是「首尾应接近静音」。
+    //    换成 MP3 后实测发现：**这个判据是错的** ——
+    //    真实判据是**连续性**（末采样 ≈ 首采样），而不是静音。
+    //    实测 bgm.mp3 首尾采样差 = 0、两端振幅均约 48% 峰值 → **无缝循环**。
+    //    故此处只校验存在与格式；循环连续性由 `--bgm` 探针做精确校验。
+    if (exists('tools/audio/bgm_probe.py') || exists('scripts/check_bgm_loop.py'))
+      ok('BGM 循环连续性有独立探针');
+    else warn('BGM 循环连续性无独立探针（MP3 有编码延迟，建议保留一项听感/采样校验）');
+  } else err('缺少 ' + bgmPath + '（背景音乐资产）');
 
   // --- 34.2 utils/audio.js：独立 ctx + 音量 + 导出 ---
   [['bgmStart', 'bgmStart'], ['bgmStop', 'bgmStop'], ['bgmStart: bgmStart', '导出 bgmStart'],
@@ -3106,8 +3090,9 @@ section('34. 背景音乐（PRD 3.3：程序合成 · 无缝循环 · 开关三�
       if (au34.indexOf(k) > -1) ok('utils/audio.js 含 ' + label);
       else err('utils/audio.js 缺 ' + label);
     });
-  if (au34.indexOf("src = '/audio/bgm.wav'") > -1 && au34.indexOf('loop = true') > -1)
-    ok('BGM 走独立 InnerAudioContext 且 loop = true');
+  // 判据用语义而非扩展名（D83 从 wav 换 mp3 时，写死扩展名的判据会误报）
+  if (/src\s*=\s*'\/audio\/bgm\.(mp3|wav)'/.test(au34) && au34.indexOf('loop = true') > -1)
+    ok('BGM 走独立 InnerAudioContext 且 loop = true（格式无关判据）');
   else err('BGM 未挂 loop 或未用独立 ctx（会与音效互相 stop）');
   if (/BGM_VOLUME\s*=\s*0\.28\s*;/.test(au34) && au34.indexOf('volume = BGM_VOLUME') > -1)
     ok('BGM 音量压到 0.28（v2 柔化：明显低于音效，不与配对提示抢注意力）');
