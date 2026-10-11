@@ -2,6 +2,10 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
+<!-- D98：空的 favicon，**从源头去掉浏览器自动请求 /favicon.ico 的 404**。
+     那条 404 会在运行时体检里显示为一条「页面报错」，而控制台消息里不含 URL，
+     没法靠文本过滤 —— 与其过滤，不如让请求根本不发生。 -->
+<link rel="icon" href="data:,">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>藏字方块 · 本地体验版</title>
 <style>
