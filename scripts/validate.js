@@ -6013,6 +6013,34 @@ section('59. 藏文书写规范（出处 / 判据 / 机械检验）');
   else err('两端行高公式不一致（实测为「首行 1.15 + 其余 1.0」，对每行都用 1.0 会系统性低估）');
 }
 
+// ---------- 59.8 D82：藏文字体回退链必须显式覆盖各平台 ----------
+// 事故：app.wxss 原写法是 `'Noto Serif Tibetan', serif` —— **`serif` 在 iOS 上没有藏文字形**，
+// 而自定义字体又无法就位（包体只剩 3KB 装不下 + app.js 的远程地址是占位符 your-server.com）。
+// 于是「回退」等于「没回退」→ **iOS 用户可能看到方块**（代码注释自己也这么写）。
+{
+  const wx = read('app.wxss');
+  const NEED = ['Kailasa', 'Noto Sans Tibetan', 'Himalaya', 'Jomolhari'];
+  const lack = NEED.filter(f => wx.indexOf(f) === -1);
+  if (!lack.length) ok('藏文字体回退链显式覆盖各平台（iOS Kailasa / Android Noto Sans Tibetan / Windows Himalaya / Jomolhari）');
+  else err('藏文字体回退链缺少：' + lack.join('、') + ' —— 自定义字体未加载时 iOS 可能显示方块');
+  // 反例自测：不能只写 serif 兜底
+  // ⚠️ 必须先**剥掉注释**再判：注释里引用了旧写法 `'Noto Serif Tibetan', serif`，
+  //    直接匹配文本会把「说明」当成「代码」→ 误报（本门禁第一版就栽在这）。
+  const wxCode = wx.replace(/\/\*[\s\S]*?\*\//g, '');
+  if (/Noto Serif Tibetan'\s*,\s*serif/.test(wxCode))
+    err('回退链仍是 `\'Noto Serif Tibetan\', serif` —— serif 无藏文字形，等于没回退');
+  else ok('回退链不是「仅 serif 兜底」的危险写法');
+  // 远程字体地址必须是真实地址或明确跳过（占位符会被跳过 → 依赖回退链）
+  const app = read('app.js');
+  if (app.indexOf('your-server.com') > -1) {
+    if (/indexOf\('your-server\.com'\) > -1/.test(app))
+      ok('远程字体为占位符，但代码会**显式跳过**（不发请求、不报错）—— 依赖已修好的回退链');
+    else warn('远程字体是占位符且未见跳过逻辑 —— 可能发起无效请求');
+  } else ok('远程字体地址已配置');
+  if (exists('docs/offline-and-launch.md')) ok('上线与离线说明在册（含字体取舍的实测体积）');
+  else warn('缺少 docs/offline-and-launch.md');
+}
+
 section('60. 牌面视觉一致性（填充率 / 行首 tsheg / 装得下）');
 {
   const learning60 = require('../utils/learning.js');

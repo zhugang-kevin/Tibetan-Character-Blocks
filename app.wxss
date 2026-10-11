@@ -8,7 +8,20 @@ page {
 }
 
 .tibetan {
-  font-family: 'Noto Serif Tibetan', serif;
+  /* D82 藏文字体回退链（生产必需）
+     ⚠️ 原写法是 `'Noto Serif Tibetan', serif` —— **`serif` 在 iOS 上没有藏文字形**，
+        而自定义字体又因两个原因无法就位：
+          · 包体只剩 ~3KB，装不下字体文件；
+          · app.js 的远程地址是占位符 your-server.com（且远程加载违反「纯本地」约束）。
+        于是「回退」实际上等于「没回退」→ **iOS 可能显示方块**。
+     改为显式列出各平台自带的藏文字体（按覆盖优先级）：
+        iOS/macOS：Kailasa（系统自带藏文）
+        Android：Noto Sans Tibetan（Android 6+ 自带）
+        Windows / 微信开发者工具：Microsoft Himalaya
+        兜底：Jomolhari（部分 Linux/Android 机型）
+     这样即使自定义字体未加载，藏文仍能在各平台正确显示。详见 docs/offline-and-launch.md。 */
+  font-family: 'Noto Serif Tibetan', Kailasa, 'Kailasa TC', 'Noto Sans Tibetan',
+               Jomolhari, 'Microsoft Himalaya', 'Microsoft Himalaya UI', serif;
 }
 
 button::after {
