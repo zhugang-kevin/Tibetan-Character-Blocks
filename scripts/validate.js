@@ -6026,6 +6026,37 @@ section('59. 藏文书写规范（出处 / 判据 / 机械检验）');
   else warn('缺少 docs/offline-and-launch.md');
 }
 
+// ---------- 59.9 D86：分享能力完整性（好友分享 + 朋友圈） ----------
+// 事故：全项目**没有一处**调用 `wx.showShareMenu` → 右上角「···」里根本没有分享入口；
+//   且只有首页实现了 onShareTimeline，其余页面（含最该分享的 game 页）**完全没有分享**。
+// 官方规则：**onShareAppMessage 与 onShareTimeline 必须同时实现**，缺一个朋友圈分享就不可用。
+{
+  const q86 = ['pages/index/index.js', 'pages/game/game.js', 'pages/result/result.js',
+               'pages/cert/cert.js', 'pages/passport/passport.js'];
+  const missA = [], missT = [], missM = [];
+  q86.forEach(function (f) {
+    if (!exists(f)) return;
+    const src = read(f);
+    if (src.indexOf('onShareAppMessage') === -1) missA.push(f);
+    if (src.indexOf('onShareTimeline') === -1) missT.push(f);
+    if (src.indexOf('showShareMenu') === -1) missM.push(f);
+  });
+  if (!missA.length) ok('五个页面均实现 onShareAppMessage（分享给好友）');
+  else err('缺 onShareAppMessage：' + missA.join('、'));
+  if (!missT.length) ok('五个页面均实现 onShareTimeline（分享到朋友圈）—— 官方要求两者同时实现');
+  else err('缺 onShareTimeline：' + missT.join('、') + ' —— 缺它则朋友圈分享不可用');
+  if (!missM.length) ok('五个页面均调用 wx.showShareMenu（否则「···」里没有分享按钮）');
+  else err('未调用 showShareMenu：' + missM.join('、') + ' —— 分享入口不会出现');
+  // 挑战链路：分享必须带参数，否则「挑战」传不过去（小程序没有关系链）
+  const gj86 = read('pages/game/game.js');
+  if (/shareQuery/.test(gj86) && /\+ q\.query/.test(gj86))
+    ok('game 页分享**带参数**（小程序拿不到关系链，挑战只能靠分享链路传递）');
+  else err('game 页分享未带参数 —— 挑战链路传不过去');
+  if (/onShareTimeline[\s\S]{0,400}query:/.test(gj86))
+    ok('朋友圈分享也带参数（单页模式虽禁支付，但参数可用于落地页展示）');
+  else warn('朋友圈分享未带参数');
+}
+
 section('60. 牌面视觉一致性（填充率 / 行首 tsheg / 装得下）');
 {
   const learning60 = require('../utils/learning.js');

@@ -54,6 +54,7 @@ Page({
   },
 
   onShow: function () {
+    this.showShare();
     this.refresh();
   },
 
@@ -155,5 +156,21 @@ Page({
       title: '我的西藏文化护照 · 已获得 ' + this.data.owned + ' 张藏文成长证书',
       path: '/pages/index/index'
     };
+  },
+
+  // D86：分享到朋友圈 —— 官方要求 onShareAppMessage 与 onShareTimeline **同时实现**，
+  //   缺任一个朋友圈分享都不可用。注意朋友圈打开是「单页模式」（场景值 1154）：
+  //   无登录态、不能跳转、**禁用支付** —— 卡片只负责让人看到，再点「前往小程序」回来。
+  onShareTimeline: function () {
+    return {
+      title: '藏字方块 · 认藏文，从方块开始',
+      query: 'from=timeline',
+      imageUrl: '/images/logo-144.png'
+    };
+  },
+
+  // D86：开启分享菜单（含朋友圈入口）—— 不调用则右上角「···」里没有分享按钮
+  showShare: function () {
+    if (wx.showShareMenu) wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] });
   }
 });

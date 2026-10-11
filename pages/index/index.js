@@ -134,6 +134,8 @@ Page({
   },
 
   onShow: function () {
+    // D86：开启分享菜单（含朋友圈入口）
+    if (wx.showShareMenu) wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] });
     this.refresh();
   },
 

@@ -213,6 +213,12 @@ Page({
     //   ① 老 10 关线：?level=N         → data/levels.js 的盘面配置（行为完全不变）
     //   ② 学习体系线：?lv=N&stage=M     → utils/learning.js 生成的关卡（15 级 × 150 关）
     //   未带 lv/stage 时走老线，零回归；学习线的 UI 入口（首页「学习体系」）在后续迭代接。
+    // D86：解析挑战参数（来自好友分享的卡片）。ch = 挑战者用了几步
+    this.challenge = null;
+    var chSteps = parseInt(query.ch, 10);
+    if (chSteps > 0) {
+      this.challenge = { steps: chSteps };
+    }
     var queryLearn = { lv: parseInt(query.lv, 10) || 0, stage: parseInt(query.stage, 10) || 1 };
     var stageCfg = queryLearn.lv ? learning.buildStage(queryLearn.lv, queryLearn.stage) : null;
     this.learnCfg = stageCfg;                 // 非空 = 学习模式
@@ -709,6 +715,65 @@ Page({
   // 背景音乐随页面生命周期启停：进入游戏页响、切走 / 关闭时停（不漏到别的页面）
   onShow: function () {
     if (!storage.getBgmOff()) audio.bgmStart();
+    // D86 挑战闭环：从好友分享的挑战卡片进来时，提示一次目标步数
+    //   （只提示一次：提示过就清掉，避免每次回到前台都弹）
+    if (this.challenge && !this.challenge.shown) {
+      this.challenge.shown = true;
+      var that = this;
+      wx.showModal({
+        title: '好友向你发起挑战',
+        content: 'TA 用 ' + this.challenge.steps + ' 步完成了这一课。你能更快吗？',
+        confirmText: '接受挑战',
+        showCancel: false,
+        success: function () { if (that.challenge) that.challenge.accepted = true; }
+      });
+    }
+    // D86 分享：必须在 onShow 里开启菜单，否则右上角「···」里没有分享入口
+    //   （分享到朋友圈要求页面同时实现 onShareAppMessage 与 onShareTimeline，缺一不可）
+    if (wx.showShareMenu) {
+      wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] });
+    }
+  },
+
+  // ---- D86 挑战分享：A 通关 → 分享带参数 → B 点开进同一关 → 结算对比 ----
+  // 为什么带参数：没有关系链（小程序拿不到好友列表），「挑战」只能靠**分享链路**传递。
+  //   A 用了几步走完，写在卡片参数里；B 打开后进同一关，结算时对比。
+  onShareAppMessage: function () {
+    var q = this.shareQuery();
+    return {
+      title: q.title,
+      path: '/pages/game/game?' + q.query,
+      imageUrl: '/images/logo-144.png'
+    };
+  },
+
+  onShareTimeline: function () {
+    var q = this.shareQuery();
+    // ⚠️ 朋友圈打开进入「单页模式」（场景值 1154）：**无登录态、不能跳转、支付被禁用**。
+    //    所以朋友圈卡片的作用是「让人看到并点『前往小程序』」，真正的游戏/打赏都在小程序里完成。
+    return { title: q.title, query: q.query, imageUrl: '/images/logo-144.png' };
+  },
+
+  shareQuery: function () {
+    var d = this.data || {};
+    var lv = (this.learnCfg && this.learnCfg.lv) || 0;
+    var stage = (this.learnCfg && this.learnCfg.stage) || 0;
+    // 字段是 stepsLeft（剩余步数）；已用步数 = 预算 − 剩余
+    var used = 0;
+    if (typeof d.stepsLeft === 'number' && this.stepsBudget) {
+      used = Math.max(0, this.stepsBudget - d.stepsLeft);
+    }
+    var steps = used;
+    var parts = [];
+    if (lv && stage) { parts.push('lv=' + lv); parts.push('stage=' + stage); }
+    else { parts.push('level=' + (d.level || 1)); }
+    if (steps > 0) parts.push('ch=' + steps);          // 挑战者的步数（越少越强）
+    // D41/D43 去游戏化：量词必须用「课」，不能用「关」
+    var where = lv ? ('L' + lv + ' · ' + stage + ' 课') : ('第 ' + (d.level || 1) + ' 课');
+    var title = steps > 0
+      ? ('我用 ' + steps + ' 步走完' + where + '，来挑战我吧')
+      : ('藏字方块 · ' + where + '，认藏文从方块开始');
+    return { title: title, query: parts.join('&') };
   },
 
   onHide: function () {
