@@ -23,6 +23,7 @@ const https = require('https');
 const url = require('url');
 const crypto = require('crypto');
 const sign = require('./sign');
+const store = require('./store');   // D92：订单落 SQLite（旧版是内存 Map → 重启即丢）
 
 // ---------- 配置（全部走环境变量，**绝不进代码库**）----------
 const CFG = {
@@ -43,10 +44,9 @@ const GIFTS = {
   tib_name_99:    { price: 990, give: 'name' }
 };
 
-// ⚠️ 参考实现用内存；生产请换持久化存储（否则重启丢单，回调重放会重复发货）
-const ORDERS = new Map();
-// sessionKey 必须存**最新**那份（旧的算 signature 会 -15007）
-const SESSIONS = new Map();   // openid → { sessionKey, at }
+// D92：订单与会话已落 SQLite（server/store.js）——
+//   旧版用内存 Map，**重启即丢**：回调重放时找不到订单，或无从判断是否已发货。
+//   现在幂等由**数据库约束**保证（out_trade_no 主键 + delivered 条件更新），不靠代码自觉。
 
 function appKey() { return CFG.env === 1 ? CFG.appKeySandbox : CFG.appKeyProd; }
 
@@ -99,7 +99,7 @@ async function handleOrder(req, res, body) {
   if (!sess.openid || !sess.session_key) {
     return fail(res, 500, '登录态获取失败: ' + (sess.errmsg || ''));
   }
-  SESSIONS.set(sess.openid, { sessionKey: sess.session_key, at: Date.now() });
+  store.saveSession(sess.openid, sess.session_key);   // 必须存最新那份（旧的算 signature 会 -15007）
 
   const outTradeNo = makeOutTradeNo(productId);
   const signData = sign.buildSignData({
@@ -112,11 +112,10 @@ async function handleOrder(req, res, body) {
     attach: attach || ''
   });
 
-  // 订单先落库，状态 = 待支付（发货与否以后端状态为准，不看前端 success）
-  ORDERS.set(outTradeNo, {
+  // 订单先落**数据库**，状态 = 待支付（发货与否以后端状态为准，不看前端 success）
+  store.createOrder({
     outTradeNo, openid: sess.openid, productId,
-    amount: GIFTS[productId].price, status: 'PENDING',
-    attach: attach || '', createdAt: Date.now(), delivered: false
+    amount: GIFTS[productId].price, attach: attach || ''
   });
 
   return ok(res, {
@@ -142,16 +141,17 @@ function handleNotify(req, res, body, raw) {
   let data = {};
   try { data = typeof payload === 'string' ? JSON.parse(payload) : payload; } catch (e) { data = {}; }
   const outTradeNo = data.OutTradeNo || data.outTradeNo || '';
-  const order = ORDERS.get(outTradeNo);
+  const order = store.getOrder(outTradeNo);
   if (!order) return fail(res, 404, '订单不存在');
 
-  // **幂等**：已发货的直接返回成功（微信会重推，重复发货就是事故）
-  if (order.delivered) return ok(res, { errcode: 0, errmsg: 'ok', duplicated: true });
+  store.markPaid(outTradeNo);
 
-  order.status = 'PAID';
-  order.paidAt = Date.now();
+  // **幂等靠数据库**：只有 delivered=0 才会被本次更新到（受影响行数=1）。
+  // 微信会重推，若这里返回 false 说明之前已发过 —— 直接回成功，**绝不能再发一次**。
+  if (!store.claimDelivery(outTradeNo)) {
+    return ok(res, { errcode: 0, errmsg: 'ok', duplicated: true });
+  }
   deliver(order);                       // 发奖：灯火 +1 / 祝福卡 +1 …
-  order.delivered = true;
   return ok(res, { errcode: 0, errmsg: 'ok' });
 }
 
@@ -164,7 +164,7 @@ function deliver(order) {
 // ---------- ③ 主动查单（回调丢失时的兜底）----------
 async function handleQuery(req, res, body) {
   const outTradeNo = body.outTradeNo;
-  const order = ORDERS.get(outTradeNo);
+  const order = store.getOrder(outTradeNo);
   if (!order) return fail(res, 404, '订单不存在');
 
   // 官方服务端 API 需要签名：uri 不带参数（坑 P1），postBody 与真正发出的一致
@@ -175,12 +175,15 @@ async function handleQuery(req, res, body) {
   try {
     const r = await wxPost(uri, JSON.stringify({
       openid: order.openid, out_trade_no: outTradeNo,
-      pay_sig: paySig, signature: sign.calcApiSignature(postBody, (SESSIONS.get(order.openid) || {}).sessionKey || '')
+      pay_sig: paySig, signature: sign.calcApiSignature(postBody, store.getSession(order.openid))
     }));
     // 查到「已支付但未发货」→ 补发（这正是兜底的意义）
-    if (r && (r.errcode === 0) && r.order && r.order.status === 'PAID' && !order.delivered) {
-      order.status = 'PAID'; deliver(order); order.delivered = true;
-      return ok(res, { outTradeNo, status: 'PAID', delivered: true, repaired: true });
+    if (r && (r.errcode === 0) && r.order && r.order.status === 'PAID') {
+      store.markPaid(outTradeNo);
+      if (store.claimDelivery(outTradeNo)) {   // 同样靠 DB 保证只发一次
+        deliver(order);
+        return ok(res, { outTradeNo, status: 'PAID', delivered: true, repaired: true });
+      }
     }
     return ok(res, { outTradeNo, status: order.status, upstream: r });
   } catch (e) {
@@ -219,4 +222,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { GIFTS, ORDERS, SESSIONS, makeOutTradeNo, deliver, server };
+module.exports = { GIFTS, store, makeOutTradeNo, deliver, server };

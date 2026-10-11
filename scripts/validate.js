@@ -6159,6 +6159,20 @@ section('59. 藏文书写规范（出处 / 判据 / 机械检验）');
   else warn('回调验签未用定长比较');
   // 回调幂等：重复推送不能重复发货
   const ix = exists('server/index.js') ? read('server/index.js') : '';
+  // D92：订单必须落**持久化存储**，不能是内存 Map（重启即丢 → 回调重放会重复发货）
+  if (exists('server/store.js') && /node:sqlite|better-sqlite3/.test(read('server/store.js')))
+    ok('订单落持久化存储（server/store.js，SQLite）—— 不再是重启即丢的内存 Map');
+  else err('订单存储未持久化 —— 重启丢单会导致回调重放时重复发货');
+  if (!/new Map\(\).*ORDERS|ORDERS\s*=\s*new Map/.test(ix))
+    ok('index.js 已移除内存订单表（改用 store）');
+  else err('index.js 仍在用内存订单表 —— 重启即丢');
+  const st = exists('server/store.js') ? read('server/store.js') : '';
+  if (/delivered\s*=\s*0/.test(st) && /changes\s*>\s*0/.test(st))
+    ok('防重复发货靠**数据库条件更新**（delivered=0 才更新，受影响行数为准），不靠代码自觉');
+  else err('防重复发货未见数据库级保证');
+  if (/out_trade_no\s+TEXT\s+PRIMARY KEY/.test(st))
+    ok('out_trade_no 主键 —— 重复下单在**数据库层**被拒');
+  else warn('未见 out_trade_no 主键约束');
   if (/delivered/.test(ix) && /duplicated/.test(ix))
     ok('发货回调**幂等**（已发货直接返回，微信重推不会重复发货）');
   else err('发货回调未做幂等 —— 微信重推会导致重复发货（事故）');
