@@ -40,7 +40,7 @@ var PANEL_TITLES = {
   daily: '雪域日签',
   thangka: '唐卡拼图',
   box: '非遗盲盒',
-  shop: '藏式道具铺',
+  learn: '学习体系 · 十五级',
   rank: '我的成绩',
   tree: '菩提树',
   winter: '冬游西藏',
@@ -102,7 +102,7 @@ Page({
     thangkaCells: [],
     thangkaDone: false,
     boxText: '',
-    shopItems: [],
+    learnLevels: [],
     pot: 0,
     winterItems: [],
     // 万家灯火祈福跳窗（每次进入首页前展示，每天仅一次；纯本地，无任何网络请求）
@@ -455,21 +455,52 @@ Page({
       return;
     }
     var extra = {};
-    if (key === 'shop') extra.shopItems = this.buildShop();
+    if (key === 'learn') extra.learnLevels = this.buildLearn();
     this.refresh();
-    this.setData({ panel: key, panelTitle: PANEL_TITLES[key] || '', panelShow: true, shopItems: extra.shopItems || this.data.shopItems });
+    this.setData({ panel: key, panelTitle: PANEL_TITLES[key] || '', panelShow: true, learnLevels: extra.learnLevels || this.data.learnLevels });
   },
 
   closePanel: function () {
     this.setData({ panelShow: false });
   },
 
-  buildShop: function () {
-    var inv = storage.getInventory();
-    return dailyData.shop.map(function (it) {
-      return { id: it.id, name: it.name, cost: it.cost, icon: it.icon, desc: it.desc, have: inv[it.id] || 0 };
+
+  // D96 学习体系（15 级×10 关）。此前无入口，玩家到第 10 关就断了。
+  buildLearn: function () {
+    var that = this;
+    var out = [];
+    (learningData.LEVELS || []).forEach(function (cfg) {
+      var done = storage.getLearnLevelDone(cfg.lv);
+      var next = storage.getLearnNextStage(cfg.lv);
+      out.push({
+        lv: cfg.lv,
+        name: cfg.name,
+        goal: cfg.goal || '',
+        done: done,
+        total: cfg.stages,
+        next: next,
+        locked: cfg.lv > 1 && storage.getLearnLevelDone(cfg.lv - 1) < cfg.stages
+      });
     });
+    return out;
   },
+
+  onTapLearnLevel: function (e) {
+    var lv = parseInt(e.currentTarget.dataset.lv, 10);
+    // 已全过则重刷第 1 课；不用弹窗（项目有「不打扰」约束）
+    var next = storage.getLearnNextStage(lv);
+    if (!next) {
+      wx.showToast({ title: '这一级已完成，重练第 1 课', icon: 'none' });
+      next = 1;
+    }
+    this.gotoLearn(lv, next);
+  },
+
+  gotoLearn: function (lv, stage) {
+    this.setData({ panelShow: false });
+    wx.navigateTo({ url: '/pages/game/game?lv=' + lv + '&stage=' + stage });
+  },
+
 
   // 祈福长明灯：签到（跨天判定 + 7 天循环 + 奖励发放）
   doSignIn: function () {
@@ -634,24 +665,6 @@ Page({
     wx.showToast({ title: '唐卡已合成 · 收入文化护照', icon: 'none' });
   },
 
-  // 藏式道具铺：积分兑换（不涉及支付）
-  buyItem: function (e) {
-    var id = e.currentTarget.dataset.id;
-    var item = null;
-    for (var i = 0; i < dailyData.shop.length; i++) {
-      if (dailyData.shop[i].id === id) item = dailyData.shop[i];
-    }
-    if (!item) return;
-    if (!storage.spendPoints(item.cost)) {
-      wx.showToast({ title: '学习得分不够，先去完成课程吧', icon: 'none' });
-      return;
-    }
-    if (id === 'oil') storage.addOil(2);
-    else storage.addItem(id, 1);
-    this.refresh();
-    this.setData({ shopItems: this.buildShop() });
-    wx.showToast({ title: '已兑换 ' + item.name, icon: 'none' });
-  },
 
   // 菩提树：浇水得积分（无广告）
   waterTree: function () {

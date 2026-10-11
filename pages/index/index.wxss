@@ -1336,3 +1336,16 @@ page,
 /* D66 平板适配：内容封顶居中。手机端 max-width 不生效，版式零变化；
    平板上不再被拉成「放大的手机」。max-width 是保护性的，只封顶不放大。 */
 page { max-width: 560px; margin-left: auto; margin-right: auto; }
+
+.learn-list { max-height: 52vh; overflow-y: auto; padding: 4rpx 2rpx; }
+.learn-row { display: flex; align-items: center; gap: 18rpx;
+  padding: 18rpx 16rpx; margin-bottom: 12rpx; background: rgba(255,250,240,.06); border-radius: 14rpx; }
+.learn-row.locked { opacity: .42; }
+.learn-lv { flex-shrink: 0; width: 56rpx; height: 56rpx; line-height: 56rpx;
+  text-align: center; border-radius: 50%; font-size: 26rpx; font-weight: 700;
+  color: #FFF6DC; background: linear-gradient(160deg, #C0392B, #8E2A20); }
+.learn-main { flex: 1; min-width: 0; }
+.learn-name { font-size: 28rpx; color: #FFF6DC; }
+.learn-goal { font-size: 22rpx; color: #C9B79C; margin-top: 4rpx; }
+.learn-prog { flex-shrink: 0; font-size: 24rpx; color: #E8C87A; }
+.learn-done { color: #7FC08A; }

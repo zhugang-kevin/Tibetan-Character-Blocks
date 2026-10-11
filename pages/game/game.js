@@ -829,6 +829,10 @@ Page({
 
   // 通关：清空盘面 → 揭图整幅揭晓
   finishLevel: function () {
+    // D96：记学习线进度
+    if (this.learnCfg) {
+      try { storage.markLearnStageDone(this.learnCfg.lv, this.learnCfg.stage); } catch (e) { /* 不影响通关 */ }
+    }
     var that = this;
     if (this.finished) return;
     this.finished = true;

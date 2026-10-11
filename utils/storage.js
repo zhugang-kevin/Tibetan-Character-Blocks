@@ -497,7 +497,40 @@ function getSeenCards() { return getProgress().seenCards; }
 
 function getStampCount() { return getProgress().stamps.length; }
 
+
+// D96 学习线（150 关）进度。
+function getLearnDone() {
+  var p = rawRead();
+  var v = (p && p.learnDone) || {};
+  return (typeof v === 'object' && !Array.isArray(v)) ? v : {};
+}
+function markLearnStageDone(lv, stage) {
+  if (!lv || !stage) return false;
+  var p = rawRead() || {};
+  var d = (typeof p.learnDone === 'object' && !Array.isArray(p.learnDone)) ? p.learnDone : {};
+  d[lv + '-' + stage] = 1;
+  p.learnDone = d;
+  return rawWrite(p);
+}
+/** 某级已完成几课（0-10） */
+function getLearnLevelDone(lv) {
+  var d = getLearnDone();
+  var n = 0;
+  for (var i = 1; i <= 10; i++) if (d[lv + '-' + i]) n++;
+  return n;
+}
+/** 某级下一课序号（全过返 0） */
+function getLearnNextStage(lv) {
+  var d = getLearnDone();
+  for (var i = 1; i <= 10; i++) if (!d[lv + '-' + i]) return i;
+  return 0;
+}
+
 module.exports = {
+  getLearnDone: getLearnDone,
+  markLearnStageDone: markLearnStageDone,
+  getLearnLevelDone: getLearnLevelDone,
+  getLearnNextStage: getLearnNextStage,
   MAX_LEVEL: MAX_LEVEL,
   getProgress: getProgress,
   completeLevel: completeLevel,

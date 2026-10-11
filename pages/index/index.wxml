@@ -145,7 +145,7 @@
 
   <!-- 底部大平层 -->
   <view class="dock">
-    <view class="dock-btn" data-panel="shop" bindtap="openPanel"><text class="dock-ico">🧰</text><text class="dock-txt">道具铺</text></view>
+    <view class="dock-btn" data-panel="learn" bindtap="openPanel"><text class="dock-ico">📖</text><text class="dock-txt">学习体系</text></view>
     <view class="dock-btn" data-panel="rank" bindtap="openPanel"><text class="dock-ico">🏔</text><text class="dock-txt">我的成绩</text></view>
     <view class="dock-btn" data-panel="tree" bindtap="openPanel"><text class="dock-ico">🌳</text><text class="dock-txt">菩提树</text></view>
     <view class="dock-btn" data-panel="winter" bindtap="openPanel"><text class="dock-ico">❄</text><text class="dock-txt">冬游西藏</text></view>
@@ -216,20 +216,26 @@
         <view class="entry-note">盲盒只装文化小知识：不发放优惠券、不涉及任何金额与交易。</view>
       </block>
 
-      <!-- 藏式道具铺（积分兑换，不涉及支付） -->
-      <block wx:elif="{{panel === 'shop'}}">
-        <view class="shop-row" wx:for="{{shopItems}}" wx:key="id">
-          <view class="shop-ico">{{item.icon}}</view>
-          <view class="shop-main">
-            <view class="shop-name">{{item.name}} <text class="shop-count">持有 {{item.have}}</text></view>
-            <view class="shop-desc">{{item.desc}}</view>
+      <!-- 我的成绩（本地记录） -->
+      <block wx:elif="{{panel === 'learn'}}">
+        <!-- D96 学习体系 15 级×10 关（此前无入口）-->
+        <view class="learn-list">
+          <view class="learn-row {{item.locked ? 'locked' : ''}}" wx:for="{{learnLevels}}" wx:key="lv"
+                data-lv="{{item.lv}}" bindtap="onTapLearnLevel">
+            <view class="learn-lv">{{item.lv}}</view>
+            <view class="learn-main">
+              <view class="learn-name">{{item.name}}</view>
+              <view class="learn-goal">{{item.goal}}</view>
+            </view>
+            <view class="learn-prog">
+              <text wx:if="{{item.locked}}">🔒</text>
+              <text wx:elif="{{item.done >= item.total}}" class="learn-done">已完成</text>
+              <text wx:else>{{item.done}} / {{item.total}}</text>
+            </view>
           </view>
-          <view class="shop-btn" data-id="{{item.id}}" bindtap="buyItem">{{item.cost}} 学习得分</view>
         </view>
-        <view class="entry-note">道具用学习得分兑换：全程不涉及支付，也不含广告。</view>
       </block>
 
-      <!-- 我的成绩（本地记录） -->
       <block wx:elif="{{panel === 'rank'}}">
         <view class="rank-row"><text class="rank-k">累计学习得分</text><text class="rank-v">{{points}}</text></view>
         <view class="rank-row"><text class="rank-k">最高连续正确</text><text class="rank-v">×{{bestCombo}}</text></view>
