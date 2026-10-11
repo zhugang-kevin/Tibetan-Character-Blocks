@@ -3510,8 +3510,19 @@ section('38. 生产上线守卫（主包体积 / 隐私授权 / 工程配置）'
   // --- 38.2 主包体积预算（按 ignore 规则实测，不信估数）---
   {
     const KB = 1024, LIMIT_KB = 1843; // 2MB 上限留 10% 余量给编译产物
-    // ⚠️ 必须与 project.config.json 的 packOptions.ignore 保持一致（D46 起 assets-src 为原材料投放区）
-    const skipDir = new Set(['preview', 'docs', 'scripts', 'node_modules', '.workbuddy', '.git', 'assets-src']);
+    // ⚠️ D91：**从 packOptions.ignore 派生**，不再硬编码。
+    //   旧写法是写死一个 Set，注释还写着「必须与 ignore 保持一致」——
+    //   但「靠人记得同步」必然失配：本轮加了 server/ 到 ignore，这里没跟着改，
+    //   于是服务端代码被算进小程序包体（1854KB 超限），而 ignore 明明已经排除了它。
+    //   现在只认一个事实来源：project.config.json。
+    const skipDir = new Set(
+      (((JSON.parse(read('project.config.json')).packOptions || {}).ignore) || [])
+        .filter(i => i.type === 'folder').map(i => i.value)
+    );
+    ['preview', 'docs', 'scripts', 'server'].forEach(d => {
+      if (skipDir.has(d)) ok('体积计算已排除 ' + d + '（与 packOptions.ignore 同源）');
+      else err('体积计算未排除 ' + d + ' —— 开发/服务端资产会撑爆主包上限');
+    });
     let totalK = 0;
     (function walk(rel) {
       for (const e of fs.readdirSync(path.join(ROOT, rel), { withFileTypes: true })) {
@@ -6129,6 +6140,34 @@ section('59. 藏文书写规范（出处 / 判据 / 机械检验）');
   const hitBanned = banned.filter(function (w) { return giftDoc.indexOf('❌') === -1 && false; });
   if (giftDoc.indexOf('不设') > -1 || true) ok('打赏设计文档在册，且明确列出禁用话术');
   else warn('缺少打赏设计文档');
+}
+
+// ---------- 59.11 D91：虚拟支付服务端（签名/回调/幂等）----------
+// 支付签名算错 = 100% 支付失败（-15005/-15006），且**上线后才暴露**。
+// 所以必须有「不依赖任何凭证」的回归测试把算法钉死。
+{
+  ['server/sign.js', 'server/index.js', 'server/test-sign.js'].forEach(function (f) {
+    if (exists(f)) ok('服务端文件在册：' + f);
+    else err('缺少 ' + f);
+  });
+  const sg = exists('server/sign.js') ? read('server/sign.js') : '';
+  // 官方公式的两个关键点
+  if (/requestVirtualPayment'\s*\+\s*'&'/.test(sg) || /URI_REQUEST_VIRTUAL_PAYMENT\s*\+\s*'&'/.test(sg))
+    ok('paySig 公式含「uri + & + signData」（官方公式）');
+  else err('paySig 公式不符官方（应为 hmac(appKey, uri + "&" + signData)）');
+  if (/timingSafeEqual/.test(sg)) ok('回调验签用定长比较（timingSafeEqual），避免时序侧信道');
+  else warn('回调验签未用定长比较');
+  // 回调幂等：重复推送不能重复发货
+  const ix = exists('server/index.js') ? read('server/index.js') : '';
+  if (/delivered/.test(ix) && /duplicated/.test(ix))
+    ok('发货回调**幂等**（已发货直接返回，微信重推不会重复发货）');
+  else err('发货回调未做幂等 —— 微信重推会导致重复发货（事故）');
+  // 凭证不进代码库
+  if (/process\.env\./.test(ix)) ok('凭证走环境变量（不进代码库）');
+  else err('凭证可能写死在代码里');
+  // 查单兜底（官方要求「回调 + 查单」双通道）
+  if (/handleQuery|query_order/.test(ix)) ok('含主动查单兜底（官方要求回调+查单双通道）');
+  else err('缺少主动查单兜底');
 }
 
 section('60. 牌面视觉一致性（填充率 / 行首 tsheg / 装得下）');
