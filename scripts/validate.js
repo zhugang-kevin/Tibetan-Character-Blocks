@@ -5965,6 +5965,30 @@ section('59. 藏文书写规范（出处 / 判据 / 机械检验）');
 //   ② 字号回归 305/770（加 ་ 的物理代价，tsheg 实测占 0.158em）。
 // 处置：给 layoutTile 加**填充率下限**（目标 0.82，上限 1.60×），L1 从 0.51 → **0.81**，
 // 全关填充率收敛到 **0.81~1.00**。本节把这条观感标准钉住。
+// ---------- 59.6 D80：字号搜索必须每步重新断行 ----------
+// 事故：收缩循环写的是 measureLines(w.lines, f) —— 用的是**基准字号下的断行结果**，
+// 行数被永久锁死。而字号越小、每行放得下的音节越多、行数越少：
+//   ངའི་མིང་ལ་བཀྲ་ཤིས་རེད 在 68px 下 6 行、25px 下 5 行、**18px 下 3 行**、15px 下 2 行。
+// 旧写法在 18px 时仍按「6 行」算高度 → 误判装不下 → 一路缩到 15px 才停，
+// 白白牺牲 9px 字号，并让 L12/L13 触发「字号过小」门禁（而我一度以为要改教学内容）。
+{
+  const gj80 = read('utils/grid.js');
+  const i80 = gj80.indexOf('for (var s = 0.99');
+  const loop80 = gj80.slice(i80, i80 + 900);
+  if (i80 < 0) err('找不到字号收缩循环');
+  else if (loop80.indexOf('wrapTibetanTile(') > -1)
+    ok('字号收缩循环**每步重新断行**（D80：只测量会把行数锁死在基准字号上）');
+  else err('字号收缩循环没有重新断行 —— 会忽略「字号越小行数越少」，白白牺牲字号');
+  try {
+    const g80 = require('../utils/grid.js');
+    const t80 = 'ངའི་མིང་ལ་བཀྲ་ཤིས་རེད་';
+    const a80 = g80.wrapTibetanTile(t80, 109, 68, null).lines.length;
+    const b80 = g80.wrapTibetanTile(t80, 109, 18, null).lines.length;
+    if (b80 < a80) ok('断行数随字号下降而减少（68px ' + a80 + ' 行 → 18px ' + b80 + ' 行）');
+    else warn('断行数未随字号变化（' + a80 + ' vs ' + b80 + '）—— 需确认断行实现');
+  } catch (e) { warn('断行核对失败：' + String(e).slice(0, 50)); }
+}
+
 section('60. 牌面视觉一致性（填充率 / 行首 tsheg / 装得下）');
 {
   const learning60 = require('../utils/learning.js');

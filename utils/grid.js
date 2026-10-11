@@ -217,16 +217,25 @@ function layoutTile(text, cell, fontSizePx, measureWidth) {
   var base = num(fontSizePx, Math.round(c * FONT_RATIO));
   var avail = c * INNER;
   var w = wrapTibetanTile(text, c, base, measureWidth);
+  var lines = w.lines;
   var font = Math.round(base);
   var m = measureLines(w.lines, font, measureWidth);
   var fits = m.width <= avail + FIT_TOL && m.height <= avail + FIT_TOL;
   // D79：下限 0.28→0.12（旧下限够不到多行牌面所需的 ~15px，会误判「装不下」）
+  // ⚠️ D80 关键修复：**每换一个候选字号都要重新断行**。
+  //    旧写法只 measureLines(w.lines, f) —— 用的是**基准字号下的断行结果**，
+  //    行数被永久锁死。而字号越小、每行放得下的音节越多、行数越少：
+  //      ངའི་མིང་ལ་བཀྲ་ཤིས་རེད 在 68px 下 6 行、25px 下 5 行、**18px 下 3 行**、
+  //      15px 下 2 行。旧写法因此在 18px 时仍按「6 行」算高度（6.15em×18=111px>94）→
+  //      误判装不下，一路缩到 15px 才停下 —— **白白牺牲 3px 字号**，
+  //      并让 L12/L13 触发「字号过小」门禁。修复后 18px / 3 行即可装下。
   for (var s = 0.99; !fits && s >= 0.12; s -= 0.01) {
     var f = Math.max(8, Math.round(base * s));
     if (f === font) continue;
-    var mm = measureLines(w.lines, f, measureWidth);
+    var w2 = wrapTibetanTile(text, c, f, measureWidth);      // ← 重新断行
+    var mm = measureLines(w2.lines, f, measureWidth);
     if (mm.width <= avail + FIT_TOL && mm.height <= avail + FIT_TOL) {
-      font = f; m = mm; fits = true;
+      font = f; m = mm; lines = w2.lines; fits = true;
     }
   }
   // ---- D71：填充率下限（视觉一致性）----
@@ -235,15 +244,16 @@ function layoutTile(text, cell, fontSizePx, measureWidth) {
     for (var up = 1.02; up <= UP_LIMIT; up += 0.02) {
       var f2 = Math.round(base * up);
       if (f2 <= font) continue;
-      var m2 = measureLines(w.lines, f2, measureWidth);
+      var w3 = wrapTibetanTile(text, c, f2, measureWidth);   // 放大同样要重新断行
+      var m2 = measureLines(w3.lines, f2, measureWidth);
       var fill2 = Math.max(m2.width, m2.height) / avail;
       if (m2.width > avail + FIT_TOL || m2.height > avail + FIT_TOL) break;
-      font = f2; m = m2;
+      font = f2; m = m2; lines = w3.lines;
       if (fill2 >= FILL_TARGET) break;
     }
   }
   return {
-    lines: w.lines,
+    lines: lines,
     font: font,
     scale: Math.round(font / base * 100) / 100,
     width: Math.round(m.width),
