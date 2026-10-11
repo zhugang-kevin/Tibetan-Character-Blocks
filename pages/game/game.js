@@ -354,7 +354,6 @@ Page({
       uid: uid,
       id: id,
       type: el.type,
-      // D70：牌面藏文补尾随 tsheg（依据 docs/tibetan-orthography.md R1）
       tibetan: tibText.withTseg(el.tibetan || ''),
       color: el.color,
       fallbackText: el.char || '',
@@ -389,7 +388,6 @@ Page({
       var baseFont = Math.round(cell * grid.FONT_RATIO);
       var lay = grid.layoutTile(t.tibetan, cell, baseFont, null);
       t.opticalShift = lay.opticalShift || 0;
-      // D76：按字形自适应的视觉重心补偿（em）—— 见 utils/grid.js opticalShift
       // 小程序 style 用 rpx → 把 px 按「750rpx = 屏宽」换算回来
       t.glyphOverride = Math.round(lay.font * 750 / sw);
       // 多行交给 <text> 的 \n 断行（藏文按 tsheg 断，不会切碎音节）

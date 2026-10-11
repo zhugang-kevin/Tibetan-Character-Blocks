@@ -233,7 +233,6 @@
 }
 
 /* 藏文字母：暖金色浮雕字，居中、字号为格子 60%（由 JS 传入） */
-/* D75/D76 纵向重心补偿：见 utils/grid.js opticalShift（实测值） */
 .glyph {
   font-weight: 600;
   line-height: 1;

@@ -81,9 +81,7 @@ function boardSize(lv, screenWidth, gap) {
 // measureText 注入签名：(text, fontSizePx) => widthPx（只需宽度；高度按下述多行模型推）
 // 无注入时用保守估算：宽 ≈ 0.55 × 字号 × 最长「横向视觉行数」字符数。
 
-// D77 纵向重心补偿（**逐字实测表**，详据见 docs/tibetan-orthography.md §九）
-// D76 失败是因为那张降部表用中位数切分推出来的（把 ང ར ཟ འ 错划成有降部），不是思路错。
-// 现为逐字实测（量全部 30 个基字的墨迹上下界），紧凑编码：墨顶 3 值、墨底 8 值。
+// D77 纵向重心补偿（逐字实测表，详据见 docs/tibetan-orthography.md §九）：墨顶 3 值、墨底 8 值
 var OPT_TOP = -0.680, OPT_TOP_HI = -0.850, OPT_TOP_WA = -0.705;
 var OPT_TOP_HI_SET = '\u0F59\u0F5A\u0F5B';
 var OPT_TOP_WA_SET = '\u0F5D';                          // ཝ
@@ -97,14 +95,19 @@ var OPT_BOTS = [                                          // [墨底, 该值的�
   [-0.095, '\u0F54\u0F55\u0F56\u0F58\u0F61\u0F63\u0F66\u0F68'],
   [-0.120, '\u0F45\u0F46\u0F59\u0F5A']               // ཅ ཆ ཙ ཚ
 ];
+// D78 下加字有自己的墨底，会覆盖基字降部（实测）：ྱ .260 ／ ྲ .175 ／ ླ .280 ／ ྷ .460
+var OPT_SUBS = [[0x0FB1, 0.260], [0x0FB2, 0.175], [0x0FB3, 0.280], [0x0FB7, 0.460]];
+// D78b ུ 抬墨底（实测）：无下加字→.225；有下加字→.505；与既有值取 max
+var OPT_U_PLAIN = 0.225, OPT_U_SUB = 0.505;
 var OPT_ABOVE = '\u0F72\u0F7A\u0F7C\u0F71\u0F7B\u0F7D';   // ི ེ ོ ཱ ཻ ཽ（会把墨顶再抬 0.19em）
-var OPT_ABOVE_LIFT = 0.19;
+var OPT_ABOVE_LIFT = 0.38;   // 曾误用 0.19（那是格子相对坐标；基线相对实测为 0.380）
+                             //    ཀ −0.680 → ཀི −1.060，抬升 **0.380**。
 var OPT_BASE_OFF = 0.0535;   // 格子中心相对基线（由 ཀ 反推并验证）
 
 // 返回「把墨心移回格子中心」所需位移（em，正 = 向下）
 function opticalShift(text) {
   var t = String(text || ''), i, j;
-  var top = 0, bot = 0, seen = false, above = false;
+  var top = 0, bot = 0, seen = false, above = false, sub = false;
   for (i = 0; i < t.length; i++) {
     var c = t[i];
     if (OPT_ABOVE.indexOf(c) > -1) above = true;
@@ -114,8 +117,19 @@ function opticalShift(text) {
     for (j = 0; j < OPT_BOTS.length; j++) {
       if (OPT_BOTS[j][1].indexOf(c) > -1) { bot = Math.max(bot, OPT_BOTS[j][0]); seen = true; }
     }
+    // D78：下加字覆盖基字的墨底（实测：连写时基字不再用带降部字形）
+    for (j = 0; j < OPT_SUBS.length; j++) {
+      if (c.charCodeAt(0) === OPT_SUBS[j][0]) { bot = OPT_SUBS[j][1]; sub = true; seen = true; }
+    }
   }
   if (!seen) return 0;
+  if (sub) {   // 下加字的墨底优先于基字（实测：连写时基字降部被替换）
+    for (j = 0; j < OPT_SUBS.length; j++) {
+      if (t.indexOf(String.fromCharCode(OPT_SUBS[j][0])) > -1) { bot = OPT_SUBS[j][1]; break; }
+    }
+  }
+  // D78b：下加元音 ུ 把墨底抬下来（与上面的规则取 max，不叠加）
+  if (t.indexOf('\u0F74') > -1) bot = Math.max(bot, sub ? OPT_U_SUB : OPT_U_PLAIN);
   if (above) top -= OPT_ABOVE_LIFT;
   return Math.round(-((top + bot) / 2 + OPT_BASE_OFF) * 1000) / 1000;
 }
@@ -147,12 +161,7 @@ function measureTibetanSyllable(text, fontSizePx, measureWidth) {
       return { width: w, height: Math.max(fs, layersOf(t) * 0.62 * fs) };
     }
   }
-  // 兜底估算（无量算通道 / 量算失败）：宽 ≈ 0.55 × 字号 × 层数 + 0.284 × 字号 × 分隔符数
-  //   ⚠️ 0.284 是**真字体的实测值**（`scripts/measure_font_metrics.py`，带两条自证）：
-  //        基字 ཀ = **0.748 em**（ཁ 0.723 / ག 0.762 / ང 0.617 —— 各不相同）
-  //        tsheg ་ = **0.284 em** ｜ shad ། = 0.296 em
-  //        tsheg / 基字 = **0.3797**
-  // 沿革：猜的 0.28 → 坏字体量的 0.158 → 真字体量的 0.284（详见 docs）。
+  // 兜底估算：宽 ≈ 0.55×字号×层数 + 0.284×字号×分隔符数（0.284 为真字体实测，见 docs）
   var seps = 0;
   for (var k = 0; k < t.length; k++) {
     var cc = t.charCodeAt(k);
