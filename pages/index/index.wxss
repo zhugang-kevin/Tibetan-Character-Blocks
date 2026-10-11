@@ -1349,3 +1349,19 @@ page { max-width: 560px; margin-left: auto; margin-right: auto; }
 .learn-goal { font-size: 22rpx; color: #C9B79C; margin-top: 4rpx; }
 .learn-prog { flex-shrink: 0; font-size: 24rpx; color: #E8C87A; }
 .learn-done { color: #7FC08A; }
+
+/* D99 经书经文背景：暗色经卷 + 低对比暖金经文（隐约可见，不抢数据行）*/
+.sutra-layer {
+  position: absolute; left: 0; right: 0; top: 0; bottom: 0;
+  display: flex; flex-direction: column; justify-content: center;
+  gap: 14rpx; padding: 8rpx 14rpx; overflow: hidden;
+  background: linear-gradient(170deg, #241A12 0%, #1B130D 55%, #150F0A 100%);
+  border-radius: 14rpx; pointer-events: none; z-index: 0;
+}
+.sutra-line {
+  font-family: 'Noto Serif Tibetan', Kailasa, 'Noto Sans Tibetan',
+               Jomolhari, 'Microsoft Himalaya', serif;
+  font-size: 30rpx; line-height: 1.5; white-space: nowrap;
+  color: rgba(214, 178, 106, .20);
+}
+.rank-row, .entry-note { position: relative; z-index: 1; }

@@ -237,6 +237,16 @@
       </block>
 
       <block wx:elif="{{panel === 'rank'}}">
+        <!-- D99 经书经文背景：用真实藏文排成经文块，零图片开销、任意分辨率清晰 -->
+        <view class="sutra-layer" aria-hidden="true">
+          <text class="sutra-line">ཨོཾ་མ་ཎི་པདྨེ་ཧཱུྃ།</text>
+          <text class="sutra-line">བཀྲ་ཤིས་བདེ་ལེགས།</text>
+          <text class="sutra-line">ཨོཾ་མ་ཎི་པདྨེ་ཧཱུྃ།</text>
+          <text class="sutra-line">སེམས་ཁྲལ་མེད་པར་སྤྲོ་པོ་ཡོང་བར་ཤོག།</text>
+          <text class="sutra-line">ཨོཾ་མ་ཎི་པདྨེ་ཧཱུྃ།</text>
+          <text class="sutra-line">ཞི་བདེ་དང་བཀྲ་ཤིས་ཡོང་བར་ཤོག།</text>
+          <text class="sutra-line">ཨོཾ་མ་ཎི་པདྨེ་ཧཱུྃ།</text>
+        </view>
         <view class="rank-row"><text class="rank-k">累计学习得分</text><text class="rank-v">{{points}}</text></view>
         <view class="rank-row"><text class="rank-k">最高连续正确</text><text class="rank-v">×{{bestCombo}}</text></view>
         <view class="rank-row"><text class="rank-k">累计星星</text><text class="rank-v">{{journal.stars}}</text></view>
