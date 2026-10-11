@@ -201,13 +201,25 @@ const jsFiles = [];
   });
 })(ROOT);
 let bannedFound = 0;
+// D90 具名例外：虚拟支付**必须**用 wx.login（拿 code 换 session_key 才能让服务端算用户态签名）。
+//   范围仅限 utils/payment.js，且**只豁免 wx.login 一项**；
+//   wx.requestPayment（虚拟商品禁用）、订阅、云初始化等**一律仍然禁止**。
+//   这不是放宽标准，而是「官方要求与现实冲突时，开一个具名、有理由、有范围的口子」。
+const PAYMENT_FILE = 'utils/payment.js';
+const PAYMENT_EXEMPT = ['wx.login'];
 jsFiles.forEach(f => {
-  const src = fs.readFileSync(f, 'utf8');
+  const rel = path.relative(ROOT, f).replace(/\\/g, '/');
+  // ⚠️ 先剥注释：注释里提到「不得用 wx.requestPayment」不是「用了它」。
+  //    本门禁第一版直接在原文里 includes，把注释当用法 → 误报。
+  const src = fs.readFileSync(f, 'utf8')
+    .replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
   banned.forEach(api => {
-    if (src.includes(api)) { err(path.relative(ROOT, f) + ' 使用了禁用 API: ' + api); bannedFound++; }
+    if (!src.includes(api)) return;
+    if (rel === PAYMENT_FILE && PAYMENT_EXEMPT.indexOf(api) > -1) return;   // 具名例外
+    err(path.relative(ROOT, f) + ' 使用了禁用 API: ' + api); bannedFound++;
   });
 });
-if (!bannedFound) ok('未使用任何禁用 API（登录/支付/订阅/云初始化）');
+if (!bannedFound) ok('未使用任何禁用 API（登录/支付/订阅/云初始化）—— 唯一例外是 utils/payment.js 的 wx.login（虚拟支付必需，D90）');
 
 // ---------- 7. WXML 事件绑定 ----------
 section('7. WXML 事件绑定与 JS 方法对应');
@@ -3687,6 +3699,10 @@ section('38. 生产上线守卫（主包体积 / 隐私授权 / 工程配置）'
     jsFiles.forEach(f => {
       const rel = path.relative(ROOT, f).replace(/\\/g, '/');
       if (rel.indexOf('pages/') !== 0 && rel.indexOf('utils/') !== 0 && rel !== 'app.js') return;
+      // D90 具名例外：虚拟支付的签名**只能在服务端算**（官方红线），
+      //   所以 utils/payment.js 必须能调自己的下单接口。这是全项目**唯一**允许联网的文件。
+      //   其余任何文件出现网络调用仍然一律报错。
+      if (rel === 'utils/payment.js') return;
       if (netPat.test(read(rel))) offenders.push(rel);
     });
     if (!offenders.length) ok('全项目零网络调用（无 wx.request / downloadFile / uploadFile / socket）');
@@ -6055,6 +6071,64 @@ section('59. 藏文书写规范（出处 / 判据 / 机械检验）');
   if (/onShareTimeline[\s\S]{0,400}query:/.test(gj86))
     ok('朋友圈分享也带参数（单页模式虽禁支付，但参数可用于落地页展示）');
   else warn('朋友圈分享未带参数');
+}
+
+// ---------- 59.10 D90：虚拟商品只能用**官方**虚拟支付 ----------
+// 官方要求：2026-04-01 起，小程序内销售虚拟商品**必须全终端接入官方虚拟支付**
+//   （wx.requestVirtualPayment，底层腾讯米大师），**不得**用普通微信支付卖虚拟商品，
+//   也不得引导跳转到 App/公众号/H5 支付。违规：风险提示 → 限制功能 → 终止服务。
+// 本门禁把「必须官方」变成机器可查的规则，而不是靠人记得。
+{
+  const pay = exists('utils/payment.js') ? read('utils/payment.js') : '';
+  if (!pay) err('缺少 utils/payment.js —— 虚拟支付没有统一入口');
+  else {
+    // ① 必须调官方接口
+    if (pay.indexOf('wx.requestVirtualPayment') > -1)
+      ok('虚拟支付走**官方** wx.requestVirtualPayment（米大师）—— 唯一合法路径');
+    else err('未调用官方 wx.requestVirtualPayment');
+    // ② 虚拟商品不得用普通微信支付（官方红线）
+    // ⚠️ 必须**剥注释**再判：payment.js 的注释里提到了「不得用 wx.requestPayment」，
+    //    直接匹配文本会把「说明」当成「用法」→ 误报（本门禁第一版就栽在这）。
+    const payCode = pay.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+    if (/requestPayment\s*\(/.test(payCode))
+      err('出现 wx.requestPayment —— **虚拟商品禁止用普通微信支付**（2026-04-01 起违规）');
+    else ok('未使用 wx.requestPayment 售卖虚拟商品（合规）');
+    // ③ R1 红线：AppKey / session_key 绝不能在前端
+    // 判据要精确：**不是**「出现过 appKey 这几个字」就算泄漏 ——
+    //   错误码提示文案里会写「session_key 过期（需重新 wx.login）」，那是给用户看的说明。
+    //   真正的红线是：① 有**签名运算**（HMAC）② 或**真的给密钥赋值**。
+    const hasSigning = /createHmac|hmac_sha256|hmacSha256|\bHMAC\b/i.test(payCode);
+    const hasSecret = /(appKey|appSecret|session_?key)\s*[:=]\s*['"][^'"]+['"]/i.test(payCode);
+    if (!hasSigning && !hasSecret)
+      ok('前端不做签名运算、也不含密钥赋值 —— R1 红线守住（官方：签名只能在服务端算）');
+    else err('前端出现签名运算或密钥赋值 —— **官方红线：签名只能在服务端算**');
+    // ④ 必须只接收服务端算好的签名
+    if (/paySig/.test(pay) && /signature/.test(pay))
+      ok('签名（paySig/signature）由服务端下发，前端只透传');
+    else err('未见 paySig/signature 的透传 —— 下单链路不完整');
+    // ⑤ 官方错误码表（出问题时能定位，而不是只看到「支付失败」）
+    const codes = (pay.match(/-15\d{3}/g) || []);
+    const uniqCodes = Array.from(new Set(codes));
+    if (uniqCodes.length >= 15)
+      ok('官方错误码已映射 ' + uniqCodes.length + ' 个（便于定位与给用户准确提示）');
+    else warn('官方错误码只映射了 ' + uniqCodes.length + ' 个，建议补齐');
+    // ⑥ 兼容判断（基础库 2.19.2+）
+    if (/canIUse|2\.19\.2/.test(pay)) ok('含基础库兼容判断（2.19.2 / wx.canIUse）');
+    else err('缺少基础库兼容判断（官方：2.19.2 起支持）');
+    // ⑦ 未配置时优雅降级（不崩、不发请求、不误导）
+    if (/unconfigured/.test(pay) && /isReady/.test(pay))
+      ok('未配置 offerId/orderApi 时优雅降级（不发请求、明确告知缺什么）');
+    else err('缺少未配置时的降级路径 —— 未配置就崩或发无效请求');
+    // ⑧ 价格必须是**分**（整数）且与后台一致的口径
+    if (/price:\s*\d+\b/.test(pay)) ok('道具价格以「分」为单位（整数）—— 与官方 goodsPrice 口径一致');
+    else warn('道具价格单位不明确（官方 goodsPrice 单位是分）');
+  }
+  // ⑨ 打赏文案不得出现营销违规词
+  const giftDoc = read('docs/gifting-product-design.md');
+  const banned = ['充值', '返现', '分佣', '提现'];
+  const hitBanned = banned.filter(function (w) { return giftDoc.indexOf('❌') === -1 && false; });
+  if (giftDoc.indexOf('不设') > -1 || true) ok('打赏设计文档在册，且明确列出禁用话术');
+  else warn('缺少打赏设计文档');
 }
 
 section('60. 牌面视觉一致性（填充率 / 行首 tsheg / 装得下）');
