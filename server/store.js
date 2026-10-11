@@ -65,6 +65,19 @@ db.exec(`
   )
 `);
 
+// D94：用户学习进度（甲类数据）。**隔离靠 openid 条件**（托管方案的 RLS 我们这里没有，
+//   用「服务端不信任客户端 openid + 每条 SQL 必带 openid 条件」来替代，并由门禁看守）。
+db.exec(`
+  CREATE TABLE IF NOT EXISTS progress (
+    openid      TEXT PRIMARY KEY,      -- 主键 = 一个人一条，天然幂等
+    done_stages TEXT,
+    lamps       INTEGER NOT NULL DEFAULT 0,
+    cards       INTEGER NOT NULL DEFAULT 0,
+    owner_name  TEXT,
+    updated_at  INTEGER NOT NULL
+  )
+`);
+
 const stmt = {
   insertOrder: db.prepare(`INSERT INTO orders
     (out_trade_no, openid, product_id, amount, attach, created_at)
@@ -81,7 +94,14 @@ const stmt = {
   getSession: db.prepare('SELECT * FROM sessions WHERE openid = ?'),
   // 兜底查单用：找出「已支付但未发货」的订单（回调丢失时它们会一直挂着）
   pendingDelivery: db.prepare(`SELECT * FROM orders
-    WHERE status='PAID' AND delivered=0 ORDER BY paid_at LIMIT ?`)
+    WHERE status='PAID' AND delivered=0 ORDER BY paid_at LIMIT ?`),
+  // 以下三条**每一条都带 openid 条件** —— 这是自建方案替代 RLS 的隔离手段
+  upsertProgress: db.prepare(`INSERT INTO progress (openid, done_stages, lamps, cards, owner_name, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+    ON CONFLICT(openid) DO UPDATE SET
+      done_stages=excluded.done_stages, lamps=excluded.lamps,
+      cards=excluded.cards, owner_name=excluded.owner_name, updated_at=excluded.updated_at`),
+  getProgress: db.prepare('SELECT done_stages, lamps, cards, owner_name, updated_at FROM progress WHERE openid = ?')
 };
 
 function createOrder(o) {
@@ -113,6 +133,18 @@ function getSession(openid) {
 }
 function listPendingDelivery(limit) { return stmt.pendingDelivery.all(limit || 50); }
 
+// 进度读写：**openid 由调用方从 code2Session 取**，绝不接受客户端传入的 openid
+function saveProgress(openid, d) {
+  if (!openid) throw new Error('saveProgress: openid 必填');
+  stmt.upsertProgress.run(openid, d.doneStages || '', d.lamps | 0, d.cards | 0,
+    d.ownerName || '', Date.now());
+  return getProgress(openid);
+}
+function getProgress(openid) {
+  if (!openid) throw new Error('getProgress: openid 必填');
+  return stmt.getProgress.get(openid) || null;
+}
+
 module.exports = {
   DB_PATH,
   db,
@@ -122,5 +154,7 @@ module.exports = {
   claimDelivery,
   saveSession,
   getSession,
-  listPendingDelivery
+  listPendingDelivery,
+  saveProgress,
+  getProgress
 };

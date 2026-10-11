@@ -21,6 +21,11 @@ App({
     } catch (e) { /* 存储异常不影响启动 */ }
   },
 
+  // 注入进度同步配置（D94）：只需服务端地址，不需要任何密钥
+  injectSyncConfig: function (cfg) {
+    try { require('./utils/sync').injectConfig(cfg || {}); } catch (e) { /* 不影响启动 */ }
+  },
+
   // 注入虚拟支付配置（D90）
   //   ⚠️ 官方红线：**签名只能在服务端算**（AppKey / session_key 绝不能出现在前端）。
   //   所以这里**只有 offerId 和服务端下单地址**，没有任何密钥。

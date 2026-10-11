@@ -20,6 +20,21 @@
       <view class="cover-slogan">每一个字母，都是一座西藏</view>
     </view>
 
+    <!-- 进度云同步（D94）：解决「换手机进度全丢」。
+         走我们自己的服务端（不用云 SDK —— 507KB 装不进主包）。
+         合规：只由用户自己点击才登录，不做静默授权、不诱导。 -->
+    <view class="section">
+      <view class="section-head">
+        <text class="section-title">进度云同步</text>
+        <text class="section-count">{{syncBusy ? '同步中' : (syncDone ? '已备份' : '')}}</text>
+      </view>
+      <view class="cloud-row">
+        <view class="cloud-text">{{syncTip}}</view>
+        <button class="cloud-btn" size="mini" loading="{{syncBusy}}" disabled="{{syncBusy}}"
+                bindtap="onSyncTap">备份到云端</button>
+      </view>
+    </view>
+
     <!-- 0. 我的资料（D54）：性别 + 藏族名字
          三条硬规矩：只由用户自己点选 / 有「不愿透露」出口 / 可随时修改或清除。
          性别只用于挑一个对应性别的藏族名字，不用于别的任何地方。 -->

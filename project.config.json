@@ -61,10 +61,6 @@
       {
         "type": "folder",
         "value": "miniprogram_npm"
-      },
-      {
-        "type": "folder",
-        "value": "cloud-sync-src"
       }
     ],
     "include": []

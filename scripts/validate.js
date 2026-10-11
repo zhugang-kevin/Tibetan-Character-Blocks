@@ -210,8 +210,10 @@ const PAYMENT_EXEMPT = ['wx.login'];
 // D93 具名例外之二：云服务的微信登录**必须**用 wx.login（官方鉴权文档的登录流程：
 //   wx.login 取 code → cloud.auth.signInWithWechat(code, appid)）。
 //   同样只豁免 wx.login 一项、只豁免这一个文件（cloud-sync-src 是待做成分包的云同步代码）。
-const CLOUD_LOGIN_FILE = 'cloud-sync-src/cloud-progress.js';
-const CLOUD_LOGIN_EXEMPT = ['wx.login'];
+// D94 具名例外之三：进度同步同样需要 wx.login（取 code → 服务端 code2Session 换 openid）。
+//   仍然只豁免 wx.login 一项、只豁免这一个文件。
+const SYNC_LOGIN_FILE = 'utils/sync.js';
+const SYNC_LOGIN_EXEMPT = ['wx.login'];
 jsFiles.forEach(f => {
   const rel = path.relative(ROOT, f).replace(/\\/g, '/');
   // ⚠️ 先剥注释：注释里提到「不得用 wx.requestPayment」不是「用了它」。
@@ -221,7 +223,7 @@ jsFiles.forEach(f => {
   banned.forEach(api => {
     if (!src.includes(api)) return;
     if (rel === PAYMENT_FILE && PAYMENT_EXEMPT.indexOf(api) > -1) return;   // 具名例外
-    if (rel === CLOUD_LOGIN_FILE && CLOUD_LOGIN_EXEMPT.indexOf(api) > -1) return;  // 具名例外（云登录）
+    if (rel === SYNC_LOGIN_FILE && SYNC_LOGIN_EXEMPT.indexOf(api) > -1) return;    // 具名例外（进度同步）
     err(path.relative(ROOT, f) + ' 使用了禁用 API: ' + api); bannedFound++;
   });
 });
@@ -3720,6 +3722,9 @@ section('38. 生产上线守卫（主包体积 / 隐私授权 / 工程配置）'
       //   所以 utils/payment.js 必须能调自己的下单接口。这是全项目**唯一**允许联网的文件。
       //   其余任何文件出现网络调用仍然一律报错。
       if (rel === 'utils/payment.js') return;
+      // D94 具名例外：进度同步要调我们**自己的服务端**（这是自建方案替代云 SDK 的前提：
+      //   用 wx.request 直连，省掉 507KB 的 SDK 包体）。除这两个文件外仍然一律禁止联网。
+      if (rel === 'utils/sync.js') return;
       if (netPat.test(read(rel))) offenders.push(rel);
     });
     if (!offenders.length) ok('全项目零网络调用（无 wx.request / downloadFile / uploadFile / socket）');
@@ -6188,6 +6193,35 @@ section('59. 藏文书写规范（出处 / 判据 / 机械检验）');
   // 查单兜底（官方要求「回调 + 查单」双通道）
   if (/handleQuery|query_order/.test(ix)) ok('含主动查单兜底（官方要求回调+查单双通道）');
   else err('缺少主动查单兜底');
+}
+
+// ---------- 59.12 D94：自建方案的用户隔离（替代托管方案的 RLS）----------
+// 托管方案有 RLS：策略写在数据库里，**前端代码写错也越不了权**。
+// 自建方案没有这一层，隔离靠服务端查询条件 —— 所以必须用门禁把它钉死，不能靠人记得。
+{
+  const st = exists('server/store.js') ? read('server/store.js') : '';
+  const ix = exists('server/index.js') ? read('server/index.js') : '';
+  // ① 进度读写必须带 openid 条件
+  if (/WHERE openid = \?/.test(st)) ok('进度读取**带 openid 条件**（自建方案的用户隔离）');
+  else err('进度读取缺 openid 条件 —— 会读到别人的数据');
+  if (/ON CONFLICT\(openid\)/.test(st)) ok('进度写入按 openid 主键 upsert（天然一人一条）');
+  else err('进度写入未见 openid 主键约束');
+  // ② 不允许「按任意 id 查」的接口
+  if (!/getProgressById|findById|select \* from progress where id/i.test(st + ix))
+    ok('没有「按任意 id 查进度」的接口 —— 杜绝越权读取');
+  else err('存在可越权的按 id 查询接口');
+  // ③ openid 必须服务端换，不能信客户端
+  if (/code2Session/.test(ix) && /sess\.openid/.test(ix))
+    ok('openid 由**服务端** code2Session 换取（客户端无法伪造身份）');
+  else err('openid 来源不明 —— 若取自客户端则任何人可伪造');
+  if (!/body\.openid|req\.body\.openid/.test(ix))
+    ok('未接受客户端传入的 openid（正确）');
+  else err('接受了客户端传入的 openid —— 可伪造，越权风险');
+  // ④ 小程序端只传 code
+  const sy = exists('utils/sync.js') ? read('utils/sync.js') : '';
+  if (sy && /code: code/.test(sy) && !/openid/.test(sy.replace(/\/\/[^\n]*/g, '')))
+    ok('小程序端只传 code、不传 openid');
+  else warn('小程序端可能传了 openid');
 }
 
 section('60. 牌面视觉一致性（填充率 / 行首 tsheg / 装得下）');

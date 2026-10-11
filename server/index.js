@@ -191,11 +191,36 @@ async function handleQuery(req, res, body) {
   }
 }
 
+// ---------- ④ 进度同步（D94）----------
+// 隔离要点：**openid 一律由 code2Session 从微信换取，绝不接受客户端传入** ——
+// 这样客户端无法伪造别人的身份；所有读写也只按这个 openid 走。
+async function handleSyncSave(req, res, body) {
+  if (!body.code) return fail(res, 400, '缺少 code');
+  const sess = await code2Session(body.code);
+  if (!sess.openid) return fail(res, 500, '登录态获取失败');
+  store.saveSession(sess.openid, sess.session_key);   // 顺带刷新（支付要用）
+  const row = store.saveProgress(sess.openid, {
+    doneStages: body.doneStages, lamps: body.lamps,
+    cards: body.cards, ownerName: body.ownerName
+  });
+  return ok(res, { saved: true, updatedAt: row && row.updated_at });
+}
+
+async function handleSyncLoad(req, res, body) {
+  if (!body.code) return fail(res, 400, '缺少 code');
+  const sess = await code2Session(body.code);
+  if (!sess.openid) return fail(res, 500, '登录态获取失败');
+  return ok(res, { progress: store.getProgress(sess.openid) });
+}
+
 // ---------- HTTP 骨架（零依赖）----------
 function ok(res, data) { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(Object.assign({ ok: true }, data))); }
 function fail(res, code, msg) { res.writeHead(code, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: false, msg })); }
 
-const ROUTES = { '/pay/order': handleOrder, '/pay/notify': handleNotify, '/pay/query': handleQuery };
+const ROUTES = {
+  '/pay/order': handleOrder, '/pay/notify': handleNotify, '/pay/query': handleQuery,
+  '/sync/save': handleSyncSave, '/sync/load': handleSyncLoad
+};
 
 const server = http.createServer((req, res) => {
   const p = url.parse(req.url).pathname;

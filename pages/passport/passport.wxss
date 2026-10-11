@@ -468,3 +468,13 @@
 /* D66 平板适配：内容封顶居中。手机端 max-width 不生效，版式零变化；
    平板上不再被拉成「放大的手机」。max-width 是保护性的，只封顶不放大。 */
 page { max-width: 560px; margin-left: auto; margin-right: auto; }
+
+/* D94 进度云同步 */
+.cloud-row { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; padding: 8rpx 4rpx 4rpx; }
+.cloud-text { flex: 1; font-size: 24rpx; line-height: 1.5; color: #7A6A5A; }
+.cloud-btn {
+  flex-shrink: 0; margin: 0; font-size: 24rpx; color: #FFF6DC;
+  background: linear-gradient(160deg, #C0392B, #A93226);
+  border-radius: 999rpx; padding: 0 24rpx; line-height: 2.2;
+}
+.cloud-btn[disabled] { opacity: .6; }

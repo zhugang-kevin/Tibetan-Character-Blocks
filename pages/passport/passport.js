@@ -4,6 +4,7 @@
 //   藏文成长证书（学习线） × 12 张 + 文化收藏册 + 地区印章 + 现实足迹 + 个人文化图谱
 var certificate = require('../../utils/certificate');
 var storage = require('../../utils/storage');
+var syncModule = require('../../utils/sync');   // D94 进度云同步（走自有服务端）
 var collect = require('../../utils/collect');
 var cardsData = require('../../data/cards');
 var revealsData = require('../../data/reveals');
@@ -31,6 +32,10 @@ Page({
     cardsTotal: 0,
     bestCombo: 0,
     holder: '',
+    // D94 进度云同步
+    syncBusy: false,
+    syncDone: false,
+    syncTip: '换手机后进度会丢。点右侧按钮可备份到云端。',
     levelsDone: 0,
     // D54 我的资料：性别 + 藏族名字（可查看 / 可修改 / 可清除）
     gender: '',
@@ -149,6 +154,32 @@ Page({
 
   goHome: function () {
     wx.redirectTo({ url: '/pages/index/index' });
+  },
+
+
+  // ---- D94 进度云同步（只有用户自己点才联网）----
+  onSyncTap: function () {
+    var that = this;
+    if (this.data.syncBusy) return;
+    if (!syncModule.isReady()) {
+      wx.showToast({ title: syncModule.userMessage({ reason: 'unconfigured' }), icon: 'none' });
+      return;
+    }
+    this.setData({ syncBusy: true });
+    syncModule.save({
+      doneStages: this.data.levelsDone + '',
+      lamps: 0,
+      cards: this.data.cardsSeen || 0,
+      ownerName: this.data.holder || ''
+    }).then(function (r) {
+      that.setData({ syncBusy: false, syncDone: !!r.ok });
+      if (r.ok) {
+        that.setData({ syncTip: '已备份。换手机后可用同一微信取回。' });
+        wx.showToast({ title: '已备份', icon: 'success' });
+      } else {
+        wx.showToast({ title: syncModule.userMessage(r), icon: 'none' });
+      }
+    });
   },
 
   onShareAppMessage: function () {
