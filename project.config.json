@@ -49,6 +49,22 @@
       {
         "type": "folder",
         "value": "server"
+      },
+      {
+        "type": "file",
+        "value": "package.json"
+      },
+      {
+        "type": "file",
+        "value": "package-lock.json"
+      },
+      {
+        "type": "folder",
+        "value": "miniprogram_npm"
+      },
+      {
+        "type": "folder",
+        "value": "cloud-sync-src"
       }
     ],
     "include": []

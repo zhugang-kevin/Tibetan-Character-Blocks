@@ -207,6 +207,11 @@ let bannedFound = 0;
 //   这不是放宽标准，而是「官方要求与现实冲突时，开一个具名、有理由、有范围的口子」。
 const PAYMENT_FILE = 'utils/payment.js';
 const PAYMENT_EXEMPT = ['wx.login'];
+// D93 具名例外之二：云服务的微信登录**必须**用 wx.login（官方鉴权文档的登录流程：
+//   wx.login 取 code → cloud.auth.signInWithWechat(code, appid)）。
+//   同样只豁免 wx.login 一项、只豁免这一个文件（cloud-sync-src 是待做成分包的云同步代码）。
+const CLOUD_LOGIN_FILE = 'cloud-sync-src/cloud-progress.js';
+const CLOUD_LOGIN_EXEMPT = ['wx.login'];
 jsFiles.forEach(f => {
   const rel = path.relative(ROOT, f).replace(/\\/g, '/');
   // ⚠️ 先剥注释：注释里提到「不得用 wx.requestPayment」不是「用了它」。
@@ -216,6 +221,7 @@ jsFiles.forEach(f => {
   banned.forEach(api => {
     if (!src.includes(api)) return;
     if (rel === PAYMENT_FILE && PAYMENT_EXEMPT.indexOf(api) > -1) return;   // 具名例外
+    if (rel === CLOUD_LOGIN_FILE && CLOUD_LOGIN_EXEMPT.indexOf(api) > -1) return;  // 具名例外（云登录）
     err(path.relative(ROOT, f) + ' 使用了禁用 API: ' + api); bannedFound++;
   });
 });
