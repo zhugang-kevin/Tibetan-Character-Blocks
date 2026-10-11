@@ -5668,6 +5668,30 @@ section('55. 真机底线：安全区 / CI / 修补脚本（D65）');
     else err('.gitattributes 未固定 preview/play.html 的 eol —— rebuild 后 git status 永远不干净');
   } else err('缺少 .gitattributes —— EOL 由各人开发机全局设置决定，不可复现');
 
+  // 55.5b（D77）纵向重心补偿两端同契 —— 比「数据与逻辑」，不比文本
+  {
+    const gjA = read('utils/grid.js');
+    const tplA = read('preview/template.html');
+    const segA = (x) => {
+      const i = x.indexOf('OPT_TOP');
+      return i < 0 ? '' : x.slice(i, x.indexOf('OPT_BASE_OFF', i) + 80);
+    };
+    // ⚠️ 必须**剥掉注释**再比：一开始直接比原文，因行内注释位置不同而误报「不一致」；
+    //    真正的判据是「数据与逻辑一致」，不是「文本逐字相同」。
+    const normA = (x) => x.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '').replace(/\s+/g, '');
+    if (!segA(gjA) || !segA(tplA)) err('两端缺少纵向重心补偿（opticalShift）');
+    else if (normA(segA(gjA)) === normA(segA(tplA)))
+      ok('纵向重心补偿两端同契（剥注释后逐字一致）—— 同一牌面在两端高低相同');
+    else err('纵向重心补偿两端**不一致** —— 同一张牌在小程序与体验版会高低不同');
+    try {
+      const gA = require('../utils/grid.js');
+      const smA = ['ཀ་', 'ཀི་', 'ལེ་', 'མིང་', 'བཀྲ་', 'ངའི་', 'བཀྲ་ཤིས་བདེ་ལེགས'];
+      const badA = smA.filter(s => typeof gA.opticalShift !== 'function' || Math.abs(gA.opticalShift(s)) > 0.6);
+      if (!badA.length) ok('opticalShift 计算正常（' + smA.length + ' 个样本，位移均在 ±0.6em 内）');
+      else err('opticalShift 异常：' + badA.join('、'));
+    } catch (e) { err('opticalShift 不可用：' + String(e).slice(0, 60)); }
+  }
+
   // 55.5 反证检出率不得退步（门槛：≥90%，且漏网数不得超过 5）
   {
     const FALSIFY_MIN_RATE = 90, FALSIFY_MAX_MISS = 5;

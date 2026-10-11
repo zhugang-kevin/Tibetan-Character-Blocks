@@ -388,6 +388,7 @@ Page({
       var cell = grid.cellPx(this.learnCfg.lv, sw);
       var baseFont = Math.round(cell * grid.FONT_RATIO);
       var lay = grid.layoutTile(t.tibetan, cell, baseFont, null);
+      t.opticalShift = lay.opticalShift || 0;
       // D76：按字形自适应的视觉重心补偿（em）—— 见 utils/grid.js opticalShift
       // 小程序 style 用 rpx → 把 px 按「750rpx = 屏宽」换算回来
       t.glyphOverride = Math.round(lay.font * 750 / sw);
@@ -440,6 +441,7 @@ Page({
         fresh: !!(phase === 'in' && dropRows),
         type: t.type,
         tibetan: t.tibetan,
+        opticalShift: t.opticalShift || 0,
         fallbackText: t.fallbackText,
         golden: t.golden,
         pieceStyle: t.pieceStyle,

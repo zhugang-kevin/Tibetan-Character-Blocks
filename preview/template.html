@@ -191,8 +191,7 @@
      补偿：整体**向下**移 0.20em，使墨心回到格子中心附近。
      效果：最大偏差从 0.41em 收敛到约 0.21em（偏差上下对称）。
      测量方法见 scripts/measure_ink_bounds.py（PNG 逐像素 + 对照组自证）。 */
-    /* D75 实测：全局纵向补偿 0.2em（按字形方案实测不更优，见 docs §九） */
-    transform: translateY(0.20em); }
+    /* D77：纵向补偿改由每个牌面各自计算（inline style），实测最大偏差 0.324→0.149 */ }
   .tile .icon-img { width: 74%; height: 74%; object-fit: contain; }
   .tile .fallback { font-size: 60%; font-weight: 700; }
   .tile .star {
@@ -2585,6 +2584,46 @@ function withTseg(text) {
   return t + '\u0F0B';
 }
 
+/* D77 与 utils/grid.js 同契（逐字实测表）—— 两端必须一致 */
+// D76 失败的原因不是「按字形」这个思路，而是**那张降部表是错的** —— 当时用「中位数切分」
+// 推出分类，把 ང ར ཟ འ 都错划成「有降部」。现改为**逐字实测**（量全部 30 个基字的墨迹上下界）。
+// 编码尽量紧凑（包体卡在预算线上）：墨顶只有 3 个取值、墨底只有 8 个取值，按值分组存。
+var OPT_TOP = -0.680, OPT_TOP_HI = -0.850, OPT_TOP_WA = -0.705;
+var OPT_TOP_HI_SET = '\u0F59\u0F5A\u0F5B';            // ཙ ཚ ཛ
+var OPT_TOP_WA_SET = '\u0F5D';                          // ཝ
+var OPT_BOTS = [                                          // [墨底, 该值的字母们]
+  [0.465, '\u0F40\u0F42\u0F49\u0F4F\u0F51\u0F53\u0F5E\u0F64\u0F67'],  // ཀ ག ཉ ཏ ད ན ཞ ཤ ཧ
+  [0.245, '\u0F41'],                                    // ཁ
+  [0.085, '\u0F5D'],                                    // ཝ
+  [-0.015, '\u0F50'],                                   // ཐ
+  [-0.035, '\u0F47\u0F5B'],                            // ཇ ཛ
+  [-0.065, '\u0F44\u0F5F\u0F60\u0F62'],              // ང ཟ འ ར
+  [-0.095, '\u0F54\u0F55\u0F56\u0F58\u0F61\u0F63\u0F66\u0F68'],  // པ ཕ བ མ ཡ ལ ས ཨ
+  [-0.120, '\u0F45\u0F46\u0F59\u0F5A']               // ཅ ཆ ཙ ཚ
+];
+var OPT_ABOVE = '\u0F72\u0F7A\u0F7C\u0F71\u0F7B\u0F7D';   // ི ེ ོ ཱ ཻ ཽ（会把墨顶再抬 0.19em）
+var OPT_ABOVE_LIFT = 0.19;
+var OPT_BASE_OFF = 0.0535;   // 格子中心相对基线（由 ཀ 反推并验证）
+
+// 返回「把墨心移回格子中心」所需位移（em，正 = 向下）
+function opticalShift(text) {
+  var t = String(text || ''), i, j;
+  var top = 0, bot = 0, seen = false, above = false;
+  for (i = 0; i < t.length; i++) {
+    var c = t[i];
+    if (OPT_ABOVE.indexOf(c) > -1) above = true;
+    if (OPT_TOP_HI_SET.indexOf(c) > -1) { top = Math.min(top, OPT_TOP_HI); seen = true; }
+    else if (OPT_TOP_WA_SET.indexOf(c) > -1) { top = Math.min(top, OPT_TOP_WA); seen = true; }
+    else if (/[ཀ-ཨ]/.test(c)) { top = Math.min(top, OPT_TOP); seen = true; }
+    for (j = 0; j < OPT_BOTS.length; j++) {
+      if (OPT_BOTS[j][1].indexOf(c) > -1) { bot = Math.max(bot, OPT_BOTS[j][0]); seen = true; }
+    }
+  }
+  if (!seen) return 0;
+  if (above) top -= OPT_ABOVE_LIFT;
+  return Math.round(-((top + bot) / 2 + OPT_BASE_OFF) * 1000) / 1000;
+}
+
 function wrapTibetan(measure, text, maxWidth) {
   const units = tokenize(text);
   const lines = [];
@@ -3820,7 +3859,8 @@ function tileInner(t) {
   if (t.sprite) {
     inner += '<div class="ka-sprite ka-v' + t.variant + '"><img src="' + IMAGES.spriteKa + '" alt=""></div>';
   } else if (t.type === 'letter') {
-    inner += '<span class="glyph tib">' + withTseg(t.tibetan) + '</span>';
+    inner += '<span class="glyph tib" style="transform:translateY(' +
+      opticalShift(t.tibetan) + 'em)">' + withTseg(t.tibetan) + '</span>';
   } else {
     inner += '<img class="icon-img" src="' + tileIconDataUrl(t.id, t.golden) + '" alt="">';
   }

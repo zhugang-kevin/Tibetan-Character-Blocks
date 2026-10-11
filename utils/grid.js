@@ -81,11 +81,44 @@ function boardSize(lv, screenWidth, gap) {
 // measureText 注入签名：(text, fontSizePx) => widthPx（只需宽度；高度按下述多行模型推）
 // 无注入时用保守估算：宽 ≈ 0.55 × 字号 × 最长「横向视觉行数」字符数。
 
-// D76（已回退）：曾实现「按字形自适应」的纵向补偿 opticalShift()，但**端到端实测**
- // 并不优于全局值 —— 6 样本「不补偿 0.432 / 全局0.2em 0.324 / 按字形 0.331」，
- // 平均偏差也略差（-0.137 vs -0.158）。**预测值曾显示更优，实测推翻；故不上更复杂的方案。**
- // 结论与数据见 docs/tibetan-orthography.md §九。
+// D77 纵向重心补偿（**逐字实测表**，详据见 docs/tibetan-orthography.md §九）
+// D76 失败是因为那张降部表用中位数切分推出来的（把 ང ར ཟ འ 错划成有降部），不是思路错。
+// 现为逐字实测（量全部 30 个基字的墨迹上下界），紧凑编码：墨顶 3 值、墨底 8 值。
+var OPT_TOP = -0.680, OPT_TOP_HI = -0.850, OPT_TOP_WA = -0.705;
+var OPT_TOP_HI_SET = '\u0F59\u0F5A\u0F5B';
+var OPT_TOP_WA_SET = '\u0F5D';                          // ཝ
+var OPT_BOTS = [                                          // [墨底, 该值的字母们]
+  [0.465, '\u0F40\u0F42\u0F49\u0F4F\u0F51\u0F53\u0F5E\u0F64\u0F67'],
+  [0.245, '\u0F41'],
+  [0.085, '\u0F5D'],
+  [-0.015, '\u0F50'],
+  [-0.035, '\u0F47\u0F5B'],
+  [-0.065, '\u0F44\u0F5F\u0F60\u0F62'],
+  [-0.095, '\u0F54\u0F55\u0F56\u0F58\u0F61\u0F63\u0F66\u0F68'],
+  [-0.120, '\u0F45\u0F46\u0F59\u0F5A']               // ཅ ཆ ཙ ཚ
+];
+var OPT_ABOVE = '\u0F72\u0F7A\u0F7C\u0F71\u0F7B\u0F7D';   // ི ེ ོ ཱ ཻ ཽ（会把墨顶再抬 0.19em）
+var OPT_ABOVE_LIFT = 0.19;
+var OPT_BASE_OFF = 0.0535;   // 格子中心相对基线（由 ཀ 反推并验证）
 
+// 返回「把墨心移回格子中心」所需位移（em，正 = 向下）
+function opticalShift(text) {
+  var t = String(text || ''), i, j;
+  var top = 0, bot = 0, seen = false, above = false;
+  for (i = 0; i < t.length; i++) {
+    var c = t[i];
+    if (OPT_ABOVE.indexOf(c) > -1) above = true;
+    if (OPT_TOP_HI_SET.indexOf(c) > -1) { top = Math.min(top, OPT_TOP_HI); seen = true; }
+    else if (OPT_TOP_WA_SET.indexOf(c) > -1) { top = Math.min(top, OPT_TOP_WA); seen = true; }
+    else if (/[ཀ-ཨ]/.test(c)) { top = Math.min(top, OPT_TOP); seen = true; }
+    for (j = 0; j < OPT_BOTS.length; j++) {
+      if (OPT_BOTS[j][1].indexOf(c) > -1) { bot = Math.max(bot, OPT_BOTS[j][0]); seen = true; }
+    }
+  }
+  if (!seen) return 0;
+  if (above) top -= OPT_ABOVE_LIFT;
+  return Math.round(-((top + bot) / 2 + OPT_BASE_OFF) * 1000) / 1000;
+}
 function layersOf(text) {
   // 藏文的横向视觉「层数」：基字层 + 上加字（在前）+ 下加字/元音/后加字（在后，占位不同）
   // 简化模型用来做无 canvas 时的估算 / 兜底，不追求精确（精确值由 measureText 覆盖）
@@ -255,6 +288,7 @@ function layoutTile(text, cell, fontSizePx, measureWidth) {
     height: Math.round(m.height),
     avail: Math.round(avail),
     fill: Math.round(Math.max(m.width, m.height) / avail * 100) / 100,
+    opticalShift: opticalShift(text),
     fits: fits
   };
 }
@@ -280,6 +314,7 @@ module.exports = {
   calcScale: calcScale,
   splitSyllables: splitSyllables,
   wrapTibetanTile: wrapTibetanTile,
+  opticalShift: opticalShift,
   layoutTile: layoutTile,
   needsZoomPreview: needsZoomPreview
 };

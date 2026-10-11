@@ -239,8 +239,7 @@
   line-height: 1;
   color: #FFF6DC;
   text-shadow: 0 3rpx 0 rgba(0, 0, 0, 0.45), 0 -1rpx 0 rgba(255, 255, 255, 0.42);
-  /* D75 实测：全局纵向补偿 0.2em */
-  transform: translateY(0.2em);
+  /* D77：补偿由每个牌面各自计算（inline style） */
 }
 
 .glyph-img {
