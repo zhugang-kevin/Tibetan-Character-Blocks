@@ -8,7 +8,7 @@ module.exports = [
     type: 'letter',
     tibetan: 'ཀ',
     title: 'ཀ',
-    subtitle: 'ka · 嘎（不送气）',
+    subtitle: 'ka · 嘎（不送气·高调）',
     description: '藏文第一个辅音字母，发音时声带不振动，不送气。',
     funFact: '藏文字母由吞弥·桑布扎于公元7世纪创制，共有30个辅音字母。'
   },
@@ -17,7 +17,7 @@ module.exports = [
     type: 'letter',
     tibetan: 'ཁ',
     title: 'ཁ',
-    subtitle: 'kha · 卡（送气）',
+    subtitle: 'kha · 卡（送气·高调）',
     description: '藏文第二个辅音字母，发音时送气，与「ཀ」形成送气与不送气的对立。',
     funFact: '藏文中送气与不送气的区别会改变词义，这一点和汉语拼音类似。'
   },
@@ -26,8 +26,8 @@ module.exports = [
     type: 'letter',
     tibetan: 'ག',
     title: 'ག',
-    subtitle: 'ga · 嘎（浊音）',
-    description: '藏文第三个辅音字母，发音时声带振动，是浊音。',
+    subtitle: 'ga · 卡（拉萨音·送气·低调）',
+    description: '藏文第三个辅音字母，发音时声带振动，是浊音。 古典藏语为浊音 ɡa；现代卫藏（拉萨）方言全浊声母在无前加字时清化为**送气清音**，故读 kʰà，且因源自浊声母而读**低平调**（与清声母 ཁ kʰá 的高平调相区别）。安多方言仍保留浊音 ɡa。',
     funFact: '藏文中有清音、浊音、送气音三套对立，比汉语普通话更复杂。'
   },
   {
@@ -44,7 +44,7 @@ module.exports = [
     type: 'letter',
     tibetan: 'ཅ',
     title: 'ཅ',
-    subtitle: 'ca · 夹',
+    subtitle: 'ca · 夹（不送气·高调）',
     description: '藏文第五个辅音字母，发音接近汉语「夹」的声母，不送气。',
     funFact: '藏文字母按发音部位排列，前几个字母都是舌根音。'
   },
@@ -53,7 +53,7 @@ module.exports = [
     type: 'letter',
     tibetan: 'ཆ',
     title: 'ཆ',
-    subtitle: 'cha · 恰',
+    subtitle: 'cha · 恰（送气·高调）',
     description: '藏文第六个辅音字母，是「ཅ」的送气版本。',
     funFact: '「ཆ」和「ཅ」的区别只在送气与否，在藏语中是不同的字母。'
   },
@@ -62,8 +62,8 @@ module.exports = [
     type: 'letter',
     tibetan: 'ཇ',
     title: 'ཇ',
-    subtitle: 'ja · 加（浊音）',
-    description: '藏文第七个辅音字母，是浊音，发音时声带振动。',
+    subtitle: 'ja · 恰（拉萨音·送气·低调）',
+    description: '藏文第七个辅音字母，是浊音，发音时声带振动。 古典藏语为浊音 dʑa；现代卫藏方言清化为**送气清音** tɕʰà，读**低平调**（与 ཆ tɕʰá 的高平调相区别）。安多方言仍保留 dʑa。',
     funFact: '藏文书写时，辅音字母底部在同一水平线上，形成整齐的「悬挂」效果。'
   },
   {
@@ -71,7 +71,7 @@ module.exports = [
     type: 'letter',
     tibetan: 'ཉ',
     title: 'ཉ',
-    subtitle: 'nya · 尼亚',
+    subtitle: 'nya · 尼亚（鼻音）',
     description: '藏文第八个辅音字母，是一个舌面鼻音。',
     funFact: '「ཉ」在藏文中常出现在词首，例如「ཉི་མ་」意为「太阳」。'
   },
@@ -80,7 +80,7 @@ module.exports = [
     type: 'letter',
     tibetan: 'ཏ',
     title: 'ཏ',
-    subtitle: 'ta · 达（不送气）',
+    subtitle: 'ta · 达（不送气·高调）',
     description: '藏文第九个辅音字母，舌尖抵上齿龈发出，不送气。',
     funFact: '「ཏ」与「ཐ ད ན」同列，都由舌尖发出，排列方式与「ཀ」那一列完全平行。'
   },
@@ -89,7 +89,7 @@ module.exports = [
     type: 'letter',
     tibetan: 'ཐ',
     title: 'ཐ',
-    subtitle: 'tha · 塔（送气）',
+    subtitle: 'tha · 塔（送气·高调）',
     description: '藏文第十个辅音字母，是「ཏ」的送气版本。',
     funFact: '三十个辅音里每隔四位就重复一次「不送气—送气—浊音—鼻音」的节奏，像一首循环口诀。'
   },
@@ -98,8 +98,8 @@ module.exports = [
     type: 'letter',
     tibetan: 'ད',
     title: 'ད',
-    subtitle: 'da · 达（浊音）',
-    description: '藏文第十一个辅音字母，发音时声带振动，是浊音。',
+    subtitle: 'da · 他（拉萨音·送气·低调）',
+    description: '藏文第十一个辅音字母，发音时声带振动，是浊音。 古典藏语为浊音 da；现代卫藏方言清化为**送气清音** tʰà，读**低平调**（与 ཐ tʰá 的高平调相区别）。安多方言仍保留 da。',
     funFact: '「བོད་」（西藏）的收尾字母就是「ད」，它在这里不单独发音，只给前面的音节收尾。'
   },
   {
@@ -116,7 +116,7 @@ module.exports = [
     type: 'letter',
     tibetan: 'པ',
     title: 'པ',
-    subtitle: 'pa · 巴（不送气）',
+    subtitle: 'pa · 巴（不送气·高调）',
     description: '藏文第十三个辅音字母，由双唇发出，不送气。',
     funFact: '印刷体的「པ」顶部有个小弯钩，手写体里常被简写成一个小圈加一竖。'
   },
@@ -125,7 +125,7 @@ module.exports = [
     type: 'letter',
     tibetan: 'ཕ',
     title: 'ཕ',
-    subtitle: 'pha · 帕（送气）',
+    subtitle: 'pha · 帕（送气·高调）',
     description: '藏文第十四个辅音字母，是「པ」的送气版本。',
     funFact: '「ཕ」与「པ」的送气对立，和汉语拼音里 b 与 p 的区别类似。'
   },
@@ -134,8 +134,8 @@ module.exports = [
     type: 'letter',
     tibetan: 'བ',
     title: 'བ',
-    subtitle: 'ba · 巴（浊音）',
-    description: '藏文第十五个辅音字母，是浊音，正好排在三十个辅音的正中间。',
+    subtitle: 'ba · 怕（拉萨音·送气·低调）',
+    description: '藏文第十五个辅音字母，是浊音，正好排在三十个辅音的正中间。 古典藏语为浊音 ba；现代卫藏方言清化为**送气清音** pʰà，读**低平调**（与 ཕ pʰá 的高平调相区别）。安多方言仍保留 ba。',
     funFact: '「བ」既能当基字，也能当前加字和后加字，是构词能力最强的字母之一。'
   },
   {
@@ -152,7 +152,7 @@ module.exports = [
     type: 'letter',
     tibetan: 'ཙ',
     title: 'ཙ',
-    subtitle: 'tsa · 杂（不送气）',
+    subtitle: 'tsa · 杂（不送气·高调）',
     description: '藏文第十七个辅音字母，由舌尖前部发出，不送气。',
     funFact: '从「ཙ」开始，字母表从塞音过渡，这一列的排列又一次复刻了「ཀ」列的节奏。'
   },
@@ -161,7 +161,7 @@ module.exports = [
     type: 'letter',
     tibetan: 'ཚ',
     title: 'ཚ',
-    subtitle: 'tsha · 擦（送气）',
+    subtitle: 'tsha · 擦（送气·高调）',
     description: '藏文第十八个辅音字母，是「ཙ」的送气版本。',
     funFact: '「ཚོང་」（买卖）以「ཚ」打头，八廓街的商铺招牌上经常能见到它。'
   },
@@ -170,8 +170,8 @@ module.exports = [
     type: 'letter',
     tibetan: 'ཛ',
     title: 'ཛ',
-    subtitle: 'dza · 杂（浊音）',
-    description: '藏文第十九个辅音字母，是浊音，与「ཙ ཚ」构成三兄弟。',
+    subtitle: 'dza · 擦（拉萨音·送气·低调）',
+    description: '藏文第十九个辅音字母，是浊音，与「ཙ ཚ」构成三兄弟。 古典藏语为浊音 dza；现代卫藏方言清化为**送气清音** tsʰà，读**低平调**（与 ཚ tsʰá 的高平调相区别）。安多方言仍保留 dza。',
     funFact: '「ཙ ཚ ཛ」的不送气、送气、浊音三对立，与「ཀ ཁ ག」一模一样。'
   },
   {
@@ -179,7 +179,7 @@ module.exports = [
     type: 'letter',
     tibetan: 'ཝ',
     title: 'ཝ',
-    subtitle: 'wa · 哇',
+    subtitle: 'wa · 哇（半元音）',
     description: '藏文第二十个辅音字母，是一个半元音，发音像汉语的「哇」。',
     funFact: '「ཝ」是三十个辅音里出场最少的字母之一，主要在拼写外来词时露面。'
   },
@@ -188,8 +188,8 @@ module.exports = [
     type: 'letter',
     tibetan: 'ཞ',
     title: 'ཞ',
-    subtitle: 'zha · 霞（浊音）',
-    description: '藏文第二十一个辅音字母，在拉萨话里听感接近「霞」。',
+    subtitle: 'zha · 夏（拉萨音·清擦·低调）',
+    description: '藏文第二十一个辅音字母，在拉萨话里听感接近「霞」。 古典藏语为浊擦音 ʑa；现代卫藏方言清化为 ɕà（擦音无送气对立，靠声调区分），读**低平调**（与 ཤ ɕá 的高平调相区别）。安多方言仍保留 ʑa。',
     funFact: '「ཞ」与后面的「ཤ」听起来很像，但拼写时是两个完全不同的字母，不能混用。'
   },
   {
@@ -197,8 +197,8 @@ module.exports = [
     type: 'letter',
     tibetan: 'ཟ',
     title: 'ཟ',
-    subtitle: 'za · 萨（浊音）',
-    description: '藏文第二十二个辅音字母，是浊音。',
+    subtitle: 'za · 萨（拉萨音·清擦·低调）',
+    description: '藏文第二十二个辅音字母，是浊音。 古典藏语为浊擦音 za；现代卫藏方言清化为 sà（擦音无送气对立，靠声调区分），读**低平调**（与 ས sá 的高平调相区别）。安多方言仍保留 za。',
     funFact: '「ཟ」就是「吃」——「ཟ་བ་」意为食物，这个字每天都要说上好几遍。'
   },
   {
@@ -215,7 +215,7 @@ module.exports = [
     type: 'letter',
     tibetan: 'ཡ',
     title: 'ཡ',
-    subtitle: 'ya · 亚',
+    subtitle: 'ya · 亚（半元音）',
     description: '藏文第二十四个辅音字母，发音像汉语的「亚」的声母。',
     funFact: '「ཡི་」是藏文里最常见的虚词之一，相当于汉语的「的」。'
   },
@@ -224,7 +224,7 @@ module.exports = [
     type: 'letter',
     tibetan: 'ར',
     title: 'ར',
-    subtitle: 'ra · 热（卷舌）',
+    subtitle: 'ra · 热（近音·卷舌·低调）',
     description: '藏文第二十五个辅音字母，发音时舌尖轻卷，接近「热」的声母。',
     funFact: '「མར་」（酥油）的收尾就是「ར」——它是十个后加字里最常露面的一员。'
   },
@@ -233,7 +233,7 @@ module.exports = [
     type: 'letter',
     tibetan: 'ལ',
     title: 'ལ',
-    subtitle: 'la · 拉',
+    subtitle: 'la · 拉（边音）',
     description: '藏文第二十六个辅音字母，发音与汉语「拉」的声母相同。',
     funFact: '「ལ」既能当基字也能当后加字，藏文十个后加字里它排在第九。'
   },
@@ -242,7 +242,7 @@ module.exports = [
     type: 'letter',
     tibetan: 'ཤ',
     title: 'ཤ',
-    subtitle: 'sha · 夏（清音）',
+    subtitle: 'sha · 夏（清音·高调）',
     description: '藏文第二十七个辅音字母，发音像汉语「夏」的声母。',
     funFact: '「ཤམ་བྷ་ལ་」（香巴拉）以「ཤ」开头——传说中高原深处的理想之地。'
   },
@@ -251,7 +251,7 @@ module.exports = [
     type: 'letter',
     tibetan: 'ས',
     title: 'ས',
-    subtitle: 'sa · 萨（清音）',
+    subtitle: 'sa · 萨（清音·高调）',
     description: '藏文第二十八个辅音字母，是清擦音，与「ཟ」的浊音相对。',
     funFact: '「ས」是藏文里最忙的后加字——大量音节都以它轻轻收尾。'
   },
@@ -260,7 +260,7 @@ module.exports = [
     type: 'letter',
     tibetan: 'ཧ',
     title: 'ཧ',
-    subtitle: 'ha · 哈',
+    subtitle: 'ha · 哈（清擦音·高调）',
     description: '藏文第二十九个辅音字母，是喉部发出的清擦音。',
     funFact: '笑出声的「哈哈」用藏文写出来就是「ཧ་ཧ་」——三十个辅音里它最接近笑声。'
   },

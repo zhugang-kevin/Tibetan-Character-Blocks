@@ -6405,6 +6405,48 @@ section('59. 藏文书写规范（出处 / 判据 / 机械检验）');
   } else err('缺少 docs/voice-recording-pending.md —— 待录音项无人可见');
 }
 
+// ---------- 59.19 D104：字母读音标注必须与权威现代卫藏音一致 ----------
+// 用户指出「国内有大量藏文读音教学资源，应该借用」+「很多藏文读音有错误」。
+// 查证结果（三方权威一致：维基「标准藏语」/ 百度百科「浊音」/ 维基「清浊音」）：
+//   **现代卫藏（拉萨）方言里，全浊声母在无前加字时清化为送气清音**；
+//   而本项目原先把这些字母标成「浊音」（古典音），**中文近字给的却是清音**——
+//   标注、中文近字、音频三者互不相同。已统一到现代卫藏音，并补上声调（成对区别靠声调）。
+{
+  // 不用正则解析：反斜杠经 shell 写入会被转义破坏（本项目已多次踩到），
+  //   改成按「块」切分 —— cards.js 里每张卡是一个 { ... } 块。
+  const cards = read('data/cards.js');
+  const rows = [];
+  const blocks = cards.split("{").slice(1);
+  blocks.forEach(function (b) {
+    const idm = b.match(/id: '([^']+)'/);
+    const tbm = b.match(/tibetan: '([^']*)'/);
+    const sbm = b.match(/subtitle: '([^']*)'/);
+    if (idm && tbm && sbm && idm[1].indexOf('letter_') === 0) {
+      rows.push({ id: idm[1], ch: tbm[1], sub: sbm[1] });
+    }
+  });
+  // ① 不得再出现「浊音」这种与音频口径不符的标注
+  const bad = rows.filter(r => r.sub.indexOf('浊音') > -1);
+  if (!bad.length) ok('30 条字母标注无「浊音」旧口径（已统一到现代卫藏音）');
+  else err('仍有「浊音」旧标注：' + bad.map(r => r.ch).join(' '));
+  // ② 清浊成对：清音标「高调」、清化来的标「低调」
+  const voiced = ['ག', 'ཇ', 'ད', 'བ', 'ཛ'];
+  const missLow = rows.filter(r => voiced.indexOf(r.ch) > -1 && r.sub.indexOf('低调') === -1);
+  if (!missLow.length) ok('5 个清化字母均标出「低调」（与清声母高调成对）');
+  else err('未标低调的清化字母：' + missLow.map(r => r.ch).join(' '));
+  // ③ 送气对立必须成对可见（不送气 / 送气）
+  const nAsp = rows.filter(r => r.sub.indexOf('不送气') > -1).length;
+  const nBre = rows.filter(r => r.sub.indexOf('送气') > -1 && r.sub.indexOf('不送气') === -1).length;
+  if (nAsp >= 5 && nBre >= 9) ok('送气对立成对可见（不送气 ' + nAsp + ' / 送气 ' + nBre + '）');
+  else err('送气标注不成对（不送气 ' + nAsp + ' / 送气 ' + nBre + '）');
+  // ④ 体例统一：30 条里带括注的应占绝大多数（原来 8 条没有）
+  const noNote = rows.filter(r => r.sub.indexOf('（') === -1).length;
+  if (noNote <= 2) ok('标注体例统一（无括注的仅 ' + noNote + ' 条）');
+  else warn('仍有 ' + noNote + ' 条没有括注，体例不统一');
+  if (exists('scripts/audit_letter_reading.py')) ok('字母读音对账脚本在位');
+  else err('缺 scripts/audit_letter_reading.py');
+}
+
 section('60. 牌面视觉一致性（填充率 / 行首 tsheg / 装得下）');
 
 
