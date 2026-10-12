@@ -1365,3 +1365,32 @@ page { max-width: 560px; margin-left: auto; margin-right: auto; }
   color: rgba(214, 178, 106, .20);
 }
 .rank-row, .entry-note { position: relative; z-index: 1; }
+
+/* D100 菩提树实景（菩提迦耶）：照片 + 暗罩，文字压在罩上 */
+.tree-stage { position: relative; border-radius: 14rpx; overflow: hidden; min-height: 300rpx;
+  display: flex; align-items: flex-end; }
+.tree-photo { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+/* 暗罩：上浅下深，保证底部文字可读，同时把照片压成「夜里的菩提树」 */
+.tree-veil { position: absolute; left: 0; top: 0; right: 0; bottom: 0;
+  background: linear-gradient(180deg, rgba(12,10,8,.35) 0%, rgba(12,10,8,.72) 55%, rgba(12,10,8,.88) 100%); }
+.tree-body { position: relative; z-index: 1; width: 100%; padding: 18rpx 16rpx 16rpx; }
+.tree-note { color: #E8DCC4; opacity: .92; }
+.tree-art { font-size: 120rpx; text-align: center; width: 100%; }
+
+/* D100 西藏寺院导览：实景顶图 + 暗色列表 */
+.mon-stage { position: relative; border-radius: 14rpx 14rpx 0 0; overflow: hidden; height: 240rpx; }
+.mon-photo { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+.mon-veil { position: absolute; left: 0; top: 0; right: 0; bottom: 0;
+  background: linear-gradient(180deg, rgba(10,9,8,.42) 0%, rgba(10,9,8,.70) 60%, rgba(18,15,12,.95) 100%); }
+.mon-head { position: absolute; left: 0; right: 0; bottom: 0; padding: 14rpx 18rpx 16rpx; z-index: 1; }
+.mon-title { font-size: 32rpx; color: #F3E7CE; letter-spacing: 2rpx; }
+.mon-sub { font-size: 21rpx; color: #C9B79C; margin-top: 6rpx; line-height: 1.5; }
+.mon-list { max-height: 46vh; background: #14100C; border-radius: 0 0 14rpx 14rpx; padding: 10rpx 14rpx 14rpx; }
+.mon-card { padding: 14rpx 12rpx; border-bottom: 1rpx solid rgba(214,178,106,.14); }
+.mon-card:last-child { border-bottom: none; }
+.mon-row1 { display: flex; align-items: baseline; justify-content: space-between; gap: 12rpx; }
+.mon-name { font-size: 28rpx; color: #F3E7CE; }
+.mon-year { flex-shrink: 0; font-size: 21rpx; color: #D6B26A; }
+.mon-meta { font-size: 21rpx; color: #9C8B74; margin-top: 4rpx; }
+.mon-note { font-size: 23rpx; color: #CDBFA8; line-height: 1.6; margin-top: 8rpx; }
+.mon-src { margin-top: 12rpx; font-size: 20rpx; color: #8A7A64; }

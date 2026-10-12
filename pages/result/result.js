@@ -387,7 +387,7 @@ Page({
       // 顶部藏文大字
       // 排版规范：断行只发生在 tsheg ( ་ ) 之后，shad ( ། ) 不落行首
       // 字体守卫：wx.loadFontFace 对 Canvas 2D 不保证生效，未加载成功时
-      // Canvas 会画出"豆腐块"——此时回退到预渲染 PNG（images/tashi-delek.png），
+      // Canvas 会画出"豆腐块"——此时回退到预渲染 PNG（images/tashi-delek.webp），
       // 图片也缺失时再用系统字体链兜底（Windows/Android 自带喜马拉雅字体）
       var fontOk = !!(typeof getApp === 'function' &&
         getApp().globalData && getApp().globalData.fontLoaded);
@@ -463,7 +463,7 @@ Page({
     Promise.all([
       loadImg('/images/logo-80.png').then(function (img) { blessImgs.logo = img; }),
       loadImg('/images/logo-watermark.png').then(function (img) { blessImgs.watermark = img; }),
-      loadImg('/images/tashi-delek.png').then(function (img) { blessImgs.tashi = img; })
+      loadImg('/images/tashi-delek.webp').then(function (img) { blessImgs.tashi = img; })
     ]).then(paint);
   },
 

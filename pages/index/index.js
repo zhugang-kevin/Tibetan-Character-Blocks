@@ -18,6 +18,7 @@ var privacy = require('../../utils/privacy');
 // D54 性别 + 藏族名字：三档取值与选名算法（纯函数，与护照页同一份）
 var tibetanName = require('../../utils/tibetan-name.js');
 var learningData = require('../../data/learning');   // D96 学习体系（150 关）
+var monasteryData = require('../../data/monasteries');   // D100 西藏寺院导览
 
 // 视口高度：优先用 wx.getWindowInfo（基础库 2.20.1+），旧设备回退 getSystemInfoSync，
 // 两者都取不到时用 667 兜底。getSystemInfoSync 已标记不再维护，不再作为首选路径。
@@ -44,7 +45,7 @@ var PANEL_TITLES = {
   learn: '学习体系 · 十五级',
   rank: '我的成绩',
   tree: '菩提树',
-  winter: '冬游西藏',
+  winter: '西藏寺院导览',
   market: '八廓街集市'
 };
 
@@ -105,9 +106,17 @@ Page({
     boxText: '',
     learnLevels: [],
     pot: 0,
-    winterItems: [],
     // 万家灯火祈福跳窗（每次进入首页前展示，每天仅一次；纯本地，无任何网络请求）
     scenePhoto: photoAssets.home || '',   // 首页场景照片（清单驱动，空则不渲染）
+    bodhiPhoto: photoAssets.bodhi || '',  // D100 菩提树实景（空则回退 🌳）
+    // D100 西藏寺院导览
+    monPhoto: photoAssets.monastery || '',
+    monList: monasteryData.LIST,
+    monTotals: {
+      sites: monasteryData.TOTALS.sites,
+      livingBuddha: monasteryData.TOTALS.livingBuddha,
+      monksText: (monasteryData.TOTALS.monks / 10000).toFixed(1)
+    },
     lampShow: false,
     lampLit: false,
     lampTotal: lampData.total,
@@ -236,7 +245,6 @@ Page({
       thangkaCells: this.buildThangka(frags),
       thangkaDone: storage.getThangkaDone(),
       pot: storage.getPot(),
-      winterItems: dailyData.winter.items,
       ladderIn: intro
     });
 

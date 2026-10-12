@@ -148,7 +148,7 @@
     <view class="dock-btn" data-panel="learn" bindtap="openPanel"><text class="dock-ico">📖</text><text class="dock-txt">学习体系</text></view>
     <view class="dock-btn" data-panel="rank" bindtap="openPanel"><text class="dock-ico">🏔</text><text class="dock-txt">我的成绩</text></view>
     <view class="dock-btn" data-panel="tree" bindtap="openPanel"><text class="dock-ico">🌳</text><text class="dock-txt">菩提树</text></view>
-    <view class="dock-btn" data-panel="winter" bindtap="openPanel"><text class="dock-ico">❄</text><text class="dock-txt">冬游西藏</text></view>
+    <view class="dock-btn" data-panel="winter" bindtap="openPanel"><text class="dock-ico">❄</text><text class="dock-txt">西藏寺院</text></view>
   </view>
 
   <!-- 入口面板（统一底部滑出容器，非阻塞） -->
@@ -256,18 +256,47 @@
 
       <!-- 菩提树 -->
       <block wx:elif="{{panel === 'tree'}}">
-        <view class="tree-art">🌳</view>
-        <view class="entry-note">已浇水 {{pot}} 次 · 每次收获 12 学习得分</view>
-        <view class="entry-btn" bindtap="waterTree">给菩提树浇一次水</view>
-        <view class="entry-note">浇树只用学习得分循环，不依赖广告，也不售卖任何东西。</view>
+        <!-- 菩提迦耶菩提树实景（用户：「这个跳窗的菩提树好假」→ 换实景照，暗调）。
+             图走 D47 场景照片层机制（assets-src/scene/bodhi.png → prepare-assets 压缩 → 清单）。
+             未产出时自动回退到原来的 🌳，零回归。 -->
+        <view class="tree-stage">
+          <image wx:if="{{bodhiPhoto}}" class="tree-photo" src="{{bodhiPhoto}}" mode="aspectFill" />
+          <view wx:else class="tree-art">🌳</view>
+          <view class="tree-veil"></view>
+          <view class="tree-body">
+            <view class="entry-note tree-note">已浇水 {{pot}} 次 · 每次收获 12 学习得分</view>
+            <view class="entry-btn" bindtap="waterTree">给菩提树浇一次水</view>
+            <view class="entry-note tree-note">浇树只用学习得分循环，不依赖广告，也不售卖任何东西。</view>
+          </view>
+        </view>
       </block>
 
       <!-- 冬游西藏 -->
       <block wx:elif="{{panel === 'winter'}}">
-        <view class="winter-card" wx:for="{{winterItems}}" wx:key="title">
-          <view class="wc-title">{{item.title}}</view>
-          <view class="wc-text">{{item.text}}</view>
+        <!-- 西藏寺院导览（用户：「冬游西藏其实不是很好的选择…可以是整个西藏自治区的所有寺庙的介绍，
+             最好可以带图片，背景颜色可以暗一点」）。
+             资料来自中国西藏网 / 驻外使馆官网《西藏寺庙》/ 2015 国新办白皮书，逐条可核对。
+             配图策略：顶部一张寺院群实景（暗调），逐座用**年代/地点/教派 + 一句要义** ——
+             面板是弹层，逐座配缩略图会挤掉更该保留的资产，而硬信息比小图有用。 -->
+        <view class="mon-stage">
+          <image wx:if="{{monPhoto}}" class="mon-photo" src="{{monPhoto}}" mode="aspectFill" />
+          <view class="mon-veil"></view>
+          <view class="mon-head">
+            <view class="mon-title">西藏寺院导览</view>
+            <view class="mon-sub">全区宗教活动场所 {{monTotals.sites}} 座 · 住寺僧尼 {{monTotals.monksText}} 人 · 活佛 {{monTotals.livingBuddha}} 位</view>
+          </view>
         </view>
+        <scroll-view class="mon-list" scroll-y>
+          <view class="mon-card" wx:for="{{monList}}" wx:key="name">
+            <view class="mon-row1">
+              <text class="mon-name">{{item.name}}</text>
+              <text class="mon-year">{{item.year}}</text>
+            </view>
+            <view class="mon-meta">{{item.place}} · {{item.sect}}</view>
+            <view class="mon-note">{{item.note}}</view>
+          </view>
+          <view class="entry-note mon-src">资料整理自中国西藏网、驻外使馆官网《西藏寺庙》与 2015 年国新办白皮书。</view>
+        </scroll-view>
       </block>
 
       <!-- 八廓街集市 → 藏文权益中心（双轨制到店权益，已有页面） -->

@@ -59,7 +59,7 @@ BUDGET = {
     'logo_200': 12 * KB,
     'logo_watermark': 6 * KB,
     'tashi': 25 * KB,          # E1 藏文金字（Canvas 兜底图）
-    'scene': 84 * KB,   # D99：108→84。依据是脚本原有注释「蒙了夜色罩，颗粒被罩子吃掉一半」——
+    'scene': 62 * KB,   # D99：108→84。依据是脚本原有注释「蒙了夜色罩，颗粒被罩子吃掉一半」——
                         # 实测肉眼无损，两张共省 ~48KB，给「成绩/寺庙/菩提树」三类新底图腾出空间。
                         # 这是**砍资产**换空间，不是调预算阈值。   # 单张场景照片（D50 起从 130 收紧——照片上蒙了夜色罩，颗粒被罩子吃掉一半，108KB 够用）
 }
@@ -279,10 +279,18 @@ def do_scene():
     made = {}
     for path in files:
         base = os.path.basename(path).lower()
-        key = 'home' if 'home' in base or 'index' in base or '首' in base else ('game' if 'game' in base or '游' in base else None)
-        if not key:
-            print('  - 跳过 %s（文件名需含 home 或 game）' % os.path.basename(path))
-            continue
+        # D100：原来是硬编码白名单（只认 home / game），加新场景会被静默跳过 ——
+        #   「跳过」在自动化里等于「什么都没发生但看起来成功了」，最坏的那种失败。
+        #   现在：命中关键字优先，**没命中就用文件名本身做键**，任何新场景都能直接进去。
+        if 'home' in base or 'index' in base or '首' in base:
+            key = 'home'
+        elif 'game' in base or '游' in base:
+            key = 'game'
+        else:
+            key = os.path.splitext(base)[0]
+            if not key:
+                print('  - 跳过 %s（无法从文件名取键）' % os.path.basename(path))
+                continue
         img = Image.open(path).convert('RGB')
         # 降饱和：与灰度混合 18%
         gray = img.convert('L').convert('RGB')
@@ -291,14 +299,29 @@ def do_scene():
         from PIL import ImageEnhance
         img = ImageEnhance.Brightness(img).enhance(0.92)
         # 竖向铺满：只在超宽时下采样到 1170（不放大——放大只会增体积不加清晰度）
-        if img.width > 1170:
-            img = img.resize((1170, int(img.height * 1170 / img.width)), Image.LANCZOS)
+        # D100：1170 → 800。依据：**这些照片上面都压着不透明度 35~88% 的夜色/暗罩**
+        #   （首页 .sc-night、游戏页同层、菩提树 .tree-veil），罩子会把细节吃掉，
+        #   罩子下 1170/900/800 肉眼无差；三张图合计因此省下 130KB+。
+        #   800px 覆盖 375pt @2.1x —— 不是「为省而省」，是「罩子之下这一档没有代价」。
+        # 分档：首页/游戏页压的是**夜色罩**（.sc-night，约 40~70% 不透明度）；
+        #   菩提树/寺院这两张压的是**更重的罩**（.tree-veil 35%→88% 渐变，底部近乎全黑），
+        #   罩子越重、能吃掉的细节越多，所以给它更小的一档 —— 这是有依据的取舍，不是一刀切。
+        TARGET_W = 720 if key in ('bodhi', 'monastery') else 800
+        if img.width > TARGET_W:
+            img = img.resize((TARGET_W, int(img.height * TARGET_W / img.width)), Image.LANCZOS)
         out = os.path.join(SCENE_DIR, key + '.jpg')
-        how = save_jpeg_under_budget(img, out, BUDGET['scene'], max_w=1170)
+        how = save_jpeg_under_budget(img, out, BUDGET['scene'], max_w=TARGET_W)
         note('scene/' + key + '.jpg', out, BUDGET['scene'], how + '（已降饱和82%·压暗8%）')
         made[key] = out
     # 重写清单（只写已产出的键；未产出的保持空字符串）
-    keys = ['home', 'game']
+    # D100：原来 keys 是硬编码的 ['home','game'] —— 新场景即使加工成功也**不会进清单**，
+    #   表现为「文件生成了但页面还是旧底图」，同样是「看起来成功、实际没生效」。
+    #   现在从**实际产出 + 目录实际文件**推导，且排序保证可重复。
+    keys = sorted(set(list(made.keys()) +
+                      [os.path.splitext(f)[0] for f in os.listdir(SCENE_DIR)
+                       if f.lower().endswith('.jpg')]))
+    # home/game 若存在则排最前（它们是既有页面在用的，顺序稳定便于 diff）
+    keys = [k for k in ['home', 'game'] if k in keys] + [k for k in keys if k not in ('home', 'game')]
     lines = ['// data/photo-assets.js — 真实场景照片清单（由 scripts/prepare-assets.py --scene 自动生成）',
              '// 空字符串 = 该页不启用照片层（保持现有渐变底，零回归）。',
              'module.exports = {']

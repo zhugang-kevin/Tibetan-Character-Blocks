@@ -648,11 +648,11 @@ section('15. 通关情绪引擎（粒子 / 震动 / 藏语语音 / 唐卡画卷 
   else err('result.js 未调用 audio.blessing()');
 
   // 15.4 Canvas 藏文字体守卫（PRD 八：Canvas 绘制藏文需降级方案）
-  if (rj.indexOf('fontLoaded') > -1 && rj.indexOf('tashi-delek.png') > -1)
+  if (rj.indexOf('fontLoaded') > -1 && rj.indexOf('tashi-delek.webp') > -1)
     ok('祝福卡藏文有字体守卫（fontLoaded → 预渲染 PNG 回退）');
-  else err('result.js 缺 Canvas 藏文字体守卫（fontLoaded / tashi-delek.png）');
-  if (exists('images/tashi-delek.png')) ok('预渲染藏文回退图 images/tashi-delek.png 存在');
-  else err('缺少 images/tashi-delek.png（Canvas 藏文回退图）');
+  else err('result.js 缺 Canvas 藏文字体守卫（fontLoaded / tashi-delek.webp）');
+  if (exists('images/tashi-delek.webp')) ok('预渲染藏文回退图 images/tashi-delek.webp 存在');
+  else err('缺少 images/tashi-delek.webp（Canvas 藏文回退图）');
   if (read('pages/cert/cert.js').indexOf('Microsoft Himalaya') > -1)
     ok('证书页藏文字体链含系统喜马拉雅字体兜底');
   else err('cert.js 藏文字体链未含 Microsoft Himalaya 兜底');
@@ -821,8 +821,20 @@ section('17. 留存系统与首页重构（PRD v4）');
   else err('道具铺道具缺少积分 cost');
   if (daily.tree && daily.tree.water > 0) ok('菩提树浇水奖励为本地积分（无广告施肥）');
   else err('data/daily.js 缺菩提树配置');
-  if (daily.winter && (daily.winter.items || []).length) ok('冬游西藏为静态文化专题（不涉及地图/下单）');
-  else err('data/daily.js 缺冬游西藏内容');
+  // D100：原判据查「冬游西藏」的静态卡片 —— 该面板已按用户要求换成**西藏寺院导览**
+  //   （资料来自中国西藏网/驻外使馆官网/2015 国新办白皮书）。判据随之改为查新内容。
+  if (exists('data/monasteries.js')) {
+    const mon = read('data/monasteries.js');
+    const n = (mon.match(/name:/g) || []).length;
+    const need = ['name:', 'place:', 'year:', 'sect:', 'note:'];
+    const miss = need.filter(function (k) { return mon.indexOf(k) === -1; });
+    if (n >= 10 && !miss.length) ok('西藏寺院导览在册（' + n + ' 座，含 年代/地点/教派/要义，可核对）');
+    else err('寺院导览不完整：仅 ' + n + ' 座' + (miss.length ? '，缺字段 ' + miss.join(',') : ''));
+    if (/中国西藏网|白皮书|使馆/.test(mon)) ok('寺院资料标注了可核对的来源');
+    else warn('寺院资料未标注来源');
+  } else err('缺少 data/monasteries.js（西藏寺院导览）');
+  if (!daily.winter) ok('旧的「冬游西藏」静态卡片已随功能替换移除（无死数据）');
+  else warn('data/daily.js 仍留着已不渲染的 winter 块');
 
   // 17.3 collect 纯逻辑模块（页面只做绑定，规则集中在 utils/）
   const colSrc = exists('utils/collect.js') ? read('utils/collect.js') : '';
@@ -3901,9 +3913,18 @@ section('38. 生产上线守卫（主包体积 / 隐私授权 / 工程配置）'
     }
     if (manifest && typeof manifest === 'object' && !Array.isArray(manifest)) {
       const keys = Object.keys(manifest);
-      const badKeys = keys.filter(k => ['home', 'game'].indexOf(k) === -1);
-      if (!badKeys.length) ok('data/photo-assets.js 合法（键 ⊆ {home, game}，当前 ' + keys.filter(k => manifest[k]).length + ' 张启用）');
-      else err('photo-assets.js 出现未知键：' + badKeys.join(','));
+      // D100：原来的判据是「键必须 ⊆ {home, game}」—— 那是把「当时有哪两张图」写成了规则，
+      //   结果新增场景（菩提树实景）会被当成非法。**真正要守的不变量是：
+      //   清单不得承诺一张不存在的图**（那会在页面上显示破图），
+      //   以及**不得有非空键指向空文件**。所以改成与 images/scene/ 实际文件对账。
+      const phantom = keys.filter(function (k) {
+        return manifest[k] && !exists('images/scene/' + k + '.jpg');
+      });
+      const emptyEnabled = keys.filter(function (k) { return !!manifest[k]; });
+      if (!phantom.length)
+        ok('data/photo-assets.js 合法（' + keys.length + ' 个键，' + emptyEnabled.length +
+           ' 张启用；每个非空键都有真实文件）');
+      else err('photo-assets.js 承诺了不存在的图（页面会显示破图）：' + phantom.join(','));
       // 清单启用的照片必须真的存在
       const missing = keys.filter(k => manifest[k] && !exists(manifest[k].replace(/^\//, '')));
       if (!missing.length) ok('清单启用的照片文件都存在（启用项 ' + keys.filter(k => manifest[k]).length + '）');
@@ -5424,7 +5445,7 @@ section('53. 反证 harness 与循环校验治理（D63）');
   // 53.5 图片资产：不能只查「存在」，0 字节文件也会让页面白屏
   {
     const imgs = ['images/bg-global.jpg', 'images/logo-144.png', 'images/pat-tile.png',
-      'images/tashi-delek.png'];
+      'images/tashi-delek.webp'];
     const dead = imgs.filter(f => exists(f) && fs.statSync(path.join(ROOT, f)).size < 512);
     if (!dead.length) ok('主要图片资产不是 0 字节（存在性 + 体量双查）');
     else err('图片资产为 0 字节 / 极小：' + dead.join(', ') + ' —— 存在性检查会被这种文件骗过');

@@ -3,4 +3,6 @@
 module.exports = {
   home: '/images/scene/home.jpg',
   game: '/images/scene/game.jpg',
+  bodhi: '/images/scene/bodhi.jpg',
+  monastery: '/images/scene/monastery.jpg',
 };
