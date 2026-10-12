@@ -3639,6 +3639,18 @@ const PRAISE_GAP_MS = 1100;
 const PRAISE_TIER1_PROB = 0.3;
 /* PRAISE_TIER_SOUND 定义在音频层（它属于音频层的表） */
 
+// D107：测试可控时钟。
+// 问题：H5 端到端里「连击累加」这条**偶发失败** —— 根因是连击带时间窗口
+//   （PRAISE_WINDOW_MIN=900ms），而第 1 关窗口只有 920ms；测试两次配对之间是
+//   `sleep(380) + findPair() + 2×clickTile()`，机器一忙就超窗 → 连击归零 → 偶发红。
+// 修法：把时间来源抽成一个函数，测试可注入并**逐步推进**（而不是钉死），
+//   这样既能稳定复现「窗口内连击」，也能测「超窗断链」。
+// 生产环境没有 __TEST_NOW_MS__，行为与原来完全一致（就是 Date.now()）。
+function nowMs() {
+  return (typeof window !== 'undefined' && window.__TEST_NOW_MS__ != null)
+    ? window.__TEST_NOW_MS__ : Date.now();
+}
+
 function praiseWindowMsOf(types) {
   const n = Math.max(0, Number(types) || 0);
   return Math.max(PRAISE_WINDOW_MIN, Math.min(PRAISE_WINDOW_MAX, PRAISE_WINDOW_BASE + PRAISE_WINDOW_STEP * n));
@@ -4216,7 +4228,7 @@ function handleMatch(i, j) {
   // 即时应激励（D34）：连击判定 / 档位 / 文案抽取 / 频率控制全交给 praise* 镜像。
   // 元素种类数取自盘面配额（第 1 关 2 种 → 第 10 关 12 种），连击窗口随「找一对有多难」缩放。
   const praiseTypes = (state.board.plan && state.board.plan.ids.length) || 1;
-  const praiseDec = praiseOnMatch(state.praiseState, Date.now(), praiseTypes, Math.random);
+  const praiseDec = praiseOnMatch(state.praiseState, nowMs(), praiseTypes, Math.random);
   state.praiseState = {
     combo: praiseDec.combo, prevTier: praiseDec.prevTier,
     lastShownAt: praiseDec.lastShownAt, lastIndex: praiseDec.lastIndex, maxCombo: praiseDec.maxCombo

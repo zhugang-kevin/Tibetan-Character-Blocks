@@ -437,6 +437,12 @@ function mockCtx(sink) {
   section('6. 连击与重复匹配轻提示');
   // 把 34 张文化卡全部标记为「已看过」，之后的匹配应只出轻提示
   ev('Object.keys(ELEMENTS).forEach(function (k) { markCardSeen(k); });');
+  // D107：**从序列第一步就接管时钟**。
+  //   ⚠️ 第一版是在 pr2 之前才设置时钟 —— 而 pr1 那次配对已用真实 Date.now()（约 1.7 万亿）
+  //   记下了 praiseState.at；随后把时钟拨到 100 万，`now - at` 变成**负数**，
+  //   chained 判定要求 `>= 0`，于是永远不连击 → 仍然 combo=1。
+  //   必须在**任何一次配对之前**把时钟设成受控值，后面的推进才有意义。
+  win.__TEST_NOW_MS__ = 1000000;
   const pr1 = findPair();
   const pronAtMatch = ev('state.pronounceCount');
   await clickTile(pr1[0]);
@@ -453,13 +459,28 @@ function mockCtx(sink) {
     $('#toast').className);
 
   const pr2 = findPair();
+  // D107：**把连击从「墙上时钟」改成可控时钟**。
+  //   第 1 关连击窗口只有 920ms，而两次配对之间是 sleep(380)+findPair()+2×clickTile()，
+  //   机器一忙就超窗 → combo 归零 → 这条**偶发失败**（流水线阶段 4 抓到过一次）。
+  //   现在由测试自己推进时间：配对前把时钟推到「距上次配对 400ms」（窗口内），
+  //   于是连击是否成立只取决于**逻辑**，不取决于机器快慢。
   await clickTile(pr2[0]);
   await clickTile(pr2[1]);
+  win.__TEST_NOW_MS__ = 1000000 + 400;   // 推进 400ms，仍远小于 920ms 窗口
   await sleep(380);
   check('第 3 次配对也朗读（累计 3 次）', ev('state.pronounceCount') === pronAtMatch + 2,
     'count=' + ev('state.pronounceCount'));
   check('连击累加（≥2）', ev('state.combo') >= 2, 'combo=' + ev('state.combo'));
   check('最高连击已记录', ev('getProgress().bestCombo') >= 2, 'bestCombo=' + ev('getProgress().bestCombo'));
+  // 反向验证：超过窗口应当断链（否则前面的「≥2」可能只是没判窗口，恒真）
+  const pr3 = findPair();
+  win.__TEST_NOW_MS__ = 1000000 + 400 + 5000;   // 推进 5s，远超 920ms 窗口
+  await clickTile(pr3[0]);
+  await clickTile(pr3[1]);
+  await sleep(120);
+  check('超过连击窗口应断链（窗口逻辑真的在起作用）', ev('state.combo') === 1,
+    'combo=' + ev('state.combo'));
+  win.__TEST_NOW_MS__ = null;
 
   /* ---------- 7. 文化卡自动收起（修复①） ---------- */
   section('7. 文化卡自动收起');

@@ -88,6 +88,11 @@ def main():
     if args.stage >= 1:
         banner(1, '检查', 'CHECK')
         s = Stage(1, 'check', '检查')
+        # D107：**必须先构建 H5，再测 H5**。此前流水线里没有 build-h5 这一步，
+        #   而 build-h5.js 有一条过时判据（查已下线的「冬游西藏」）一直在失败 ——
+        #   于是 H5 从未重新构建，**而阶段 2/4 的「H5 端到端」跑的是不含新改动的旧构建**。
+        #   → 等于那段时间的 H5 验证是无效的。构建本身必须成为流水线的第一道检查。
+        s.run('构建 H5 体验版', ['node', 'scripts/build-h5.js'], timeout=300)
         s.run('静态体检（文件/资源/引用）', [PY, 'scripts/audit_local.py'])
         # 运行时体检较慢（要起浏览器），超时放宽
         s.run('运行时体检（真浏览器）', [PY, 'scripts/audit_local_runtime.py'], timeout=600)

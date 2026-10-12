@@ -282,8 +282,24 @@ if (!daily.shop || daily.shop.length < 2) { console.error('✗ 道具铺至少 2
     if (Object.prototype.hasOwnProperty.call(it, k)) { console.error('✗ 道具 ' + it.id + ' 含金额字段 ' + k); homeBad++; }
   });
 });
-if (!daily.tree || !daily.winter || !daily.winter.items || !daily.winter.items.length) {
-  console.error('✗ data/daily.js 缺少菩提树 / 冬游西藏内容'); homeBad++;
+// D107：原判据查 daily.winter —— 但「冬游西藏」面板已按用户要求换成**西藏寺院导览**
+//   （数据在 data/monasteries.js）。⚠️ 同一个过时判据当时只改了 validate.js 那份，
+//   **漏了 build-h5.js 这一份**，结果 build 一直红、H5 一直没重建（新时钟因此没生效）。
+//   判据随之改为：菩提树配置仍在 + 寺院导览数据在册。
+if (!daily.tree) {
+  console.error('✗ data/daily.js 缺少菩提树配置'); homeBad++;
+}
+const monExists = fs.existsSync(path.join(__dirname, '..', 'data', 'monasteries.js'));
+if (!monExists) {
+  console.error('✗ 缺少 data/monasteries.js（西藏寺院导览）'); homeBad++;
+} else {
+  const mon = require('../data/monasteries.js');
+  const n = (mon.LIST || []).length;
+  if (n >= 10) {
+    console.log('  西藏寺院导览：' + n + ' 座');
+  } else {
+    console.error('✗ 寺院导览不完整：仅 ' + n + ' 座'); homeBad++;
+  }
 }
 if (homeBad) process.exit(1);
 

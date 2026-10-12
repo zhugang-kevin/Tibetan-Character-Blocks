@@ -69,6 +69,32 @@ TABLE = [
 ]
 
 
+def grab(src, key):
+    """取 `key: '...'` 的单引号字符串，**能识别 \\' 转义**。
+
+    ⚠️ 为什么不能简单用 split("'"):
+    `འ` 的 Wylie 是 `'a`（带撇号），写进 JS 单引号字符串必须转义成 `\\'a`。
+    第一版解析器直接 split("'")，遇到 `\\'` 就截断，把该条读成**空字符串** ——
+    于是「已修好」的条目在核对里仍显示为不一致。**解析器与写入格式必须同时考虑。**
+    """
+    i = src.find(key + ": '")
+    if i < 0:
+        return ''
+    j = i + len(key) + 3
+    out = []
+    while j < len(src):
+        c = src[j]
+        if c == '\\' and j + 1 < len(src):
+            out.append(src[j + 1])   # 取转义后的字符本身
+            j += 2
+            continue
+        if c == "'":
+            break
+        out.append(c)
+        j += 1
+    return ''.join(out)
+
+
 def main():
     src = io.open(CARDS, encoding='utf-8').read()
     pat = r"id:\s*'(letter_\d+)'[\s\S]*?tibetan:\s*'([^']*)'[\s\S]*?subtitle:\s*'([^']*)'"
@@ -113,6 +139,34 @@ def main():
                 issues.append((eid, ch, '浊音口径'))
         print('  %2d    %s    %-26s %-12s %-9s %s'
               % (i + 1, ch, sub, mod, '是' if voiced else '—', flag or 'ok'))
+
+    print('')
+    # ② Wylie 转写核对（D106 新增）
+    #   前面只核了「读音标注」，没核「转写」。而转写也有标准写法 —— 例如 འ 是 `'a`
+    #   （带撇号，它是个**辅音**），不是 `a`；本项目原先标成 `a`，
+    #   还写成「元音载体，不单独发音」（真正的元音载体是 ཨ）。已修。
+    print('【Wylie 转写核对】')
+    wy_bad = []
+    rows_w = []
+    for b in src.split('{')[1:]:
+        if "id: 'letter_" not in b:
+            continue
+        idm = b.split("id: '")[1].split("'")[0]
+        sbm = grab(b, 'subtitle')
+        rows_w.append((idm, sbm))
+    rows_w.sort(key=lambda r: int(r[0].split('_')[1]))
+    for i, (eid, sub) in enumerate(rows_w):
+        if i >= len(TABLE):
+            break
+        ours = sub.split('·')[0].strip().replace('\\', '')
+        auth = TABLE[i][1]
+        if ours != auth:
+            wy_bad.append((eid, TABLE[i][0], ours, auth))
+    if wy_bad:
+        for eid, ch, ours, auth in wy_bad:
+            print('   ✗ %s %s  我们「%s」 权威「%s」' % (eid, ch, ours, auth))
+    else:
+        print('   ✓ %d 条 Wylie 转写与权威表一致' % min(len(rows_w), len(TABLE)))
 
     print('')
     print('=' * 90)

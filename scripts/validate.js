@@ -6447,6 +6447,50 @@ section('59. 藏文书写规范（出处 / 判据 / 机械检验）');
   else err('缺 scripts/audit_letter_reading.py');
 }
 
+// ---------- 59.20 D106：Wylie 转写与「འ 不是元音载体」----------
+// 前面只核了「读音标注」，没核「转写」。而 འ 的 Wylie 是 `'a`（带撇号，它是**辅音**），
+// 本项目原先标成 `a`，还写成「元音载体，不单独发音」——
+// **真正的元音载体是 ཨ**（那条标得对）。属同一类「标注与事实不符」。
+{
+  const cards = read('data/cards.js');
+  // འ 的 subtitle 必须以 'a 开头（JS 里写成 \'a）
+  const i = cards.indexOf("tibetan: 'འ'");
+  const seg = i >= 0 ? cards.slice(i, i + 400) : '';
+  if (seg.indexOf("\\'a") > -1) ok("འ 的 Wylie 为 'a（带撇号，与权威表一致）");
+  else err("འ 的 Wylie 应为 'a（带撇号）");
+  if (seg.indexOf('元音载体') === -1) ok('འ 不再被描述为「元音载体」（那是 ཨ）');
+  else err('འ 仍被描述成「元音载体」—— 它是辅音，元音载体是 ཨ');
+  // ཨ 反过来应是元音载体
+  const j = cards.indexOf("tibetan: 'ཨ'");
+  const seg2 = j >= 0 ? cards.slice(j, j + 400) : '';
+  if (seg2.indexOf('零声母') > -1) ok('ཨ 标为「零声母」（真正的元音载体）');
+  else warn('ཨ 未标「零声母」');
+  // 对账脚本必须包含 Wylie 核对
+  if (exists('scripts/audit_letter_reading.py') &&
+      read('scripts/audit_letter_reading.py').indexOf('Wylie 转写核对') > -1)
+    ok('对账脚本含 Wylie 转写核对');
+  else err('对账脚本缺 Wylie 转写核对');
+}
+
+// ---------- 59.21 D107：H5 构建不得过期 ----------
+// 事故：build-h5.js 有一条过时判据（查已下线的「冬游西藏」）一直在失败，
+//   而**流水线里没有 build-h5 这一步** → H5 从未重新构建，
+//   而「H5 端到端」跑的是**不含新改动的旧构建** —— 等于那段时间的 H5 验证是无效的。
+// 判据：preview/play.html 必须**新于** preview/template.html 与其引用的关键数据文件。
+{
+  const built = fs.statSync('preview/play.html').mtimeMs;
+  const srcs = ['preview/template.html', 'data/cards.js', 'data/daily.js',
+                'data/monasteries.js', 'data/voices.js', 'utils/praise.js',
+                'scripts/build-h5.js'];
+  const stale = srcs.filter(f => fs.existsSync(f) && fs.statSync(f).mtimeMs > built);
+  if (!stale.length) ok('H5 构建为最新（preview/play.html 不旧于任何输入）');
+  else err('H5 构建已过期：先跑 node scripts/build-h5.js（旧于 ' + stale.join('、') + '）');
+  // 可控时钟必须在位（连击测试的确定性依赖它）
+  if (read('preview/play.html').indexOf('function nowMs()') > -1)
+    ok('H5 含测试可控时钟（连击窗口不再靠墙上时钟碰运气）');
+  else err('H5 缺 nowMs() —— 连击测试会继续偶发失败');
+}
+
 section('60. 牌面视觉一致性（填充率 / 行首 tsheg / 装得下）');
 
 

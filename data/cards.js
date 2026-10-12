@@ -206,7 +206,7 @@ module.exports = [
     type: 'letter',
     tibetan: 'འ',
     title: 'འ',
-    subtitle: 'a · 阿（元音载体，不单独发音）',
+    subtitle: '\'a · 阿（喉塞音·低调）',
     description: '藏文第二十三个辅音字母，本身不发出声音，专门用来承载元音符号。',
     funFact: '「འ」是三十个辅音里唯一不发音的——元音符号 ི ུ 都要靠它「托住」才能安家。'
   },
