@@ -6342,6 +6342,50 @@ section('59. 藏文书写规范（出处 / 判据 / 机械检验）');
   else err('页面引用了未声明的模块（运行到该路径会 ReferenceError）：' + bad.slice(0, 6).join(' | '));
 }
 
+// ---------- 59.16 D101：浇水「每日一次」不得回归 ----------
+// 事故：UI 一直写着「每天浇一次水」，但 storage.waterPot 过去**没有任何上限** ——
+//   连点就能无限刷学习得分（深挖审计挖出）。修的过程中还踩了第二次坑：
+//   getProgress() 是按**显式字段清单**挑字段的，新字段漏加进清单就会读成 undefined，
+//   表现为「上限判断永远通过、漏洞照旧」——**第一次修复看起来完成了，实际什么都没做**。
+{
+  const st = read('utils/storage.js');
+  if (/waterDay/.test(st) && /already: true/.test(st))
+    ok('浇水有每日上限（waterPot 返回 watered/already，UI 承诺与代码一致）');
+  else err('浇水缺每日上限 —— 「每天浇一次」是空承诺，可无限刷分');
+  // 关键：新字段必须同时出现在 getProgress 的返回清单里，否则读写不对称
+  const getter = st.slice(st.indexOf('function getProgress()'), st.indexOf('function getProgress()') + 4000);
+  if (getter.indexOf('waterDay: (p && p.waterDay)') > -1)
+    ok('waterDay 已列入 getProgress 字段清单（读写对称，丢字段的坑不会重演）');
+  else err('waterDay 未列入 getProgress —— 会被丢成 undefined，上限形同虚设');
+  // 页面侧要有并发保护
+  const ix = read('pages/index/index.js');
+  if (/waterTree: function[\s\S]{0,300}_watering/.test(ix))
+    ok('浇水有并发保护（防连点）');
+  else err('浇水缺并发保护');
+}
+
+// ---------- 59.17 D101：数据版本与迁移（防「老用户进度静默归零」）----------
+// 隐患：过去没有版本号，结构一变老数据只能被「当成全新用户」——
+//   也就是**老用户进度归零，且用户完全不知道**。补了 SCHEMA + 逐版迁移。
+{
+  const st = read('utils/storage.js');
+  const hasSchema = st.indexOf('var SCHEMA') > -1 && st.indexOf('MIGRATIONS') > -1;
+  if (hasSchema) ok('storage 有数据版本号与逐版迁移（结构变更不会丢老用户进度）');
+  else err('storage 无版本/迁移 —— 改结构会让老用户进度静默归零');
+  if (/if \(p && typeof p === 'object'\) p\.schema = SCHEMA/.test(st))
+    ok('落盘时写入版本号（读写对称）');
+  else err('落盘未写版本号 —— 迁移判断会永远走「老版本」分支');
+  // 迁移函数只增不改：每个已发布版本都应有对应迁移（当前到 SCHEMA）
+  const m = st.match(/var SCHEMA = (\d+)/);
+  if (m) {
+    const sc = parseInt(m[1], 10);
+    const missing = [];
+    for (let n = 2; n <= sc; n++) if (st.indexOf('\n  ' + n + ': function') === -1) missing.push(n);
+    if (!missing.length) ok('v1→v' + sc + ' 每一版都有迁移函数');
+    else err('缺迁移函数：v' + missing.join(', v'));
+  }
+}
+
 section('60. 牌面视觉一致性（填充率 / 行首 tsheg / 装得下）');
 {
   const learning60 = require('../utils/learning.js');

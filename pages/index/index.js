@@ -143,7 +143,15 @@ Page({
     ladderIn: false
   },
 
+  // D101：卸载后关掉存活标记，让在飞的定时器回调自己退出
+  //   （原来没有这个钩子：入场动画的 2s / 2.4s 回调会在页面卸载后 setData）
+  onUnload: function () {
+    this._alive = false;
+  },
+
   onShow: function () {
+    // D101：页面存活标记 —— 定时器回调里 setData 前必须检查
+    this._alive = true;
     // D86：开启分享菜单（含朋友圈入口）
     if (wx.showShareMenu) wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] });
     this.refresh();
@@ -337,7 +345,7 @@ Page({
   // 入场动画播完后撤掉动画类：animation-fill 会让 transform 常驻，挡住后面的点击缩放反馈
   releaseLadderIn: function () {
     var self = this;
-    setTimeout(function () { self.setData({ ladderIn: false }); }, 2000);
+    setTimeout(function () { if (self._alive) self.setData({ ladderIn: false }); }, 2000);
   },
 
   // 通关返回：当前台阶绽放莲花（.bloom）+ 自动升到下一级台阶
@@ -346,6 +354,7 @@ Page({
     this.setData({ ladderIn: true });
     this.runLadderMotion({ to: Math.min(doneN + 1, 10) });
     setTimeout(function () {
+      if (!self._alive) return;          // D101：页面已卸载就不再 setData
       var patch = { ladderIn: false };
       patch['levels[' + (doneN - 1) + '].bloom'] = false;
       self.setData(patch);
@@ -680,9 +689,18 @@ Page({
 
   // 菩提树：浇水得积分（无广告）
   waterTree: function () {
-    storage.waterPot(collect.waterReward());
+    // D101：两道闸 —— ① 并发保护（防连点）② 每日一次（UI 承诺「每天浇一次」，过去代码是无限次）
+    if (this._watering) return;
+    this._watering = true;
+    var self = this;
+    var r = storage.waterPot(collect.waterReward(), todayStr());
     this.refresh();
-    wx.showToast({ title: '菩提树 +' + collect.waterReward() + ' 学习得分', icon: 'none' });
+    if (!r.watered) {
+      wx.showToast({ title: '今天已经浇过了，明天再来', icon: 'none' });
+    } else {
+      wx.showToast({ title: '菩提树 +' + collect.waterReward() + ' 学习得分', icon: 'none' });
+    }
+    setTimeout(function () { self._watering = false; }, 400);
   },
 
   // 打开文化护照（12 张证书 + 印章 + 收藏 + 图谱）

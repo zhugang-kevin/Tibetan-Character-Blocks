@@ -26,7 +26,13 @@ Page({
     imagePath: ''
   },
 
+  // D101：卸载后关掉存活标记，让在飞的定时器回调退出
+  onUnload: function () {
+    this._alive = false;
+  },
+
   onLoad: function (query) {
+    this._alive = true;   // D101：供定时器回调判断页面是否还在
     var stage = parseInt(query.stage, 10) || 1;
     // 阶段号非法（越界 / 被手改）时直接回首页，避免渲染空证书
     if (!certificate.stageByNo(stage)) {
@@ -100,7 +106,7 @@ Page({
     this.setData({ generating: true });
     this.drawCert(cert);
     // drawCert 内部异步加载 Logo；此处仅切换按钮态
-    setTimeout(function () { that.setData({ generating: false }); }, 100);
+    setTimeout(function () { if (that._alive) that.setData({ generating: false }); }, 100);
   },
 
   drawCert: function (cert) {

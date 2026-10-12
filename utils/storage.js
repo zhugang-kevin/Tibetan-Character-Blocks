@@ -19,18 +19,48 @@ var COMBO_MODEL = 'window';
 //   wx.getStorageSync 在「存储被清 / 数据损坏 / 极端机型限制」下会抛异常，
 //   直接裸调会让 onShow 里的第一个调用点把整页带崩——用户看到的是白屏而不是游戏。
 //   读失败 = 当成全新用户（进度丢失但游戏能玩），写失败 = 静默（本局照常进行）。
+// D101：当前数据版本。**改结构时必须 +1，并在 MIGRATIONS 里补一条迁移。**
+//   为什么需要它：过去没有版本号，一旦结构变更，老用户的数据只能被
+//   「当成全新用户」处理 —— 也就是**进度静默归零，用户完全不知道**。
+//   有了迁移，老数据能被搬过来，而不是丢掉。
+var SCHEMA = 2;
+
+// 逐版迁移：key = 目标版本，函数把「上一版的数据」改成「这一版的数据」。
+// 只增不改 —— 已经发布过的迁移函数不要再动，否则老版本升级路径会错。
+var MIGRATIONS = {
+  // v1 → v2：D101 起浇水有「每日一次」上限，需要 waterDay 字段。
+  //   老数据没有这个字段 → 补空串（语义：今天还没浇过，可以浇）。
+  2: function (p) {
+    if (typeof p.waterDay !== 'string') p.waterDay = '';
+    return p;
+  }
+};
+
 function rawRead() {
   try {
     var v = wx.getStorageSync(KEY);
     // 脏数据（字符串 / 数组 / 别的版本写的东西）一律按「没有进度」处理，
     // 否则后面 p.completedLevels.indexOf 这类调用会直接抛 TypeError。
     if (!v || typeof v !== 'object' || Array.isArray(v)) return null;
+    // 版本迁移：老数据（没有 schema 或版本低）先补齐，再交给上层用。
+    var ver = typeof v.schema === 'number' ? v.schema : 1;
+    if (ver < SCHEMA) {
+      for (var n = ver + 1; n <= SCHEMA; n++) {
+        if (MIGRATIONS[n]) { try { v = MIGRATIONS[n](v) || v; } catch (e) { /* 单步失败不阻断 */ } }
+      }
+      v.schema = SCHEMA;
+      rawWrite(v);
+    }
     return v;
   } catch (e) { return null; }
 }
 
 function rawWrite(p) {
-  try { wx.setStorageSync(KEY, p); return true; } catch (e) { return false; }
+  try {
+    if (p && typeof p === 'object') p.schema = SCHEMA;   // D101：落盘时打版本号
+    wx.setStorageSync(KEY, p);
+    return true;
+  } catch (e) { return false; }
 }
 
 function getProgress() {
@@ -76,6 +106,10 @@ function getProgress() {
     thangkaDone: !!(p && p.thangkaDone),
     inventory: (p && p.inventory) || {},
     pot: (p && p.pot) || 0,
+    // D101：浇水「每日一次」的判据字段。**必须在这里列出** ——
+    //   getProgress() 是显式清单，漏一处就会读成 undefined，
+    //   表现为「上限判断永远通过、漏洞照旧」（本字段第一次就是这么漏的，被测试抓出）。
+    waterDay: (p && p.waterDay) || '',
     // 万家灯火祈福跳窗：上次展示的日期（用于「每天首次打开只出现一次」）
     lampDay: (p && p.lampDay) || '',
     // 每日打开记录（本地留存粗指标）：{ days, lastDate, streak, total, first }
@@ -461,12 +495,21 @@ function useItem(id) {
 }
 
 // 菩提树：浇水计数 + 积分（无广告）
-function waterPot(reward) {
+// D101：**加每日上限**。UI 上写的是「每天浇一次水」，但这里过去是**无限次**——
+//   连点就能无限刷分（并发审计挖出来的）。现在按自然日记一次，返回是否成功。
+//   返回结构保留 pot/points，新增 watered（本次是否真的浇到）与 already（今天已浇过）。
+function waterPot(reward, today) {
   var p = getProgress();
+  // 日期由调用方传入 —— 与 collect.advanceSignIn(signIn, today) 同一约定，
+  // 不在 storage 里再造一个日期格式化函数（避免两处口径漂移）。
+  if (today && p.waterDay === String(today)) {
+    return { pot: p.pot || 0, points: p.points || 0, watered: false, already: true };
+  }
+  p.waterDay = String(today || '');
   p.pot = (p.pot || 0) + 1;
   p.points = (p.points || 0) + Math.max(0, Math.floor(reward || 0));
   save(p);
-  return { pot: p.pot, points: p.points };
+  return { pot: p.pot, points: p.points, watered: true, already: false };
 }
 
 function getPot() { return getProgress().pot || 0; }

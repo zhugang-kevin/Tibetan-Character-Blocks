@@ -58,7 +58,13 @@ Page({
     secretTotal: 10
   },
 
+  // D101：卸载后关掉存活标记 —— 云同步的 .then 回调会在页面卸载后 setData
+  onUnload: function () {
+    this._alive = false;
+  },
+
   onShow: function () {
+    this._alive = true;
     this.showShare();
     this.refresh();
   },
