@@ -6386,7 +6386,28 @@ section('59. 藏文书写规范（出处 / 判据 / 机械检验）');
   }
 }
 
+// ---------- 59.18 D102：读音对账（「念错字」与「长音妥协」必须显式登记）----------
+// 用户反馈「很多藏文读音有错误」。机器可查的那一类是：**UI 显示的藏文**与
+//   **音频当年合成时用的原文**对不上。修法与清单见 docs/voice-recording-pending.md。
+// 本门禁不阻止发布（真人录音是外部依赖），但**要求这件事始终是被登记、被看见的**：
+//   一旦有人把清单文件删掉、或把 form=alt 的记录抹掉，这里会立刻报出来。
+{
+  const at = exists('scripts/audit_voice_text.py');
+  if (at) ok('读音对账脚本在位（scripts/audit_voice_text.py）');
+  else err('缺少读音对账脚本 —— 「念错字」将无法被机器发现');
+  if (exists('docs/voice-recording-pending.md')) {
+    const doc = read('docs/voice-recording-pending.md');
+    const n = (doc.match(/`letter_/g) || []).length + (doc.match(/`icon_/g) || []).length;
+    if (n >= 15) ok('待录音清单在册（' + n + ' 条，机器对账产出）');
+    else warn('待录音清单条数异常（' + n + '）');
+    if (/证明不可用/.test(doc)) ok('已把「双写取首段」的证伪结论写进清单（避免重走弯路）');
+    else warn('清单未记录已证伪的捷径');
+  } else err('缺少 docs/voice-recording-pending.md —— 待录音项无人可见');
+}
+
 section('60. 牌面视觉一致性（填充率 / 行首 tsheg / 装得下）');
+
+
 {
   const learning60 = require('../utils/learning.js');
   const data60 = require('../data/learning.js');

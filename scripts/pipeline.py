@@ -92,6 +92,8 @@ def main():
         # 运行时体检较慢（要起浏览器），超时放宽
         s.run('运行时体检（真浏览器）', [PY, 'scripts/audit_local_runtime.py'], timeout=600)
         s.run('发音体检（47 条是否真的有声）', [PY, 'scripts/check_voice.py'], timeout=600)
+        # 读音对账：UI 显示的藏文 vs 音频当年合成用的原文（「念错字」只能这样查出来）
+        s.run('读音对账（显示文本 vs 音频原文）', [PY, 'scripts/audit_voice_text.py'], timeout=300)
         # D101：深挖「还没炸、但迟早会炸」的那一类（用户要求「深入深化所有可能性」）
         s.run('潜在问题深挖（容量/并发/生命周期/小屏/版本）', [PY, 'scripts/audit_deep.py'], timeout=600)
         if s.failed:
