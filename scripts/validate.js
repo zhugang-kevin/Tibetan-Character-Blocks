@@ -4181,7 +4181,7 @@ section('41. 灯火跳窗改版（释迦牟尼底图 / 真实酥油灯 / 静→�
   } else err('缺少 audio/voice/mantra.mp3（燃灯播报）');
   if (ijs41.indexOf("audio.speak('mantra')") > -1) ok('小程序 onLightLamp 播报 mantra');
   else err('小程序 onLightLamp 未播报 mantra');
-  if (t41.indexOf("speak('mantra')") > -1) ok('体验版 lightLamp 播报 mantra');
+  if (t41.indexOf("speak('mantra_4x')") > -1) ok('体验版 lightLamp 播报 mantra');
   else err('体验版 lightLamp 未播报 mantra');
   // 41.5b **来源必须是藏文 TTS**（D58 的核心守卫）
   // 背景：D50 这条音频是用 Edge TTS 念**中文**「嗡 嘛 呢 叭 咪 吽」，
@@ -6489,6 +6489,39 @@ section('59. 藏文书写规范（出处 / 判据 / 机械检验）');
   if (read('preview/play.html').indexOf('function nowMs()') > -1)
     ok('H5 含测试可控时钟（连击窗口不再靠墙上时钟碰运气）');
   else err('H5 缺 nowMs() —— 连击测试会继续偶发失败');
+}
+
+// ---------- 59.22 D109：六字真言 ×4（祈福音频）必须真的是 4 遍 ----------
+// 用户（2026-10-13）：祈福应念「唵嘛呢叭咪吽」**4 遍**（藏文）。
+// ⚠️ 踩过的坑：第一版让 TTS 一次念 4 遍，它返回 3.85s，而单遍 2.08s ——
+//   **只 1.85 倍时长**，包络数出来仅 8 个有声段（应为 12）。它把 4 遍**压缩着念了**。
+//   改为：拿已验证单遍拼接 4 遍（350ms 间隔）→ 9.38s / 12 段，遍数可验。
+// 本门禁守住这个结论：时长必须 ≥ 单遍 ×3.5，且 manifest 必须记录它是拼接而来。
+{
+  const man = read('scripts/tts-manifest.json');
+  const m1 = /"mantra":\s*\{[^}]*"dur":\s*([0-9.]+)/.exec(man);
+  const m4 = /"mantra_4x":\s*\{[^}]*"dur":\s*([0-9.]+)/.exec(man);
+  if (m1 && m4) {
+    const d1 = parseFloat(m1[1]), d4 = parseFloat(m4[1]);
+    const ratio = d4 / d1;
+    if (ratio >= 3.5) ok('六字真言 x4 时长 %.2fs = 单遍 %.2fs 的 %.2f 倍（>=3.5，是真 4 遍）' % (d4, d1, ratio));
+    else err('六字真言 x4 只有单遍的 %.2f 倍 —— 疑似被压缩着念（应为 ~4 倍）' % ratio);
+  } else err('manifest 缺 mantra / mantra_4x 的时长记录');
+  if (/拼接 4 遍/.test(man)) ok('manifest 记录 mantra_4x 为拼接而来（可追溯）');
+  else err('manifest 未说明 mantra_4x 的构造方式');
+  // 两侧都要播它
+  const ix = read('pages/index/index.js');
+  if (ix.indexOf("audio.speak('mantra_4x')") > -1) ok('祈福弹窗播放 mantra_4x（小程序侧）');
+  else err('小程序祈福弹窗未播放 mantra_4x');
+  if (read('preview/template.html').indexOf("speak('mantra_4x')") > -1) ok('祈福弹窗播放 mantra_4x（H5 侧）');
+  else err('H5 祈福弹窗未播放 mantra_4x');
+  // 不再有「中文播报」的错注释
+  // ⚠️ 判据第一版写 `indexOf('中文播报') === -1` —— 而我自己的**修正说明里**
+  //   就含「中文播报」四个字（「会让后来的人以为它是中文播报」），于是自己误报自己。
+  //   改为匹配**真实的错句**「中文播报《嗡」—— 那才是原注释的写法。
+  if (ix.indexOf('中文播报《嗡') === -1 && read('preview/template.html').indexOf('中文播报《嗡') === -1)
+    ok('已无「中文播报《嗡…」错注释（mantra 实为藏文）');
+  else err('仍存在「中文播报《嗡…」」错注释 —— 该音频是藏文合成的');
 }
 
 section('60. 牌面视觉一致性（填充率 / 行首 tsheg / 装得下）');

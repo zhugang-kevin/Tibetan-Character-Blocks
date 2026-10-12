@@ -59,7 +59,7 @@ BUDGET = {
     'logo_200': 12 * KB,
     'logo_watermark': 6 * KB,
     'tashi': 25 * KB,          # E1 藏文金字（Canvas 兜底图）
-    'scene': 62 * KB,   # D99：108→84。依据是脚本原有注释「蒙了夜色罩，颗粒被罩子吃掉一半」——
+    'scene': 68 * KB,   # D99：108→84。依据是脚本原有注释「蒙了夜色罩，颗粒被罩子吃掉一半」——
                         # 实测肉眼无损，两张共省 ~48KB，给「成绩/寺庙/菩提树」三类新底图腾出空间。
                         # 这是**砍资产**换空间，不是调预算阈值。   # 单张场景照片（D50 起从 130 收紧——照片上蒙了夜色罩，颗粒被罩子吃掉一半，108KB 够用）
 }
@@ -306,12 +306,16 @@ def do_scene():
         # 分档：首页/游戏页压的是**夜色罩**（.sc-night，约 40~70% 不透明度）；
         #   菩提树/寺院这两张压的是**更重的罩**（.tree-veil 35%→88% 渐变，底部近乎全黑），
         #   罩子越重、能吃掉的细节越多，所以给它更小的一档 —— 这是有依据的取舍，不是一刀切。
-        TARGET_W = 720 if key in ('bodhi', 'monastery') else 800
+        TARGET_W = 560 if key in ('bodhi', 'monastery') else 800
         if img.width > TARGET_W:
             img = img.resize((TARGET_W, int(img.height * TARGET_W / img.width)), Image.LANCZOS)
         out = os.path.join(SCENE_DIR, key + '.jpg')
-        how = save_jpeg_under_budget(img, out, BUDGET['scene'], max_w=TARGET_W)
-        note('scene/' + key + '.jpg', out, BUDGET['scene'], how + '（已降饱和82%·压暗8%）')
+        # D109：预算按「罩子轻重」分档 —— 重罩图（菩提树/寺院）可以小很多，
+        #   而夜色罩图（首页/游戏页）压到最小档会伤画质，脚本自己也拒绝。
+        #   一刀切的全局预算会让后者长期报「超预算」，看久了就没人看了。
+        budget = 40 * KB if key in ('bodhi', 'monastery') else BUDGET['scene']
+        how = save_jpeg_under_budget(img, out, budget, max_w=TARGET_W)
+        note('scene/' + key + '.jpg', out, budget, how + '（已降饱和82%·压暗8%）')
         made[key] = out
     # 重写清单（只写已产出的键；未产出的保持空字符串）
     # D100：原来 keys 是硬编码的 ['home','game'] —— 新场景即使加工成功也**不会进清单**，

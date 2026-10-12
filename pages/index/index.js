@@ -259,6 +259,13 @@ Page({
     // 万家灯火：每天首次打开时，先与远方的灯火同明一次（纯本地判断）
     if (lampFirst) {
       this.setData(this.buildLampView());
+      // D109（用户 2026-10-13）：祈福跳窗打开时，用**藏文**念六字真言 4 遍。
+      //   用户原话：「那个祈福的话叫藏语的话，藏文的读音是
+      //   唵嘛呢叭咪吽 唵嘛呢叭咪吽 唵嘛呢叭咪吽 唵嘛呢叭咪吽」。
+      //   音频：audio/voice/mantra_4x.mp3 —— 由已验证单遍拼接 4 遍（350ms 间隔），
+      //   实测 9.38s / 12 个有声段（3 段每遍 × 4），遍数可验。
+      //   ⚠️ 不用 TTS 一次念 4 遍：实测它会把 4 遍压缩成 3.85s（只 1.85 倍时长）。
+      audio.speak('mantra_4x');
       // 跳窗盖住天梯：入场/绽放推迟到 closeLampWindow（见下）
       this._pendingIntro = firstBoot ? p.unlockedLevel : 0;
       this._pendingBloom = bloomN;
@@ -412,8 +419,11 @@ Page({
     try {
       if (wx.vibrateShort) wx.vibrateShort({ type: 'medium' });
     } catch (err) { /* 部分机型不支持震动，静默降级 */ }
-    // D50（用户要求）：点灯同时中文播报《嗡 嘛 呢 叭 咪 吽》（audio/voice/mantra.mp3，
+    // D50（用户要求）：点灯同时播报六字真言（audio/voice/mantra.mp3，
     // 离线预生成资产；走 pronounce 单声部通道，新播报会打断旧播报；缺文件静默）
+    // ⚠️ D109 修正注释：原注释写「**中文**播报《嗡 嘛 呢 叭 咪 吽》」与事实不符 ——
+    //   manifest 记录 text=ཨོཾ་མ་ཎི་པདྨེ་ཧཱུྃ།，这条音频是**藏文**合成的
+    //   （天翼 zhuoma 念藏文）。注释错会让后来的人以为它是中文播报。
     audio.speak('mantra');
     storage.markLampDay(todayStr());
   },

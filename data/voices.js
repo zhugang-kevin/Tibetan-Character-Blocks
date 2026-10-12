@@ -58,6 +58,7 @@ module.exports = {
     'greet_06',
     'greet_07',
     'mantra',
+    'mantra_4x',
     'praise_2',
     'praise_3',
     'praise_4',

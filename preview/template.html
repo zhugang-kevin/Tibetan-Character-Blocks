@@ -5582,11 +5582,13 @@ function lightLamp() {
   $('lamp-total').classList.add('pop');
   $('lamp-sub').classList.add('pop');
   $('lamp-btn').classList.add('hide');   // 点亮后 CTA 收起（不留死按钮），元素保留仅为守卫测试可点
-  // D50：写实火焰三层动画 + 致谢按钮（用户点名文案）+ 中文播报《嗡 嘛 呢 叭 咪 吽》
+  // D50/D109：写实火焰三层动画 + 致谢按钮（用户点名文案）+ 播六字真言
+  //   ⚠️ D109 修正：原注释写「中文播报」与事实不符 —— mantra.mp3 是**藏文**合成的。
+  //   D109 起改播 mantra_4x（六字真言 **4 遍**，由已验证单遍拼接，遍数可验）。
   $('lamp-flame').classList.add('lit');
   $('lamp-thanks').classList.add('show');
   $('lamp-tip').classList.add('show');
-  speak('mantra');
+  speak('mantra_4x');
   // 点亮之后：出现显著关闭按钮；未点亮态的安静出口（今天先不点灯）让位
   $('lamp-close').classList.add('show');
   $('lamp-skip').classList.add('hide');
@@ -5603,6 +5605,8 @@ function maybeShowLamp() {
   const p = getProgress();
   if (String(p.lampDay || '') === colToday()) return;
   showLampWindow();
+  // D109：与小程序对齐 —— 祈福跳窗打开即用藏文念六字真言 4 遍
+  speak('mantra_4x');
 }
 $('lamp-btn').addEventListener('click', lightLamp);
 // 三个出口共用同一收尾：右上角 ✕（任何状态可关）/ 点亮后的显著关闭按钮 / 未点亮时的安静文字链
