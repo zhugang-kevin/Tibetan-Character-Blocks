@@ -1221,6 +1221,41 @@
   .j-glyph { font-size: 13px; font-weight: 700; }
   .j-unknown { color: #6E6759; font-weight: 400; }
   .j-note { margin-top: 7px; font-size: 11px; line-height: 1.6; color: #6E6759; }
+
+/* D108：与小程序 pages/index/index.wxss 对齐的三块样式 */
+.sutra-layer { position: absolute; left: 0; right: 0; top: 0; bottom: 0;
+  display: flex; flex-direction: column; justify-content: center; gap: 7px;
+  padding: 4px 7px; overflow: hidden; border-radius: 7px; pointer-events: none; z-index: 0;
+  background: linear-gradient(170deg, #241A12 0%, #1B130D 55%, #150F0A 100%); }
+.sutra-line { font-family: 'Noto Serif Tibetan', Kailasa, 'Noto Sans Tibetan', Jomolhari, 'Microsoft Himalaya', serif;
+  font-size: 15px; line-height: 1.5; white-space: nowrap; color: rgba(214, 178, 106, .20); }
+.rank-row, .entry-note { position: relative; z-index: 1; }
+
+.tree-stage { position: relative; border-radius: 7px; overflow: hidden; min-height: 150px;
+  display: flex; align-items: flex-end; }
+.tree-photo { position: absolute; left: 0; top: 0; width: 100%; height: 100%; object-fit: cover; }
+.tree-veil { position: absolute; left: 0; top: 0; right: 0; bottom: 0;
+  background: linear-gradient(180deg, rgba(12,10,8,.35) 0%, rgba(12,10,8,.72) 55%, rgba(12,10,8,.88) 100%); }
+.tree-body { position: relative; z-index: 1; width: 100%; padding: 9px 8px 8px; }
+.tree-note { color: #E8DCC4; opacity: .92; }
+.tree-art { font-size: 60px; text-align: center; width: 100%; }
+
+.mon-stage { position: relative; border-radius: 7px 7px 0 0; overflow: hidden; height: 120px; }
+.mon-photo { position: absolute; left: 0; top: 0; width: 100%; height: 100%; object-fit: cover; }
+.mon-veil { position: absolute; left: 0; top: 0; right: 0; bottom: 0;
+  background: linear-gradient(180deg, rgba(10,9,8,.42) 0%, rgba(10,9,8,.70) 60%, rgba(18,15,12,.95) 100%); }
+.mon-head { position: absolute; left: 0; right: 0; bottom: 0; padding: 7px 9px 8px; z-index: 1; }
+.mon-title { font-size: 16px; color: #F3E7CE; letter-spacing: 1px; }
+.mon-sub { font-size: 11px; color: #C9B79C; margin-top: 3px; line-height: 1.5; }
+.mon-list { max-height: 46vh; overflow-y: auto; background: #14100C; border-radius: 0 0 7px 7px; padding: 5px 7px 7px; }
+.mon-card { padding: 7px 6px; border-bottom: 1px solid rgba(214,178,106,.14); }
+.mon-card:last-child { border-bottom: none; }
+.mon-row1 { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; }
+.mon-name { font-size: 14px; color: #F3E7CE; }
+.mon-year { flex-shrink: 0; font-size: 11px; color: #D6B26A; }
+.mon-meta { font-size: 11px; color: #9C8B74; margin-top: 2px; }
+.mon-note { font-size: 11.5px; color: #CDBFA8; line-height: 1.6; margin-top: 4px; }
+.mon-src { margin-top: 6px; font-size: 11px; color: #8A7A64; }
 </style>
 </head>
 <body>
@@ -2896,6 +2931,10 @@ const FRAGMENT_TOTAL = 9;
 const STAMP_TOTAL = 7;   // 规划：七地市印章（与 pages/passport/passport.js 的 STAMP_TOTAL 同值）
 const REGIONS = DATA.regions || [];
 const DAILY = DATA.daily || { greetings: [], signInRewards: [], trivia: [], shop: [], tree: { water: 12 }, winter: { items: [] } };
+// D108：与小程序对齐 —— 场景照片清单 / 西藏寺院导览 / 寺院面板顶图
+const PHOTO_ASSETS = (typeof DATA.photoAssets !== 'undefined') ? DATA.photoAssets : {};
+const MONASTERIES = (typeof DATA.monasteries !== 'undefined') ? DATA.monasteries : { TOTALS: {}, LIST: [] };
+const monPhoto = PHOTO_ASSETS.monastery || '';
 const PANEL_TITLES = {
   journal: '雪域游记', lamp: '祈福长明灯', daily: '雪域日签', thangka: '唐卡拼图',
   box: '非遗盲盒', shop: '藏式道具铺', rank: '我的成绩', tree: '菩提树',
@@ -3228,22 +3267,54 @@ function openPanel(key) {
     let stars = 0;
     Object.keys(p.stars || {}).forEach(function (k) { stars += p.stars[k]; });
     const letters = (p.seenCards || []).filter(function (id) { return id.indexOf('letter_') === 0; }).length;
+    // D108：与小程序对齐 —— 加「经书经文」背景层（真实藏文，非图片）
     body.innerHTML =
+      '<div class="sutra-layer" aria-hidden="true">' +
+      '<div class="sutra-line">\u0f20\u0f0b\u0f58\u0f0b\u0f46\u0f0b\u0f56\u0f0b\u0f51\u0f62\u0f0b\u0f56\u0f0b\u0f51\u0f62\u0f0b\u0f56\u0f0b\u0f51\u0f62\u0f0b\u0f56\u0f0b\u0f51\u0f62\u0f0d</div>' +
+      '<div class="sutra-line">\u0f40\u0f0b\u0f64\u0f62\u0f0b\u0f63\u0f0b\u0f51\u0f62\u0f0b\u0f56\u0f0b\u0f63\u0f0b\u0f51\u0f62\u0f0b\u0f56\u0f0b\u0f51\u0f62\u0f0d</div>' +
+      '<div class="sutra-line">\u0f20\u0f0b\u0f58\u0f0b\u0f46\u0f0b\u0f56\u0f0b\u0f51\u0f62\u0f0b\u0f56\u0f0b\u0f51\u0f62\u0f0b\u0f56\u0f0b\u0f51\u0f62\u0f0d</div>' +
+      '<div class="sutra-line">\u0f66\u0f0b\u0f63\u0f0b\u0f63\u0f0b\u0f51\u0f62\u0f0b\u0f56\u0f0b\u0f63\u0f0b\u0f51\u0f62\u0f0d</div>' +
+      '<div class="sutra-line">\u0f20\u0f0b\u0f58\u0f0b\u0f46\u0f0b\u0f56\u0f0b\u0f51\u0f62\u0f0b\u0f56\u0f0b\u0f51\u0f62\u0f0b\u0f56\u0f0b\u0f51\u0f62\u0f0d</div>' +
+      '</div>' +
       '<div class="rank-row"><span class="rank-k">累计学习得分</span><span class="rank-v">' + (p.points || 0) + '</span></div>' +
       '<div class="rank-row"><span class="rank-k">最高连续正确</span><span class="rank-v">×' + p.bestCombo + '</span></div>' +
       '<div class="rank-row"><span class="rank-k">累计星星</span><span class="rank-v">' + stars + '</span></div>' +
       '<div class="rank-row"><span class="rank-k">已认识字母</span><span class="rank-v">' + letters + '</span></div>' +
       '<div class="entry-note">这是你自己的雪域成绩单：全部数据保存在本机，不上传、不做全服排名。</div>';
   } else if (key === 'tree') {
-    body.innerHTML = '<div class="tree-art">🌳</div>' +
-      '<div class="entry-note">已浇水 ' + (p.pot || 0) + ' 次 · 每次收获 ' + DAILY.tree.water + ' 学习得分</div>' +
+    // D108：与小程序对齐 —— 菩提迦耶实景 + 暗罩（未产出时回退 🌳）
+    const bodhiPhoto = (typeof PHOTO_ASSETS !== 'undefined' && PHOTO_ASSETS.bodhi) ? PHOTO_ASSETS.bodhi : '';
+    body.innerHTML =
+      '<div class="tree-stage">' +
+      (bodhiPhoto ? '<img class="tree-photo" src="' + bodhiPhoto + '" alt="">' : '<div class="tree-art">🌳</div>') +
+      '<div class="tree-veil"></div>' +
+      '<div class="tree-body">' +
+      '<div class="entry-note tree-note">已浇水 ' + (p.pot || 0) + ' 次 · 每次收获 ' + DAILY.tree.water + ' 学习得分</div>' +
       '<div class="entry-btn" id="tree-btn">给菩提树浇一次水</div>' +
-      '<div class="entry-note">浇树只用学习得分循环，不依赖广告，也不售卖任何东西。</div>';
+      '<div class="entry-note tree-note">浇树只用学习得分循环，不依赖广告，也不售卖任何东西。</div>' +
+      '</div></div>';
     $('tree-btn').addEventListener('click', waterTree);
   } else if (key === 'winter') {
-    body.innerHTML = DAILY.winter.items.map(function (it) {
-      return '<div class="winter-card"><div class="wc-title">' + it.title + '</div><div class="wc-text">' + it.text + '</div></div>';
-    }).join('');
+    // D108：与小程序对齐 —— 「冬游西藏」已换成**西藏寺院导览**。
+    //   ⚠️ 原实现读 DAILY.winter.items，而 D100 已把 winter 块从 data/daily.js 删除
+    //   → 点开这个面板会直接抛 TypeError。**同一处过时依赖，两处都要修。**
+    const MON = (typeof MONASTERIES !== 'undefined') ? MONASTERIES : { TOTALS: {}, LIST: [] };
+    const T = MON.TOTALS || {};
+    body.innerHTML =
+      '<div class="mon-stage">' +
+      (monPhoto ? '<img class="mon-photo" src="' + monPhoto + '" alt="">' : '') +
+      '<div class="mon-veil"></div>' +
+      '<div class="mon-head"><div class="mon-title">西藏寺院导览</div>' +
+      '<div class="mon-sub">全区宗教活动场所 ' + (T.sites || 0) + ' 座 · 住寺僧尼 ' +
+      ((T.monks || 0) / 10000).toFixed(1) + ' 万人 · 活佛 ' + (T.livingBuddha || 0) + ' 位</div></div></div>' +
+      '<div class="mon-list">' +
+      (MON.LIST || []).map(function (m) {
+        return '<div class="mon-card"><div class="mon-row1"><span class="mon-name">' + m.name +
+          '</span><span class="mon-year">' + m.year + '</span></div>' +
+          '<div class="mon-meta">' + m.place + ' · ' + m.sect + '</div>' +
+          '<div class="mon-note">' + m.note + '</div></div>';
+      }).join('') +
+      '<div class="entry-note mon-src">资料整理自中国西藏网、驻外使馆官网《西藏寺庙》与 2015 年国新办白皮书。</div></div>';
   } else if (key === 'market') {
     body.innerHTML = '<div class="entry-note">八廓街集市即「藏文权益中心」：用课程进度领取由商家提供并兑现的到店体验，平台不参与交易、不经手资金。</div>' +
       '<div class="entry-btn" id="market-btn">进入藏文权益中心</div>';
@@ -3288,7 +3359,19 @@ function buyItem(id) {
   showTip('已兑换 ' + item.name);
 }
 function waterTree() {
+  // D108：与小程序对齐 —— 两道闸：① 并发保护（防连点）② 每日一次。
+  //   ⚠️ 这里原来是无限次：UI 写着「每天浇一次水」，但连点就能无限刷学习得分
+  //   （D101 在小程序侧修掉，H5 侧漏了）。waterDay 记自然日。
+  if (waterTree._watering) return;
+  waterTree._watering = true;
   const p = getProgress();
+  const today = colToday();
+  if (p.waterDay === today) {
+    showTip('今天已经浇过了，明天再来');
+    waterTree._watering = false;
+    return;
+  }
+  p.waterDay = today;
   p.pot = (p.pot || 0) + 1;
   p.points = (p.points || 0) + DAILY.tree.water;
   saveProgress(p);
@@ -3296,6 +3379,7 @@ function waterTree() {
   renderVine();
   openPanel('tree');
   showTip('菩提树 +' + DAILY.tree.water + ' 学习得分');
+  setTimeout(function () { waterTree._watering = false; }, 400);
 }
 
 /* ---------------- 首页 ---------------- */
