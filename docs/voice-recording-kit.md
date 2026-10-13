@@ -95,3 +95,34 @@ python scripts/gen_voice_index.py       # 清单（文件名不变时内容不�
 其余 19 条是裸字形生成的短 a，理论上更接近标准字母名。
 逐条用的是哪种写法，`scripts/tts-manifest.json` 里有记录（`form` 字段）。
 若有听感不对的，同样按上面的流程重录同名文件覆盖即可。
+
+## 分包赞美音频缺口（2 条）· 2026-10-14
+
+这两句是 `package-praise`（分包）里的藏文赞美，天翼 TTS 对其辅音簇返回 30ms/峰值≈14 的
+静音桩（跨语速 0.7–1.1、孤立簇复测均失败），确属厂商 G2P 缺口，改用真人录音。
+其余 23 条已用 TTS 生成并落入 `package-praise/audio/voice/`。
+
+| 文件名 | 藏文 | 字面义 | 游戏语境（母语者参考） | 建议时长 |
+| --- | --- | --- | --- | --- |
+| `praise_bo_2_2.mp3` | བརྟན་པོ། | 稳 / 稳固 | 「颠簸稳」——过坎、骑马/行车颠簸中仍稳住 | 0.5–1.5s |
+| `praise_bo_2_3.mp3` | མགྱོགས་པོ། | 快 / 迅速 | 「脚步越来越快」——连击加速的手感（字面为「快」，语境取「越来越快」） | 0.5–1.5s |
+
+读法：按母语者标准拉萨音念即可，念藏文本身（不要带汉字注音），前后留空白方便裁剪。
+这两条的 `pendingNativeReview` 仍 `true`：录音只解决「能不能发声」，措辞是否地道仍需 Gate 2 签确。
+
+### 录音要求（同 D56 口径）
+- 安静房间，手机录音机即可，**一条一录**，不要连着念
+- 单声道 / 16000Hz；导出 MP3（WAV/M4A 也可，收到后统一转压）
+- 时长 ≥ 0.25s；峰值 > −32 dBFS（低于此是底噪）；单条 ≤ 40KB
+- **文件名必须与上表完全一致**，落入 `package-praise/audio/voice/`
+
+### 收到后的接入（开发者）
+1. 落盘：`package-praise/audio/voice/praise_bo_2_2.mp3` 与 `praise_bo_2_3.mp3`
+2. 体检（文件存在 ≠ 文件有声）：时长 ≥0.25s 且读到的峰值 > −32 dBFS
+3. 若给的是 WAV/M4A，统一转 16k 单声道 MP3：
+   `python scripts/compress_voice.py --dir package-praise/audio/voice`
+4. 更新 `package-praise/audio/voice/pronunciation_manifest.json`：把这两项 status 改 ok，补 bytes/dur/peak、ts；
+   并刷新 `package-praise/audio/voice/available.js`（加入这两个 id，使其从 missing 移入 available）
+5. `node scripts/validate.js` 应仍 1630/0/3 通过
+6. `node scripts/build-h5.js` 重建浏览器体验版
+⚠️ `pendingNativeReview` 仍保持 `true`：母语者终审是人工关卡，不代翻、不假绿。
