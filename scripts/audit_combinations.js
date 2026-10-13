@@ -158,6 +158,29 @@ sentSyl.forEach(sy => {
 if (!sentBad) ok('句子 ' + sentSyl.length + ' 个音节，语法附加字全部合法');
 if (sentStacks.length) info('含辅音簇(真句固有·待人工签确): ' + [...new Set(sentStacks)].join(' '));
 
+// ⑥⑦-bis 全模块深扫（仅"真正承载藏文词/句"的内容字段，排除说明性字段 funFact/tip/cn/roman/rule）
+// 这样保证所有组合字词 / 组合句子都被逐音节审到，又不把"解释文字里的举例"误判为非法。
+// 已确认：data/ 下含 ་ 的文件仅 affixes(规则表) 与 5 个内容模块；内容模块的说明字段不含真实词/句。
+section('⑥⑦-bis 全模块深扫（仅内容字段：WORDS/WORDS_COMPLEX/PHRASES/PHRASES_COMPLEX + reveals.tibetan + praise.bo + daily.tibetan + cards.subtitle/tibetan/title）');
+const contentStrings = []
+  .concat(learning.WORDS || [], learning.WORDS_COMPLEX || [], learning.PHRASES || [], learning.PHRASES_COMPLEX || [])
+  .concat(revealsArr.map(d => d.tibetan))
+  .concat(praiseArr.map(d => d.bo))
+  .concat(dailyArr.map(d => d.tibetan))
+  .concat(cards.map(d => d.subtitle).filter(Boolean))
+  .concat(cards.map(d => d.tibetan).filter(Boolean))
+  .concat(cards.map(d => d.title).filter(Boolean))
+  .filter(hasTibetan);
+const deepSyl = collectSyllables(contentStrings);
+let deepBad = 0; const deepStacks = [];
+deepSyl.forEach(sy => {
+  const r = parse(sy); const v = validate(r);
+  if (r.stacks.length) deepStacks.push(sy + '[' + r.stacks.join('') + ']');
+  if (v.length) { deepBad++; bad('深扫非法音节 ' + sy + ' -> ' + v.join(',')); }
+});
+if (!deepBad) ok('全模块深扫 ' + deepSyl.length + ' 个音节（来自 ' + contentStrings.length + ' 条内容文本），语法附加字全部合法');
+if (deepStacks.length) info('深扫含辅音簇(真词固有·待人工签确): ' + [...new Set(deepStacks)].join(' '));
+
 // ⑧ 生成器回归（L8/L9/L14/L15）
 section('⑧ 生成器回归 L8 / L9 / L14 / L15');
 [8, 9, 14, 15].forEach(lv => {
