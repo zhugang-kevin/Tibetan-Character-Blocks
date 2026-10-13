@@ -1,12 +1,12 @@
 <view class="wrap">
   <view class="title">藏文赞美发音 · 听审</view>
-  <view class="hint">点任意一条听藏文发音。音频由 scripts/gen_pronunciation.py 生成后落入分包；尚未生成时点击静默。</view>
+  <view class="hint">点任意一条听藏文发音。音频由 scripts/gen_pronunciation.py 生成后落入分包；23/25 已生成可听，标「🎙 待录入」的 2 条为厂商 TTS 静音桩缺口，需母语者真人录音。</view>
   <view class="grid">
     <view class="card" wx:for="{{items}}" wx:key="key">
       <view class="lv">档 {{item.level}}</view>
       <view class="bo">{{item.bo}}</view>
       <view class="zh">{{item.zh}}</view>
-      <button class="play" size="mini" data-key="{{item.key}}" data-level="{{item.level}}" data-idx="{{item.idx}}" bindtap="play">{{playing === item.key ? '播放中…' : '🔊 播放'}}</button>
+      <button class="play" size="mini" data-key="{{item.key}}" data-level="{{item.level}}" data-idx="{{item.idx}}" data-has-audio="{{item.hasAudio}}" bindtap="play" disabled="{{!item.hasAudio}}">{{item.hasAudio ? (playing === item.key ? '播放中…' : '🔊 播放') : '🎙 待录入'}}</button>
     </view>
   </view>
 </view>
