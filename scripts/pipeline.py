@@ -107,6 +107,9 @@ def main():
         s.run('字母读音对账（标注 vs 权威表）', [PY, 'scripts/audit_letter_reading.py'], timeout=180)
         # 音频实际发声类型（浊音 vs 送气清音）—— 标注改了，还得确认音频跟得上
         s.run('发声类型核验（浊音 vs 清化）', [PY, 'scripts/verify_devoicing.py'], timeout=300)
+        # D110：上加字/下加字/前加字/后加字 四层规则 vs 权威穷举表；
+        #   并回归「学习体系不得生成藏文里不成立的组合」（曾教出 རཁ ངྱ ཅྲ 一类）
+        s.run('四层附加字规则核对（含非法音节回归）', [PY, 'scripts/audit_affix_reading.py'], timeout=180)
         # D101：深挖「还没炸、但迟早会炸」的那一类（用户要求「深入深化所有可能性」）
         s.run('潜在问题深挖（容量/并发/生命周期/小屏/版本）', [PY, 'scripts/audit_deep.py'], timeout=600)
         if s.failed:

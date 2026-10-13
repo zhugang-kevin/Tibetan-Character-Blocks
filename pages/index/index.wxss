@@ -1347,6 +1347,8 @@ page { max-width: 560px; margin-left: auto; margin-right: auto; }
 .learn-main { flex: 1; min-width: 0; }
 .learn-name { font-size: 28rpx; color: #FFF6DC; }
 .learn-goal { font-size: 22rpx; color: #C9B79C; margin-top: 4rpx; }
+/* D110 四层读音规则：比 goal 再弱一级，避免抢主标题；22rpx = 11px 满足最小字号门禁 */
+.learn-rule { font-size: 22rpx; color: #A89478; margin-top: 6rpx; line-height: 1.5; }
 .learn-prog { flex-shrink: 0; font-size: 24rpx; color: #E8C87A; }
 .learn-done { color: #7FC08A; }
 

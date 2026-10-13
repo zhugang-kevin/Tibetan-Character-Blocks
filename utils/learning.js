@@ -98,6 +98,16 @@ function titlesFor(lv, stage) {
     return comboTitles({ parts: pat, pools: FULL_POOLS }, s, kinds);
   }
 
+  // ③c 合法组合级（D110）：上加字 / 前加字 / 下加字 与基字的搭配**不是任意的**。
+  //   权威资料给的是穷举表 —— 上加字 ར 只能跟 12 个基字、ལ 跟 10 个、ས 跟 11 个；
+  //   前加字 ག/ད/བ/མ/འ 各 11/6/10/11/10 个；下加字 ྱ/ྲ/ླ/ྭ 各 7/12/4/3 个。
+  //   ⚠️ 此前这里走「附加字池 × 基字池」的**笛卡尔积**，实际生成过
+  //      རཁ གཁ ངྱ ཅྲ ཆླ 这类**藏文里根本不成立**的音节 —— 等于在教不存在的字。
+  //      改用 data/affixes.js 里穷举好的合法组合池（每条都有出处，由门禁逐条核对）。
+  if (pools.legal && pools.legal.length) {
+    return pickRotation(pools.legal, s, kinds);
+  }
+
   // ④ 拼合音节：每种组合 = 前加字 / 上加字 / 基字 / 下加字 / 元音 / 后加字 / 再后加字 的子集
   return comboTitles(L, s, kinds);
 }

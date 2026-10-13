@@ -41,6 +41,12 @@ var PREFIXES = ['ག', 'ད', 'བ', 'མ', 'འ'];
 var SUPERS = ['ར', 'ལ', 'ས'];
 var SUBS = ['ྱ', 'ྲ', 'ླ', 'ྭ'];                       // 下加字（下标形）
 
+// D110：上面四组只是「有哪些附加字」，**不等于**它们能跟任意基字结合。
+// 上加字 / 前加字 / 下加字 各自能接哪些基字是有穷举表的（ར 接 12、ལ 接 10、ས 接 11 等），
+// L5 / L6 / L7 必须用穷举好的**合法组合**当内容池；用笛卡尔积会生成藏文里不成立的字。
+// 权威出处与逐条核对见 data/affixes.js 与 scripts/audit_affix_reading.py。
+var affixData = require('./affixes');
+
 // 词 / 句（人工挑选的高频真词，celebrates 2~4 音节；句子控制在 4~8 字）
 var WORDS = ['བཀྲ་ཤིས', 'བདེ་ལེགས', 'གངས་རི', 'ཉི་མ', 'ཟླ་བ', 'མཚོ', 'ཆུ', 'མེ', 'རི', 'མི'];
 var WORDS_COMPLEX = ['བཀྲ་ཤིས་བདེ་ལེགས', 'ལྷ་ས', 'བོད་པ', 'གངས་རི', 'ཉི་མ', 'ཟླ་བ', 'མཚོ', 'མིང', 'ཆུ', 'མེ'];
@@ -70,9 +76,12 @@ var CURRICULUM = {
   2: { parts: ['base', 'vowel'], pools: { base: CONSONANTS, vowel: VOWELS } },
   3: { parts: ['base', 'suffix'], pools: { base: CONSONANTS, suffix: SUFFIXES } },
   4: { parts: ['base', 'suffix', 'second'], pools: { base: CONSONANTS, suffix: SUFFIXES, second: SECOND_SUFFIX } },
-  5: { parts: ['prefix', 'base'], pools: { prefix: PREFIXES, base: CONSONANTS } },
-  6: { parts: ['super', 'base'], pools: { super: SUPERS, base: CONSONANTS } },
-  7: { parts: ['base', 'sub'], pools: { base: CONSONANTS, sub: SUBS } },
+  // ⚠️ D110：这三级的 pools 改为**穷举好的合法组合**（legal），不再用
+  //    「附加字 × 基字」笛卡尔积 —— 笛卡尔积会教出 རཁ གཁ ངྱ ཅྲ 这类藏文里没有的音节。
+  //    parts 仍保留原值用于语义标注，实际内容由 pools.legal 供（utils/learning.js 分支 ③c）。
+  5: { parts: ['prefix', 'base'], pools: { legal: affixData.PREFIX_LEGAL } },
+  6: { parts: ['super', 'base'], pools: { legal: affixData.SUPER_LEGAL } },
+  7: { parts: ['base', 'sub'], pools: { legal: affixData.SUB_LEGAL } },
   // L8 = 用户点名的样例：前加字（ག ད བ མ འ）+ 基字（ཀ ཁ ག ང）+ 元音（ི ུ ེ ོ）
   8: { parts: ['prefix', 'base', 'vowel'], pools: { prefix: PREFIXES, base: ['ཀ', 'ཁ', 'ག', 'ང'], vowel: VOWELS } },
   9: { parts: ['combo'], patterns: SYLLABLE_PATTERNS, pools: { prefix: PREFIXES, super: SUPERS, base: CONSONANTS, sub: SUBS, vowel: VOWELS, suffix: SUFFIXES } },
@@ -86,14 +95,32 @@ var CURRICULUM = {
 };
 
 // ---------------------------------------------------------------- ④ 级别元信息
+// rule = 该层的**读音规则**（D110）。此前四层只有字形、没有读音 —— 玩家学到 L3~L7
+//   只知道「这个部件叫什么」，不知道「它怎么念、对基字起什么作用」。
+//   文案来自 data/affixes.js 的权威规则表，逐条由 scripts/audit_affix_reading.py 核对。
 var META = [
   { lv: 1, name: '辅音三十', goal: '认识藏文三十个辅音字母' },
   { lv: 2, name: '元音符号', goal: '认识 ི ུ ེ ོ 四个元音符号' },
-  { lv: 3, name: '后加字', goal: '认识十个后加字' },
-  { lv: 4, name: '再后加字', goal: '认识再后加字 ས / ད 的组合规则' },
-  { lv: 5, name: '前加字', goal: '认识 ག ད བ མ འ 五个前加字' },
-  { lv: 6, name: '上加字', goal: '认识 ར ལ ས 三个上加字' },
-  { lv: 7, name: '下加字', goal: '认识 ྱ ྲ ླ ྭ 四个下加字' },
+  {
+    lv: 3, name: '后加字', goal: '认识十个后加字',
+    rule: 'ང 收 -ng、མ 收 -m；ར 延长元音；ན 使元音鼻化；ལ ས ད 使 a→ɛ、o→ø、u→y 并变调'
+  },
+  {
+    lv: 4, name: '再后加字', goal: '认识再后加字 ས / ད 的组合规则',
+    rule: 'ས 接在 ག ང བ མ 后（གས ངས བས མས），ད 接在 ན ར ལ 后；本身不发音，只触发变调'
+  },
+  {
+    lv: 5, name: '前加字', goal: '认识 ག ད བ མ འ 五个前加字',
+    rule: '加在 ཀ ཁ ཅ ཆ ཏ ཐ པ ཕ ཙ ཚ ཤ ས ཞ ཟ 前不发音；加在 ག ཇ ད བ ཛ 前使送气变不送气；加在 ང ཉ ན མ 前使低调升高平'
+  },
+  {
+    lv: 6, name: '上加字', goal: '认识 ར ལ ས 三个上加字',
+    rule: 'ར ལ ས 分别只能接 12 / 10 / 11 个基字。加在 ཀ ཅ ཏ པ ཙ 上不发音（རྐ 仍读 gá）；加在 ག ཇ ད བ ཛ 上送气变不送气（རྒ 读 gá）；加在鼻音上低升变高平（རྔ 读 ngá）'
+  },
+  {
+    lv: 7, name: '下加字', goal: '认识 ྱ ྲ ླ ྭ 四个下加字',
+    rule: 'ྱ 腭化（ཀྱ 读 gyā）；ྲ 卷舌化（ཀྲ 读 zhā、གྲ 读 chà）；ླ 边音化（ཀླ 读 lā）；ྭ 圆唇，对现代拉萨音已无影响（ཀྭ 仍读 gá）'
+  },
   { lv: 8, name: '前加字组合', goal: '前加字 + 基字 + 元音的组合拼读' },
   { lv: 9, name: '完整音节', goal: '七位音节骨架的完整拼读' },
   { lv: 10, name: '简单组词', goal: '用学过的音节拼简单词' },
@@ -116,6 +143,7 @@ var LEVELS = META.map(function (m) {
     lv: m.lv,
     name: m.name,
     goal: m.goal,
+    rule: m.rule || '',                    // D110 该层读音规则（只四层有）
     stages: 10,                            // 每级 10 关 → 15 × 10 = **150 关**
     cols: s.cols,
     rows: s.rows,

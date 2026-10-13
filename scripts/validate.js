@@ -6524,6 +6524,57 @@ section('59. 藏文书写规范（出处 / 判据 / 机械检验）');
   else err('仍存在「中文播报《嗡…」」错注释 —— 该音频是藏文合成的');
 }
 
+// ---------- 59.23 D110：上加字/下加字/前加字/后加字 四层规则与合法组合 ----------
+// 用户（2026-10-13）：项目只做了基字一层读音，四层附加字**完全没有读音**。
+// 顺着查下去挖出更硬的问题：学习体系 L5/L6/L7 用「附加字池 × 基字池」的**笛卡尔积**
+// 生成音节，实际教出过 རཁ གཁ ངྱ ཅྲ ཆླ —— **藏文里根本不成立**的组合。
+// 本门禁守住两件事：① 穷举表与权威一致；② 学习体系不再生成非法音节。
+{
+  const AFF = require('../data/affixes.js');
+  // 权威口径独立写死一遍（不读 affixes.js 自己导出的数据，防止判据跟着一起错）
+  const AUTH_N = { super: { 'ར': 12, 'ལ': 10, 'ས': 11 },
+    prefix: { 'ག': 11, 'ད': 6, 'བ': 10, 'མ': 11, 'འ': 10 },
+    sub: { 'ྱ': 7, 'ྲ': 12, 'ླ': 4, 'ྭ': 3 } };
+  let bad = 0;
+  for (const layer of ['super', 'prefix', 'sub']) {
+    const map = layer === 'super' ? AFF.SUPER_OK : layer === 'prefix' ? AFF.PREFIX_OK : AFF.SUB_OK;
+    for (const k of Object.keys(AUTH_N[layer])) {
+      const got = (map[k] || '').length;
+      if (got !== AUTH_N[layer][k]) { bad++; err(`${layer} ${k} 可接基字 ${got} 个，权威为 ${AUTH_N[layer][k]} 个`); }
+    }
+  }
+  if (!bad) ok('上加字 12/10/11 · 前加字 11/6/10/11/10 · 下加字 7/12/4/3 均与权威穷举同数');
+
+  if (AFF.SUPER_LEGAL.length === 33 && AFF.PREFIX_LEGAL.length === 48 && AFF.SUB_LEGAL.length === 26)
+    ok('合法组合数：上加字 33 · 前加字 48 · 下加字 26');
+  else err(`合法组合数不对：上加字 ${AFF.SUPER_LEGAL.length}（应 33）· 前加字 ${AFF.PREFIX_LEGAL.length}（应 48）· 下加字 ${AFF.SUB_LEGAL.length}（应 26）`);
+
+  // 读音覆盖
+  const noSub = AFF.SUB_LEGAL.filter(s => !(s in AFF.SUB_READ));
+  const noSup = AFF.SUPER_LEGAL.filter(s => !(s[1] in AFF.SUPER_READ));
+  if (!noSub.length && !noSup.length) ok('上加字 33 条 / 下加字 26 条全部有拉萨音标注');
+  else err(`缺读音：上加字 ${noSup.join(' ')} 下加字 ${noSub.join(' ')}`);
+
+  // 下加字必须在基字**之后**（U+0F90–U+0FBF）；上加字/前加字必须在基字之前
+  const badOrder = AFF.SUB_LEGAL.filter(s => s.length !== 2
+    || s.charCodeAt(1) < 0x0F90 || s.charCodeAt(1) > 0x0FBF
+    || s.charCodeAt(0) < 0x0F40 || s.charCodeAt(0) > 0x0F69);
+  if (!badOrder.length) ok('下加字 26 条字形顺序正确（基字在前 · 下接形式在后）');
+  else err(`下加字字形顺序错误：${badOrder.join(' ')}`);
+
+  // 回归：学习体系 L5/L6/L7 不得再生成不成立音节
+  const L = require('../utils/learning.js');
+  let illegal = [];
+  for (const [lv, layer] of [[5, 'prefix'], [6, 'super'], [7, 'sub']]) {
+    const legal = layer === 'prefix' ? AFF.PREFIX_LEGAL : layer === 'super' ? AFF.SUPER_LEGAL : AFF.SUB_LEGAL;
+    for (let s = 1; s <= 10; s++) {
+      for (const t of (L.titlesFor(lv, s) || [])) if (legal.indexOf(t) < 0 && illegal.indexOf(t) < 0) illegal.push(t);
+    }
+  }
+  if (!illegal.length) ok('L5 前加字 / L6 上加字 / L7 下加字 共 150 关全部生成藏文成立的组合');
+  else err(`学习体系仍在生成不成立的音节：${illegal.join(' ')}`);
+}
+
 section('60. 牌面视觉一致性（填充率 / 行首 tsheg / 装得下）');
 
 

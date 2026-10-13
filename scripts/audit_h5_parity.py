@@ -38,7 +38,12 @@ FEATURES = [
     ('D100 寺院导览数据', 'data/monasteries.js', 'LIST', 'monastery'),
     ('D101 浇水每日上限', 'utils/storage.js', 'waterDay', 'waterDay'),
     ('D101 浇水并发保护', 'pages/index/index.js', '_watering', '_watering'),
-    ('D96 学习体系面板', 'pages/index/index.wxml', 'learn-panel', 'learn'),
+    # ⚠️ D110 修掉的一条**假绿**：这一项原来 H5 特征串写的是 'learn'，
+    #   而 build-h5 会把 `learning` 数据整段注入 play.html —— 于是**光靠数据里的
+    #   "learning" 字样就命中了**，H5 里其实一个学习面板的 DOM 都没有。
+    #   特征串必须指向**UI 本身**（learn-row），不能指能被注入数据蹭中的字符串。
+    ('D96 学习体系面板', 'pages/index/index.wxml', 'learn-row', 'learn-row'),
+    ('D110 四层读音规则', 'data/learning.js', "rule: '", 'learn-rule'),
     ('D107 测试可控时钟', 'preview/template.html', 'function nowMs', 'function nowMs'),
 ]
 

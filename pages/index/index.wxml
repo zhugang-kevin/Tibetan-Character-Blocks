@@ -226,6 +226,8 @@
             <view class="learn-main">
               <view class="learn-name">{{item.name}}</view>
               <view class="learn-goal">{{item.goal}}</view>
+              <!-- D110 四层读音规则：此前只有字形没有读音，玩家不知道这些部件怎么念 -->
+              <view class="learn-rule" wx:if="{{item.rule}}">读音：{{item.rule}}</view>
             </view>
             <view class="learn-prog">
               <text wx:if="{{item.locked}}">🔒</text>

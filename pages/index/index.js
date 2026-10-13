@@ -504,6 +504,7 @@ Page({
         lv: cfg.lv,
         name: cfg.name,
         goal: cfg.goal || '',
+        rule: cfg.rule || '',         // D110 四层的读音规则（后加字/再后加字/前加字/上加字/下加字）
         done: done,
         total: cfg.stages,
         next: next,

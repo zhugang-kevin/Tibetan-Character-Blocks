@@ -1108,6 +1108,17 @@
     background: linear-gradient(180deg, #2471A3, #176B3C); box-shadow: 0 6px 13px rgba(23,107,60,.4), inset 0 2px 0 rgba(255,255,255,.25); }
   .ga-note { margin-top: 13px; font-size: 11px; line-height: 1.6; color: #8A8172; }
 
+  /* D110 藏文学习面板（15 级 × 10 课 + 四层读音规则） */
+  .learn-list { margin-top: 10px; max-height: 46vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .learn-row { display: flex; align-items: flex-start; gap: 10px; padding: 9px 2px; border-bottom: 1px solid rgba(214,202,176,.55); }
+  .learn-row:last-child { border-bottom: 0; }
+  .learn-lv { flex: 0 0 30px; font-size: 12px; font-weight: 800; color: #C0392B; padding-top: 1px; }
+  .learn-main { flex: 1; min-width: 0; }
+  .learn-name { font-size: 13px; font-weight: 700; color: #3A3226; }
+  .learn-goal { font-size: 11px; color: #6E6759; margin-top: 2px; }
+  /* 四层附加字的读音规则（后加字 / 再后加字 / 前加字 / 上加字 / 下加字） */
+  .learn-rule { font-size: 11px; color: #8A7A5C; margin-top: 4px; line-height: 1.6; }
+
   .entry-grid { display: flex; flex-wrap: wrap; gap: 9px; }
   .entry-metric { flex: 1 1 46%; padding: 12px; border-radius: 11px; background: #FBF6E8; border: 1px solid rgba(214,202,176,.8); display: flex; flex-direction: column; gap: 3px; }
   .em-v { font-size: 20px; font-weight: 800; color: #C0392B; }
@@ -1329,6 +1340,9 @@
   <div class="side-rail right" id="side-right">
     <div class="side-btn" data-panel="thangka"><span class="side-ico">🖼</span><span class="side-txt">唐卡拼图</span></div>
     <div class="side-btn" data-panel="box"><span class="side-ico">🎁</span><span class="side-txt">非遗盲盒</span></div>
+    <!-- D110：小程序有「藏文学习」入口（15 级 × 10 课），H5 此前一个都没有。
+         注意：H5 功能对等检查原来用 'learn' 当特征串，会被注入数据里的 "learning" 命中 —— 假绿。 -->
+    <div class="side-btn" data-panel="learn"><span class="side-ico">ཀ</span><span class="side-txt">藏文学习</span></div>
   </div>
 
   <!-- 底部大平层（首页专用） -->
@@ -2938,7 +2952,8 @@ const monPhoto = PHOTO_ASSETS.monastery || '';
 const PANEL_TITLES = {
   journal: '雪域游记', lamp: '祈福长明灯', daily: '雪域日签', thangka: '唐卡拼图',
   box: '非遗盲盒', shop: '藏式道具铺', rank: '我的成绩', tree: '菩提树',
-  winter: '冬游西藏', market: '八廓街集市'
+  winter: '冬游西藏', market: '八廓街集市',
+  learn: '藏文学习'   // D110：15 级 × 10 课的学习体系（与小程序 pages/index 同源数据）
 };
 function colDayNumber(dateStr) {
   const parts = String(dateStr).split('-');
@@ -3315,6 +3330,24 @@ function openPanel(key) {
           '<div class="mon-note">' + m.note + '</div></div>';
       }).join('') +
       '<div class="entry-note mon-src">资料整理自中国西藏网、驻外使馆官网《西藏寺庙》与 2015 年国新办白皮书。</div></div>';
+  } else if (key === 'learn') {
+    // D110：藏文学习体系（15 级 × 10 课）。数据来自 data/learning.js（build-h5 注入），
+    //   与小程序同一份；这里的 rule 是四层附加字的**读音规则**（后加字/再后加字/前加字/上加字/下加字）。
+    //   ⚠️ 此前 H5 完全没有这个面板，而功能对等检查拿 'learn' 当特征串，
+    //      被注入 JSON 里的 "learning" 命中 → 一直显示「已覆盖」的假绿。
+    const LEVELS = (DATA.learning && DATA.learning.LEVELS) || [];
+    body.innerHTML =
+      '<div class="entry-note">共 ' + LEVELS.length + ' 级 · 每级 10 课 · 从三十个辅音一路学到完整句子</div>' +
+      '<div class="learn-list">' + LEVELS.map(function (L) {
+        return '<div class="learn-row">' +
+          '<div class="learn-lv">L' + L.lv + '</div>' +
+          '<div class="learn-main">' +
+          '<div class="learn-name">' + L.name + '</div>' +
+          '<div class="learn-goal">' + L.goal + '</div>' +
+          (L.rule ? '<div class="learn-rule">读音：' + L.rule + '</div>' : '') +
+          '</div></div>';
+      }).join('') + '</div>' +
+      '<div class="entry-note">体验版展示课程与读音规则；上课与进度保存请使用小程序。</div>';
   } else if (key === 'market') {
     body.innerHTML = '<div class="entry-note">八廓街集市即「藏文权益中心」：用课程进度领取由商家提供并兑现的到店体验，平台不参与交易、不经手资金。</div>' +
       '<div class="entry-btn" id="market-btn">进入藏文权益中心</div>';
