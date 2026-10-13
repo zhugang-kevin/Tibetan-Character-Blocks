@@ -56,8 +56,9 @@ PRON_REF = {
     'རྒྱལ': {
         'wylie': 'rgyal', 'ipa': 'ɡʲal',
         'note': 'ར + ྒ + ྱ + ལ 真词固有簇（非语法下加字）；威利 rgyal，意为 victory/conquer/win。'
-                '拉萨口语常读作 "gyal"（ར 前缀不发音、གྱ 簇腭化）。',
-        'src': 'Wiktionary; Gosok Rinpoche 简明佛教词典(རྒྱལ=gyel/rgyal); kaikki.org',
+                '拉萨口语常读作 "gyal"（ར 前缀不发音、གྱ 簇腭化）。'
+                '母语者确认(2026-10-13)：རྒྱལ་མཚན་ = 坚参/Gyantsen（藏族名字），亦为「胜利幢」吉祥符号之名；读音无误（没有问题）。',
+        'src': 'Wiktionary; Gosok Rinpoche 简明佛教词典(རྒྱལ=gyel/rgyal); kaikki.org; 母语者确认',
     },
 }
 
@@ -117,9 +118,9 @@ def cross_check_affix(affix):
           % (sr, '✓ 一致' if sr and 'lh' in sr else '✗ 不一致'))
     if not (sr and 'lh' in sr):
         ok = False
-    # 2) རྒྱལ：真词固有簇，标为待人工签确（自动化不能替代人耳）
+    # 2) རྒྱལ：真词固有簇，已由母语者签确（2026-10-13）
     print('  · རྒྱལ 簇：威利 rgyal / IPA ɡʲal，ར+ྒ+ྱ+ལ 真词固有簇（非语法下加字）')
-    print('      → 标记【待母语者人工签确】（Gate 2 前置；与本项目不造假绿原则一致）')
+    print('      → 已母语者确认(2026-10-13)：རྒྱལ་མཚན་ = 坚参/Gyantsen（藏族名字）；读音无误（没有问题）')
     # 3) ྭ 15 栈与权威 THL 一致已在 audit_affix_reading.py 覆盖，这里只回显一项
     sub_ok_wa = (affix.get('SUB_OK') or {}).get('ྭ', '')
     print('  · 下加字 ྭ 成词栈数 = %d（THL Standard Tibetan Stacks 实测 15，已对齐）%s'
