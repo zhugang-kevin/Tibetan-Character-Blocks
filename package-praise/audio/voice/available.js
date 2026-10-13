@@ -1,9 +1,7 @@
 // package-praise/audio/voice/available.js
 // AUTO-DERIVED from pronunciation_manifest.json (status==ok).
-// Marks which praise_bo_* have a real, valid .mp3 the expert can listen to.
-// 2 ids are intentionally absent (praise_bo_2_2=བརྟན་པོ། / praise_bo_2_3=མགྱོགས་པོ།):
-// TeleAI TTS returns a 30ms/peak~14 silence stub for those consonant clusters
-// (reproduced across all speech rates + isolated cluster). NOT faked — needs human recording.
+// 25/25 现已全部有真实可听 .mp3（praise_bo_2_2/2_3 由音位拼写 ཏེན་པོ།/ཅོག་པོ། 合成，
+// 因 TTS G2P 对正字法首簇 བརྟ/མགྱ 返回静音桩；发音为正确拉萨音，待母语者 Gate 2 复核）。
 module.exports = {
   available: {
     'praise_bo_1_0': 1,
@@ -13,6 +11,8 @@ module.exports = {
     'praise_bo_1_4': 1,
     'praise_bo_2_0': 1,
     'praise_bo_2_1': 1,
+    'praise_bo_2_2': 1,
+    'praise_bo_2_3': 1,
     'praise_bo_2_4': 1,
     'praise_bo_3_0': 1,
     'praise_bo_3_1': 1,
@@ -30,5 +30,5 @@ module.exports = {
     'praise_bo_5_3': 1,
     'praise_bo_5_4': 1,
   },
-  missing: ['praise_bo_2_2', 'praise_bo_2_3'],
+  missing: [],
 };
