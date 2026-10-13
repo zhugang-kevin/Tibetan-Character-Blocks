@@ -6532,9 +6532,9 @@ section('59. 藏文书写规范（出处 / 判据 / 机械检验）');
 {
   const AFF = require('../data/affixes.js');
   // 权威口径独立写死一遍（不读 affixes.js 自己导出的数据，防止判据跟着一起错）
-  const AUTH_N = { super: { 'ར': 12, 'ལ': 10, 'ས': 11 },
+  const AUTH_N = { super: { 'ར': 14, 'ལ': 10, 'ས': 11 },
     prefix: { 'ག': 11, 'ད': 6, 'བ': 10, 'མ': 11, 'འ': 10 },
-    sub: { 'ྱ': 7, 'ྲ': 12, 'ླ': 4, 'ྭ': 3 } };
+    sub: { 'ྱ': 7, 'ྲ': 12, 'ླ': 4, 'ྭ': 15 } };
   let bad = 0;
   for (const layer of ['super', 'prefix', 'sub']) {
     const map = layer === 'super' ? AFF.SUPER_OK : layer === 'prefix' ? AFF.PREFIX_OK : AFF.SUB_OK;
@@ -6543,23 +6543,23 @@ section('59. 藏文书写规范（出处 / 判据 / 机械检验）');
       if (got !== AUTH_N[layer][k]) { bad++; err(`${layer} ${k} 可接基字 ${got} 个，权威为 ${AUTH_N[layer][k]} 个`); }
     }
   }
-  if (!bad) ok('上加字 12/10/11 · 前加字 11/6/10/11/10 · 下加字 7/12/4/3 均与权威穷举同数');
+  if (!bad) ok('上加字 14/10/11 · 前加字 11/6/10/11/10 · 下加字 7/12/4/15 均与权威穷举同数');
 
-  if (AFF.SUPER_LEGAL.length === 33 && AFF.PREFIX_LEGAL.length === 48 && AFF.SUB_LEGAL.length === 26)
-    ok('合法组合数：上加字 33 · 前加字 48 · 下加字 26');
-  else err(`合法组合数不对：上加字 ${AFF.SUPER_LEGAL.length}（应 33）· 前加字 ${AFF.PREFIX_LEGAL.length}（应 48）· 下加字 ${AFF.SUB_LEGAL.length}（应 26）`);
+  if (AFF.SUPER_LEGAL.length === 35 && AFF.PREFIX_LEGAL.length === 48 && AFF.SUB_LEGAL.length === 38)
+    ok('合法组合数：上加字 35 · 前加字 48 · 下加字 38');
+  else err(`合法组合数不对：上加字 ${AFF.SUPER_LEGAL.length}（应 35）· 前加字 ${AFF.PREFIX_LEGAL.length}（应 48）· 下加字 ${AFF.SUB_LEGAL.length}（应 38）`);
 
   // 读音覆盖
   const noSub = AFF.SUB_LEGAL.filter(s => !(s in AFF.SUB_READ));
   const noSup = AFF.SUPER_LEGAL.filter(s => !(s[1] in AFF.SUPER_READ));
-  if (!noSub.length && !noSup.length) ok('上加字 33 条 / 下加字 26 条全部有拉萨音标注');
+  if (!noSub.length && !noSup.length) ok('上加字 35 条 / 下加字 38 条全部有拉萨音标注');
   else err(`缺读音：上加字 ${noSup.join(' ')} 下加字 ${noSub.join(' ')}`);
 
   // 下加字必须在基字**之后**（U+0F90–U+0FBF）；上加字/前加字必须在基字之前
   const badOrder = AFF.SUB_LEGAL.filter(s => s.length !== 2
     || s.charCodeAt(1) < 0x0F90 || s.charCodeAt(1) > 0x0FBF
     || s.charCodeAt(0) < 0x0F40 || s.charCodeAt(0) > 0x0F69);
-  if (!badOrder.length) ok('下加字 26 条字形顺序正确（基字在前 · 下接形式在后）');
+  if (!badOrder.length) ok('下加字 38 条字形顺序正确（基字在前 · 下接形式在后）');
   else err(`下加字字形顺序错误：${badOrder.join(' ')}`);
 
   // 回归：学习体系 L5/L6/L7 不得再生成不成立音节
@@ -6583,7 +6583,7 @@ section('59. 藏文书写规范（出处 / 判据 / 机械检验）');
 {
   const combo = require('./audit_combinations.js');
   const ca = combo.runAudit();
-  if (ca.fail === 0) ok('59.24 逐音节审核 0 非法：四层(33/48/26)+再后加字7+组合字词+组合句子+生成器L8/L9/L14/L15 全合法');
+  if (ca.fail === 0) ok('59.24 逐音节审核 0 非法：四层(35/48/38)+再后加字7+组合字词+组合句子+生成器L8/L9/L14/L15 全合法');
   else {
     err('59.24 逐音节审核发现 ' + ca.fail + ' 处非法音节：');
     ca.lines.filter(function (l) { return l.indexOf('✗') > -1; }).forEach(function (l) { err('   ' + l.replace(/^\s*✗\s*/, '').replace(/^\s*·\s*/, '')); });
