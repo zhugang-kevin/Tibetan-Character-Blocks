@@ -6575,6 +6575,21 @@ section('59. 藏文书写规范（出处 / 判据 / 机械检验）');
   else err(`学习体系仍在生成不成立的音节：${illegal.join(' ')}`);
 }
 
+// ---------- 59.24 D110-bis：逐音节审核 四层+再后加+组合字词+组合句子+生成器 ----------
+// D110 只修了 L5/L6/L7。顺着查又发现 L8/L9/L14/L15 的生成器（comboTitles）对
+// 前加/上加/下加 与基字独立取值，仍是笛卡尔积 —— 会产出 རཅུ / སངྱུ / ཅྲེ 这类藏文不成立的音节。
+// scripts/audit_combinations.js 把每个音节拆成 七位、逐位对照 affixes.js 权威表核对；
+// 这里直接复用它的结果，作为门禁锁死，避免回归。
+{
+  const combo = require('./audit_combinations.js');
+  const ca = combo.runAudit();
+  if (ca.fail === 0) ok('59.24 逐音节审核 0 非法：四层(33/48/26)+再后加字7+组合字词+组合句子+生成器L8/L9/L14/L15 全合法');
+  else {
+    err('59.24 逐音节审核发现 ' + ca.fail + ' 处非法音节：');
+    ca.lines.filter(function (l) { return l.indexOf('✗') > -1; }).forEach(function (l) { err('   ' + l.replace(/^\s*✗\s*/, '').replace(/^\s*·\s*/, '')); });
+  }
+}
+
 section('60. 牌面视觉一致性（填充率 / 行首 tsheg / 装得下）');
 
 

@@ -21,6 +21,7 @@
 //
 // 确定性：不含 Math.random。本关内容由 (lv, stage) 唯一决定（同 devices 同两块盘）。
 var data = require('../data/learning');
+var affix = require('../data/affixes');
 
 // 组合 / 复习级用的完整池（各部件全集）
 var FULL_POOLS = {
@@ -88,14 +89,19 @@ function titlesFor(lv, stage) {
     return pickRotation(pools.phrase || [], s, kinds);
   }
 
-  // ③a 组合 / 复习级：走**真实叠加模板**（3~4 部件），杜绝七位全叠的不成立音节
-  if (L.parts.indexOf('combo') > -1 || L.parts.indexOf('review') > -1) {
+  // ③a 含 前加/上加/下加 的组合（含 combo / review / L8 的 prefix+base+vowel）：
+  //    必须走**合法组合池**（D110-bis，禁止笛卡尔积）。按模板从权威穷举表取合法音节，
+  //    再轮转取本关内容。L9 从 SYLLABLE_PATTERNS[3] 起步；复习级按 lv 偏移避免 L14/L15 重样。
+  //    注意：L5/L6/L7 自带 pools.legal（穷举好的合法池），应走下方 ③c，此处不截胡。
+  var hasAffix = L.parts.indexOf('prefix') > -1 || L.parts.indexOf('super') > -1 || L.parts.indexOf('sub') > -1;
+  var useLegal = (!pools.legal || !pools.legal.length) && (hasAffix || L.parts.indexOf('combo') > -1 || L.parts.indexOf('review') > -1);
+  if (useLegal) {
     var pats = (L.patterns && L.patterns.length) ? L.patterns : data.SYLLABLE_PATTERNS;
-    // 每关一套模板。L9（完整音节）从「前加字+基字+元音+后加字」这一档起步，
-    // 避免第 1 关退回两部件的入门难度；复习级按 lv 偏移，让 L14 / L15 不重样。
-    var off = L.parts.indexOf('review') > -1 ? (lv - 14) * 3 : 3;
+    var off = L.parts.indexOf('review') > -1 ? (lv - 14) * 3
+      : (L.parts.indexOf('combo') > -1 ? 3 : 0);
     var pat = pats[((s - 1) + off) % pats.length];
-    return comboTitles({ parts: pat, pools: FULL_POOLS }, s, kinds);
+    var legal = legalSyllablesForPattern(pat, pools);
+    return pickRotation(legal, s, kinds);
   }
 
   // ③c 合法组合级（D110）：上加字 / 前加字 / 下加字 与基字的搭配**不是任意的**。
@@ -124,6 +130,44 @@ function pickRotation(pool, s, n) {
 function assemble(sel) {
   return (sel.prefix || '') + (sel.super || '') + (sel.base || '') +
     (sel.sub || '') + (sel.vowel || '') + (sel.suffix || '') + (sel.second || '');
+}
+
+// D110-bis：按模板从权威穷举表生成**合法**音节，杜绝「附加字 × 基字」笛卡尔积非法组合
+// （L8 的 prefix+base、L9 的完整音节、L14/L15 复习，此前走 comboTitles 独立取值会产出 རཅུ / སངྱུ / ཅྲེ 这类藏文里不成立的音节）。
+// pattern 为部件数组（如 ['prefix','base','vowel']）；pools 可带 base 限制（如 L8 仅 ཀཁགང）。
+function legalSyllablesForPattern(pattern, pools) {
+  var has = function (p) { return pattern.indexOf(p) > -1; };
+  var baseRestrict = (pools.base && pools.base.length) ? new Set(pools.base) : null;
+  var units;
+  if (has('prefix')) units = affix.PREFIX_LEGAL.map(function (s) { return { prefix: s.charAt(0), base: s.slice(1) }; });
+  else if (has('super')) units = affix.SUPER_LEGAL.map(function (s) { return { super: s.charAt(0), base: s.slice(1) }; });
+  else if (has('sub')) units = affix.SUB_LEGAL.map(function (s) { return { base: s.charAt(0), sub: s.slice(1) }; });
+  else units = (pools.base || data.CONSONANTS).map(function (b) { return { base: b }; });
+  if (baseRestrict) units = units.filter(function (u) { return baseRestrict.has(u.base); });
+
+  var out = [];
+  units.forEach(function (u) {
+    var subChoices = [null];
+    if (has('sub')) {
+      if (u.sub) subChoices = [u.sub];                                   // 已来自 SUB_LEGAL（base+sub 合法）
+      else subChoices = affix.SUB_LEGAL.filter(function (x) { return x.charAt(0) === u.base; }).map(function (x) { return x.slice(1); });
+    }
+    subChoices.forEach(function (sub) {
+      var u2 = Object.assign({}, u); if (sub) u2.sub = sub;
+      var vowels = has('vowel') ? data.VOWELS : [null];
+      vowels.forEach(function (v) {
+        var u3 = Object.assign({}, u2); if (v) u3.vowel = v;
+        var suffixes = has('suffix') ? affix.SUFFIXES : [null];
+        suffixes.forEach(function (sx) {
+          var u4 = Object.assign({}, u3); if (sx) u4.suffix = sx;
+          if (has('second') && sx && pools.second && pools.second[sx]) u4.second = pools.second[sx];
+          var syl = assemble(u4);
+          if (syl && out.indexOf(syl) === -1) out.push(syl);
+        });
+      });
+    });
+  });
+  return out;
 }
 
 function comboTitles(L, s, kinds) {

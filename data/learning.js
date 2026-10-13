@@ -83,7 +83,7 @@ var CURRICULUM = {
   6: { parts: ['super', 'base'], pools: { legal: affixData.SUPER_LEGAL } },
   7: { parts: ['base', 'sub'], pools: { legal: affixData.SUB_LEGAL } },
   // L8 = 用户点名的样例：前加字（ག ད བ མ འ）+ 基字（ཀ ཁ ག ང）+ 元音（ི ུ ེ ོ）
-  8: { parts: ['prefix', 'base', 'vowel'], pools: { prefix: PREFIXES, base: ['ཀ', 'ཁ', 'ག', 'ང'], vowel: VOWELS } },
+  8: { parts: ['prefix', 'base', 'vowel'], pools: { prefix: PREFIXES, base: ['ཀ', 'ཁ', 'ག', 'ང'], vowel: VOWELS }, patterns: [['prefix', 'base', 'vowel'], ['prefix', 'base', 'vowel', 'suffix']] },
   9: { parts: ['combo'], patterns: SYLLABLE_PATTERNS, pools: { prefix: PREFIXES, super: SUPERS, base: CONSONANTS, sub: SUBS, vowel: VOWELS, suffix: SUFFIXES } },
   10: { parts: ['word'], pools: { word: WORDS } },
   11: { parts: ['word'], pools: { word: WORDS_COMPLEX } },
