@@ -41,7 +41,6 @@ module.exports = {
   letter_28: { type: 'letter', tibetan: 'ས', color: '#8A6A12' },
   letter_29: { type: 'letter', tibetan: 'ཧ', color: '#C0392B' },
   letter_30: { type: 'letter', tibetan: 'ཨ', color: '#176B3C' },
-
   // 文化图标（简笔线条风格）
   icon_01: { type: 'icon', color: '#C0392B', title: '吉祥结', iconKey: 'knot', char: '吉' },
   icon_02: { type: 'icon', color: '#2471A3', title: '青稞', iconKey: 'barley', char: '稞' },

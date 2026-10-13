@@ -7,18 +7,15 @@
 //
 // 身份与隔离：**只传 code，不传 openid** —— 服务端 code2Session 换 openid，客户端无法伪造。
 // 合规：只由用户自己点击才联网，不做静默登录、不上传联系方式。
-
 var CONFIG = {
   // 服务端地址。与支付共用同一台服务器（见 server/README.md）。上线前注入。
   api: ''
 };
-
 function injectConfig(cfg) {
   cfg = cfg || {};
   if (cfg.api) CONFIG.api = cfg.api;
 }
 function isReady() { return !!CONFIG.api; }
-
 function request(path, data) {
   return new Promise(function (resolve) {
     if (!isReady()) return resolve({ ok: false, reason: 'unconfigured' });
@@ -35,7 +32,6 @@ function request(path, data) {
     });
   });
 }
-
 // 取一次性 code（服务端据此换 openid；openid 不出现在前端）
 function getCode() {
   return new Promise(function (resolve) {
@@ -45,7 +41,6 @@ function getCode() {
     });
   });
 }
-
 /** 把本地进度存到云端 */
 function save(local) {
   return getCode().then(function (code) {
@@ -59,7 +54,6 @@ function save(local) {
     });
   }).catch(function () { return { ok: false, reason: 'network' }; });
 }
-
 /** 从云端取回进度（换手机后用它恢复） */
 function load() {
   return getCode().then(function (code) {
@@ -70,7 +64,6 @@ function load() {
     });
   }).catch(function () { return { ok: false, reason: 'network' }; });
 }
-
 // 给用户看的话术（不泄露内部细节）
 var MESSAGES = {
   unconfigured: '云端同步还没开通',
@@ -79,7 +72,6 @@ var MESSAGES = {
   server: '同步失败，请稍后再试'
 };
 function userMessage(r) { return MESSAGES[(r && r.reason)] || MESSAGES.server; }
-
 module.exports = {
   CONFIG: CONFIG, injectConfig: injectConfig, isReady: isReady,
   save: save, load: load, userMessage: userMessage, getCode: getCode

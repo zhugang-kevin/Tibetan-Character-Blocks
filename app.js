@@ -1,7 +1,6 @@
 // app.js — 藏字方块
 var collect = require('./utils/collect');
 var storage = require('./utils/storage');
-
 App({
   globalData: {
     fontLoaded: false
@@ -10,7 +9,6 @@ App({
     this.recordDailyOpen();
     this.loadTibetanFont();
   },
-
   // 记录「每天首次打开」：首日 / 打开天数 / 连续天数，只落本地。
   // 用途：内测期与微信「小程序数据助手」的次日、7 日留存曲线对照，
   // 判断「前 60 秒」到底有没有把人留下来。不上传、不请求任何网络接口。
@@ -20,12 +18,10 @@ App({
       storage.applyOpenLog(next.state);
     } catch (e) { /* 存储异常不影响启动 */ }
   },
-
   // 注入进度同步配置（D94）：只需服务端地址，不需要任何密钥
   injectSyncConfig: function (cfg) {
     try { require('./utils/sync').injectConfig(cfg || {}); } catch (e) { /* 不影响启动 */ }
   },
-
   // 注入虚拟支付配置（D90）
   //   ⚠️ 官方红线：**签名只能在服务端算**（AppKey / session_key 绝不能出现在前端）。
   //   所以这里**只有 offerId 和服务端下单地址**，没有任何密钥。
@@ -36,7 +32,6 @@ App({
       require('./utils/payment').injectConfig(cfg || {});
     } catch (e) { /* 支付模块异常不影响启动 */ }
   },
-
   // 加载藏文字体 Noto Serif Tibetan
   // 注意：TTF 文件必须托管在 HTTPS 服务器上。
   // 请把 TIBETAN_FONT_URL 替换为你自己的字体文件地址

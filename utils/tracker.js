@@ -14,9 +14,7 @@
 // 时间基准：首次 track 时记为 0 秒（startedAt），之后记录相对秒数。
 // Gate 1 测试后可通过 tracker.report() 导出（开发工具 Storage 面板查看
 // 'milestones'，或结算页调试模式读取）。
-
 var KEY = 'milestones';
-
 function load() {
   // 与 utils/storage.js 同一口径：读失败 / 脏数据一律当成「还没有埋点数据」，
   // 埋点是诊断用的，绝不能因为它抛异常影响游戏主流程。
@@ -27,11 +25,9 @@ function load() {
   } catch (e) { d = null; }
   return (d && d.startedAt && d.events) ? d : { startedAt: 0, events: {} };
 }
-
 function save(d) {
   try { wx.setStorageSync(KEY, d); } catch (e) { /* 存储满不影响游戏 */ }
 }
-
 /**
  * 记录里程碑（幂等：同一 id 只记录第一次到达的秒数）
  */
@@ -43,17 +39,14 @@ function track(id) {
     save(d);
   }
 }
-
 /** 已记录的事件表 { id: 秒 } */
 function report() {
   return load().events;
 }
-
 /** 测试结束重置（下一轮 Gate 1 测试用） */
 function reset() {
   try { wx.removeStorageSync(KEY); } catch (e) {}
 }
-
 module.exports = {
   track: track,
   report: report,

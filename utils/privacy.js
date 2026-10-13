@@ -15,7 +15,6 @@
 //   ③ **拒绝时给正确指引**：重新弹出《用户隐私保护指引》让他读，而不是甩他去设置页。
 //
 // 纯 wx 依赖，无网络、无存储、不引入 Cloud API（遵守 D3 / D13）。
-
 // 查询当前是否已经授权过。
 // need = false：①平台未启用该机制 ②已在后台配过且用户同意 ③用户设备/基础库过旧 —— 一律放行。
 function needAuthorization(cb) {
@@ -27,14 +26,12 @@ function needAuthorization(cb) {
     });
   } catch (e) { cb(false); }
 }
-
 // 打开《用户隐私保护指引》正文（官方弹层）。旧基础库静默忽略。
 function openContract() {
   try {
     if (typeof wx.openPrivacyContract === 'function') wx.openPrivacyContract({});
   } catch (e) { /* 无此能力时不处理 */ }
 }
-
 // 受保护接口前的唯一前置入口。
 // ensurePrivacy(function (ok) { if (ok) doProtectedThing(); });
 //   ok = true  → 已具备资格，直接继续；
@@ -42,10 +39,8 @@ function openContract() {
 function ensurePrivacy(done) {
   if (typeof done !== 'function') return;
   if (typeof wx.requirePrivacyAuthorize !== 'function') return done(true); // 旧基础库：不阻断
-
   needAuthorization(function (need) {
     if (!need) return done(true);
-
     // 需要授权：先弹一个说明框（含「查看隐私指引」），用户确认后再请求官方授权弹层。
     // 直接用官方 requirePrivacyAuthorize 也可以，但先说明「为什么要点这一下」转化率明显更高。
     wx.showModal({
@@ -67,7 +62,6 @@ function ensurePrivacy(done) {
     });
   });
 }
-
 // 保存失败的兜底提示：区分「隐私未同意」与「相册权限未开」，给不同指引。
 // 返回值表示「已处理」（调用方不必再 toast）。
 function explainSaveFailure(err) {
@@ -88,7 +82,6 @@ function explainSaveFailure(err) {
   }
   return false; // 其他错误交给调用方按原逻辑提示
 }
-
 module.exports = {
   ensurePrivacy: ensurePrivacy,
   needAuthorization: needAuthorization,

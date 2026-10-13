@@ -9,17 +9,13 @@ var audio = require('../../utils/audio');
 var collect = require('../../utils/collect');
 // 用户隐私保护指引（utils/privacy.js）：保存相册是受保护接口，必须先过授权关卡
 var privacy = require('../../utils/privacy');
-
 // 「藏文可以组合」预告的数据源（纯展示；由页面注入 utils/collect.js 的纯判据函数，
 // 这样「哪一关讲解拼合」只写在数据文件里，页面不内联关卡号）
 var comboData = require('../../data/combo');
-
 // 秘境揭图（D31）：通关即整幅揭晓，结算页是揭晓的高光时刻
 var revealsData = require('../../data/reveals');
-
 // 藏地密码：完成即解锁一则藏地小知识（解锁状态 = completedLevels，不新增存储字段）
 var secretsData = require('../../data/secrets');
-
 // 祝福卡（750×1050）中段文案的基线位置。
 // ⚠️ 必须留在底部「Logo（y=855）」与「小程序码（y=850）」之**上**：
 //    中文按 1em/字估算，一长行会横跨到两侧的 Logo / 小程序码上（上一版就是这样重叠的）。
@@ -27,7 +23,6 @@ var secretsData = require('../../data/secrets');
 var POSTER_IDENTITY_Y1 = 660;
 var POSTER_IDENTITY_Y2 = 702;
 var POSTER_SLOGAN_Y = 780;
-
 // 收藏进度槽位的固定顺序（字母在前、文化元素在后），与 data/elements.js 的声明顺序一致。
 // 结算页与体验版镜像共用同一份构造口径。
 var CARD_ORDER = Object.keys(elements).map(function (id) {
@@ -39,7 +34,6 @@ var CARD_ORDER = Object.keys(elements).map(function (id) {
     color: el.color
   };
 });
-
 Page({
   data: {
     level: 1,
@@ -102,7 +96,6 @@ Page({
     secretGot: 0,
     secretTotal: 10
   },
-
   onLoad: function (query) {
     var level = parseInt(query.level, 10) || 1;
     var pairs = parseInt(query.pairs, 10) || 0;
@@ -112,7 +105,6 @@ Page({
     var miss = parseInt(query.miss, 10) || 0;    // 配对失败次数
     // 记录通关 + 解锁下一关
     storage.completeLevel(level);
-
     // 成长阶梯 · 证书：先记录本关成绩，再判断该阶段是否通关并（升级）颁发证书
     var certRes = certificate.onLevelComplete(level, {
       matches: pairs,
@@ -122,14 +114,12 @@ Page({
     if (certRes.isNew || certRes.upgraded) {
       tracker.track(certRes.isNew ? 'first_certificate' : 'certificate_upgraded');
     }
-
     // 文化护照印记 v0：首次通过第 1 关授予「拉萨印章」（Day1 形成习惯）
     var newStamp = false;
     if (level === 1 && storage.grantStamp('lhasa')) {
       newStamp = true;
       tracker.track('first_stamp');
     }
-
     // PRD v4 留存：星级（按正确率与连击，只增不减）+ 积分 + 唐卡碎片掉落
     var stars = collect.rateStars(att > 0 ? att : pairs, miss, combo);
     var starRes = storage.recordStars(level, stars);
@@ -137,20 +127,16 @@ Page({
     var fragRes = storage.addFragment(collect.nextFragment(storage.getFragments()));
     var fragList = storage.getFragments();
     if (fragRes.added) tracker.track('first_fragment');
-
     var ids = (query.cards || '').split(',').filter(Boolean);
     if (ids.length) tracker.track('first_card');
-
     // 前 60 秒钩子：在「要不要再来一关」的决策点上，把收藏进度摆出来。
     // 此前这份进度只在文化护照页可见，用户要先跳一层才看得到。
     var cp = collect.cardProgress(CARD_ORDER, storage.getSeenCards());
     var openLog = storage.getOpenLog();
-
     // D27：本阶段完结（有证书）时，把 12 阶段路线图的下一站摆到同一个决策点上。
     // 文案全部来自 data/stages.js，页面不写死阶段名——内容库扩充后自动生效。
     var stageNo = certRes.stage ? certRes.stage.stage : 0;
     var ns = certificate.nextStage(stageNo);
-
     var collected = ids.map(function (id) {
       var el = elements[id] || {};
       var card = null;
@@ -165,7 +151,6 @@ Page({
         isLetter: el.type === 'letter'
       };
     });
-
     this.setData({
       level: level,
       pairs: pairs,
@@ -226,27 +211,23 @@ Page({
       cardPercent: cp.total ? Math.round(cp.got * 100 / cp.total) : 0,
       stampCount: storage.getStampCount()
     });
-
     // 舒缓祝福语（PRD 4.1）：画卷展开时读一句藏语祝福，缺失录音静默回退。
     // 定时器必须可取消：用户在 650ms 内返回时不能再出声（onUnload 清理），
     // 录音就绪后这句话有 2-3 秒，离开页面也要立刻停（onUnload / onHide 停语音）。
     var that = this;
     this.blessTimer = setTimeout(function () { audio.blessing(); }, 650);
   },
-
   // 离开结算页：撤掉未播放的定时器 + 立刻停掉正在播的祝福语音。
   // 语音通道是全局单声道（utils/audio.js 的 activeVoice），不清理会播到别的页面去。
   onUnload: function () {
     if (this.blessTimer) { clearTimeout(this.blessTimer); this.blessTimer = null; }
     audio.stopVoice();
   },
-
   // 切到后台（锁屏 / 离开小程序）：同样不该继续播
   onHide: function () {
     if (this.blessTimer) { clearTimeout(this.blessTimer); this.blessTimer = null; }
     audio.stopVoice();
   },
-
   // 藏地密码「听讲解」：播放预生成的中文讲解（audio/voice/secret_NN.mp3，与当前关卡同号）
   speakSecret: function () {
     var n = parseInt(this.data.level, 10) || 0;
@@ -254,11 +235,9 @@ Page({
     var name = 'secret_' + (n < 10 ? '0' + n : '' + n);
     if (audio.speak(name)) tracker.track('secret_pronounce');
   },
-
   goHome: function () {
     wx.redirectTo({ url: '/pages/index/index' });
   },
-
   // 查看本阶段证书（证书页支持保存 / 分享）
   openCert: function () {
     var n = (this.data.cert && this.data.cert.stage) || this.data.stageNo;
@@ -266,37 +245,30 @@ Page({
     tracker.track('cert_view');
     wx.navigateTo({ url: '/pages/cert/cert?stage=' + n });
   },
-
   // 打开文化护照（总档案：12 张证书 + 印章 + 收藏）
   openPassport: function () {
     tracker.track('passport_view');
     wx.navigateTo({ url: '/pages/passport/passport' });
   },
-
   // 阻止冒泡占位（弹窗内容区 catchtap 用）
   noop: function () {},
-
   // 下一关（15分钟体验终点：玩家主动点击）
   goNext: function () {
     tracker.track('next_level_click');
     var next = Math.min(this.data.level + 1, 10);
     wx.redirectTo({ url: '/pages/game/game?level=' + next });
   },
-
   // ===== 祝福卡 =====
   // 昵称与证书持有人共用（storage.holderName），只让用户填一次
   openNameModal: function () {
     this.setData({ showNameModal: true, nameInput: storage.getHolderName() || '' });
   },
-
   closeNameModal: function () {
     this.setData({ showNameModal: false });
   },
-
   onNameInput: function (e) {
     this.setData({ nameInput: e.detail.value });
   },
-
   confirmGenerate: function () {
     var name = (this.data.nameInput || '').trim().slice(0, 10) || '朋友';
     storage.setHolderName(name);   // 同步为证书持有人
@@ -307,7 +279,6 @@ Page({
       that.drawBlessingCard(name);
     }, 250);
   },
-
   // Canvas 2D 绘制祝福卡并导出图片（750×1050）
   // 品牌规范：藏文大字 + 扎西德勒 + 昵称 + Logo水印 + 底部 Logo/文案 + 小程序码
   drawBlessingCard: function (name) {
@@ -322,9 +293,7 @@ Page({
       wx.showToast({ title: '当前微信版本不支持生成图片', icon: 'none' });
       return;
     }
-
     var blessImgs = { logo: null, watermark: null, tashi: null };
-
     // 文化身份两行文案：全部来自真实进度（绝不写死数字，见 utils/collect.js#shareIdentity）
     var seenAll = storage.getSeenCards();
     var letterTotal = 0;
@@ -343,7 +312,6 @@ Page({
       stamps: storage.getStampCount(),
       stampTotal: this.data.stampTotal
     });
-
     var finish = function () {
       wx.canvasToTempFilePath({
         canvas: canvas,
@@ -358,7 +326,6 @@ Page({
         }
       });
     };
-
     var paint = function () {
       // 背景：朱砂红 → 天然黄 柔和渐变
       var g = ctx.createLinearGradient(0, 0, 0, H);
@@ -366,13 +333,11 @@ Page({
       g.addColorStop(1, '#B7950B');
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, W, H);
-
       // 内边框
       ctx.strokeStyle = 'rgba(255,255,255,0.55)';
       ctx.lineWidth = 3;
       roundRect(ctx, 32, 32, W - 64, H - 64, 24);
       ctx.stroke();
-
       // 半透明 Logo 水印（右上角，不抢主图）
       if (blessImgs.watermark) {
         ctx.save();
@@ -380,10 +345,8 @@ Page({
         ctx.drawImage(blessImgs.watermark, W - 140, 70, 60, 60);
         ctx.restore();
       }
-
       ctx.textAlign = 'center';
       ctx.fillStyle = '#FFFFFF';
-
       // 顶部藏文大字
       // 排版规范：断行只发生在 tsheg ( ་ ) 之后，shad ( ། ) 不落行首
       // 字体守卫：wx.loadFontFace 对 Canvas 2D 不保证生效，未加载成功时
@@ -400,22 +363,18 @@ Page({
         ctx.font = '500 92px "Noto Serif Tibetan", "Microsoft Himalaya", serif';
         tibText.drawTibetanWrapped(ctx, 'བཀྲ་ཤིས་བདེ་ལེགས་', W / 2, 240, W - 160, 130);
       }
-
       // 分隔线
       ctx.strokeStyle = 'rgba(255,255,255,0.7)';
       ctx.beginPath();
       ctx.moveTo(W / 2 - 130, 310);
       ctx.lineTo(W / 2 + 130, 310);
       ctx.stroke();
-
       // 中文祝福
       ctx.font = '700 76px sans-serif';
       ctx.fillText('扎西德勒', W / 2, 430);
-
       // 昵称
       ctx.font = '40px sans-serif';
       ctx.fillText('—— 致 ' + name + ' ——', W / 2, 530);
-
       // 文化身份：分享出去的不是优惠券，是真实进度（数字全部来自 storage）
       ctx.font = '600 30px sans-serif';
       ctx.fillStyle = 'rgba(255,255,255,0.95)';
@@ -425,17 +384,14 @@ Page({
         ctx.fillStyle = 'rgba(255,255,255,0.85)';
         ctx.fillText(identity.line2, W / 2, POSTER_IDENTITY_Y2);
       }
-
       // 品牌 slogan
       ctx.font = '700 34px sans-serif';
       ctx.fillStyle = '#FFF3D6';
       ctx.fillText('认藏文，从方块开始', W / 2, POSTER_SLOGAN_Y);
-
       // 底部左侧：藏字方块 Logo
       if (blessImgs.logo) {
         ctx.drawImage(blessImgs.logo, 70, H - 195, 100, 100);
       }
-
       // 右下角小程序码占位框（发布后可替换为真实小程序码图片）
       var bs = 130;
       var bx = W - 190, by = H - 200;
@@ -445,10 +401,8 @@ Page({
       ctx.fillStyle = '#C0392B';
       ctx.font = '24px sans-serif';
       ctx.fillText('小程序码', bx + bs / 2, by + bs / 2 + 8);
-
       finish();
     };
-
     // 加载品牌 Logo（打包在项目内的本地图片）
     var loadImg = function (src) {
       return new Promise(function (resolve) {
@@ -466,7 +420,6 @@ Page({
       loadImg('/images/tashi-delek.webp').then(function (img) { blessImgs.tashi = img; })
     ]).then(paint);
   },
-
   // 保存到相册（受保护接口：先走 utils/privacy.js 的统一前置，同意后立即继续保存）
   saveToAlbum: function () {
     var that = this;
@@ -486,13 +439,11 @@ Page({
       });
     });
   },
-
   // 分享：打开图片预览，长按即可转发给朋友
   previewShare: function () {
     if (!this.data.imagePath) return;
     wx.previewImage({ urls: [this.data.imagePath] });
   },
-
   // 好友分享（右上角菜单 / 按钮 open-type="share"）
   onShareAppMessage: function () {
     return {
@@ -501,7 +452,6 @@ Page({
       imageUrl: this.data.imagePath || undefined
     };
   },
-
   // D86：分享到朋友圈 —— 官方要求 onShareAppMessage 与 onShareTimeline **同时实现**，
   //   缺任一个朋友圈分享都不可用。注意朋友圈打开是「单页模式」（场景值 1154）：
   //   无登录态、不能跳转、**禁用支付** —— 卡片只负责让人看到，再点「前往小程序」回来。
@@ -512,13 +462,11 @@ Page({
       imageUrl: '/images/logo-144.png'
     };
   },
-
   // D86：开启分享菜单（含朋友圈入口）—— 不调用则右上角「···」里没有分享按钮
   showShare: function () {
     if (wx.showShareMenu) wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] });
   }
 });
-
 // 兼容辅助：圆角矩形路径
 function roundRect(ctx, x, y, w, h, r) {
   ctx.beginPath();

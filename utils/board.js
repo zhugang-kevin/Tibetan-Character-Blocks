@@ -18,21 +18,17 @@
 //   见 collapse 里 refillColumns 的注释。这条形态断言同样由门禁机械校验。
 //
 // 纯函数，不依赖 wx / DOM。
-
 // 补充池 = 格数 / 4（向上取到偶数）。太少则「补充」看不出效果，太多则一局被拉长。
 var POOL_DIV = 4;
-
 function sum(o) {
   var s = 0;
   for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) s += o[k];
   return s;
 }
-
 function poolSize(cols, rows) {
   var slots = cols * rows;
   return Math.max(2, Math.ceil(slots / POOL_DIV / 2) * 2);
 }
-
 // 依据关卡配比规划「初始盘面给几张 / 池里留几张」，两端都是偶数。
 // 确定性：不随机。每步给「池余地最大」的元素 +2；同余地取「已给最少」的；再同取配比靠前的。
 function planCounts(cfg) {
@@ -40,11 +36,9 @@ function planCounts(cfg) {
   var quota = {};
   var total = 0;
   cfg.elements.forEach(function (e) { quota[e[0]] = e[1]; total += e[1]; });
-
   var slots = cfg.cols * cfg.rows;
   var give = {};
   ids.forEach(function (id) { give[id] = 0; });
-
   // ① 保底：每种元素至少给 2 张（开局就能看到该元素，且它在开局就有对可配）
   var baseBudget = Math.min(slots, 2 * ids.length);
   var byQuota = ids.slice().sort(function (a, b) {
@@ -55,7 +49,6 @@ function planCounts(cfg) {
     if (sum(give) + 2 > baseBudget) return;
     give[id] = 2;
   });
-
   // ② 轮转补齐到「正好铺满 cols×rows」——初始盘面必须是满的，
   //    这样开局没有空洞，秘境揭图从 0% 起步（空一格才透出一格）
   var guard = 0;
@@ -71,12 +64,10 @@ function planCounts(cfg) {
     if (best === null) break;
     give[best] += 2;
   }
-
   var pool = {};
   ids.forEach(function (id) { pool[id] = quota[id] - give[id]; });
   return { ids: ids, quota: quota, total: total, slots: slots, give: give, pool: pool };
 }
-
 // 构造开局盘面：按 give 出牌 → 洗牌 → 铺满 cells（长度恰好 = cols×rows）
 //   create(id, uid) → 该格的牌对象（页面传入带显示字段；测试传最小实现）
 //   rng()           → [0,1)，可注入以便断言
@@ -95,7 +86,6 @@ function createLevel(cfg, create, rng) {
   var uid = 1;
   var cells = bag.map(function (id) { return make(id, uid++); });
   while (cells.length < plan.slots) cells.push(null);
-
   return {
     cols: cfg.cols,
     rows: cfg.rows,
@@ -108,11 +98,9 @@ function createLevel(cfg, create, rng) {
     plan: plan
   };
 }
-
 function poolLeft(pool) {
   return sum(pool || {});
 }
-
 // 池余量 ≥ 2 的元素 id（一次性必须成对取，否则破坏偶数不变量）
 function poolIds(pool) {
   var out = [];
@@ -121,13 +109,11 @@ function poolIds(pool) {
   }
   return out;
 }
-
 function columnHeight(cells, cols, rows, c) {
   var n = 0;
   for (var r = 0; r < rows; r++) if (cells[r * cols + c]) n++;
   return n;
 }
-
 // 补充落哪几列：先落「本次被消掉牌的那几列」（保序、去重），不够再按「最矮的列优先」补齐。
 // 返回的是「有空位的列」的优先级顺序（调用方据此决定每列放几张）。
 function refillColumns(cells, cols, rows, removedIndexes, n) {
@@ -158,7 +144,6 @@ function refillColumns(cells, cols, rows, removedIndexes, n) {
   }
   return out;
 }
-
 // 规划「这 n 张补充牌分别落在哪个格号」——必须**先整体规划再落子**。
 // 为什么不能边落边算：一对牌偶尔会竖着落在同一列（同行配对是任意两张同 id，
 // 没有相邻要求）。此时「被消的列」只有 1 个，若按「take=2 但只有 1 列可用」硬落，
@@ -191,7 +176,6 @@ function planRefillCells(cells, cols, rows, removedIndexes, n) {
   out.forEach(function (gi) { cells[gi] = null; });
   return out;
 }
-
 // 一次消除后的结算：列内向下压缩 + 顶部从池补充
 //   state          createLevel / 上一次 collapse 的返回值
 //   removedIndexes 本次被消除的格号（长度 2）
@@ -210,12 +194,9 @@ function collapse(state, removedIndexes, opts) {
   var nextUid = state.nextUid;
   var pool = {};
   for (var k in state.pool) if (Object.prototype.hasOwnProperty.call(state.pool, k)) pool[k] = state.pool[k];
-
   var removed = (removedIndexes || []).slice();
   removed.forEach(function (i) { cells[i] = null; });
-
   var drops = [];
-
   // ① 列内向下压缩：每列独立「从下往上堆」，牌之间的相对顺序不变
   for (var c = 0; c < cols; c++) {
     var stack = [];
@@ -230,7 +211,6 @@ function collapse(state, removedIndexes, opts) {
       if (to !== stack[s].from) drops.push({ index: to * cols + c, drop: to - stack[s].from });
     }
   }
-
   // ② 从池补充：本次消掉几张就补几张（池不足则不补，盘面自行收缩 → 最终清空通关）
   //    ⚠️ 必须「整对取、整对落」：池里每种元素的余量恒为偶数，一次只取 2 张同 id 才能维持；
   //       落点先整体规划（planRefillCells），单列可用时同列叠两张。
@@ -251,7 +231,6 @@ function collapse(state, removedIndexes, opts) {
     }
   }
   // landings 不足（理论上不会发生：刚空出 2 格）：本回合不补，池保持偶数、盘面自行收缩
-
   // ③ 防御性检查：列内不得出现悬空牌。
   //    重力向下 → 合法形态是「上空下满」，即从列顶往下扫应当先见空格再见牌；
   //    一旦「先见牌、再见空格」，说明有牌悬在空格之上。正常流程恒为空。
@@ -264,7 +243,6 @@ function collapse(state, removedIndexes, opts) {
       else if (seenFilled) floating.push(ii);
     }
   }
-
   return {
     cols: cols,
     rows: rows,
@@ -280,13 +258,11 @@ function collapse(state, removedIndexes, opts) {
     floating: floating
   };
 }
-
 function countTiles(cells) {
   var n = 0;
   for (var i = 0; i < cells.length; i++) if (cells[i]) n++;
   return n;
 }
-
 // 盘面上各元素张数
 function tally(cells) {
   var out = {};
@@ -297,7 +273,6 @@ function tally(cells) {
   }
   return out;
 }
-
 // 只读诊断：当前盘面是否还存在可配对（任意两张同 id）。偶数不变量成立时恒为 true。
 // ⚠️ 这只是诊断，**不触发任何消除**（自动连锁已在 D33 明确否决）。
 function hasPair(cells) {
@@ -310,7 +285,6 @@ function hasPair(cells) {
   }
   return false;
 }
-
 // 门禁用：偶数不变量 + 总量守恒 + 列内连续（无悬空）
 function checkInvariants(state) {
   var onBoard = tally(state.cells);
@@ -340,7 +314,6 @@ function checkInvariants(state) {
     poolLeft: poolLeft(state.pool)
   };
 }
-
 module.exports = {
   POOL_DIV: POOL_DIV,
   poolSize: poolSize,

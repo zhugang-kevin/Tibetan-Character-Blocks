@@ -11,9 +11,7 @@ var stagesData = require('../data/stages');
 var elementsData = require('../data/elements');
 var levelsData = require('../data/levels');
 var storage = require('./storage');
-
 var PREFIX = 'ZWFK';
-
 // 证书等级：质量门槛（正确率为该阶段各关「最佳正确率」的平均值）
 // D32 对比度：tierColor 同时用作宣纸米卡上的「档名文字」与「白字档位标签的底」，
 //   金 #B7950B（2.66 / 2.87 双向不达标）→ #8A6A12（4.69 / 5.06）
@@ -35,9 +33,7 @@ var TIERS = {
     rule: '完成 10 关'
   }
 };
-
 var TIER_RANK = { bronze: 1, silver: 2, gold: 3 };
-
 // ---------- 阶段查询 ----------
 function stageOf(level) {
   for (var i = 0; i < stagesData.length; i++) {
@@ -46,14 +42,12 @@ function stageOf(level) {
   }
   return null;
 }
-
 function stageByNo(n) {
   for (var i = 0; i < stagesData.length; i++) {
     if (stagesData[i].stage === n) return stagesData[i];
   }
   return null;
 }
-
 // 下一阶段（结算页「下一步」预告用）。
 // 为什么需要它：12 阶段路线图一直只在证书页（pages/cert）可见，
 // 而「要不要继续」的决策发生在结算页——多一层跳转就少一次钩子。
@@ -64,15 +58,12 @@ function nextStage(stageNo) {
   if (!n || n < 1) return null;
   return stageByNo(n + 1);
 }
-
 function tierInfo(key) {
   return TIERS[key] || TIERS.bronze;
 }
-
 function tierRank(key) {
   return TIER_RANK[key] || 0;
 }
-
 // ---------- 阶段内容（证书上「真的学会了什么」的数据来源） ----------
 // 按真实关卡数据统计，内容库扩充后证书文案自动跟随，不需要改模板
 function stageContent(stage) {
@@ -93,7 +84,6 @@ function stageContent(stage) {
   }
   return { letters: letters, icons: icons, elements: letters + icons, pairs: pairs };
 }
-
 // ---------- 正确率聚合（按「各关最佳正确率」平均，重玩可提升） ----------
 function aggregate(stage) {
   var ls = storage.getLevelStats();
@@ -108,7 +98,6 @@ function aggregate(stage) {
   var avg = played ? sum / played : 0;
   return { levels: played, avgAcc: avg, clean: clean, hints: hints };
 }
-
 function tierOf(agg) {
   if (agg.avgAcc >= TIERS.gold.minAccuracy && (!TIERS.gold.requireClean || agg.clean) && agg.hints === 0) {
     return TIERS.gold;
@@ -116,7 +105,6 @@ function tierOf(agg) {
   if (agg.avgAcc >= TIERS.silver.minAccuracy) return TIERS.silver;
   return TIERS.bronze;
 }
-
 function isStageComplete(stage) {
   var done = storage.getProgress().completedLevels;
   for (var n = stage.from; n <= stage.to; n++) {
@@ -124,24 +112,20 @@ function isStageComplete(stage) {
   }
   return true;
 }
-
 // ---------- 文案 ----------
 function formatDate(d) {
   var dt = d || new Date();
   return dt.getFullYear() + '年' + (dt.getMonth() + 1) + '月' + dt.getDate() + '日';
 }
-
 function pad4(n) {
   var s = String(n);
   while (s.length < 4) s = '0' + s;
   return s;
 }
-
 function certNo(seq, date) {
   var y = (date || new Date()).getFullYear();
   return PREFIX + '-' + y + '-' + pad4(seq);
 }
-
 function buildLines(stage, content) {
   var tpl = stage.certLines && stage.certLines.length ? stage.certLines : [
     '完成 {levels} 个关卡'
@@ -158,7 +142,6 @@ function buildLines(stage, content) {
       .replace(/\{name\}/g, stage.name);
   });
 }
-
 // ---------- 颁发 ----------
 function buildCert(stage, tier, agg, content, prev) {
   var date = new Date();
@@ -184,7 +167,6 @@ function buildCert(stage, tier, agg, content, prev) {
     date: formatDate(date)
   };
 }
-
 // 通关一关后调用：先记录本关成绩，再判断该阶段是否已通关并（升级）颁发证书
 // r: { matches, attempts, misses, hints }
 function onLevelComplete(level, r) {
@@ -201,13 +183,11 @@ function onLevelComplete(level, r) {
     skill: null   // 距离金银质还差什么
   };
   if (!stage || !stage.open) return out;
-
   out.complete = isStageComplete(stage);
   if (!out.complete) {
     out.skill = nextTierHint(aggregate(stage));
     return out;
   }
-
   var agg = aggregate(stage);
   var tier = tierOf(agg);
   var prev = storage.findCert(stage.stage);
@@ -222,7 +202,6 @@ function onLevelComplete(level, r) {
   out.upgraded = !!prev;
   return out;
 }
-
 // 距离更高一级证书还差什么（用于结算页/护照页的鼓励文案）
 function nextTierHint(agg) {
   if (agg.levels === 0) return { text: '完成本阶段关卡即可获得证书', tier: 'bronze' };
@@ -232,7 +211,6 @@ function nextTierHint(agg) {
   }
   return { text: '正确率提升到 80% 即可升为银质证书', tier: 'silver' };
 }
-
 // ---------- 12 张证书的列表（文化护照用） ----------
 function list() {
   var certs = storage.getCerts();
@@ -261,11 +239,9 @@ function list() {
     };
   });
 }
-
 function ownedCount() {
   return storage.getCerts().length;
 }
-
 // ============================================================
 // D51 学习体系证书：15 级各一张 + 集齐解锁终极「藏文拼读宗师」
 //
@@ -279,21 +255,17 @@ function ownedCount() {
 //   重習提升正确率可升级，**只升不降**（与既有 buildCert 的取口径相同）。
 // ============================================================
 var learningData = require('../data/learning');
-
 function lvKey(lv) { return 'lv' + lv; }
-
 function findLvCert(lv) {
   var all = storage.getCerts();
   for (var i = 0; i < all.length; i++) if (all[i].key === lvKey(lv)) return all[i];
   return null;
 }
-
 function lvTier(acc, clean) {
   if (acc >= TIERS.gold.minAccuracy && clean) return TIERS.gold;
   if (acc >= TIERS.silver.minAccuracy) return TIERS.silver;
   return TIERS.bronze;
 }
-
 // 构造学习证书对象（纯：只按传入的成绩构造，不落盘）
 function buildLearningCert(lv, agg, prev) {
   var L = learningData.byLevel(lv);
@@ -325,7 +297,6 @@ function buildLearningCert(lv, agg, prev) {
     date: formatDate(date)
   };
 }
-
 // 某级全部通关后调用：agg = { acc: 0..1, clean: true/false }
 // 未达更好成绩则原样返回旧证书（只升不降）
 function issueLearningCert(lv, agg) {
@@ -339,7 +310,6 @@ function issueLearningCert(lv, agg) {
   storage.saveCert(next);
   return { cert: next, isNew: !prev, upgraded: !!prev };
 }
-
 // 15 张学习证书的列表（护照 / 证书墙用）+ 终极证书状态
 function learningList() {
   var rows = learningData.LEVELS.map(function (L) {
@@ -366,7 +336,6 @@ function learningList() {
     }
   };
 }
-
 module.exports = {
   PREFIX: PREFIX,
   TIERS: TIERS,

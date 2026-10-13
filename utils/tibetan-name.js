@@ -15,14 +15,12 @@
 //    的「只在性别真的变了才重取」）。validate §45.10 持有一份冻结基线做前缀比对，
 //    想改池必须同步改基线并回 docs/DECISIONS.md 补记录 —— 有意制造摩擦，避免随手重排。
 var NAMES = require('../data/tibetan-names.js');
-
 // 三档取值。'' = 还没选（首次引导会出现）；不设第四档，避免收集不必要的个人信息。
 var GENDERS = [
   { key: 'male', label: '男' },
   { key: 'female', label: '女' },
   { key: 'unspecified', label: '不愿透露' }
 ];
-
 // 归一化：任何不认识的值一律当作「未选择」（脏数据 / 旧版本 / 手改存储都不会把页面带崩）
 function normalizeGender(v) {
   for (var i = 0; i < GENDERS.length; i++) {
@@ -30,11 +28,9 @@ function normalizeGender(v) {
   }
   return '';
 }
-
 function isChosen(v) {
   return normalizeGender(v) !== '';
 }
-
 function labelOf(v) {
   var k = normalizeGender(v);
   for (var i = 0; i < GENDERS.length; i++) {
@@ -42,7 +38,6 @@ function labelOf(v) {
   }
   return '未选择';
 }
-
 // 名字池：男 → male，女 → female，其余（含「不愿透露」）→ neutral
 function poolOf(v) {
   var k = normalizeGender(v);
@@ -50,7 +45,6 @@ function poolOf(v) {
   if (k === 'female') return NAMES.female;
   return NAMES.neutral;
 }
-
 // 确定性取名字：同一个 seed 永远拿到同一个名字（不会每次刷新都变）。
 // seed 由调用方给（本项目用「首次打开日期」），非数字 / 负数一律按 0 处理。
 // 返回值带 index：**下标要跟着名字一起落库**（storage 的 tibetanNameIndex），
@@ -63,7 +57,6 @@ function pickFor(gender, seed) {
   var i = Math.floor(n) % pool.length;
   return { name: pool[i].name, mean: pool[i].mean, index: i, gender: normalizeGender(gender) };
 }
-
 // 反查下标：老数据（D54 首版）只存了名字没存下标，用它补一个。
 // 找不到（池里已无此名）返回 -1 —— 名字仍照常显示，只是无从定位，绝不因找不到就改名。
 function indexOfName(gender, name) {
@@ -73,7 +66,6 @@ function indexOfName(gender, name) {
   }
   return -1;
 }
-
 // 诊断用（**不用于改名**）：已存的名字是否还坐在它当年的位置上。
 // 池被重排 / 删名时这里会报 pool-shifted —— 由守卫与测试发现，而不是偷偷换掉用户的名字。
 function resolveStored(gender, name, index) {
@@ -84,7 +76,6 @@ function resolveStored(gender, name, index) {
   if (pool[i].name !== name) return { ok: false, reason: 'pool-shifted' };
   return { ok: true, reason: '' };
 }
-
 // 由日期串生成稳定 seed（'2026-10-09' → 各位数字之和）。同一天装的都是同一个名字，
 // 不同日期装的人会散到池里的不同位置——够随机，也可复现。
 function seedFromDate(dayStr) {
@@ -97,7 +88,6 @@ function seedFromDate(dayStr) {
   }
   return sum;
 }
-
 module.exports = {
   GENDERS: GENDERS,
   normalizeGender: normalizeGender,

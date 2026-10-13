@@ -20,7 +20,6 @@
 //   未注入 offerId 时，`isReady()` 返回 false，`pay()` 直接返回 `{ ok:false, reason:'unconfigured' }`。
 //   **不会崩、不会发请求、不会误导用户**。UI 侧应据此隐藏或禁用打赏入口。
 //   （与 app.js 里字体占位地址的处理同源：没配就显式跳过，而不是发无效请求。）
-
 var CONFIG = {
   // 支付应用 ID（mp 后台「虚拟支付 → 基本配置」）。**不要写死在代码里**，
   // 由 app.js 启动时注入（app.injectPaymentConfig）。
@@ -32,7 +31,6 @@ var CONFIG = {
   // 是否已在 mp 后台发布道具（未发布时下单会报 -15010 / -15014）
   goodsPublished: false
 };
-
 // 礼物道具表：productId 必须与 mp 后台「道具配置」**逐字一致**，价格单位是**分**。
 // （官方 -15013：goodsPrice 与后台不一致会直接失败 —— 这是防止"页面显示价 ≠ 实付价"的投诉）
 var GIFTS = [
@@ -41,7 +39,6 @@ var GIFTS = [
   { productId: 'tib_khata_6',   price: 600,  name: '献一条哈达',     give: 'khata' },
   { productId: 'tib_name_99',   price: 990,  name: '藏文名字定制',   give: 'name' }
 ];
-
 // 官方错误码 → 人话。**照官方文档逐条抄**，不自行发挥。
 // 覆盖这些码的价值：出问题时能立刻定位，而不是只见「支付失败」四个字。
 var ERR = {
@@ -71,21 +68,17 @@ var ERR = {
   '-15020': '操作过快，请稍候再试',
   '-15021': '小程序被限频交易'
 };
-
 // 这些错误重试有意义（换新单号即可）
 var RETRYABLE = { '-15002': 1, '-15012': 1, '-15020': 1 };
-
 function injectConfig(cfg) {
   cfg = cfg || {};
   Object.keys(CONFIG).forEach(function (k) {
     if (cfg[k] !== undefined && cfg[k] !== '') CONFIG[k] = cfg[k];
   });
 }
-
 function isReady() {
   return !!(CONFIG.offerId && CONFIG.orderApi && CONFIG.goodsPublished);
 }
-
 function configState() {
   var miss = [];
   if (!CONFIG.offerId) miss.push('offerId');
@@ -93,7 +86,6 @@ function configState() {
   if (!CONFIG.goodsPublished) miss.push('goodsPublished');
   return { ready: miss.length === 0, missing: miss };
 }
-
 // 官方兼容判断：>= 2.19.2 直接用；否则用 wx.canIUse 兜底
 function apiAvailable() {
   if (typeof wx === 'undefined' || !wx.requestVirtualPayment) return false;
@@ -115,12 +107,10 @@ function apiAvailable() {
   };
   return cmp(v, '2.19.2') >= 0;
 }
-
 function giftById(productId) {
   for (var i = 0; i < GIFTS.length; i++) if (GIFTS[i].productId === productId) return GIFTS[i];
   return null;
 }
-
 // 订单号：8-32 字符，数字/大小写字母/_-|*@，**不能以下划线开头**
 function makeOutTradeNo(productId) {
   var ts = Date.now().toString(36).toUpperCase();
@@ -128,7 +118,6 @@ function makeOutTradeNo(productId) {
   var pid = String(productId).replace(/[^0-9A-Za-z]/g, '').slice(0, 8);
   return (pid || 'O') + ts + rnd;   // 以字母开头，规避「不能以下划线开头」
 }
-
 function request(options) {
   var url = CONFIG.orderApi;
   if (!wx.request) return Promise.reject(new Error('no wx.request'));
@@ -143,7 +132,6 @@ function request(options) {
     });
   });
 }
-
 // 发起一次打赏（道具直购）
 //   toOpenid 可以不传：服务端从 attach 里取；没有关系链时，A 的身份由**分享卡片参数**带过来
 function pay(productId, opts) {
@@ -152,7 +140,6 @@ function pay(productId, opts) {
   if (!gift) return Promise.resolve({ ok: false, reason: 'unknown_product' });
   if (!isReady()) return Promise.resolve({ ok: false, reason: 'unconfigured', missing: configState().missing });
   if (!apiAvailable()) return Promise.resolve({ ok: false, reason: 'api_unavailable' });
-
   var outTradeNo = makeOutTradeNo(productId);
   // attach：透传给服务端发货用（官方：发货通知时会透传给开发者）
   var attach = JSON.stringify({
@@ -160,7 +147,6 @@ function pay(productId, opts) {
     toUid: opts.toUid || '',          // 收礼的人（来自分享卡片参数）
     fromScene: opts.scene || 'share'  // 从哪个入口来的
   });
-
   // ① 让**服务端**组装 signData 并算两个签名（R1：前端绝不算签名）
   return request({
     action: 'createOrder',
@@ -198,7 +184,6 @@ function pay(productId, opts) {
     return { ok: false, reason: 'network', detail: String(e && e.message || e) };
   });
 }
-
 // 查单：官方建议「回调 + 查单」双通道兜底，不能只依赖前端 success
 function queryOrder(outTradeNo) {
   if (!CONFIG.orderApi) return Promise.resolve({ ok: false, reason: 'unconfigured' });
@@ -208,7 +193,6 @@ function queryOrder(outTradeNo) {
     return { ok: false, reason: 'network', detail: String(e && e.message || e) };
   });
 }
-
 module.exports = {
   CONFIG: CONFIG,
   GIFTS: GIFTS,

@@ -27,13 +27,11 @@ var board = require('../../utils/board');
 // D51 学习体系（15 级 × 150 关）：生成器 + 动态格子尺寸 + 藏文字形量算
 var learning = require('../../utils/learning');
 var grid = require('../../utils/grid');
-
 var GUIDE = [
   { title: '如何使用', text: '点击两张相同的藏文字母或文化图标，它们就会一起消失。' },
   { title: '听发音', text: '每消除成功一次，都会读出这个字的藏文发音——边学边听，记得更牢。连续正确不断，声音还会越清亮。' },
   { title: '方块会下落', text: '消除之后，上方的方块会落下来补位，顶上还会掉下新的方块。把这一课的方块全部消完，棋盘下面的秘境图就整幅揭晓了。带 ❄ 的牌先碰不得，消除它旁边的牌即可解冻；木箱上的金色数字是剩余耐久。金色 ✦ 是特殊方块，双倍练习。' }
 ];
-
 // 统一牌面尺寸：以 8 列为基准（所有关卡牌一样大，只变数量）
 var REF_COLS = 8;
 var PAGE_PAD = 20;     // 页面左右留白（rpx）
@@ -53,7 +51,6 @@ function haptic(type) {
     if (wx.vibrateShort) wx.vibrateShort({ type: type || 'light' });
   } catch (e) { /* 部分机型不支持震动，静默降级 */ }
 }
-
 var CARD_AUTO_MS = 5200;
 var TOAST_MS = 1700;
 // ---------- 游戏中的「打扰预算」（D57，2026-10-09 用户反馈「跳窗实在太多了」）----------
@@ -71,21 +68,17 @@ var SHATTER_MS = 340;  // 消除碎裂动画时长（与 game.wxss 的 shatterUp
 // 赞美的展示时长（与 game.wxss 的 praisePopA/B 1.2s 对齐）；一次只显示一条，新的替换旧的
 var PRAISE_SHOW_MS = 1200;
 // 下落/补充动画时长 = game.wxss 里 .tile 的 transition 300ms（同一个节点换 translate 坐标）
-
 // 破碎粒子的六个方向 × 颜色（金粉 + 五色风马旗）
 var BIT_SLOTS = ['d0 gold', 'd1 r', 'd2 g', 'd3 b', 'd4 y', 'd5 w'];
-
 // 精灵表字母（试点：ཀ）：全部 ཀ 方块共用 images/sprite_ka.png 一张图（1 次图片请求），
 // 四色帧（红/蓝/绿/黄）由帧位移切换；质感（左上光源/软糖材质/底部暗色）已烘在帧里，不再叠加 CSS 渐变。
 var SPRITE_LETTERS = { letter_01: 'ka' };
-
 function findCard(id) {
   for (var k = 0; k < cardsData.length; k++) {
     if (cardsData[k].id === id) return cardsData[k];
   }
   return null;
 }
-
 // 颜色加深/提亮（用于卡片头图渐变与 3D 方块的高光/投影）
 function shade(hex, f) {
   var n = parseInt(hex.slice(1), 16);
@@ -94,7 +87,6 @@ function shade(hex, f) {
   var b = Math.min(255, Math.round((n & 255) * f));
   return 'rgb(' + r + ',' + g + ',' + b + ')';
 }
-
 // 3D 方块内联样式：顶部窄倒角高光 → 本色平段 → 底部加深，配 0 偏移投影与顶部内高光
 // D32 对比度：高光带必须收进字形占位区（y10%~90%）之外，否则白字被冲掉。
 //   旧 stops: shade(c,1.42) 0% → c 58% → shade(c,0.68) 100%，最亮段正压在字形上，四色牌面 1.48~3.26
@@ -103,12 +95,10 @@ function pieceStyle(color) {
   return 'background-image: linear-gradient(180deg, ' + shade(color, 1.39) + ' 0%, ' + shade(color, 1.02) + ' 8%, ' + color + ' 14%, ' + color + ' 58%, ' + shade(color, 0.68) + ' 100%);' +
     ' box-shadow: 0 6rpx 0 ' + shade(color, 0.46) + ', 0 10rpx 18rpx rgba(0, 0, 0, 0.46), inset 0 3rpx 8rpx rgba(255, 255, 255, 0.42);';
 }
-
 function nextFrame(fn) {
   if (typeof wx !== 'undefined' && wx.nextTick) wx.nextTick(fn);
   else setTimeout(fn, 20);
 }
-
 Page({
   data: {
     scenePhoto: photoAssets.game || '',
@@ -175,7 +165,6 @@ Page({
     bitSlots: BIT_SLOTS,   // 破碎粒子方向/颜色类名
     brokenFx: ''           // 破冰/破箱浮出文字
   },
-
   board: null,          // utils/board.js 的盘面状态（唯一真相源）
   firstIndex: -1,
   matchedCount: 0,
@@ -207,7 +196,6 @@ Page({
   attempts: 0,
   matches: 0,
   misses: 0,
-
   onLoad: function (query) {
     // D51：支持两种入口
     //   ① 老 10 关线：?level=N         → data/levels.js 的盘面配置（行为完全不变）
@@ -224,7 +212,6 @@ Page({
     this.learnCfg = stageCfg;                 // 非空 = 学习模式
     this.runtimeTiles = stageCfg ? stageCfg.tiles : {};
     this.stepsBudget = stageCfg ? stageCfg.steps : 0;
-
     var level = stageCfg ? stageCfg.index : (parseInt(query.level, 10) || 1);
     var cfg = stageCfg ? stageCfg : levelsData[level - 1];
     if (!cfg) {
@@ -234,7 +221,6 @@ Page({
     var that = this;
     // 页面存活守卫：unload 之后到期的定时器不再回调，避免在已销毁的页面上 setData
     this._alive = true;
-
     // 预热分包：藏文赞美音频在分包，进游戏页即下载避免首播静默
     // 预热分包（藏文赞美音频在分包，进游戏页即下载避免首播静默）
     try { wx.loadSubpackage && wx.loadSubpackage({ name: 'praiseVoice' }); } catch (e) {}
@@ -245,10 +231,8 @@ Page({
     this.draining = false;
     this.finished = false;
     this.pendingFresh = {};
-
     // 盘面：初始铺满 cols×rows（无开局空洞，揭图从 0% 起步），其余牌进补充池
     this.board = board.createLevel(cfg, function (id, uid) { return that.makeTile(id, uid); }, Math.random);
-
     // 障碍物：确定性布点（冰霜 / 藏式木箱），保证每种元素至少留 2 张可点的牌。
     // 遮挡是**牌**的属性：牌下落时冰霜/木箱跟着走（视觉上像冰块滑落），
     // 因此 D23 的「总遮挡 ≤ 25%」「每种元素至少留 2 张可点」在任何时刻都成立。
@@ -260,25 +244,20 @@ Page({
       else if (o.kind === 'rope') t.rope = o.hp;
       else t.crate = o.hp;
     });
-
     // 揭图透出标记：本关所有格初始都给牌（满铺），所以开局没有一格透出
     this.freed = [];
     for (var i = 0; i < this.board.slots; i++) this.freed.push(false);
-
     wx.setNavigationBarTitle({
       title: this.learnCfg ? ('L' + this.learnCfg.lv + ' · 第 ' + this.learnCfg.stage + ' 课') : ('第 ' + level + ' 课')
     });
-
     // 正确率统计清零（本关重新计数）
     this.attempts = 0;
     this.matches = 0;
     this.misses = 0;
     this.matchedCount = 0;
-
     // 即时应激励（D34）：本关的连击/档位/抽取历史全部重新起步
     this.comboState = praise.initState();
     var praiseOff = storage.getPraiseOff();
-
     // 统一牌面尺寸：tile 由 8 列基准算出，各关只变列数与行数
     var gap = 8;
     var tileW = Math.floor((AVAIL_W - gap * (REF_COLS - 1)) / REF_COLS);
@@ -296,14 +275,11 @@ Page({
       boardH = geo.height;
       zoomable = grid.needsZoomPreview(this.learnCfg.lv);
     }
-
     // 位置步进（百分比）：translate 的百分比相对元素自身 → 不需要在 transform 里写 rpx
     this.stepX = (tileW + gap) / tileW * 100;
     this.stepY = (tileH + gap) / tileH * 100;
-
     // 秘境揭图（D31）：十关每关一张，程序绘制（scripts/make_reveals.py）
     var rv = revealsData[level - 1] || null;
-
     this.setData({
       level: level,
       cols: cfg.cols,
@@ -338,7 +314,6 @@ Page({
         }
       });
   },
-
   guideNext: function () {
     var s = this.data.guideStep + 1;
     if (s > GUIDE.length) {
@@ -348,7 +323,6 @@ Page({
       this.setData({ guideStep: s, guide: GUIDE[s - 1] });
     }
   },
-
   // 屏宽（px）：学习体系的格子尺寸按真实屏宽算（cell = 屏宽 × 0.9 / cols）
   screenW: function () {
     try {
@@ -356,7 +330,6 @@ Page({
     } catch (e) { /* 回退 */ }
     try { return wx.getSystemInfoSync().windowWidth || 375; } catch (e2) { return 375; }
   },
-
   // 造一张牌（含全部显示字段）。board.js 只负责把它在盘面上搬来搬去。
   makeTile: function (id, uid) {
     var el = elements[id] || this.runtimeTiles[id] || elements.letter_01;
@@ -407,7 +380,6 @@ Page({
     }
     return t;
   },
-
   // D51 长按放大预览：L11 以上的复合字在 3×3 格里偏小，长按即看大图；
   // 仅在 zoomable 级别启用（由 grid.needsZoomPreview 判定 ≥ L11），点任意处收起。
   onTileLongPress: function (e) {
@@ -419,11 +391,9 @@ Page({
       zoom: { show: true, tibetan: t.tibetan || '', color: t.color || '#C0392B' }
     });
   },
-
   closeZoom: function () {
     if (this.data.zoom && this.data.zoom.show) this.setData({ zoom: { show: false, tibetan: '', color: '' } });
   },
-
   // 把盘面投影成渲染列表。
   //   phase='in'     补充牌停在盘外上方 + 透明（首帧，让下一帧能过渡下来）
   //   phase='settle' 全部落到最终位置
@@ -466,7 +436,6 @@ Page({
     }
     this.setData({ pieces: out });
   },
-
   // 盘面变化后统一出图：有补充牌就分两帧（先盘外、再落下），否则一次到位
   showBoard: function (freshMap) {
     var that = this;
@@ -481,14 +450,12 @@ Page({
       that.applyPieces('settle');
     });
   },
-
   // 按 uid 反查当前格号（牌会下落换格，格号不能缓存）
   indexOfUid: function (uid) {
     var c = this.board ? this.board.cells : [];
     for (var i = 0; i < c.length; i++) if (c[i] && c[i].uid === uid) return i;
     return -1;
   },
-
   onTapTile: function (e) {
     if (this.data.locked) return;
     // D51：放大预览开着时，这一次点击只用来收起它（不误选牌）
@@ -496,14 +463,12 @@ Page({
     var idx = e.currentTarget.dataset.index;
     var tile = this.board.cells[idx];
     if (!tile || tile.state === 'removing') return;
-
     // 障碍物：冰霜/木箱罩住的牌不能直接点（不计入正确率、不惩罚）
     if (obstacles.isBlocked(tile)) {
       haptic('light');     // D60：撞障碍也要有手上回馈（原来只有 toast + 抖动）
       this.showBlockedTip(idx, tile);
       return;
     }
-
     // 再点已选中的那张牌 → 取消选中（按 uid 认牌，不按格号）
     if (this.firstUid !== null && this.firstUid === tile.uid) {
       this.firstUid = null;
@@ -512,33 +477,27 @@ Page({
       this.applyPieces('settle');
       return;
     }
-
     audio.tap();
     // D60：选中是**频率最高**的交互（每关 12~24 次），原来完全没有触觉 ——
     // 补上轻震，让「点到了」这件事在手上有确认感。
     haptic('light');
-
     if (tile.golden && !this.goldenSeen) {
       this.goldenSeen = true;
       tracker.track('first_special');
     }
-
     if (this.firstUid === null) {
       this.firstUid = tile.uid;
       tile.state = 'selected';
       this.applyPieces('settle');
       return;
     }
-
     var first = this.indexOfUid(this.firstUid);
     this.firstUid = null;
     var a = first >= 0 ? this.board.cells[first] : null;
     var b = tile;
     if (!a || !b) { this.applyPieces('settle'); return; }
-
     // 一次配对尝试（成功或失败都算）——正确率 = matches / attempts
     this.attempts++;
-
     // D51 学习体系：每次配对尝试消耗一步（成功失败都消耗，这就是「步数预算」的含义）。
     // 预算用完而盘面未空 → 本关结束走结算（不扣分；与既有的「正确率」口径分开统计）。
     if (this.learnCfg) {
@@ -553,7 +512,6 @@ Page({
       }
       this.setData(patch);
     }
-
     if (a.id === b.id) {
       this.matches++;
       this.handleMatch(first, second);
@@ -562,18 +520,15 @@ Page({
       this.handleMismatch(first, second);
     }
   },
-
   // 配对成功：消除立即生效、不锁盘面；首次发现弹完整文化卡，重复只出轻提示
   handleMatch: function (i, j) {
     var that = this;
     var a = this.board.cells[i];
     var b = this.board.cells[j];
     if (!a || !b) return;
-
     this.matchedCount++;
     this.collected[a.id] = true;
     tracker.track('first_match');
-
     // 即时应激励（D34）：连击判定 / 档位 / 文案抽取 / 频率控制全部交给 utils/praise.js。
     // 元素种类数取自盘面配额（第 1 关 2 种 → 第 10 关 12 种），因为连击窗口要随
     // 「找一对有多难」缩放：种类越多越难找，窗口就得越宽。
@@ -588,13 +543,10 @@ Page({
     };
     if (dec.level >= 2) tracker.track('first_combo');
     storage.recordCombo(dec.combo.combo);
-
     var gain = 10 * (a.golden ? 2 : 1) + 2 * (dec.combo.combo - 1);
-
     // 碎裂动画用：两张牌先转 removing + shatter，SHATTER_MS 后才真正从盘面移除
     a.state = 'removing'; a.shatter = true;
     b.state = 'removing'; b.shatter = true;
-
     // 障碍物结算：相邻冰霜解冻、相邻绳结松一股、相邻木箱扣耐久
     // ⚠️ resolveMatch 返回的是**副本**，必须把 changed 写回真实牌对象
     var settled = obstacles.resolveMatch(this.board.cells, [i, j], this.board.cols, this.board.rows);
@@ -607,19 +559,16 @@ Page({
       else t.crate = c.hp;
       if (c.broken) brokeLabels.push(c.kind === 'frost' ? '破冰！' : (c.kind === 'rope' ? '绳结解开！' : '木箱破开！'));
     }, this);
-
     this.setData({ score: this.data.score + gain });
     this.applyPieces('settle');
     if (settled.changed.length) {
       if (brokeLabels.length) this.showBreakFx(brokeLabels[0]);
       tracker.track('obstacle_broken');
     }
-
     // 轻微震动 + 档位音效（D34：一档一音，1 铜铃 / 2 手鼓 / 3 法号 / 4+ 欢呼）
     try {
       if (wx.vibrateShort) wx.vibrateShort({ type: 'light' });
     } catch (err) { /* 部分机型不支持，忽略 */ }
-
     audio.tier(dec.level);
     // D62：连击与视听耦合 —— 光晕强度随档位递增，让「连了五对」这件事**看得见**。
     // 原来连击只有「文字 + 音效」两条通道，玩家要读字才知道升档了；
@@ -633,23 +582,19 @@ Page({
         audio.speak('praise_' + Math.min(5, dec.level));
       }
     }
-
     var id = a.id;
     var firstTime = !storage.isCardSeen(id);
     if (firstTime) storage.markCardSeen(id);
-
     // 每次配对成功都朗读该元素发音（学习闭环：看得见 → 听得见）
     // 延后 300ms 让配对音效先响，避免人声与铃声糊在一起；连击时新发音打断旧发音
     if (this.voiceTimer) clearTimeout(this.voiceTimer);
     this.voiceTimer = setTimeout(function () {
       if (audio.pronounce(id)) tracker.track('first_pronunciation');
     }, 300);
-
     // 下落结算排队（连点不阻塞：玩家可以在下落动画期间继续配对）
     // ⚠️ 入队的是 uid：排队期间盘面会因前面的下落而变化，格号到结算时就过期了
     this.removeQueue.push([a.uid, b.uid]);
     this.drainQueue();
-
     setTimeout(function () {
       if (!that._alive) return;   // 页面已销毁：不再回调
       if (that.matchedCount === that.data.totalPairs) return;
@@ -659,7 +604,6 @@ Page({
       else if (REPEAT_TOAST) that.showToastTip(id);
     }, 320);
   },
-
   // 展示一条赞美（D34）：一次只显示一条，**新的替换旧的**（不排队、不叠加）。
   // 替换时靠 praiseAnt 在 A/B 之间翻转来重启动画——WXSS 里同一个 animation-name 不会重播，
   // 必须换成另一个同名不同键的动画（praisePopA / praisePopB），否则第二条看不出播放。
@@ -679,7 +623,6 @@ Page({
       that.setData({ comboAuraOn: false });
     }, 420);
   },
-
   showPraise: function (dec) {
     var that = this;
     this.setData({
@@ -698,7 +641,6 @@ Page({
       that.setData({ praiseOn: false });
     }, PRAISE_SHOW_MS);
   },
-
   // HUD 内的文案开关：只关「赞美文案」，不关音效与元素发音（发音属学习闭环）
   onTogglePraise: function () {
     var off = !this.data.praiseOff;
@@ -706,7 +648,6 @@ Page({
     storage.setPraiseOff(off);
     if (this.praiseTimer) clearTimeout(this.praiseTimer);
   },
-
   // HUD 内的背景音乐开关（PRD 3.3）：默认开，偏好落 progress.bgmOff（跨关/跨次保留）
   onToggleBgm: function () {
     var off = !this.data.bgmOff;
@@ -715,7 +656,6 @@ Page({
     if (off) audio.bgmStop();
     else audio.bgmStart();
   },
-
   // 背景音乐随页面生命周期启停：进入游戏页响、切走 / 关闭时停（不漏到别的页面）
   onShow: function () {
     if (!storage.getBgmOff()) audio.bgmStart();
@@ -738,7 +678,6 @@ Page({
       wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] });
     }
   },
-
   // ---- D86 挑战分享：A 通关 → 分享带参数 → B 点开进同一关 → 结算对比 ----
   // 为什么带参数：没有关系链（小程序拿不到好友列表），「挑战」只能靠**分享链路**传递。
   //   A 用了几步走完，写在卡片参数里；B 打开后进同一关，结算时对比。
@@ -750,14 +689,12 @@ Page({
       imageUrl: '/images/logo-144.png'
     };
   },
-
   onShareTimeline: function () {
     var q = this.shareQuery();
     // ⚠️ 朋友圈打开进入「单页模式」（场景值 1154）：**无登录态、不能跳转、支付被禁用**。
     //    所以朋友圈卡片的作用是「让人看到并点『前往小程序』」，真正的游戏/打赏都在小程序里完成。
     return { title: q.title, query: q.query, imageUrl: '/images/logo-144.png' };
   },
-
   shareQuery: function () {
     var d = this.data || {};
     var lv = (this.learnCfg && this.learnCfg.lv) || 0;
@@ -779,11 +716,9 @@ Page({
       : ('藏字方块 · ' + where + '，认藏文从方块开始');
     return { title: title, query: parts.join('&') };
   },
-
   onHide: function () {
     audio.bgmStop();
   },
-
   // 逐对结算：碎裂动画 → 下落 + 补充 → 出图 → 判断通关
   drainQueue: function () {
     var that = this;
@@ -811,7 +746,6 @@ Page({
       // 揭图透出：被消除的格 + 收缩后仍为空的格（牌堆退潮露出来的位置）；只增不减
       pair.forEach(function (i) { that.freed[i] = true; });
       that.board.cells.forEach(function (t, i) { if (!t) that.freed[i] = true; });
-
       that.showBoard(fresh);
       that.setData({
         matchedPairs: that.matchedCount,
@@ -823,14 +757,12 @@ Page({
       that.drainQueue();
     }, SHATTER_MS);
   },
-
   freedPct: function () {
     if (!this.board) return 0;
     var n = 0;
     for (var i = 0; i < this.freed.length; i++) if (this.freed[i]) n++;
     return Math.round(n * 100 / this.board.slots);
   },
-
   // 通关：清空盘面 → 揭图整幅揭晓
   finishLevel: function () {
     // D96：记学习线进度
@@ -863,7 +795,6 @@ Page({
       });
     }, 1500);
   },
-
   // ---- 通关情绪反馈（PRD 4.2）：金色莲花 + 风马旗碎片粒子 + 雪山金光 + 震动 ----
   // 纯 CSS 动画 + wx.vibrateShort，零依赖；粒子由 JS 生成随机参数后交 WXSS 播放
   celebrate: function () {
@@ -892,7 +823,6 @@ Page({
     }, 1700);
     tracker.track('first_celebration');
   },
-
   // 配对失败：抖动 + 轻声提示，无惩罚（连击清零）——唯一需要短暂锁盘面的场景
   handleMismatch: function (i, j) {
     var that = this;
@@ -916,7 +846,6 @@ Page({
       that.applyPieces('settle');
     }, 450);
   },
-
   // ---------- 文化卡（首次发现：非阻塞 + 自动收起） ----------
   showCard: function (id) {
     var that = this;
@@ -943,19 +872,16 @@ Page({
       that.setData({ showCard: false });
     }, CARD_AUTO_MS);
   },
-
   // 用户开始操作文化卡（阅读 / 准备点「点击播放藏文读音」）：暂停自动收起——
   // 2026-10-08 用户反馈：卡片 5.2s 自动收起，手指还没点到按钮就消失，观感像「点不了」
   holdCard: function () {
     if (this.cardTimer) { clearTimeout(this.cardTimer); this.cardTimer = null; }
   },
-
   dismissCard: function () {
     if (this.cardTimer) { clearTimeout(this.cardTimer); this.cardTimer = null; }
     if (this.barTimer) { clearTimeout(this.barTimer); this.barTimer = null; }
     this.setData({ showCard: false, cardBarRun: false });
   },
-
   // ---------- 重复匹配轻提示（非阻塞） ----------
   showToastTip: function (id) {
     var that = this;
@@ -974,12 +900,10 @@ Page({
       that.setData({ toastShow: false });
     }, TOAST_MS);
   },
-
   hideToast: function () {
     if (this.toastTimer) { clearTimeout(this.toastTimer); this.toastTimer = null; }
     if (this.data.toastShow) this.setData({ toastShow: false });
   },
-
   // ---------- 障碍物提示（冰霜/木箱，非阻塞，不计入正确率） ----------
   // ⚠️ 复位要认「牌对象」而不是「格号」：420ms 内牌可能已经下落换格，
   //    按格号复位会把状态写到换下来的另一张牌上（原牌会一直抖）。
@@ -1012,7 +936,6 @@ Page({
       that.setData({ toastShow: false });
     }, TOAST_MS);
   },
-
   // 破冰/破箱浮字（复用浮字的观感，独立节点避免互相打断）
   showBreakFx: function (label) {
     var that = this;
@@ -1020,7 +943,6 @@ Page({
     if (this.breakTimer) clearTimeout(this.breakTimer);
     this.breakTimer = setTimeout(function () { that.setData({ brokenFx: '' }); }, 1100);
   },
-
   // 文化卡喇叭：播放该元素的藏文发音（PRD 4.3「点击播放」）
   // 2026-10-09 用户反馈「根本就没有办法播放」——根因是**一部分元素根本没有音频文件**，
   // 而按钮一如既往写着「点击播放藏文读音」，点了当然是死寂。
@@ -1039,14 +961,11 @@ Page({
       if (that._alive) that.setData({ speakMiss: true });
     }, 20);
   },
-
   // 本关消掉过的元素（结算页据此展示本课收集的文化卡）
   collectedIds: function () {
     return Object.keys(this.collected);
   },
-
   noop: function () {},
-
   onUnload: function () {
     audio.bgmStop();
     audio.stopVoice();   // 元素发音 / 扎西德勒语音不追着用户跑到别的页面

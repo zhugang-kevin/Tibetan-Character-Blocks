@@ -8,7 +8,6 @@
 // 放置规则：位置确定性（便于测试），不超过总格数 20%，且任意元素至少保留
 //   2 张无遮挡的牌，避免出现"无解"盘面。
 // 纯函数，不依赖 wx / DOM，页面与体验版镜像共用同一套规则。
-
 function neighbors(index, cols, rows) {
   var row = Math.floor(index / cols);
   var col = index % cols;
@@ -19,7 +18,6 @@ function neighbors(index, cols, rows) {
   if (row < rows - 1) out.push(index + cols);
   return out;
 }
-
 // 把 n 个遮挡均匀铺在 total 格上（确定性：无随机，便于断言）
 function spread(total, n, offset) {
   var out = [];
@@ -30,7 +28,6 @@ function spread(total, n, offset) {
   }
   return out;
 }
-
 // 依据关卡配置生成遮挡计划：[{ index, kind, hp }]
 // cfg.obstacles = { frost: 2, rope: 2, ropeHp: 2, crate: 2, crateHp: 2 }
 function planOverlays(cfg, tileIds) {
@@ -38,7 +35,6 @@ function planOverlays(cfg, tileIds) {
   var total = cfg.cols * cfg.rows;
   var plan = [];
   var used = {};
-
   // 每种元素允许被遮挡的上限：总数 - 2（至少留 2 张可点）
   var quota = {};
   (tileIds || []).forEach(function (id) {
@@ -48,7 +44,6 @@ function planOverlays(cfg, tileIds) {
   Object.keys(quota).forEach(function (id) {
     quota[id] = Math.max(0, quota[id] - 2);
   });
-
   var budget = Math.floor(total * 0.25); // 总遮挡上限 25%（保证至少 3/4 的牌可直接操作）
   function take(count, kind, hpFirst) {
     // 三种障碍各用不同 spread 偏移：确定性布点且互不错开成同一批格位
@@ -73,13 +68,11 @@ function planOverlays(cfg, tileIds) {
     // 从加长候选里补足；已足额的关卡走的还是原候选，布点不变。
     if (placed < count) place(spread(total, Math.min(total, count * 4 + 2), off));
   }
-
   if (cfgObs.frost) take(cfgObs.frost, 'frost', 0);
   if (cfgObs.rope) take(cfgObs.rope, 'rope', cfgObs.ropeHp || 2);
   if (cfgObs.crate) take(cfgObs.crate, 'crate', cfgObs.crateHp || 1);
   return plan;
 }
-
 // 牌是否被遮挡（不可直接点选）
 function isBlocked(tile) {
   if (!tile) return false;
@@ -87,7 +80,6 @@ function isBlocked(tile) {
   if (tile.rope > 0) return true;
   return !!(tile.crate && tile.crate > 0);
 }
-
 // 一次成功消除后结算遮挡：相邻冰霜破冰、相邻绳结松一股、相邻木箱扣耐久
 // 返回 { tiles, changed:[{index,kind,hp,broken}] }（tiles 为新状态副本）
 function resolveMatch(tiles, matchedIndexes, cols, rows) {
@@ -120,7 +112,6 @@ function resolveMatch(tiles, matchedIndexes, cols, rows) {
   });
   return { tiles: next, changed: changed };
 }
-
 module.exports = {
   neighbors: neighbors,
   planOverlays: planOverlays,

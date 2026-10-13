@@ -22,26 +22,21 @@
 // ⚠️ WINDOW_BASE / WINDOW_STEP 是**唯一的调参旋钮**：系数按体感取的初值，
 //    上线后应当用真实点按间隔校准（敏感性表见 D34）。
 var data = require('../data/praise');
-
 var WINDOW_BASE = 600;
 var WINDOW_STEP = 160;
 var WINDOW_MIN = 900;
 var WINDOW_MAX = 2600;
-
 // 两条赞美之间的最小展示间隔（与浮字动画时长对齐，避免文字互相覆盖）
 var PRAISE_GAP_MS = 1100;
 // 等级 1（孤立消除）的展示概率——它是最高频档，全量展示会退化成「每次都弹」
 var TIER1_PROB = 0.3;
-
 // 档位 → 音效名（新音手鼓 / 法号 / 欢呼由 scripts/make_praise_audio.py 程序合成）
 // 同一档内不换音：级别 5 与 4 共用「欢呼」，只是不再往上升。
 var TIER_SOUND = ['', 'match', 'drum', 'horn', 'cheer', 'cheer'];
-
 function windowMsOf(types) {
   var n = Math.max(0, Number(types) || 0);
   return Math.max(WINDOW_MIN, Math.min(WINDOW_MAX, WINDOW_BASE + WINDOW_STEP * n));
 }
-
 // 时间窗口连击：距上次成功消除 ≤ 窗口才累加，否则从 1 重新开始。
 // prev = { combo, at }；at 为 null 表示「本局还没有过成功消除」。
 function nextCombo(prev, now, windowMs) {
@@ -51,12 +46,10 @@ function nextCombo(prev, now, windowMs) {
   var chained = at != null && (now - at) >= 0 && (now - at) <= win;
   return { combo: chained ? (p.combo || 0) + 1 : 1, at: now };
 }
-
 // 错配 / 开局：链条断掉
 function reset() {
   return { combo: 0, at: null };
 }
-
 // 档位 1..5（≥5 全部归到最高档）
 function tierOf(combo) {
   var n = Number(combo) || 0;
@@ -64,7 +57,6 @@ function tierOf(combo) {
   if (n >= 5) return 5;
   return n;
 }
-
 function tierAt(level) {
   var lv = tierOf(level);
   for (var i = 0; i < data.tiers.length; i++) {
@@ -72,11 +64,9 @@ function tierAt(level) {
   }
   return data.tiers[data.tiers.length - 1];
 }
-
 function tierCount() {
   return data.tiers.length;
 }
-
 // 抽取：同一条文案不连续出现两次（在同一档内保证）。
 // rand 可注入，便于门禁做确定性断言。
 function pickIndex(level, lastIndex, rand) {
@@ -88,14 +78,12 @@ function pickIndex(level, lastIndex, rand) {
   if (i === lastIndex) i = (i + 1) % n;
   return i;
 }
-
 function pick(level, lastIndex, rand) {
   var lv = tierOf(level);
   var i = pickIndex(lv, lastIndex, rand);
   var e = tierAt(lv).texts[i];
   return { level: lv, index: i, zh: e.zh, bo: e.bo };
 }
-
 // 频率控制：这一条要不要展示？
 //   规则 ①「档位跃迁」强制执行（等级 2 起）——阶梯往上跳是稀有事件，值得打断；
 //   规则 ② 其余情况先过最小间隔（距上次展示 < PRAISE_GAP_MS 就丢弃）；
@@ -109,16 +97,13 @@ function shouldShow(level, prevTier, sinceMs, rand) {
   if (lv === 1) return (rand || Math.random)() < TIER1_PROB;
   return true;
 }
-
 // 等级 3 起显示藏文大字；等级 4 起加档位跃迁的强调视觉
 function showsTibetan(level) { return tierOf(level) >= 3; }
 function showsBurst(level) { return tierOf(level) >= 4; }
 function audioFor(level) { return TIER_SOUND[tierOf(level)] || 'match'; }
-
 function initState() {
   return { combo: reset(), prevTier: 0, lastShownAt: null, lastIndex: {}, maxCombo: 0 };
 }
-
 // 一站式决策：喂一次「成功消除」，返回新的状态 + 该不该展示 + 展示什么。
 // 两端（小程序页 / H5 镜像）共用这一个函数，避免判定逻辑漂移。
 function onMatch(state, now, types, rand) {
@@ -127,7 +112,6 @@ function onMatch(state, now, types, rand) {
   var level = tierOf(comboState.combo);
   var since = s.lastShownAt == null ? null : now - s.lastShownAt;
   var show = shouldShow(level, s.prevTier, since, rand);
-
   var out = {
     combo: comboState,
     level: level,
@@ -152,7 +136,6 @@ function onMatch(state, now, types, rand) {
   }
   return out;
 }
-
 // 错配 / 开局重置：连击清零、档位归零（下一次消除从等级 1 重新起步）
 function onMiss(state) {
   var s = state || initState();
@@ -164,7 +147,6 @@ function onMiss(state) {
     maxCombo: s.maxCombo || 0
   };
 }
-
 module.exports = {
   WINDOW_BASE: WINDOW_BASE,
   WINDOW_STEP: WINDOW_STEP,

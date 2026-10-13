@@ -7,7 +7,6 @@
 var elements = require('../data/elements');
 var iconArt = null;
 try { iconArt = require('../data/icon-assets'); } catch (e) { iconArt = null; }
-
 function roundRectPath(ctx, x, y, w, h, r) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -17,7 +16,6 @@ function roundRectPath(ctx, x, y, w, h, r) {
   ctx.arcTo(x, y, x + w, y, r);
   ctx.closePath();
 }
-
 // 吉祥结：外层菱形 + 内层方框 + 两道交叉弧线
 function drawKnot(ctx, s) {
   var c = s / 2;
@@ -28,27 +26,22 @@ function drawKnot(ctx, s) {
   ctx.lineTo(s * 0.12, c);
   ctx.closePath();
   ctx.stroke();
-
   roundRectPath(ctx, c - s * 0.19, c - s * 0.19, s * 0.38, s * 0.38, s * 0.04);
   ctx.stroke();
-
   ctx.beginPath();
   ctx.moveTo(s * 0.12, c);
   ctx.bezierCurveTo(c, c - s * 0.32, c, c + s * 0.32, s * 0.88, c);
   ctx.stroke();
-
   ctx.beginPath();
   ctx.moveTo(c, s * 0.12);
   ctx.bezierCurveTo(c - s * 0.32, c, c + s * 0.32, c, c, s * 0.88);
   ctx.stroke();
 }
-
 // 青稞（icon_02）：穗轴 + 五对短粗鳞状麦粒（鱼骨状排列）+ 顶部三根长芒 + 基部两片短叶
 // D25：原为「莲花」，2026-10-06 拍板换世俗题材；题材与 scripts/make_reveals.py#barley 同源。
 function drawBarley(ctx, s) {
   var cx = s * 0.5;
   var lw0 = ctx.lineWidth;
-
   // 芒（细线，先画，压在麦粒之下）
   ctx.lineWidth = lw0 * 0.45;
   var awns = [-0.17, 0, 0.17];
@@ -59,13 +52,11 @@ function drawBarley(ctx, s) {
     ctx.stroke();
   }
   ctx.lineWidth = lw0;
-
   // 穗轴
   ctx.beginPath();
   ctx.moveTo(cx, s * 0.88);
   ctx.lineTo(cx, s * 0.19);
   ctx.stroke();
-
   // 麦粒：五对短粗鳞片，越靠上越短，呈鱼骨状贴轴
   for (var i = 0; i < 5; i++) {
     var y = s * (0.64 - i * 0.095);
@@ -78,7 +69,6 @@ function drawBarley(ctx, s) {
       ctx.stroke();
     }
   }
-
   // 基部两片短叶（勿长过麦粒，避免整株读成蕨叶）
   ctx.beginPath();
   ctx.moveTo(cx, s * 0.84);
@@ -89,7 +79,6 @@ function drawBarley(ctx, s) {
   ctx.quadraticCurveTo(cx + s * 0.22, s * 0.70, cx + s * 0.26, s * 0.56);
   ctx.stroke();
 }
-
 // 雪山：双峰轮廓 + 雪线折线
 function drawMountain(ctx, s) {
   ctx.beginPath();
@@ -100,7 +89,6 @@ function drawMountain(ctx, s) {
   ctx.lineTo(s * 0.92, s * 0.82);
   ctx.closePath();
   ctx.stroke();
-
   // 右峰雪线
   ctx.beginPath();
   ctx.moveTo(s * 0.61, s * 0.33);
@@ -108,7 +96,6 @@ function drawMountain(ctx, s) {
   ctx.lineTo(s * 0.65, s * 0.42);
   ctx.lineTo(s * 0.61, s * 0.47);
   ctx.stroke();
-
   // 左峰雪线
   ctx.beginPath();
   ctx.moveTo(s * 0.29, s * 0.38);
@@ -116,7 +103,6 @@ function drawMountain(ctx, s) {
   ctx.lineTo(s * 0.33, s * 0.46);
   ctx.stroke();
 }
-
 // 牦牛（icon_04）：侧影 —— 高耸的肩峰 + 左探下垂的头 + 一对大弯角 + 蓬松腹毛 + 四腿 + 尾
 // D25：原为「经幡」，2026-10-06 拍板换世俗题材；题材与 scripts/make_reveals.py#yak 同源。
 function drawYak(ctx, s) {
@@ -130,7 +116,6 @@ function drawYak(ctx, s) {
   ctx.quadraticCurveTo(s * 0.28, s * 0.57, s * 0.32, s * 0.48);
   ctx.closePath();
   ctx.stroke();
-
   // 头（向左下探出，吻部下沉）
   ctx.beginPath();
   ctx.moveTo(s * 0.33, s * 0.46);
@@ -138,7 +123,6 @@ function drawYak(ctx, s) {
   ctx.quadraticCurveTo(s * 0.12, s * 0.66, s * 0.21, s * 0.68);
   ctx.quadraticCurveTo(s * 0.31, s * 0.68, s * 0.33, s * 0.58);
   ctx.stroke();
-
   // 一对大弯角（先外撇再上挑，是牦牛的识别特征）
   ctx.beginPath();
   ctx.moveTo(s * 0.17, s * 0.49);
@@ -148,7 +132,6 @@ function drawYak(ctx, s) {
   ctx.moveTo(s * 0.27, s * 0.46);
   ctx.quadraticCurveTo(s * 0.21, s * 0.29, s * 0.38, s * 0.22);
   ctx.stroke();
-
   // 蓬松腹毛：下垂锯齿（悬在腿前，不与腿线交叉）
   ctx.beginPath();
   ctx.moveTo(s * 0.36, s * 0.62);
@@ -157,7 +140,6 @@ function drawYak(ctx, s) {
     ctx.quadraticCurveTo(x - s * 0.05, s * 0.71, x, s * 0.62);
   }
   ctx.stroke();
-
   // 四腿
   var legs = [0.41, 0.51, 0.75, 0.85];
   for (var j = 0; j < legs.length; j++) {
@@ -166,26 +148,22 @@ function drawYak(ctx, s) {
     ctx.lineTo(s * legs[j], s * 0.87);
     ctx.stroke();
   }
-
   // 尾（垂在体侧）
   ctx.beginPath();
   ctx.moveTo(s * 0.89, s * 0.46);
   ctx.quadraticCurveTo(s * 0.97, s * 0.55, s * 0.91, s * 0.69);
   ctx.stroke();
-
   // 眼
   ctx.beginPath();
   ctx.arc(s * 0.24, s * 0.57, s * 0.014, 0, Math.PI * 2);
   ctx.fill();
 }
-
 var DRAWERS = {
   knot: drawKnot,
   barley: drawBarley,
   mountain: drawMountain,
   yak: drawYak
 };
-
 // 三种墨色变体（对比度 D32）：
 //   id        → el.color 深墨：浅底卡片 / 奖章 / 徽章（icon_01 吉祥结 #C0392B on 米卡 = 5.04）
 //   id|lite   → 奶白 #FFF6DC：普通牌面（牌面本色平色段，#FFF6DC on #C0392B = 5.04）
@@ -194,7 +172,6 @@ var DRAWERS = {
 var TILE_LITE_INK = '#FFF6DC';
 var TILE_GOLD_INK = '#6B4406';
 var TILE_INKS = [['', null], ['|lite', TILE_LITE_INK], ['|gold', TILE_GOLD_INK]];
-
 // 批量渲染某关需要的图标，返回 Promise<{iconId: tempFilePath}>（含 |lite / |gold 变体）
 function renderIcons(elementIds) {
   return new Promise(function (resolve) {
@@ -269,5 +246,4 @@ function renderIcons(elementIds) {
     next();
   });
 }
-
 module.exports = { renderIcons: renderIcons };

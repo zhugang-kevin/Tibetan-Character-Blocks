@@ -8,10 +8,8 @@ var tracker = require('../../utils/tracker');
 var tibText = require('../../utils/tibetan-text');
 // 用户隐私保护指引（utils/privacy.js）：保存相册是受保护接口，必须先过授权关卡
 var privacy = require('../../utils/privacy');
-
 // 证书顶部的藏文装饰语：བོད་ཡིག་སློབ་སྦྱོང（藏文学习）
 var CERT_TIB = 'བོད་ཡིག་སློབ་སྦྱོང་';
-
 Page({
   data: {
     stage: 1,
@@ -25,12 +23,10 @@ Page({
     generating: false,
     imagePath: ''
   },
-
   // D101：卸载后关掉存活标记，让在飞的定时器回调退出
   onUnload: function () {
     this._alive = false;
   },
-
   onLoad: function (query) {
     this._alive = true;   // D101：供定时器回调判断页面是否还在
     var stage = parseInt(query.stage, 10) || 1;
@@ -43,12 +39,10 @@ Page({
     this.refresh();
     tracker.track('cert_view');
   },
-
   onShow: function () {
     this.showShare();
     this.refresh();
   },
-
   refresh: function () {
     var stage = this.data.stage;
     var info = certificate.stageByNo(stage);
@@ -66,7 +60,6 @@ Page({
       tiers: [certificate.TIERS.gold, certificate.TIERS.silver, certificate.TIERS.bronze]
     });
   },
-
   // ---------- 持有人（与祝福卡昵称共用） ----------
   openNameModal: function () {
     var cert = this.data.cert;
@@ -75,15 +68,12 @@ Page({
       nameInput: (cert && cert.holder !== '藏文学习者') ? cert.holder : storage.getHolderName()
     });
   },
-
   closeNameModal: function () {
     this.setData({ showNameModal: false });
   },
-
   onNameInput: function (e) {
     this.setData({ nameInput: e.detail.value });
   },
-
   confirmName: function () {
     var name = (this.data.nameInput || '').trim().slice(0, 10) || '藏文学习者';
     storage.setHolderName(name);
@@ -95,9 +85,7 @@ Page({
     this.setData({ showNameModal: false, imagePath: '' });
     this.refresh();
   },
-
   noop: function () {},
-
   // ---------- 生成证书图片（Canvas 2D 导出 PNG） ----------
   generate: function () {
     var cert = this.data.cert;
@@ -108,7 +96,6 @@ Page({
     // drawCert 内部异步加载 Logo；此处仅切换按钮态
     setTimeout(function () { if (that._alive) that.setData({ generating: false }); }, 100);
   },
-
   drawCert: function (cert) {
     var that = this;
     var W = 750, H = 1120;
@@ -120,9 +107,7 @@ Page({
       wx.showToast({ title: '当前微信版本不支持生成图片', icon: 'none' });
       return;
     }
-
     var imgs = { logo: null };
-
     var finish = function () {
       wx.canvasToTempFilePath({
         canvas: canvas,
@@ -132,14 +117,11 @@ Page({
         fail: function () { wx.showToast({ title: '生成失败，请再试一次', icon: 'none' }); }
       });
     };
-
     var paint = function () {
       var accent = cert.tierColor || '#C0392B';
-
       // 底：宣纸米色
       ctx.fillStyle = '#FDF6E3';
       ctx.fillRect(0, 0, W, H);
-
       // 双描边（外粗内细）
       ctx.strokeStyle = accent;
       ctx.lineWidth = 6;
@@ -149,7 +131,6 @@ Page({
       ctx.lineWidth = 2;
       roundRect(ctx, 46, 46, W - 92, H - 92, 20);
       ctx.stroke();
-
       // 四角装饰
       ctx.fillStyle = accent;
       ctx.font = '28px sans-serif';
@@ -161,18 +142,15 @@ Page({
       ctx.fillText('✦', 66, H - 70);
       ctx.textAlign = 'right';
       ctx.fillText('✦', W - 66, H - 70);
-
       // 藏文装饰语（tsheg 断行，shad 类符号不落行首）
       ctx.textAlign = 'center';
       ctx.fillStyle = '#C0392B';
       ctx.font = '500 54px "Noto Serif Tibetan", "Microsoft Himalaya", serif';
       tibText.drawTibetanWrapped(ctx, CERT_TIB, W / 2, 148, W - 260, 68);
-
       // 主标题
       ctx.fillStyle = '#2C3E50';
       ctx.font = '700 46px "PingFang SC","Microsoft YaHei",sans-serif';
       ctx.fillText('藏文成长证书', W / 2, 268);
-
       // 分隔线
       ctx.strokeStyle = 'rgba(183, 149, 11, 0.6)';
       ctx.lineWidth = 2;
@@ -180,17 +158,14 @@ Page({
       ctx.moveTo(W / 2 - 150, 300);
       ctx.lineTo(W / 2 + 150, 300);
       ctx.stroke();
-
       // 阶段
       ctx.fillStyle = '#6E6759';
       ctx.font = '400 28px "PingFang SC","Microsoft YaHei",sans-serif';
       ctx.fillText('第 ' + cert.stage + ' 阶段', W / 2, 352);
-
       // 阶段名
       ctx.fillStyle = accent;
       ctx.font = '700 76px "PingFang SC","Microsoft YaHei",sans-serif';
       ctx.fillText(cert.stageName, W / 2, 442);
-
       // 等级徽章
       var bw = 250, bh = 60, bx = (W - bw) / 2, by = 470;
       ctx.fillStyle = accent;
@@ -199,7 +174,6 @@ Page({
       ctx.fillStyle = '#FFFFFF';
       ctx.font = '700 30px "PingFang SC","Microsoft YaHei",sans-serif';
       ctx.fillText(cert.tierLabel, W / 2, by + 40);
-
       // 成就行
       ctx.fillStyle = '#2C3E50';
       ctx.font = '500 30px "PingFang SC","Microsoft YaHei",sans-serif';
@@ -207,7 +181,6 @@ Page({
       for (var i = 0; i < lines.length; i++) {
         ctx.fillText('✦  ' + lines[i], W / 2, 606 + i * 54);
       }
-
       // 证书信息（左标签 / 右值）
       var metaY = 806;
       var rows = [
@@ -232,7 +205,6 @@ Page({
         ctx.lineTo(W - 120, y + 14);
         ctx.stroke();
       }
-
       // 底部品牌：Logo + 小程序码占位
       if (imgs.logo) ctx.drawImage(imgs.logo, 96, H - 186, 96, 96);
       var cs = 116, cx = W - 212, cy = H - 196;
@@ -247,14 +219,11 @@ Page({
       ctx.font = '22px "PingFang SC","Microsoft YaHei",sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText('小程序码', cx + cs / 2, cy + cs / 2 + 8);
-
       ctx.fillStyle = '#8A6A12';
       ctx.font = '700 28px "PingFang SC","Microsoft YaHei",sans-serif';
       ctx.fillText('认藏文，从方块开始', W / 2, H - 62);
-
       finish();
     };
-
     var loadImg = function (src) {
       return new Promise(function (resolve) {
         try {
@@ -265,13 +234,11 @@ Page({
         } catch (e) { resolve(null); }
       });
     };
-
     loadImg('/images/logo-80.png').then(function (img) {
       imgs.logo = img;
       paint();
     });
   },
-
   // 保存到相册（受保护接口：先走 utils/privacy.js 的统一前置，同意后立即继续保存）
   saveToAlbum: function () {
     var that = this;
@@ -288,20 +255,16 @@ Page({
       });
     });
   },
-
   previewShare: function () {
     if (!this.data.imagePath) return;
     wx.previewImage({ urls: [this.data.imagePath] });
   },
-
   goPassport: function () {
     wx.navigateTo({ url: '/pages/passport/passport' });
   },
-
   goHome: function () {
     wx.redirectTo({ url: '/pages/index/index' });
   },
-
   onShareAppMessage: function () {
     var cert = this.data.cert;
     return {
@@ -312,7 +275,6 @@ Page({
       imageUrl: this.data.imagePath || undefined
     };
   },
-
   // D86：分享到朋友圈 —— 官方要求 onShareAppMessage 与 onShareTimeline **同时实现**，
   //   缺任一个朋友圈分享都不可用。注意朋友圈打开是「单页模式」（场景值 1154）：
   //   无登录态、不能跳转、**禁用支付** —— 卡片只负责让人看到，再点「前往小程序」回来。
@@ -323,13 +285,11 @@ Page({
       imageUrl: '/images/logo-144.png'
     };
   },
-
   // D86：开启分享菜单（含朋友圈入口）—— 不调用则右上角「···」里没有分享按钮
   showShare: function () {
     if (wx.showShareMenu) wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] });
   }
 });
-
 function roundRect(ctx, x, y, w, h, r) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);

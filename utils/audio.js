@@ -12,7 +12,6 @@
 //     体积守卫会红，但玩家不会遭遇静音。
 var SFX_MP3 = { match: 1, mismatch: 1, win: 1, drum: 1, horn: 1, cheer: 1 };
 var cache = {};
-
 function get(name) {
   if (!cache[name]) {
     var ctx = wx.createInnerAudioContext();
@@ -30,7 +29,6 @@ function get(name) {
   }
   return cache[name];
 }
-
 function play(name) {
   try {
     var ctx = get(name);
@@ -40,7 +38,6 @@ function play(name) {
     // 音效失败不影响游戏
   }
 }
-
 // ---- 藏文发音（Gate 1 P0：每次配对成功都朗读该元素）----
 // 发音音频放置于 audio/voice/{元素id}.mp3 或 .wav（双扩展名，mp3 优先；letter_01..30 / icon_01..04；
 // 由 scripts/gen_voice.py 的 TTS 预生成或真人录音，规格 16kHz 单声道 16bit WAV）。
@@ -51,7 +48,6 @@ function play(name) {
 // 新发音会打断上一条，而不是叠在一起变成噪音。
 var voiceCtx = {};
 var activeVoice = null;
-
 // ---------------------------------------------------------------- 有没有这条发音？
 // 2026-10-09 用户反馈「《🔊 点击播放藏文读音》根本就没有办法播放」：
 // 一部分是这个原因——有些元素的音频**压根不存在**，而 `pronounce` 过去一律返回 true，
@@ -61,11 +57,9 @@ var activeVoice = null;
 var VOICE_INDEX = require('../data/voices.js');
 var VOICE_SET = {};
 VOICE_INDEX.ids.concat(VOICE_INDEX.extras).forEach(function (k) { VOICE_SET[k] = 1; });
-
 function hasVoice(id) {
   return !!VOICE_SET[id];
 }
-
 function pronounce(id) {
   // 没有音源就不要假装播了：直接返回 false，让调用方给出诚实的反馈。
   // （过去这里会照常建 ctx 并 return true ——  misses 要等异步 onError 才知道，UI 无从判断。）
@@ -100,13 +94,11 @@ function pronounce(id) {
     return false;
   }
 }
-
 // 复用单声部发音通道播放指定语音文件（audio/voice/{name}.wav）
 // 新发音会打断旧发音；文件缺失时静默回退
 function speak(name) {
   return pronounce(name);
 }
-
 var PRAISE_VOICE_ROOT = '/package-praise/audio/voice/', praiseVoiceCtx = {};
 function speakPraiseBo(level, idx) {
   var lv = Number(level) || 0, ix = Number(idx) || 0;
@@ -124,7 +116,6 @@ function speakPraiseBo(level, idx) {
     return true;
   } catch (e) { return false; }
 }
-
 // 停止当前发音（离开页面 / 切后台时调用）。
 // 为什么必须有：语音通道是模块级单例（activeVoice），元素发音约 0.5-1.5 秒、
 // 结算祝福 2-3 秒——页面走了而语音还在响，是会把「离开」变成「追着播」的真实缺陷。
@@ -135,7 +126,6 @@ function stopVoice() {
     return true;
   } catch (e) { return false; }
 }
-
 // ---- 档位音效：一档一音 ----
 // 等级 1 复用既有的铜铃（match）；等级 2/3/4+ 依次是手鼓 / 法号 / 欢呼，
 // 三条新音由 scripts/make_praise_audio.py 程序合成（与既有 4 条同规格、同响度口径，
@@ -144,12 +134,10 @@ function stopVoice() {
 // 「同一档内不换音」：等级 4 与 5 共用欢呼，不再往上升——
 // 频次最高的档位如果每次都换音源，会变成噪音。档位由 utils/praise.js 判定。
 var TIER_SOUND = ['', 'match', 'drum', 'horn', 'cheer', 'cheer'];
-
 function tier(level) {
   var lv = Math.max(1, Math.min(TIER_SOUND.length - 1, Number(level) || 1));
   play(TIER_SOUND[lv]);
 }
-
 // ---- 背景音乐（PRD 3.3）----
 // audio/bgm.mp3：高原晨雾 v2（原 WAV 转 MP3，省包体）（慢速 · 软起音 · 长衰减，2026-10-07 用户反馈「太狂躁」后重做），
 // 两小节无缝循环，由 scripts/make_bgm.py 程序合成（零版权）。与音效**分开建 ctx**：
@@ -157,7 +145,6 @@ function tier(level) {
 // 偏好位 bgmOff 存 progress（与 praiseOff 同一条三处同步链路）。
 // 体验版用 Web Audio 按同一份音符表复现（WAV 资产只在小程序包内）。
 var BGM_VOLUME = 0.28;
-
 // ---- 语音期间压低 BGM（ducking）：不加任何字节的清晰度手段 ----
 // 为什么需要（D61，用户「中文播放有时候声音不是很清晰」）：
 //   元素发音 / 激励语音走的是**另一条** InnerAudioContext，和 BGM 同时发声。
@@ -167,7 +154,6 @@ var BGM_VOLUME = 0.28;
 //   这是录音棚里的标准做法（ducking），代价为零字节。
 var BGM_DUCK = 0.10;        // 语音期间的目标音量
 var duckTimer = null;
-
 function duckBgm(ms) {
   try {
     if (bgmCtx) bgmCtx.volume = BGM_DUCK;
@@ -180,7 +166,6 @@ function duckBgm(ms) {
   } catch (e) { /* 静默 */ }
 }
 var bgmCtx = null;
-
 function bgmContext() {
   if (!bgmCtx) {
     bgmCtx = wx.createInnerAudioContext();
@@ -192,7 +177,6 @@ function bgmContext() {
   }
   return bgmCtx;
 }
-
 // 开始 / 恢复背景音乐。已开关偏好时调用方应先判断，本函数只管「响」。
 function bgmStart() {
   try {
@@ -205,7 +189,6 @@ function bgmStart() {
     return false;
   }
 }
-
 // 暂停（离开游戏页 / 用户关闭时用）。pause 保留进度，loop 音无所谓，但 pause 比 stop 温和。
 function bgmStop() {
   try {
@@ -215,7 +198,6 @@ function bgmStop() {
     return false;
   }
 }
-
 module.exports = {
   play: play,
   pronounce: pronounce,
