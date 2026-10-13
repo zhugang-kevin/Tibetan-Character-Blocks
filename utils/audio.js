@@ -107,6 +107,24 @@ function speak(name) {
   return pronounce(name);
 }
 
+var PRAISE_VOICE_ROOT = '/package-praise/audio/voice/', praiseVoiceCtx = {};
+function speakPraiseBo(level, idx) {
+  var lv = Number(level) || 0, ix = Number(idx) || 0;
+  if (lv < 1 || lv > 5 || ix < 0 || ix > 4) return false;
+  var id = 'praise_bo_' + lv + '_' + ix, p = PRAISE_VOICE_ROOT + id;
+  try { wx.getFileSystemManager().accessSync(p + '.mp3'); } catch (e) { return false; }
+  try {
+    var c = praiseVoiceCtx[id] || (praiseVoiceCtx[id] = wx.createInnerAudioContext());
+    if (!c.__ok) {
+      c.src = p + '.mp3'; c.obeyMuteSwitch = true; c.__ok = 1;
+      c.onError(function () { try { c.src = p + '.wav'; c.play(); } catch (e) {} });
+    }
+    if (activeVoice && activeVoice !== c) { try { activeVoice.stop(); } catch (e) {} }
+    activeVoice = c; c.stop(); c.play(); duckBgm(1600);
+    return true;
+  } catch (e) { return false; }
+}
+
 // 停止当前发音（离开页面 / 切后台时调用）。
 // 为什么必须有：语音通道是模块级单例（activeVoice），元素发音约 0.5-1.5 秒、
 // 结算祝福 2-3 秒——页面走了而语音还在响，是会把「离开」变成「追着播」的真实缺陷。
@@ -203,6 +221,7 @@ module.exports = {
   pronounce: pronounce,
   hasVoice: hasVoice,
   speak: speak,
+  speakPraiseBo: speakPraiseBo,
   stopVoice: stopVoice,
   tier: tier,
   TIER_SOUND: TIER_SOUND,

@@ -18,6 +18,7 @@
 
 用法：
   python scripts/gen_pronunciation.py                # 全量内容词/句（多文件，耗时，注意主包预算）
+  python scripts/gen_pronunciation.py --praise-only  # 仅 25 条藏文赞美（落分包 package-praise/audio/voice）
   python scripts/gen_pronunciation.py --only lha_sa,rgyal_mtshan   # 仅指定条目（推荐先试）
   python scripts/gen_pronunciation.py --dry-run      # 只列待生成条目，不联网
   python scripts/gen_pronunciation.py --no-audio    # 只跑权威读音交叉核对，不生成音频
@@ -35,6 +36,9 @@ import time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 VOICE_DIR = os.path.join(ROOT, 'audio', 'voice')
+# 25 条 praise.bo 的藏文音频放进**分包**（主包已顶到 2MB 硬上限，分包是微信标准解法，
+# 见 docs/cloud-sync-blocker.md 路径A）。游戏侧 utils/audio.speakPraiseBo 也从这里取。
+SUBPKG_VOICE_DIR = os.path.join(ROOT, 'package-praise', 'audio', 'voice')
 sys.path.insert(0, os.path.join(ROOT, 'scripts'))
 import gen_voice as gv  # 复用 teleai_synthesize / pcm_to_wav / wav_stats / load_config
 
@@ -70,23 +74,35 @@ def collect_tokens(extra):
     const load = p => { try { return require(p); } catch (e) { return null; } };
     const L = load('./data/learning.js') || {};
     const R = load('./data/reveals.js') || [];
-    const P = load('./data/praise.js') || [];
+    const P = load('./data/praise.js') || { tiers: [] };
     const D = load('./data/daily.js') || [];
     const C = load('./data/cards.js') || [];
     const A = load('./data/affixes.js') || {};
     const arr = x => Array.isArray(x) ? x : (x && x.data ? x.data : []);
     const words = [].concat(L.WORDS||[], L.WORDS_COMPLEX||[], L.PHRASES||[], L.PHRASES_COMPLEX||[]);
+    // praise.js 导出 { pendingNativeReview, reviewNote, tiers:[{level, name, need, texts:[{zh, bo}]}] }，
+    // 不是数组，故不能用 arr(P)（会返回 []）。按 tier.level + texts 下标生成稳定 id：
+    //   praise_bo_{level}_{idx}   ← 与游戏侧 audio.speakPraiseBo(level, idx) 一一对应
+    const praiseMap = {};
+    if (Array.isArray(P.tiers)) {
+      P.tiers.forEach(function (t) {
+        (t.texts || []).forEach(function (d, i) {
+          if (d && d.bo) praiseMap['praise_bo_' + t.level + '_' + i] = d.bo;
+        });
+      });
+    }
     const tokens = {
       words: words,
       reveals: arr(R).map(d => d && d.tibetan).filter(Boolean),
-      praise:  arr(P).map(d => d && d.bo).filter(Boolean),
+      praise: Object.keys(praiseMap).map(k => praiseMap[k]),
       daily:   arr(D).map(d => d && d.tibetan).filter(Boolean),
       cards_sub:    arr(C).map(d => d && d.subtitle).filter(Boolean),
       cards_tib:    arr(C).map(d => d && d.tibetan).filter(Boolean),
       cards_title:  arr(C).map(d => d && d.title).filter(Boolean),
     };
     console.log(JSON.stringify({
-      tokens,
+      tokens: tokens,
+      praiseMap: praiseMap,
       affix: { SUPER_READ: A.SUPER_READ, SUB_READ: A.SUB_READ,
                SUPER_OK: A.SUPER_OK, SUB_OK: A.SUB_OK }
     }));
@@ -98,12 +114,17 @@ def collect_tokens(extra):
     data = json.loads(out.stdout.strip().splitlines()[-1])
     toks = {}
     for key, lst in data['tokens'].items():
+        if key == 'praise':  # praise 已由 praiseMap 以稳定 id 单独纳入，避免重复/错位
+            continue
         for t in lst:
             t = (t or '').strip()
             if not t:
                 continue
             tid = '%s_%d' % (key, len(toks) + 1)
             toks[tid] = t
+    # 稳定 id：praise_bo_{level}_{idx}（level=档位 1..5，idx=同档内序号 0..4）
+    for k, v in (data.get('praiseMap') or {}).items():
+        toks[k] = v
     toks.update(extra or {})
     return toks, data.get('affix', {})
 
@@ -131,8 +152,9 @@ def cross_check_affix(affix):
     return ok
 
 
-def gen_one(cfg, tid, text, sleep=5.0, retries=3):
-    """生成单条音频，返回 (status, info)。复用 gen_voice 的有声判定。"""
+def gen_one(cfg, tid, text, out_dir, sleep=5.0, retries=3):
+    """生成单条音频，返回 (status, info)。复用 gen_voice 的有声判定。
+    out_dir 由调用方按 id 决定（praise_bo_* 落分包，其余落主包 audio/voice）。"""
     time.sleep(sleep) if sleep > 0 else None
     last = ''
     for attempt in range(1, retries + 1):
@@ -144,7 +166,7 @@ def gen_one(cfg, tid, text, sleep=5.0, retries=3):
             continue
         dur, peak = gv.wav_stats(wav)
         if len(wav) >= 512 and peak >= gv.MIN_PEAK and dur >= gv.MIN_DUR:
-            out = os.path.join(VOICE_DIR, tid + '.wav')
+            out = os.path.join(out_dir, tid + '.wav')
             with open(out, 'wb') as f:
                 f.write(wav)
             return 'ok', {'bytes': len(wav), 'dur': round(dur, 3), 'peak': peak}
@@ -156,11 +178,17 @@ def gen_one(cfg, tid, text, sleep=5.0, retries=3):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--only', help='只生成指定 id（逗号分隔），如 lha_sa,rgyal_mtshan')
+    ap.add_argument('--praise-only', action='store_true',
+                   help='只生成 25 条 praise.bo 藏文赞美（落分包 package-praise/audio/voice）')
     ap.add_argument('--dry-run', action='store_true', help='只列条目，不联网')
     ap.add_argument('--no-audio', action='store_true', help='只跑权威读音交叉核对')
     args = ap.parse_args()
 
     toks, affix = collect_tokens(EXTRA)
+
+    # 只跑 25 条藏文赞美（本任务主交付）：praise_bo_* 落分包
+    if args.praise_only:
+        toks = {k: v for k, v in toks.items() if k.startswith('praise_bo_')}
 
     if args.only:
         want = set(args.only.split(','))
@@ -185,19 +213,23 @@ def main():
 
     cfg = gv.load_config()
     os.makedirs(VOICE_DIR, exist_ok=True)
-    manifest = {}
-    mpath = os.path.join(VOICE_DIR, 'pronunciation_manifest.json')
-    if os.path.exists(mpath):
-        try:
-            manifest = json.load(open(mpath, encoding='utf-8'))
-        except Exception:
-            manifest = {}
+    os.makedirs(SUBPKG_VOICE_DIR, exist_ok=True)
 
     ok, fail = 0, []
     for i, (tid, text) in enumerate(toks.items()):
         if i:
             time.sleep(gv.DEFAULT_SLEEP)  # 防限流静默降级
-        status, info = gen_one(cfg, tid, text)
+        # praise_bo_* 落分包，其余落主包 audio/voice
+        out_dir = SUBPKG_VOICE_DIR if tid.startswith('praise_bo_') else VOICE_DIR
+        status, info = gen_one(cfg, tid, text, out_dir)
+        # 每个目录各维护一份 manifest，避免主包 / 分包清单互相污染
+        mpath = os.path.join(out_dir, 'pronunciation_manifest.json')
+        manifest = {}
+        if os.path.exists(mpath):
+            try:
+                manifest = json.load(open(mpath, encoding='utf-8'))
+            except Exception:
+                manifest = {}
         if status == 'ok':
             ok += 1
             print('  ✓ %-14s %-12s → %s' % (tid, text, info))
@@ -208,8 +240,8 @@ def main():
             print('  ✗ %-14s %-12s → %s' % (tid, text, info.get('reason', '')))
             manifest[tid] = {'text': text, 'status': 'fail', **info,
                              'ts': time.strftime('%Y-%m-%d %H:%M:%S')}
-    json.dump(manifest, open(mpath, 'w', encoding='utf-8'),
-              ensure_ascii=False, indent=2, sort_keys=True)
+        json.dump(manifest, open(mpath, 'w', encoding='utf-8'),
+                  ensure_ascii=False, indent=2, sort_keys=True)
     print('\n生成完成：成功 %d / 失败 %d' % (ok, len(fail)))
     if fail:
         print('失败项（多为厂商发不出的孤立音节，需真人录音 / Gate 2 审校）：')

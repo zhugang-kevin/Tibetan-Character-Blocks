@@ -3549,11 +3549,22 @@ section('38. 生产上线守卫（主包体积 / 隐私授权 / 工程配置）'
       if (skipDir.has(d)) ok('体积计算已排除 ' + d + '（与 packOptions.ignore 同源）');
       else err('体积计算未排除 ' + d + ' —— 开发/服务端资产会撑爆主包上限');
     });
+    // 分包资产不计入主包 2MB 预算（微信规则：主包 ≤2MB，分包各自 ≤2MB、总包 ≤20MB）。
+    // 否则只要声明一个分包，本守卫就会误报超限，与 docs/cloud-sync-blocker.md 路径A 矛盾。
+    let subRoots = new Set();
+    try {
+      const aj = JSON.parse(read('app.json'));
+      ((aj.subpackages || []).concat(aj.subPackages || [])).forEach(function (s) {
+        if (s && s.root) subRoots.add(s.root.replace(/\/+$/, ''));
+      });
+    } catch (e) { /* app.json 异常时不排除，保持原行为 */ }
+    if (subRoots.size) ok('体积计算已排除分包根：' + Array.from(subRoots).join(', '));
     let totalK = 0;
     (function walk(rel) {
       for (const e of fs.readdirSync(path.join(ROOT, rel), { withFileTypes: true })) {
         if (skipDir.has(e.name)) continue;
         const relPath = rel ? rel + '/' + e.name : e.name;
+        if (subRoots.has(relPath)) continue;   // 分包整目录不计入主包
         if (e.isDirectory()) walk(relPath);
         else if (/\.(md|py)$/.test(e.name)) continue;         // 由 ignore 的 suffix 规则排除
         else totalK += fs.statSync(path.join(ROOT, relPath)).size / KB;

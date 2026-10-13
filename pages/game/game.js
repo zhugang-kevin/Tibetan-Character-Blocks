@@ -234,6 +234,10 @@ Page({
     var that = this;
     // 页面存活守卫：unload 之后到期的定时器不再回调，避免在已销毁的页面上 setData
     this._alive = true;
+
+    // 预热分包：藏文赞美音频在分包，进游戏页即下载避免首播静默
+    // 预热分包（藏文赞美音频在分包，进游戏页即下载避免首播静默）
+    try { wx.loadSubpackage && wx.loadSubpackage({ name: 'praiseVoice' }); } catch (e) {}
     this.goldenId = cfg.elements[Math.floor(Math.random() * cfg.elements.length)][0];
     this.occCount = {};
     this.collected = {};
@@ -624,10 +628,10 @@ Page({
     if (dec.level >= 2) this.flashComboAura(dec.level);
     // 文案开关只关「文字」，不关音效与元素发音（发音属学习闭环，见 D34）
     if (dec.show && dec.text && !this.data.praiseOff) this.showPraise(dec);
-    // 中文激励播报（2026-10-08 用户要求）：档位 ≥2 且未关文案时，播「很好/非常好/你好厉害/你简直就是无敌」
-    // 与文字同门控（praiseOff 一关全关）；音频为预生成静态资产（scripts/gen_chinese_voice.py）
-    if (dec.show && dec.level >= 2 && !this.data.praiseOff) {
-      audio.speak('praise_' + Math.min(5, dec.level));
+    if (dec.show && dec.level >= 2 && dec.text && !this.data.praiseOff) {
+      if (!audio.speakPraiseBo(dec.level, dec.text.index)) {
+        audio.speak('praise_' + Math.min(5, dec.level));
+      }
     }
 
     var id = a.id;

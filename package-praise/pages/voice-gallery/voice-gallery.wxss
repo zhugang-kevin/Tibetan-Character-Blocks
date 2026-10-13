@@ -1,0 +1,16 @@
+.wrap { padding: 24rpx; background: #FDF6E3; min-height: 100vh; }
+.title { font-size: 36rpx; font-weight: 700; color: #C0392B; margin-bottom: 8rpx; }
+.hint { font-size: 24rpx; color: #6b5b4f; margin-bottom: 20rpx; line-height: 1.5; }
+.grid { display: flex; flex-wrap: wrap; gap: 16rpx; }
+.card {
+  width: calc(50% - 8rpx);
+  box-sizing: border-box;
+  background: #fff;
+  border: 1rpx solid #e7d8c3;
+  border-radius: 12rpx;
+  padding: 16rpx;
+}
+.lv { font-size: 20rpx; color: #b08; opacity: .7; }
+.bo { font-size: 40rpx; color: #1a1a1a; margin: 6rpx 0; line-height: 1.4; }
+.zh { font-size: 24rpx; color: #555; margin-bottom: 10rpx; }
+.play { background: #C0392B; color: #fff; font-size: 22rpx; }
