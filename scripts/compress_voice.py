@@ -22,6 +22,10 @@
   python scripts/compress_voice.py --force             # 全部重转
   python scripts/compress_voice.py --keep-wav          # 保留源 WAV
   python scripts/compress_voice.py --bitrate 10k       # 包体紧张时降码率（10kbps ≈ 1.25KB/秒）
+  python scripts/compress_voice.py --dir package-praise/audio/voice   # 处理**分包**赞美音频
+  # ⚠️ 25 条 praise.bo 落在分包 package-praise/audio/voice/（主包已顶 2MB 硬上限），
+  #    默认 VOICE_DIR = audio/voice 覆盖不到，必须显式 --dir 指过去，否则 WAV 留在分包
+  #    会进包、体积守卫红。游戏侧 audio.speakPraiseBo 只认该目录下的 .mp3。
 """
 import argparse
 import os
@@ -80,6 +84,7 @@ def convert(name, force, keep_wav, bitrate):
 
 
 def main():
+    global VOICE_DIR
     ap = argparse.ArgumentParser(description='藏文发音 WAV → MP3（包体腾挪）')
     ap.add_argument('--force', action='store_true')
     ap.add_argument('--keep-wav', action='store_true')
@@ -87,7 +92,12 @@ def main():
     ap.add_argument('--prefix', default='',
                     help='只处理指定前缀（逗号分隔），如 letter_,icon_ —— 用来在不动'
                          '中文讲解的前提下单独调藏文发音的码率')
+    ap.add_argument('--dir', default=VOICE_DIR,
+                    help='指定要处理的音频目录（默认 audio/voice；处理分包赞美用 '
+                         'package-praise/audio/voice）')
     args = ap.parse_args()
+
+    VOICE_DIR = args.dir or VOICE_DIR
 
     names = sorted(set(
         f[:-4] for f in os.listdir(VOICE_DIR) if f.endswith('.wav')
