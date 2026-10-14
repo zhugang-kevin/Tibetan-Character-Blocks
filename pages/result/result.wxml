@@ -29,6 +29,18 @@
     </view>
   </view>
 
+  <!-- D112 来自朋友的挑战：B 打完这一课，先看到与 TA 的对比，再决定送不送祝福。
+       入口**只挂在分享卡上**（?to= 匿名 uid）—— 自己玩自己的关卡时这里整块不出现，
+       这样打赏永远是「朋友之间」的事，也不会变成常驻的消费入口。 -->
+  <view wx:if="{{toUid && !isSelf}}" class="chal-card">
+    <view class="chal-tag">来自朋友的一课</view>
+    <view wx:if="{{chSteps}}" class="chal-line">
+      TA 用了 {{chSteps}} 步<text wx:if="{{mySteps}}"> · 你用了 {{mySteps}} 步</text>
+    </view>
+    <view wx:if="{{beatText}}" class="chal-beat">{{beatText}}</view>
+    <button class="chal-btn" bindtap="goGift">送一份祝福给 TA →</button>
+  </view>
+
   <!-- D111 学习体系：本级进度 + 下一课预告（学习线专属，老线不渲染） -->
   <view wx:if="{{learnMode}}" class="learn-progress">
     <view class="lp-head">

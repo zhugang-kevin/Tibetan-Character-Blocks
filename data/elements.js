@@ -45,5 +45,9 @@ module.exports = {
   icon_01: { type: 'icon', color: '#C0392B', title: '吉祥结', iconKey: 'knot', char: '吉' },
   icon_02: { type: 'icon', color: '#2471A3', title: '青稞', iconKey: 'barley', char: '稞' },
   icon_03: { type: 'icon', color: '#5D6D7E', title: '雪山', iconKey: 'mountain', char: '雪' },
-  icon_04: { type: 'icon', color: '#8A6A12', title: '牦牛', iconKey: 'yak', char: '牦' }
+  icon_04: { type: 'icon', color: '#8A6A12', title: '牦牛', iconKey: 'yak', char: '牦' },
+  icon_05: { type: 'icon', color: '#176B3C', title: '哈达', iconKey: 'hada', char: '哈' },
+  icon_06: { type: 'icon', color: '#8A6A12', title: '酥油茶', iconKey: 'buttertea', char: '茶' },
+  icon_07: { type: 'icon', color: '#C0392B', title: '藏袍', iconKey: 'robe', char: '袍' },
+  icon_08: { type: 'icon', color: '#2471A3', title: '藏式民居', iconKey: 'house', char: '屋' }
 };

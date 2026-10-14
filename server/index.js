@@ -101,6 +101,23 @@ async function handleOrder(req, res, body) {
   }
   store.saveSession(sess.openid, sess.session_key);   // 必须存最新那份（旧的算 signature 会 -15007）
 
+  // ---- D112 防御：限额（docs/gifting-product-design.md 第五节）----
+  // 为什么放在**下单前**而不是发货前：让用户在付钱之前就知道被拦，而不是付完才被告知。
+  // 为什么必须在服务端算：客户端的限额用户改一个字段就能绕过，等于没有。
+  let attachObj = {};
+  try { attachObj = JSON.parse(attach || '{}'); } catch (e) { attachObj = {}; }
+  const toUid = String(attachObj.toUid || '');
+  const price = GIFTS[productId].price;
+  if (toUid) {
+    if (store.pairCountToday(sess.openid, toUid) >= 3)
+      return fail(res, 429, '今天给这位朋友送的够多了，明天再来');
+    if (store.toCountToday(toUid) >= 50)
+      return fail(res, 429, '这位朋友今天收到的祝福已经很多了');
+  }
+  // 单账号单日 ¥50（5000 分）——未成年人保护的兜底口径
+  if (store.spentToday(sess.openid) + price > 5000)
+    return fail(res, 429, '今天送出的祝福已达上限，明天再来');
+
   const outTradeNo = makeOutTradeNo(productId);
   const signData = sign.buildSignData({
     offerId: CFG.offerId,
@@ -155,10 +172,57 @@ function handleNotify(req, res, body, raw) {
   return ok(res, { errcode: 0, errmsg: 'ok' });
 }
 
-// 发货动作（参考实现：只打日志。生产要写进你的用户资产库）
+// 发货动作（D112：**真的入收礼箱**，不再只是打日志）
+//
+// 「送到」这件事由三件事共同保证，缺一不可：
+//   ① 幂等 —— 主键 out_trade_no（INSERT OR IGNORE），微信回调重推不会重复入账；
+//      调用方（handleNotify）也已经用 claimDelivery 在数据库层拦过一次。
+//   ② 收礼人靠 **attach 里的匿名 uid**，不靠 openid —— 小程序没有关系链，
+//      B 拿不到 A 的 openid，只能拿到分享卡片上那个 uid。
+//   ③ A 什么时候看到：A 端主动拉 /gift/inbox（不做推送，省掉订阅消息这条合规重路）。
 function deliver(order) {
-  const give = (GIFTS[order.productId] || {}).give || 'unknown';
-  console.log('[发货]', order.outTradeNo, '→ 收礼人', order.openid, '礼物', give, 'attach=', order.attach);
+  const give = (GIFTS[order.product_id] || {}).give || 'unknown';
+  let attach = {};
+  try { attach = JSON.parse(order.attach || '{}'); } catch (e) { attach = {}; }
+  const toUid = String(attach.toUid || '');
+  // 没有收礼人（比如自己给自己买）：不进收礼箱，但订单仍算已发货，绝不重试补发。
+  if (!toUid) {
+    console.log('[发货] 无收礼人 uid（不进收礼箱）', order.out_trade_no, '礼物', give);
+    return;
+  }
+  const put = store.putGift({
+    outTradeNo: order.out_trade_no,
+    fromOpenid: order.openid,
+    toUid: toUid,
+    productId: order.product_id,
+    amount: order.amount,
+    payload: JSON.stringify(attach.extra || {})
+  });
+  console.log('[发货]', order.out_trade_no, '→ 收礼箱', toUid, '礼物', give,
+    put ? '' : '（已入过，本次为重推）');
+}
+
+// ---------- ④b 收礼箱（D112）----------
+// A 端用它取「别人送我的」。身份只认 code→openid→progress.uid ——
+//   uid 是匿名收礼地址，客户端拿它来问，服务端绝不反向暴露是谁。
+async function handleGiftInbox(req, res, body) {
+  if (!body.code) return fail(res, 400, '缺少 code');
+  const sess = await code2Session(body.code);
+  if (!sess.openid) return fail(res, 500, '登录态获取失败');
+  const p = store.getProgress(sess.openid);
+  const uid = (p && p.uid) || '';
+  if (!uid) return ok(res, { uid: '', gifts: [] });
+  const rows = store.inboxOf(uid, 50);
+  const gifts = rows.map(function (r) {
+    let extra = {};
+    try { extra = JSON.parse(r.payload || '{}'); } catch (e) { extra = {}; }
+    // id 用 out_trade_no：前端按它去重，同一个单号永远只入账一次
+    return {
+      id: r.out_trade_no, productId: r.product_id, amount: r.amount,
+      extra: extra, createdAt: r.created_at
+    };
+  });
+  return ok(res, { uid: uid, gifts: gifts });
 }
 
 // ---------- ③ 主动查单（回调丢失时的兜底）----------
@@ -199,9 +263,12 @@ async function handleSyncSave(req, res, body) {
   const sess = await code2Session(body.code);
   if (!sess.openid) return fail(res, 500, '登录态获取失败');
   store.saveSession(sess.openid, sess.session_key);   // 顺带刷新（支付要用）
+  // D112：uid 是**客户端生成的匿名收礼地址**，由客户端带来、服务端绑定到 openid 上。
+  //   它不含任何身份信息（不是 openid、不是手机号），所以可以直接存。
   const row = store.saveProgress(sess.openid, {
     doneStages: body.doneStages, lamps: body.lamps,
-    cards: body.cards, ownerName: body.ownerName
+    cards: body.cards, ownerName: body.ownerName,
+    uid: String(body.uid || '')
   });
   return ok(res, { saved: true, updatedAt: row && row.updated_at });
 }
@@ -219,7 +286,8 @@ function fail(res, code, msg) { res.writeHead(code, { 'Content-Type': 'applicati
 
 const ROUTES = {
   '/pay/order': handleOrder, '/pay/notify': handleNotify, '/pay/query': handleQuery,
-  '/sync/save': handleSyncSave, '/sync/load': handleSyncLoad
+  '/sync/save': handleSyncSave, '/sync/load': handleSyncLoad,
+  '/gift/inbox': handleGiftInbox     // D112：A 端拉「别人送我的」
 };
 
 const server = http.createServer((req, res) => {

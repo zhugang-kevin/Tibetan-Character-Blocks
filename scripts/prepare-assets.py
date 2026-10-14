@@ -23,6 +23,7 @@
 规格与预算以 docs/asset-spec-images.md 为准；超预算的项会标红并在结尾汇总（退出码 1）。
 """
 import argparse
+import json
 import os
 import re
 import sys
@@ -40,6 +41,24 @@ ICON_DIR = os.path.join(IMAGES, 'icons')
 SCENE_DIR = os.path.join(IMAGES, 'scene')
 ASSETS_JS = os.path.join(ROOT, 'data', 'icon-assets.js')
 PHOTO_JS = os.path.join(ROOT, 'data', 'photo-assets.js')
+ATTR_JSON = os.path.join(ROOT, 'docs', 'photo-attribution.json')
+
+# 实景照授权台账（docs/photo-attribution.json）——逐张由用户本人核对授权与出处。
+# 脚本只机械回填「文件是否在场」（downloaded），绝不臆造 sourceUrl/author/license/licenseUrl，
+# 更永不把 verified 翻 true（防假绿；藏文读音 Gate 2 同理：人工关卡不代翻）。
+DEFAULT_SCENE_SLOTS = {
+    'home': 'images/scene/home.jpg',
+    'game': 'images/scene/game.jpg',
+    'bodhi': 'images/scene/bodhi.jpg',
+    'monastery': 'images/scene/monastery.jpg',
+}
+ATTR_FIELDS = ('sourceUrl', 'author', 'license', 'licenseUrl')
+ALLOWED_LICENSES = {
+    'CC-BY-2.0', 'CC-BY-2.5', 'CC-BY-3.0', 'CC-BY-4.0',
+    'CC-BY-SA-2.0', 'CC-BY-SA-2.5', 'CC-BY-SA-3.0', 'CC-BY-SA-4.0',
+    'CC0-1.0',
+}
+_LEDGER_PROBLEMS = []
 
 KB = 1024
 # 预算表（与规格书 §七 一致）
@@ -267,6 +286,89 @@ def do_bg():
             note(target + '.png', out, budget, how)
 
 
+def _default_photo_attribution():
+    slots = {}
+    for k, f in DEFAULT_SCENE_SLOTS.items():
+        slots[k] = {'file': f, 'sourceUrl': '', 'author': '', 'license': '',
+                    'licenseUrl': '', 'downloaded': False, 'verified': False}
+    return {
+        '_note': '藏字方块 · 实景照授权台账。逐项由用户本人核对授权与出处后，才将 verified 改为 true。'
+                 'AI 不替用户签确（防假绿）。许可证仅允许 CC-BY / CC-BY-SA / CC0；'
+                 '禁用 NC（商业产品含米大师虚拟支付）与 ND（prepare-assets.py --scene 降饱和/压暗/裁剪构成演绎）。',
+        'slots': slots,
+        'licensePolicy': {
+            'allowed': sorted(ALLOWED_LICENSES),
+            'forbidden': ['CC-BY-NC', 'CC-BY-ND', 'CC-BY-NC-SA', 'CC-BY-NC-ND', 'All Rights Reserved'],
+            'reasonNC': '小程序含米大师虚拟支付，属商业使用；NC（非商业）许可证不可用于商业产品。',
+            'reasonND': 'prepare-assets.py --scene 会对照片降饱和/压暗/裁剪，构成演绎；ND（禁止演绎）许可证不可用。',
+        },
+    }
+
+
+def sync_photo_attribution(verbose=True):
+    """回填 docs/photo-attribution.json：
+    · downloaded 按「文件是否在场」机械回填（唯一可自动判定的字段）；
+    · sourceUrl/author/license/licenseUrl 是人类知识，脚本不臆造，留给用户逐张核对后填；
+    · verified 永不被脚本翻 true（防假绿）；
+    · 机械校验：若 verified=true 却缺文件 / 字段不全 / 许可证越界 → 记 problem（令退出码 1）。
+    """
+    data = None
+    if os.path.exists(ATTR_JSON):
+        try:
+            with open(ATTR_JSON, encoding='utf-8') as fh:
+                data = json.load(fh)
+        except Exception as e:
+            print('  ✗ docs/photo-attribution.json 解析失败：%s' % e)
+            _LEDGER_PROBLEMS.append('photo-attribution.json 解析失败')
+            return False
+    if not isinstance(data, dict) or not isinstance(data.get('slots'), dict):
+        data = _default_photo_attribution()
+    slots = data['slots']
+    for k, f in DEFAULT_SCENE_SLOTS.items():
+        s = slots.setdefault(k, {})
+        s.setdefault('file', f)
+        for fld in ATTR_FIELDS:
+            s.setdefault(fld, '')
+        s.setdefault('downloaded', False)
+        s.setdefault('verified', False)
+    problems, notes = [], []
+    for key in sorted(slots):
+        s = slots[key]
+        fp = os.path.join(ROOT, str(s.get('file', '')))
+        present = bool(s.get('file')) and os.path.exists(fp)
+        if bool(s.get('downloaded')) != present:
+            notes.append('%s: downloaded %s→%s（按文件在场自动回填）' % (key, s.get('downloaded'), present))
+        s['downloaded'] = present
+        filled = all(str(s.get(fld, '')).strip() for fld in ATTR_FIELDS)
+        lic = str(s.get('license', '')).strip()
+        if lic and lic not in ALLOWED_LICENSES:
+            problems.append('%s: 许可证 %r 不在允许清单（仅 CC-BY/CC-BY-SA/CC0；NC/ND 禁用于本商业产品）' % (key, lic))
+        if s.get('verified'):
+            if not present:
+                problems.append('%s: verified=true 但文件缺失（%s）——不得标绿' % (key, s.get('file')))
+            if not filled:
+                problems.append('%s: verified=true 但授权字段未填全——无出处不得标绿' % key)
+            if not lic:
+                problems.append('%s: verified=true 但未填 license' % key)
+        elif present and not filled:
+            notes.append('%s: 图已在位、授权字段待用户本人核对（verified 保持 false）' % key)
+        elif not present:
+            notes.append('%s: 缺图（%s）' % (key, s.get('file')))
+    with open(ATTR_JSON, 'w', encoding='utf-8') as fh:
+        json.dump(data, fh, ensure_ascii=False, indent=2)
+        fh.write('\n')
+    _LEDGER_PROBLEMS.extend(problems)
+    if verbose:
+        print('  ── 授权台账回填 docs/photo-attribution.json ──')
+        for n in notes:
+            print('    · ' + n)
+        for p in problems:
+            print('    ✗ ' + p)
+        vn = sum(1 for s in slots.values() if s.get('verified'))
+        print('    → %d 槽位 · 已核对 %d · 问题 %d' % (len(slots), vn, len(problems)))
+    return len(problems) == 0
+
+
 def do_scene():
     """G 组：真实场景照片（首页/游戏页底图）。加工口径（用户要求「照片上走一层颜色」的另一半）：
     · 降饱和到 82%（照片不艳丽）· 压暗 8%（夜色色罩上仍有细节）· 竖向铺满压缩到 ≤95KB。
@@ -334,6 +436,7 @@ def do_scene():
     lines.append('};')
     open(PHOTO_JS, 'w', encoding='utf-8').write('\n'.join(lines) + '\n')
     print('  → 已更新 data/photo-assets.js')
+    sync_photo_attribution()
 
 
 def do_logo():
@@ -398,9 +501,10 @@ def main():
     ap.add_argument('--bg', action='store_true')
     ap.add_argument('--logo', action='store_true')
     ap.add_argument('--scene', action='store_true')
+    ap.add_argument('--attribution', action='store_true', help='只回填/核对 docs/photo-attribution.json（不加工图片）')
     ap.add_argument('--report', action='store_true')
     args = ap.parse_args()
-    if not any([args.all, args.icons, args.reveals, args.bg, args.logo, args.scene, args.report]):
+    if not any([args.all, args.icons, args.reveals, args.bg, args.logo, args.scene, args.attribution, args.report]):
         args.report = True
 
     if not os.path.isdir(SRC) and not args.report:
@@ -422,10 +526,16 @@ def main():
     if args.all or args.scene:
         print('\n[G 组] 真实场景照片（降饱和/压暗/压缩 → images/scene/）')
         do_scene()
+    if args.attribution and not (args.scene or args.all):
+        print('\n[H] 实景照授权台账回填（docs/photo-attribution.json）')
+        sync_photo_attribution()
     do_report()
     over = [r for r in report if not r[3]]
     if over:
         print('\n✗ 有 %d 项超出预算（见上）：%s' % (len(over), '、'.join(o[0] for o in over)))
+        sys.exit(1)
+    if _LEDGER_PROBLEMS:
+        print('\n✗ 实景照授权台账有 %d 处问题（见上）：%s' % (len(_LEDGER_PROBLEMS), '；'.join(_LEDGER_PROBLEMS)))
         sys.exit(1)
     if report:
         print('\n✓ 全部 %d 项落进预算' % len(report))

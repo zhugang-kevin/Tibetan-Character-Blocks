@@ -132,8 +132,21 @@ function request(options) {
     });
   });
 }
+// 取一次性 code（服务端用它换 openid + session_key；**openid 不出现在前端**）。
+// ⚠️ 这是本项目 wx.login 的两处具名例外之一（另一处是 utils/sync.js）：
+//   虚拟支付的服务端必须拿到 session_key 才能算用户态签名（官方：签名只能在服务端算）。
+function getCode() {
+  return new Promise(function (resolve) {
+    wx.login({
+      success: function (r) { resolve(r && r.code ? r.code : ''); },
+      fail: function () { resolve(''); }
+    });
+  });
+}
 // 发起一次打赏（道具直购）
-//   toOpenid 可以不传：服务端从 attach 里取；没有关系链时，A 的身份由**分享卡片参数**带过来
+//   toUid：收礼人匿名 id。没有关系链，A 的身份只能由**分享卡片参数**带过来。
+//   extra：随礼物一起送出去的内容（选的哪句祝福 / 给 TA 取的名字 / 署名），
+//          原样进 attach，由服务端发货时写进收礼箱。
 function pay(productId, opts) {
   opts = opts || {};
   var gift = giftById(productId);
@@ -144,16 +157,25 @@ function pay(productId, opts) {
   // attach：透传给服务端发货用（官方：发货通知时会透传给开发者）
   var attach = JSON.stringify({
     productId: productId,
-    toUid: opts.toUid || '',          // 收礼的人（来自分享卡片参数）
-    fromScene: opts.scene || 'share'  // 从哪个入口来的
+    toUid: String(opts.toUid || ''),  // 收礼的人（来自分享卡片参数，匿名 uid，不是 openid）
+    fromScene: opts.scene || 'share', // 从哪个入口来的
+    extra: opts.extra || {}           // 祝福语 / 名字 / 署名（纯展示内容，不含任何身份标识）
   });
   // ① 让**服务端**组装 signData 并算两个签名（R1：前端绝不算签名）
-  return request({
-    action: 'createOrder',
-    productId: productId,
-    outTradeNo: outTradeNo,
-    attach: attach
+  //    code 是服务端换 openid + session_key 的凭据 —— 缺了它服务端算不出用户态签名（会 -15007）。
+  return getCode().then(function (code) {
+    if (!code) return { ok: false, reason: 'login_failed' };
+    return request({
+      action: 'createOrder',
+      code: code,
+      productId: productId,
+      outTradeNo: outTradeNo,
+      attach: attach
+    });
   }).then(function (r) {
+    // 登录失败（拿不到 code）原样透出去：这是「没下单」而不是「下单失败」，
+    //   两者给用户的提示不同，混成一句话会让人反复重试却卡在同一个地方。
+    if (r && r.ok === false && r.reason === 'login_failed') return r;
     if (!r || !r.signData || !r.paySig || !r.signature) {
       return { ok: false, reason: 'order_failed', detail: r && r.msg };
     }

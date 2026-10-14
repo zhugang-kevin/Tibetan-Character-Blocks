@@ -158,11 +158,124 @@ function drawYak(ctx, s) {
   ctx.arc(s * 0.24, s * 0.57, s * 0.014, 0, Math.PI * 2);
   ctx.fill();
 }
+// 哈达（icon_05）：双手捧起的长丝巾 —— 中央飘带（上下缘 + 两端折角）+ 两道竖褶
+// 世俗题材（D25 扩充：8 枚世俗藏文化图标之二期）。题材与揭图/文化卡同源。
+function drawHada(ctx, s) {
+  ctx.beginPath();
+  ctx.moveTo(s * 0.12, s * 0.44);
+  ctx.quadraticCurveTo(s * 0.50, s * 0.26, s * 0.88, s * 0.44);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(s * 0.12, s * 0.58);
+  ctx.quadraticCurveTo(s * 0.50, s * 0.74, s * 0.88, s * 0.58);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(s * 0.12, s * 0.44);
+  ctx.quadraticCurveTo(s * 0.06, s * 0.51, s * 0.12, s * 0.58);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(s * 0.88, s * 0.44);
+  ctx.quadraticCurveTo(s * 0.94, s * 0.51, s * 0.88, s * 0.58);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(s * 0.40, s * 0.325);
+  ctx.quadraticCurveTo(s * 0.37, s * 0.43, s * 0.40, s * 0.685);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(s * 0.62, s * 0.335);
+  ctx.quadraticCurveTo(s * 0.65, s * 0.43, s * 0.62, s * 0.665);
+  ctx.stroke();
+}
+// 酥油茶（icon_06）：木碗（扁口 + 收底）+ 三缕蒸汽
+function drawButterTea(ctx, s) {
+  ctx.beginPath();
+  ctx.moveTo(s * 0.24, s * 0.52);
+  ctx.quadraticCurveTo(s * 0.50, s * 0.44, s * 0.76, s * 0.52);
+  ctx.quadraticCurveTo(s * 0.50, s * 0.60, s * 0.24, s * 0.52);
+  ctx.closePath();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(s * 0.24, s * 0.52);
+  ctx.quadraticCurveTo(s * 0.30, s * 0.80, s * 0.41, s * 0.83);
+  ctx.lineTo(s * 0.59, s * 0.83);
+  ctx.quadraticCurveTo(s * 0.70, s * 0.80, s * 0.76, s * 0.52);
+  ctx.stroke();
+  var sx = [0.40, 0.50, 0.60];
+  for (var i = 0; i < sx.length; i++) {
+    ctx.beginPath();
+    ctx.moveTo(s * sx[i], s * 0.38);
+    ctx.quadraticCurveTo(s * (sx[i] - 0.05), s * 0.30, s * sx[i], s * 0.22);
+    ctx.stroke();
+  }
+}
+// 藏袍（icon_07）：长袍剪影（肩 / 宽袖 / 长身）+ 右衽斜襟 + 腰带
+function drawRobe(ctx, s) {
+  ctx.beginPath();
+  ctx.moveTo(s * 0.36, s * 0.16);
+  ctx.lineTo(s * 0.64, s * 0.16);
+  ctx.lineTo(s * 0.82, s * 0.33);
+  ctx.lineTo(s * 0.71, s * 0.40);
+  ctx.lineTo(s * 0.66, s * 0.30);
+  ctx.lineTo(s * 0.72, s * 0.86);
+  ctx.lineTo(s * 0.28, s * 0.86);
+  ctx.lineTo(s * 0.34, s * 0.30);
+  ctx.lineTo(s * 0.29, s * 0.40);
+  ctx.lineTo(s * 0.18, s * 0.33);
+  ctx.closePath();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(s * 0.50, s * 0.16);
+  ctx.quadraticCurveTo(s * 0.44, s * 0.33, s * 0.34, s * 0.41);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(s * 0.30, s * 0.56);
+  ctx.lineTo(s * 0.70, s * 0.56);
+  ctx.stroke();
+}
+// 藏式民居（icon_08）：上窄下宽的白墙小楼 + 平顶女儿墙 + 拱门 + 两扇方窗
+function drawHouse(ctx, s) {
+  ctx.beginPath();
+  ctx.moveTo(s * 0.20, s * 0.80);
+  ctx.lineTo(s * 0.24, s * 0.30);
+  ctx.lineTo(s * 0.76, s * 0.30);
+  ctx.lineTo(s * 0.80, s * 0.80);
+  ctx.closePath();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(s * 0.24, s * 0.30);
+  ctx.lineTo(s * 0.24, s * 0.22);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(s * 0.76, s * 0.30);
+  ctx.lineTo(s * 0.76, s * 0.22);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(s * 0.44, s * 0.80);
+  ctx.lineTo(s * 0.44, s * 0.58);
+  ctx.quadraticCurveTo(s * 0.50, s * 0.52, s * 0.56, s * 0.58);
+  ctx.lineTo(s * 0.56, s * 0.80);
+  ctx.stroke();
+  var patches = [[0.29, 0.40, 0.12], [0.59, 0.40, 0.12]];
+  for (var i = 0; i < patches.length; i++) {
+    var x = patches[i][0], y = patches[i][1], w = patches[i][2];
+    ctx.beginPath();
+    ctx.moveTo(s * x, s * y);
+    ctx.lineTo(s * (x + w), s * y);
+    ctx.lineTo(s * (x + w), s * (y + w));
+    ctx.lineTo(s * x, s * (y + w));
+    ctx.closePath();
+    ctx.stroke();
+  }
+}
 var DRAWERS = {
   knot: drawKnot,
   barley: drawBarley,
   mountain: drawMountain,
-  yak: drawYak
+  yak: drawYak,
+  hada: drawHada,
+  buttertea: drawButterTea,
+  robe: drawRobe,
+  house: drawHouse
 };
 // 三种墨色变体（对比度 D32）：
 //   id        → el.color 深墨：浅底卡片 / 奖章 / 徽章（icon_01 吉祥结 #C0392B on 米卡 = 5.04）

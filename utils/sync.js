@@ -41,16 +41,33 @@ function getCode() {
     });
   });
 }
-/** 把本地进度存到云端 */
+/** 把本地进度存到云端（D112：同时把收礼人匿名 uid 绑定到本 openid 上） */
 function save(local) {
   return getCode().then(function (code) {
     if (!code) return { ok: false, reason: 'login_failed' };
     return request('/sync/save', {
       code: code,
+      // uid 绑定：服务端据此知道「这个 openid 的人收礼地址是哪个 uid」。
+      // 只传匿名 uid，不传 openid（openid 由服务端用 code 换，客户端无法伪造）。
+      uid: String(local.uid || ''),
       doneStages: String(local.doneStages || ''),
       lamps: local.lamps | 0,
       cards: local.cards | 0,
       ownerName: String(local.ownerName || '')
+    });
+  }).catch(function () { return { ok: false, reason: 'network' }; });
+}
+/**
+ * D112 收礼箱：取「别人送给本机 uid」的礼物列表。
+ * 服务端用 code 换 openid → 反查该 openid 绑定的所有 uid → 返回这些 uid 的礼物。
+ * 前端按礼物 id 去重后入账（progress.seenGifts），所以重复拉取不会重复发奖。
+ */
+function inbox() {
+  return getCode().then(function (code) {
+    if (!code) return { ok: false, reason: 'login_failed' };
+    return request('/gift/inbox', { code: code }).then(function (r) {
+      if (!r.ok) return r;
+      return { ok: true, gifts: (r.data && r.data.gifts) || [] };
     });
   }).catch(function () { return { ok: false, reason: 'network' }; });
 }
@@ -74,5 +91,5 @@ var MESSAGES = {
 function userMessage(r) { return MESSAGES[(r && r.reason)] || MESSAGES.server; }
 module.exports = {
   CONFIG: CONFIG, injectConfig: injectConfig, isReady: isReady,
-  save: save, load: load, userMessage: userMessage, getCode: getCode
+  save: save, load: load, inbox: inbox, userMessage: userMessage, getCode: getCode
 };

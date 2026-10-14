@@ -88,6 +88,17 @@ function seedFromDate(dayStr) {
   }
   return sum;
 }
+// D112：由**任意文本**（这里是朋友填的中文名）生成稳定 seed。
+// 与 seedFromDate 同口径：字符码求和。同一个名字永远落到池里的同一个位置 ——
+//   「为 TA 取的名字」不会每次刷新都变；不同名字散在池的不同位置。
+// ⚠️ 池仍是 append-only：新增名字只追加在末尾，已取到的名字不会因此被换掉
+//   （本模块只负责取，落库后由调用方钉死，规则与 D54 完全一致）。
+function seedFromText(text) {
+  var s = String(text || '');
+  var sum = 0;
+  for (var i = 0; i < s.length; i++) sum += s.charCodeAt(i);
+  return sum;
+}
 module.exports = {
   GENDERS: GENDERS,
   normalizeGender: normalizeGender,
@@ -97,5 +108,6 @@ module.exports = {
   pickFor: pickFor,
   indexOfName: indexOfName,
   resolveStored: resolveStored,
-  seedFromDate: seedFromDate
+  seedFromDate: seedFromDate,
+  seedFromText: seedFromText
 };

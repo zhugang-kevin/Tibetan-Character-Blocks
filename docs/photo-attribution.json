@@ -1,0 +1,63 @@
+{
+  "_note": "藏字方块 · 实景照授权台账。逐项由用户本人核对授权与出处后，才将 verified 改为 true。AI 不替用户签确（防假绿）。许可证仅允许 CC-BY / CC-BY-SA / CC0；禁用 NC（商业产品含米大师虚拟支付）与 ND（prepare-assets.py --scene 会降饱和/压暗/裁剪，构成演绎）。",
+  "slots": {
+    "home": {
+      "file": "images/scene/home.jpg",
+      "sourceUrl": "",
+      "author": "",
+      "license": "",
+      "licenseUrl": "",
+      "downloaded": true,
+      "verified": false
+    },
+    "game": {
+      "file": "images/scene/game.jpg",
+      "sourceUrl": "",
+      "author": "",
+      "license": "",
+      "licenseUrl": "",
+      "downloaded": true,
+      "verified": false
+    },
+    "bodhi": {
+      "file": "images/scene/bodhi.jpg",
+      "sourceUrl": "",
+      "author": "",
+      "license": "",
+      "licenseUrl": "",
+      "downloaded": true,
+      "verified": false
+    },
+    "monastery": {
+      "file": "images/scene/monastery.jpg",
+      "sourceUrl": "",
+      "author": "",
+      "license": "",
+      "licenseUrl": "",
+      "downloaded": true,
+      "verified": false
+    }
+  },
+  "licensePolicy": {
+    "allowed": [
+      "CC-BY-2.0",
+      "CC-BY-2.5",
+      "CC-BY-3.0",
+      "CC-BY-4.0",
+      "CC-BY-SA-2.0",
+      "CC-BY-SA-2.5",
+      "CC-BY-SA-3.0",
+      "CC-BY-SA-4.0",
+      "CC0-1.0"
+    ],
+    "forbidden": [
+      "CC-BY-NC",
+      "CC-BY-ND",
+      "CC-BY-NC-SA",
+      "CC-BY-NC-ND",
+      "All Rights Reserved"
+    ],
+    "reasonNC": "小程序含米大师虚拟支付，属商业使用；NC（非商业）许可证不可用于商业产品。",
+    "reasonND": "prepare-assets.py --scene 会对照片降饱和/压暗/裁剪，构成演绎；ND（禁止演绎）许可证不可用。"
+  }
+}

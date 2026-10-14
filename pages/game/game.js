@@ -207,6 +207,9 @@ Page({
     if (chSteps > 0) {
       this.challenge = { steps: chSteps };
     }
+    // D112：这张卡是谁分享出来的（匿名 uid）。只有从好友分享卡进来才非空 ——
+    //   非空意味着「打完这一课可以去给 TA 送一份祝福」，所以要一路带到结算页。
+    this.toUid = String(query.to || '');
     var queryLearn = { lv: parseInt(query.lv, 10) || 0, stage: parseInt(query.stage, 10) || 1 };
     var stageCfg = queryLearn.lv ? learning.buildStage(queryLearn.lv, queryLearn.stage) : null;
     this.learnCfg = stageCfg;                 // 非空 = 学习模式
@@ -709,6 +712,8 @@ Page({
     if (lv && stage) { parts.push('lv=' + lv); parts.push('stage=' + stage); }
     else { parts.push('level=' + (d.level || 1)); }
     if (steps > 0) parts.push('ch=' + steps);          // 挑战者的步数（越少越强）
+    // D112：收礼人匿名 uid —— 朋友从这张卡进来才能给 A 送祝福（打赏入口只挂在分享上）
+    parts.push('to=' + storage.ensureUid());
     // D41/D43 去游戏化：量词必须用「课」，不能用「关」
     var where = lv ? ('L' + lv + ' · ' + stage + ' 课') : ('第 ' + (d.level || 1) + ' 课');
     var title = steps > 0
@@ -798,7 +803,12 @@ Page({
           '&combo=' + ((that.comboState && that.comboState.maxCombo) || 0) +
           // 正确率（证书质量门槛）：attempts = 尝试次数，misses = 失败次数
           '&att=' + that.attempts +
-          '&miss=' + that.misses + learnPart
+          '&miss=' + that.misses + learnPart +
+          // D112：挑战赛步数透传（B 从 A 的分享卡进来时带 ch=），结算页才能对比
+          (that.challenge && that.challenge.steps > 0 ? ('&ch=' + that.challenge.steps) : '') +
+          // D112：收礼人匿名 uid 透传（B 是从 A 的分享卡进来的 → 结算页才有「送一份祝福」入口）。
+          //   自己玩自己的关卡时 toUid 为空，结算页不出现任何打赏入口。
+          (that.toUid ? ('&to=' + that.toUid) : '')
       });
     }, 1500);
   },

@@ -78,6 +78,30 @@ db.exec(`
   )
 `);
 
+// D112 收礼地址：progress 上补一个匿名 uid 列。
+//   为什么不是「uid 表」：uid 与 openid **一对一**（一个人就一个收礼地址），
+//   多开一张表反而要维护一致性；直接在 progress 上加一列最省，也最少出错。
+//   ⚠️ 老的库文件没有这一列 → 用 ALTER 补（已存在时 SQLite 会报错，吞掉即可）。
+try { db.exec('ALTER TABLE progress ADD COLUMN uid TEXT'); } catch (e) { /* 已有该列 */ }
+db.exec('CREATE INDEX IF NOT EXISTS idx_progress_uid ON progress(uid)');
+
+// D112 收礼箱：谁给谁送了什么。
+//   out_trade_no 做主键 = **发货幂等**落到数据库层（回调重推不会重复入账，
+//   前端也因此可以放心按它去重：同一个单号永远只对应一件礼物）。
+db.exec(`
+  CREATE TABLE IF NOT EXISTS gifts (
+    out_trade_no TEXT PRIMARY KEY,     -- 主键 = 天然幂等（重复发货直接拒）
+    from_openid  TEXT NOT NULL,        -- 送礼的人（B）
+    to_uid       TEXT NOT NULL,        -- 收礼的人（A，匿名 uid）
+    product_id   TEXT NOT NULL,
+    amount       INTEGER NOT NULL,     -- 单位：分
+    payload      TEXT,                 -- 祝福语 / 名字 / 署名（纯展示内容）
+    created_at   INTEGER NOT NULL
+  )
+`);
+db.exec('CREATE INDEX IF NOT EXISTS idx_gifts_to ON gifts(to_uid)');
+db.exec('CREATE INDEX IF NOT EXISTS idx_gifts_from ON gifts(from_openid)');
+
 const stmt = {
   insertOrder: db.prepare(`INSERT INTO orders
     (out_trade_no, openid, product_id, amount, attach, created_at)
@@ -96,12 +120,29 @@ const stmt = {
   pendingDelivery: db.prepare(`SELECT * FROM orders
     WHERE status='PAID' AND delivered=0 ORDER BY paid_at LIMIT ?`),
   // 以下三条**每一条都带 openid 条件** —— 这是自建方案替代 RLS 的隔离手段
-  upsertProgress: db.prepare(`INSERT INTO progress (openid, done_stages, lamps, cards, owner_name, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?)
+  upsertProgress: db.prepare(`INSERT INTO progress (openid, done_stages, lamps, cards, owner_name, uid, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(openid) DO UPDATE SET
       done_stages=excluded.done_stages, lamps=excluded.lamps,
-      cards=excluded.cards, owner_name=excluded.owner_name, updated_at=excluded.updated_at`),
-  getProgress: db.prepare('SELECT done_stages, lamps, cards, owner_name, updated_at FROM progress WHERE openid = ?')
+      cards=excluded.cards, owner_name=excluded.owner_name,
+      uid=excluded.uid, updated_at=excluded.updated_at`),
+  getProgress: db.prepare('SELECT done_stages, lamps, cards, owner_name, uid, updated_at FROM progress WHERE openid = ?'),
+  // ---- D112 收礼箱 ----
+  // 幂等靠主键：同一个 out_trade_no 插不进第二次（回调重推 / 并发都安全）
+  insertGift: db.prepare(`INSERT OR IGNORE INTO gifts
+    (out_trade_no, from_openid, to_uid, product_id, amount, payload, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)`),
+  inboxOf: db.prepare(`SELECT out_trade_no, product_id, amount, payload, created_at
+    FROM gifts WHERE to_uid = ? ORDER BY created_at DESC LIMIT ?`),
+  // 防御：**同一对 B→A 每天 3 次**（防刷单 / 自送自收）
+  pairToday: db.prepare(`SELECT COUNT(*) AS n FROM gifts
+    WHERE from_openid = ? AND to_uid = ? AND created_at >= ?`),
+  // 防御：**同一个 A 每天最多收 50 次**（防集中轰炸）
+  toToday: db.prepare(`SELECT COUNT(*) AS n FROM gifts WHERE to_uid = ? AND created_at >= ?`),
+  // 防御：**单账号单日上限 ¥50**（未成年人保护口径，单位分）
+  spentToday: db.prepare(`SELECT COALESCE(SUM(amount), 0) AS n FROM gifts WHERE from_openid = ? AND created_at >= ?`),
+  // uid → openid 反查（收礼箱要知道「这个 uid 现在属于谁」）
+  openidOfUid: db.prepare('SELECT openid FROM progress WHERE uid = ?')
 };
 
 function createOrder(o) {
@@ -134,15 +175,49 @@ function getSession(openid) {
 function listPendingDelivery(limit) { return stmt.pendingDelivery.all(limit || 50); }
 
 // 进度读写：**openid 由调用方从 code2Session 取**，绝不接受客户端传入的 openid
+// D112：顺带把匿名收礼地址 uid 绑到这个 openid 上（客户端只传 uid，不传 openid）。
+//   uid 为空时**不覆盖**已有的 —— 否则一次没带 uid 的同步会把收礼地址清空。
 function saveProgress(openid, d) {
   if (!openid) throw new Error('saveProgress: openid 必填');
+  const uid = d.uid || getProgress(openid) && getProgress(openid).uid || '';
   stmt.upsertProgress.run(openid, d.doneStages || '', d.lamps | 0, d.cards | 0,
-    d.ownerName || '', Date.now());
+    d.ownerName || '', uid, Date.now());
   return getProgress(openid);
 }
 function getProgress(openid) {
   if (!openid) throw new Error('getProgress: openid 必填');
   return stmt.getProgress.get(openid) || null;
+}
+function openidOfUid(uid) {
+  if (!uid) return '';
+  const r = stmt.openidOfUid.get(uid);
+  return r ? r.openid : '';
+}
+
+// ---- D112 收礼箱 ----
+/** 一天的开始（本地时区）。限额都按「自然日」算，与用户直觉一致。 */
+function startOfToday() {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+}
+/**
+ * 发货：**幂等**靠主键（INSERT OR IGNORE），微信回调重推不会重复入账。
+ * @returns {boolean} true = 本次真的入账；false = 之前已经入过
+ */
+function putGift(g) {
+  return stmt.insertGift.run(g.outTradeNo, g.fromOpenid, g.toUid,
+    g.productId, g.amount, g.payload || '', Date.now()).changes > 0;
+}
+function inboxOf(uid, limit) { return stmt.inboxOf.all(uid, limit || 50); }
+function pairCountToday(fromOpenid, toUid) {
+  return (stmt.pairToday.get(fromOpenid, toUid, startOfToday()) || {}).n || 0;
+}
+function toCountToday(toUid) {
+  return (stmt.toToday.get(toUid, startOfToday()) || {}).n || 0;
+}
+function spentToday(openid) {
+  return (stmt.spentToday.get(openid, startOfToday()) || {}).n || 0;
 }
 
 module.exports = {
@@ -156,5 +231,13 @@ module.exports = {
   getSession,
   listPendingDelivery,
   saveProgress,
-  getProgress
+  getProgress,
+  // D112 收礼箱
+  openidOfUid,
+  putGift,
+  inboxOf,
+  pairCountToday,
+  toCountToday,
+  spentToday,
+  startOfToday
 };

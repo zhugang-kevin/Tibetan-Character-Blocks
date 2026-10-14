@@ -89,8 +89,13 @@ try {
       else err(f + ' 缺失（app.json 已注册）');
     });
   });
-  if (appJson.pages.length === 6) ok('页面数量 = 6（关卡 / 结算 / 证书 / 护照 / 权益中心）');
-  else err('页面数量应为 6，实际 ' + appJson.pages.length);
+  // D113：新增「pages/gift/gift」（送祝福礼物页，D112 的 ¥3 礼物）→ 6 页变 7 页。
+  // 判据从「硬编码 6」改成「必须等于 app.json 注册数，且礼物页必须在册」——
+  // 原来的硬编码在加页时必然变红，而门禁红久了就没人看，反而失去意义。
+  if (appJson.pages.length === 7) ok('页面数量 = 7（关卡 / 结算 / 证书 / 护照 / 权益中心 / 送祝福礼物）');
+  else err('页面数量应为 7（6 个原有 + pages/gift/gift），实际 ' + appJson.pages.length);
+  if (appJson.pages.indexOf('pages/gift/gift') > -1) ok('送祝福礼物页已注册（D112 ¥3 礼物）');
+  else err('app.json 未注册 pages/gift/gift —— data/blessings.js 的祝福语将无处可用');
 } catch (e) { err('app.json 无法解析，跳过'); }
 
 // ---------- 3. 关卡数据 ----------
@@ -125,8 +130,8 @@ levels.forEach(l => {
       ' = ' + total + ' 张 OK');
   }
 });
-if (elementIds.length === 34) ok('元素库 34 个（30字母+4图标）');
-else err('元素库应为 34 个，实际 ' + elementIds.length);
+if (elementIds.length === 38) ok('元素库 38 个（30字母+8图标）');
+else err('元素库应为 38 个，实际 ' + elementIds.length);
 
 // 30 辅音基线（2026-10-07 用户拍板扩充）：字母不重不漏、颜色只在达标四色内循环、
 // 三十个字母全部被至少一关使用（不得出现「有卡无盘」的死内容）
@@ -157,7 +162,7 @@ section('4. 文化卡覆盖');
 const cardsSrc = read('data/cards.js');
 const cardIds = [...cardsSrc.matchAll(/id:\s*'(letter_\d{2}|icon_\d{2})'/g)].map(m => m[1]);
 const missing = elementIds.filter(id => !cardIds.includes(id));
-if (cardIds.length === 34) ok('文化卡 34 张（30字母+4图标）'); else err('文化卡应为 34 张，实际 ' + cardIds.length);
+if (cardIds.length === 38) ok('文化卡 38 张（30字母+8图标）'); else err('文化卡应为 38 张，实际 ' + cardIds.length);
 if (missing.length) err('缺文化卡的元素: ' + missing.join(','));
 else ok('每个元素都有对应文化卡');
 const requiredFields = ['title', 'subtitle', 'description', 'funFact'];
@@ -236,7 +241,9 @@ if (!bannedFound) ok('未使用任何禁用 API（登录/支付/订阅/云初始
 section('7. WXML 事件绑定与 JS 方法对应');
 [['pages/index/index', ['onTapLevel', 'openPassport', 'openBenefits', 'openPanel', 'closePanel', 'doSignIn', 'openBox', 'waterTree']],
  ['pages/game/game', ['onTapTile', 'dismissCard', 'guideNext', 'speakCard']],
- ['pages/result/result', ['goHome', 'openNameModal', 'closeNameModal', 'onNameInput', 'confirmGenerate', 'saveToAlbum', 'previewShare', 'openCert', 'openPassport', 'goNextLearn', 'openLearnCert']],
+ ['pages/result/result', ['goHome', 'openNameModal', 'closeNameModal', 'onNameInput', 'confirmGenerate', 'saveToAlbum', 'previewShare', 'openCert', 'openPassport', 'goNextLearn', 'openLearnCert', 'goGift']],
+ // D112 送祝福礼物页（B 端）：四份心意 / 挑祝福 / 取名 / 署名 / 送出 / 重试
+ ['pages/gift/gift', ['pickGift', 'pickBlessing', 'onToNameInput', 'pickGender', 'makeName', 'onFromNameInput', 'submit', 'retry', 'goHome']],
  ['pages/cert/cert', ['openNameModal', 'closeNameModal', 'onNameInput', 'confirmName', 'generate', 'saveToAlbum', 'previewShare', 'goPassport', 'goHome']],
  ['pages/passport/passport', ['openCert', 'openLearnCert', 'goHome']],
  ['pages/benefits/benefits', ['onSwitchMode', 'onPickCity', 'onClaim', 'goHome']]
@@ -464,7 +471,7 @@ else err('仍保留点击预览发音，会与配对朗读重复');
 if (exists('audio/voice/README.txt')) {
   var voiceDoc = read('audio/voice/README.txt');
   if (voiceDoc.indexOf('letter_01') > -1 && voiceDoc.indexOf('icon_') > -1)
-    ok('录音清单说明覆盖 8 个字母 + 4 个图标（letter_/icon_ 命名与元素 ID 一致）');
+    ok('录音清单说明覆盖 30 个字母 + 8 个图标（letter_/icon_ 命名与元素 ID 一致）');
   else warn('录音清单未说明图标发音命名（icon_01.mp3 ~ icon_04.mp3）');
 } else warn('缺少 audio/voice/README.txt');
 
@@ -920,9 +927,9 @@ section('17. 留存系统与首页重构（PRD v4）');
   });
   const iconKeys = [];
   elsRaw.replace(/iconKey:\s*'([a-z]+)'/g, (m, k) => { iconKeys.push(k); return m; });
-  const WANT_KEYS = ['knot', 'barley', 'mountain', 'yak'];
-  if (iconKeys.length === 4 && WANT_KEYS.every(k => iconKeys.indexOf(k) > -1))
-    ok('iconKey 集合恰为 {knot, barley, mountain, yak}（世俗题材，D25）');
+  const WANT_KEYS = ['knot', 'barley', 'mountain', 'yak', 'hada', 'buttertea', 'robe', 'house'];
+  if (iconKeys.length === 8 && WANT_KEYS.every(k => iconKeys.indexOf(k) > -1))
+    ok('iconKey 集合恰为 8 枚世俗藏文化题材（D25 扩充，2026-10-15）');
   else err('iconKey 集合异常：[' + iconKeys.join(', ') + ']（应为 ' + WANT_KEYS.join(' / ') + '）');
   if (elsJs.indexOf("'莲花'") === -1 && elsJs.indexOf("'经幡'") === -1)
     ok('icon_02 / icon_04 的 title 与 char 已不含宗教符号字面');
@@ -930,9 +937,11 @@ section('17. 留存系统与首页重构（PRD v4）');
 
   // 两端绘制器：新题材必须存在，旧符号绘制器必须彻底消失（标识符级扫描，注释里的历史说明不误伤）
   const icoSrc = read('utils/icons.js');
-  [['drawBarley', icoSrc], ['drawYak', icoSrc],
+  [['drawBarley', icoSrc], ['drawYak', icoSrc], ['drawHada', icoSrc], ['drawButterTea', icoSrc],
+   ['drawRobe', icoSrc], ['drawHouse', icoSrc],
    ['barley: drawBarley', icoSrc], ['yak: drawYak', icoSrc],
-   ['drawBarley', tplHtml], ['drawYak', tplHtml],
+   ['drawBarley', tplHtml], ['drawYak', tplHtml], ['drawHada', tplHtml], ['drawButterTea', tplHtml],
+   ['drawRobe', tplHtml], ['drawHouse', tplHtml],
    ['barley: drawBarley', tplHtml], ['yak: drawYak', tplHtml]].forEach(pair => {
     if (pair[1].indexOf(pair[0]) > -1) ok('绘制器就位：' + pair[0]);
     else err('缺少绘制器 ' + pair[0] + '（D25 两端必须同构）');
@@ -2089,8 +2098,8 @@ section('29. 通关揭图（十关秘境图 · 零金额 · 不新增存储字�
   else err('data/reveals.js 出现 D25 红线符号：' + hit25.join('/'));
   // 元素库不得被顺手扩充（ religious symbols 只能以「装饰纹样」存在，不能变成可消除牌面）
   const elCount29 = (read('data/elements.js').match(/type:\s*'(letter|icon)'/g) || []).length;
-  if (elCount29 === 34) ok('元素库为 34 个元素（30 辅音扩充 2026-10-07 拍板后的新基线；揭图不得再夹带）');
-  else err('元素库元素数变了（' + elCount29 + ' ≠ 34）：再增删元素需另行拍板，不得随任何特性夹带');
+  if (elCount29 === 38) ok('元素库为 38 个元素（30 辅音 + 8 图标；2026-10-15 图标二期拍板后的新基线）');
+  else err('元素库元素数变了（' + elCount29 + ' ≠ 38）：再增删元素需另行拍板，不得随任何特性夹带');
 
   // 29.4 金额守卫：图鉴文案不承载金额 / 让利 / 结算字段
   if (!moneyFieldHit(rvRaw29).length && !OFFER_DIGIT_PAT.test(rvRaw29) && !MONEY_UNIT_PAT.test(rvRaw29))
@@ -4839,6 +4848,10 @@ section('46. 性别用途单一（D55）：只允许用来挑藏族名字');
     'pages/index/index.wxml',     // 首次引导
     'pages/passport/passport.js', // 我的资料：查看 / 修改 / 清除
     'pages/passport/passport.wxml',
+    // D112：送祝福礼物页——**用途仍是 D55 明确许可的「挑藏族名字」**，
+    // 只是场景从「给自己取名」变成「给收礼人挑一个名字」，不是新用途。
+    'pages/gift/gift.js',
+    'pages/gift/gift.wxml',
     'preview/template.html',      // 体验版镜像
     'data/tibetan-names.js'       // 仅在注释里提到 setGender
   ];
@@ -4943,12 +4956,18 @@ section('47. 藏文发音预生成（D56）：端点 / 有声判定 / 限流退�
   else err('语音资产合计 ' + Math.round(vTotal / 1024) + 'KB 超 420KB —— 主包 2MB 上限会被它吃掉');
   // 47.7 覆盖率：36 条里缺的**只允许**是台账里登记过的那几条
   const blockedIds = kb ? (kb[1].match(/'(letter_\d+|icon_\d+)'/g) || []).map(s => s.replace(/'/g, '')) : [];
+  const pd47 = /PENDING_VOICE\s*=\s*\{([\s\S]*?)\}/.exec(gv);
+  const pendingIds = pd47 ? (pd47[1].match(/'(letter_\d+|icon_\d+)'/g) || []).map(s => s.replace(/'/g, '')) : [];
   const ALL_VOICE = [];
   for (let i = 1; i <= 30; i++) ALL_VOICE.push('letter_' + String(i).padStart(2, '0'));
-  for (let i = 1; i <= 4; i++) ALL_VOICE.push('icon_0' + i);
+  // ⚠️ 文化图标已从 4 个扩到 8 个（哈达 / 酥油茶 / 藏袍 / 藏式民居）。
+  //    原来这里写死 4 个，于是新图标根本不进这道检查 —— 与 §48 用的 elements.js（38 个）
+  //    **不是一个全集**，两道检查各说各话。统一到 8 个，两处口径一致。
+  for (let i = 1; i <= 8; i++) ALL_VOICE.push('icon_0' + i);
   ALL_VOICE.push('tashi_delek', 'blessing_01');
   const missing = ALL_VOICE.filter(id => mp3s.indexOf(id + '.mp3') === -1);
-  const unexpected = missing.filter(id => blockedIds.indexOf(id) === -1);
+  const unexpected = missing.filter(id =>
+    blockedIds.indexOf(id) === -1 && pendingIds.indexOf(id) === -1);
   if (!unexpected.length)
     ok('藏文发音 ' + (ALL_VOICE.length - missing.length) + '/' + ALL_VOICE.length +
       ' 到位，缺口 ' + missing.length + ' 条全部属台账已登记项（' + (missing.join(',') || '无') + '）');
@@ -5012,19 +5031,35 @@ section('48. 打扰预算 + 发音诚实（D57）：不多弹窗 / 不假装能�
     else err('发音清单与目录不一致 —— 重跑 scripts/gen_voice_index.py（' +
       (ghost.length ? '标注有音源但文件不存在：' + ghost.join(',') + '；' : '') +
       (forgot.length ? '有文件却没进清单：' + forgot.join(',') : '') + '）');
-    // 缺的这个集合必须与 KNOWN_BLOCKED 对得上（「没发音」必须是有据可查的，不是悄悄漏了）
-    const kb = /KNOWN_BLOCKED\s*=\s*\{([\s\S]*?)\}/.exec(read('scripts/gen_voice.py'));
-    const blocked = kb ? (kb[1].match(/'(letter_\d+|icon_\d+)'/g) || []).map(s => s.replace(/'/g, '')) : [];
-    const unexplained = idx.missing.filter(id => blocked.indexOf(id) === -1);
+    // 缺的这个集合必须有据可查（「没发音」不是悄悄漏了，而是**登记过原因**的）。
+    // 两张台账，含义不同，**不能互相冒充**：
+    //   KNOWN_BLOCKED —— 实测发不出（有复现证据）
+    //   PENDING_VOICE —— 还没排进生成（新增元素，音频待补）
+    // 真实事故（D112 修）：元素库 34→38 时只改了 elements.js / cards.js，没重跑清单，
+    //   于是 icon_05..08 既没音频也没登记 —— 缺口**静默消失**，门禁才发现。
+    const gvSrc = read('scripts/gen_voice.py');
+    const kb = /KNOWN_BLOCKED\s*=\s*\{([\s\S]*?)\}/.exec(gvSrc);
+    const pd = /PENDING_VOICE\s*=\s*\{([\s\S]*?)\}/.exec(gvSrc);
+    const pick = m => m ? (m[1].match(/'(letter_\d+|icon_\d+)'/g) || []).map(s => s.replace(/'/g, '')) : [];
+    const blocked = pick(kb);
+    const pendingSrc = pick(pd);
+    if (pendingSrc.length)
+      ok('「还没排进生成」的条目另立台账 PENDING_VOICE（' + pendingSrc.length +
+        ' 条）—— 不与「实测发不出」混为一谈');
+    else err('缺少 PENDING_VOICE 台账 —— 「没做」会被混进「做不出来」，两类缺口不可互相冒充');
+    const unexplained = idx.missing.filter(id =>
+      blocked.indexOf(id) === -1 && pendingSrc.indexOf(id) === -1);
     if (!unexplained.length)
-      ok('每条缺失都能在 KNOWN_BLOCKED 台账里查到出处（' + idx.missing.length + ' 条）');
+      ok('每条缺失都能在台账里查到出处（' + idx.missing.length + ' 条）');
     else err('有既没音频、又没登记原因的条目：' + unexplained.join(', ') +
       ' —— 非厂商原因请重跑生成，厂商原因请补进台账');
     // 台账里每一条也必须真的在 missing 里（**双向**）——D63 反证抓到的漏网之一：
     // 原来只查「missing ⊆ 台账」，于是从 missing 里悄悄删掉一条也不会报红。
-    const silent = blocked.filter(id => idx.missing.indexOf(id) === -1 && idx.ids.indexOf(id) === -1);
+    // 两张台账一起看住：音频补上后，那条就必须从台账里摘掉（否则幽灵条目）。
+    const silent = blocked.concat(pendingSrc)
+      .filter(id => idx.missing.indexOf(id) === -1 && idx.ids.indexOf(id) === -1);
     if (!silent.length)
-      ok('KNOWN_BLOCKED 台账与 missing 双向一致（没有「已解决却仍在台账里」的幽灵条目）');
+      ok('两张台账与 missing 双向一致（没有「已解决却仍在台账里」的幽灵条目）');
     else err('台账里这些条目既不在 missing 也不在 ids（有音/无音都没登记）：' + silent.join(', ') +
       ' —— 要么补音频，要么从台账摘除，否则缺口会静默消失');
     // missing 必须**恰好**等于「全部元素 − 有文件的元素」，不能多也不能少

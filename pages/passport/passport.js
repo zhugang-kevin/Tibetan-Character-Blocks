@@ -12,6 +12,9 @@ var secretsData = require('../../data/secrets');
 var tracker = require('../../utils/tracker');
 // D54 性别 + 藏族名字：三档取值与选名算法（与 utils/storage.js 同一份）
 var tibetanName = require('../../utils/tibetan-name.js');
+// D112 礼物展示口径（与送礼页同一份，避免两处文案漂移）
+var giftView = require('../../utils/gift-view');
+var blessingsData = require('../../data/blessings');
 
 // 印记定义（v0 仅拉萨；后续扩展七地市）
 var STAMPS = {
@@ -42,6 +45,11 @@ Page({
     syncDone: false,
     syncTip: '换手机后进度会丢。点右侧按钮可备份到云端。',
     levelsDone: 0,
+    // D112 收到的祝福（A 端收礼箱）：进页面拉一次，不做后台轮询
+    gifts: [],
+    giftCount: 0,
+    inboxBusy: false,
+    inboxTip: '',
     // D54 我的资料：性别 + 藏族名字（可查看 / 可修改 / 可清除）
     gender: '',
     genderLabel: '未选择',
@@ -72,6 +80,65 @@ Page({
     this._alive = true;
     this.showShare();
     this.refresh();
+    this.loadInbox();
+  },
+
+  // ---------- D112 收到的祝福（A 端收礼箱）----------
+  // 只有用户自己点才联网（与云同步同一条合规口径）：进页面自动拉一次，
+  //   但**不做**后台轮询、不做订阅推送 —— 省掉「订阅消息」这条合规重路。
+  // 去重：服务端幂等靠主键（同一单号只有一件礼物），客户端再按 id 入账一次，
+  //   于是「重复拉取 / 断线重连 / 回调重推」都不会重复计数。
+  loadInbox: function () {
+    var that = this;
+    if (!syncModule.isReady()) {
+      this.setData({ inboxTip: '收礼箱要等云端同步开通后才能用' });
+      return;
+    }
+    if (this.data.inboxBusy) return;
+    this.setData({ inboxBusy: true, inboxTip: '' });
+    syncModule.inbox().then(function (r) {
+      that.setData({ inboxBusy: false });
+      if (!r.ok) {
+        that.setData({ inboxTip: syncModule.userMessage(r) });
+        return;
+      }
+      var list = r.gifts || [];
+      // 先按 id 去重入账，拿到「这次真的新收到的」——只有这些才算新通知
+      var fresh = storage.markGiftsSeen(list.map(function (g) { return g.id; }));
+      var freshSet = {};
+      fresh.forEach(function (id) { freshSet[id] = 1; });
+      that.setData({
+        gifts: list.map(function (g) { return that.renderGift(g, !!freshSet[g.id]); }),
+        giftCount: list.length,
+        inboxTip: fresh.length ? ('新收到 ' + fresh.length + ' 份祝福')
+          : (list.length ? '' : '还没有人送你祝福 —— 把你的卡片分享给朋友吧')
+      });
+      if (fresh.length) tracker.track('gift_received');
+    });
+  },
+  // 一件礼物 → 展示模型（文案口径全部来自 utils/gift-view.js 与 data/blessings.js）
+  renderGift: function (g, isNew) {
+    var v = giftView.viewOf(g.productId);
+    var extra = g.extra || {};
+    var blessing = null;
+    if (extra.blessingId) {
+      for (var i = 0; i < blessingsData.list.length; i++) {
+        if (blessingsData.list[i].id === extra.blessingId) {
+          blessing = { bo: blessingsData.list[i].bo, zh: blessingsData.list[i].zh };
+          break;
+        }
+      }
+    }
+    return {
+      id: g.id,
+      icon: v.icon,
+      name: v.name,
+      isNew: isNew,
+      blessing: blessing,
+      tibetanName: extra.tibetanName || '',
+      tibetanMean: extra.tibetanMean || '',
+      fromName: extra.fromName || '一位朋友'
+    };
   },
 
   refresh: function () {
@@ -136,7 +203,9 @@ Page({
       genderLabel: g ? tibetanName.labelOf(g) : '未选择',
       genderOptions: tibetanName.GENDERS.map(function (x) { return { key: x.key, label: x.label }; }),
       tibetanName: nm.name,
-      tibetanNameMean: nm.mean
+      tibetanNameMean: nm.mean,
+      // D112 收到的祝福（列表由 loadInbox 单独填，避免每次 refresh 把已读状态冲掉）
+      giftCount: storage.getSeenGifts().length
     });
   },
 
@@ -195,6 +264,9 @@ Page({
     }
     this.setData({ syncBusy: true });
     syncModule.save({
+      // D112：顺带把匿名收礼地址绑到本 openid 上 —— 别人往这个 uid 送的礼，
+      //   服务端才知道该投递给谁。只传匿名 uid，不传 openid（服务端用 code 自己换）。
+      uid: storage.ensureUid(),
       doneStages: this.data.levelsDone + '',
       lamps: 0,
       cards: this.data.cardsSeen || 0,

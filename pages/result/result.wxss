@@ -496,6 +496,43 @@
   box-sizing: border-box;
 }
 
+/* ============ D112 来自朋友的挑战 + 送祝福入口 ============ */
+/* 只挂在分享卡上：整块由 wxml 的 toUid 控制，自己玩自己的关卡时不渲染。
+   视觉上做成「一张递过来的纸条」——藏纸底 + 金线，与结算页的唐卡画卷同族。 */
+.chal-card {
+  margin: 24rpx 0 0;
+  padding: 26rpx 28rpx 24rpx;
+  border-radius: 20rpx;
+  background: rgba(253, 246, 227, 0.95);
+  border: 3rpx solid rgba(183, 149, 11, 0.55);
+  box-shadow: 0 8rpx 22rpx rgba(5, 8, 18, 0.3);
+}
+.chal-tag {
+  display: inline-block;
+  padding: 6rpx 18rpx;
+  border-radius: 999rpx;
+  background: rgba(183, 149, 11, 0.16);
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #8A6D08;
+}
+.chal-line { margin-top: 14rpx; font-size: 28rpx; color: #5A5145; }
+.chal-beat {
+  margin-top: 8rpx;
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #6E2B22;
+}
+.chal-btn {
+  margin-top: 20rpx;
+  background: linear-gradient(160deg, #B7950B, #8A6D08);
+  color: #FFF6D8;
+  font-size: 29rpx;
+  font-weight: 700;
+  border-radius: 16rpx;
+  padding: 18rpx 0;
+}
+
 /* ============ 唐卡画卷展开（PRD 4.2 结算弹窗） ============ */
 /* 画卷自上而下缓缓展开；上下两根木质卷轴杆随画展开 */
 .content.unfurl {

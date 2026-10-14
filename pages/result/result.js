@@ -120,7 +120,15 @@ Page({
     learnCert: null,     // 本课让本级满 10 课时颁发的学习证书
     learnCertNew: false,
     learnCertUpgraded: false,
-    learnCertOwned: 0    // 已获学习证书张数（含终极的进度提示）
+    learnCertOwned: 0,   // 已获学习证书张数（含终极的进度提示）
+    // ---- D112 来自朋友的挑战 / 送祝福入口 ----
+    // toUid 非空 = 这一课是从**朋友的分享卡**进来的（B 打完可以给 A 送祝福）。
+    // 自己玩自己的关卡时 toUid 为空 → 结算页不出现任何打赏入口（不设常驻消费入口）。
+    toUid: '',
+    isSelf: false,       // to === 自己的 uid（自己点开了自己分享出去的卡片）
+    chSteps: 0,          // TA 用了几步
+    mySteps: 0,          // 我用了几步
+    beatText: ''
   },
   onLoad: function (query) {
     // D111：藏地密码讲解音频在 praiseVoice 分包（286KB 不进主包），进结算页即预热，
@@ -139,8 +147,11 @@ Page({
     //   写进了 completedLevels，进度数据被污染。）
     var learnLv = parseInt(query.lv, 10) || 0;
     var learnStage = parseInt(query.stage, 10) || 0;
+    // D112：这份「来自谁的分享」上下文在**两条线都要算**（学习线 / 老 10 关线），
+    //   所以在这里统一算好再往下传，避免两条分支各写一遍导致口径不一致。
+    var gift = giftCtx(query);
     if (learnLv > 0) {
-      this.renderLearn(query, learnLv, learnStage, pairs, score, combo, att, miss);
+      this.renderLearn(query, learnLv, learnStage, pairs, score, combo, att, miss, gift);
       return;
     }
     // 记录通关 + 解锁下一关
@@ -241,6 +252,12 @@ Page({
       })(),
       secretGot: collect.secretProgress(secretsData, storage.getProgress().completedLevels).got,
       secretTotal: secretsData.length,
+      // D112 来自朋友的挑战（toUid 为空 = 不是从分享卡进来的 → wxml 不渲染）
+      toUid: gift.toUid,
+      isSelf: gift.isSelf,
+      chSteps: gift.chSteps,
+      mySteps: gift.mySteps,
+      beatText: gift.beatText,
       // 前 60 秒钩子：关卡锚 + 旅程天数 + 收藏进度
       totalLevels: storage.MAX_LEVEL,
       journeyDay: openLog.total || 1,
@@ -261,7 +278,7 @@ Page({
   // 学习关卡（?lv=N&stage=M）走这里：标题 / 本级进度 / 下一课 / 本级证书。
   // 与老 10 关线隔离：老线数据（completedLevels / levelStats / stars / 碎片 /
   // 揭图 / 藏地密码 / 阶段证书 / 印记）都按 10 关设计，学习线一个都不碰。
-  renderLearn: function (query, lv, stage, pairs, score, combo, att, miss) {
+  renderLearn: function (query, lv, stage, pairs, score, combo, att, miss, gift) {
     var L = learningData.byLevel(lv);
     if (!L) { wx.redirectTo({ url: '/pages/index/index' }); return; }
     var stepsUsed = parseInt(query.steps, 10) || 0;
@@ -346,6 +363,12 @@ Page({
       totalLevels: learningData.totalStages(),
       // 老线专属内容在学习分支一律不出现
       reveal: null, secret: null, comboTease: null, cert: null, newStamp: false,
+      // D112 来自朋友的挑战（学习线的「步数」= 已用步数，正是挑战对比的量）
+      toUid: gift ? gift.toUid : '',
+      isSelf: gift ? gift.isSelf : false,
+      chSteps: gift ? gift.chSteps : 0,
+      mySteps: gift ? gift.mySteps : 0,
+      beatText: gift ? gift.beatText : '',
       collected: (query.cards || '').split(',').filter(Boolean).map(function (id) {
         var el = elements[id] || {};
         var card = null;
@@ -365,6 +388,18 @@ Page({
       return;
     }
     wx.redirectTo({ url: '/pages/game/game?lv=' + d.learnNextLv + '&stage=' + (d.learnNextStage || 1) });
+  },
+  // D112：给分享这一课的朋友送一份祝福（入口只在 ?to= 存在时出现）
+  //   只带匿名 uid 与成绩，绝不带 openid（openid 只能由服务端用 code 换，不进前端）。
+  goGift: function () {
+    var d = this.data;
+    if (!d.toUid || d.isSelf) return;
+    tracker.track('gift_entry_click');
+    wx.navigateTo({
+      url: '/pages/gift/gift?to=' + d.toUid +
+        (d.chSteps ? ('&ch=' + d.chSteps) : '') +
+        (d.mySteps ? ('&steps=' + d.mySteps) : '')
+    });
   },
   // 查看本级学习证书（证书页按 key 认学习证书）
   openLearnCert: function () {
@@ -601,10 +636,13 @@ Page({
     wx.previewImage({ urls: [this.data.imagePath] });
   },
   // 好友分享（右上角菜单 / 按钮 open-type="share"）
+  // D112：卡片带 to=<uid>（A 的匿名收礼地址）—— 朋友从这张卡进来才能给 A 送祝福。
+  //   ⚠️ 只带匿名 uid，绝不带 openid（openid 只能由服务端用 code 换，不进前端）。
   onShareAppMessage: function () {
+    var to = storage.ensureUid();
     return {
       title: '藏字方块，认藏文，从方块开始',
-      path: '/pages/index/index',
+      path: '/pages/index/index?to=' + to,
       imageUrl: this.data.imagePath || undefined
     };
   },
@@ -623,6 +661,25 @@ Page({
     if (wx.showShareMenu) wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] });
   }
 });
+// D112：从结算页参数里读出「这一课是从谁的分享卡进来的」。
+//   to   = 分享人的匿名 uid（只有从好友卡片进来才非空）
+//   ch   = TA 用了几步（挑战赛）
+//   steps= 我用了几步（学习线的已用步数）
+// 为什么要跟自己的 uid 比一次：自己点开自己分享出去的卡片时 to 会等于自己的 uid，
+//   此时不能给「自己」送祝福 —— 那既没有意义，也会把打赏入口变成自循环。
+function giftCtx(query) {
+  var to = String((query || {}).to || '');
+  var mine = storage.ensureUid();
+  var chSteps = parseInt((query || {}).ch, 10) || 0;
+  var mySteps = parseInt((query || {}).steps, 10) || 0;
+  var beatText = '';
+  if (chSteps > 0 && mySteps > 0) {
+    var diff = mySteps - chSteps;
+    beatText = diff < 0 ? ('你比 TA 少用 ' + (-diff) + ' 步')
+      : (diff > 0 ? ('你比 TA 多用 ' + diff + ' 步') : '你和 TA 打了个平手');
+  }
+  return { toUid: to, isSelf: !!to && to === mine, chSteps: chSteps, mySteps: mySteps, beatText: beatText };
+}
 // 兼容辅助：圆角矩形路径
 function roundRect(ctx, x, y, w, h, r) {
   ctx.beginPath();

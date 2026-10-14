@@ -1,0 +1,247 @@
+/* pages/gift/gift.wxss — 送一份祝福（D112 B 端）
+   视觉沿用护照页/结算页那一套：藏红 → 深蓝渐变 + 藏纸颗粒 + 雪山剪影，
+   前景卡片用「藏纸」（#FDF6E3 系）+ 金线，保证暗底上的可读性。
+   ⚠️ 字号一律 ≥ 26rpx（validate §54.2 硬线：320pt 小屏也要 ≥ 11.1pt）。 */
+.page {
+  min-height: 100vh;
+  padding: 40rpx 32rpx 80rpx;
+  box-sizing: border-box;
+  position: relative;
+  background: linear-gradient(180deg, #451510 0%, #2E1220 26%, #101F38 62%, #0B1E36 100%);
+  color: #2C3E50;
+}
+
+/* ============ 藏文化背景层 ============ */
+.scenery {
+  position: fixed;
+  left: 0; right: 0; top: 0; bottom: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.sc-bg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+.sc-pattern {
+  position: absolute;
+  left: 0; top: 0; right: 0; bottom: 0;
+  background-image: url('{"type":"image_blob_ref","blob_id":"2feb111db43fcfb006967134836c0d5828186fe9aeb962215eeb6620180c1817","mime":"image/png","size":12768}');
+  background-repeat: repeat;
+  background-size: 60rpx 30rpx;
+  opacity: 0.10;
+}
+.sc-ground { position: absolute; left: 0; bottom: 0; width: 100%; opacity: 0.16; }
+.sc-sky { position: absolute; left: 0; top: 0; width: 100%; opacity: 0.14; }
+.sc-night {
+  position: absolute;
+  left: 0; top: 0; right: 0; bottom: 0;
+  background: radial-gradient(ellipse at 50% 32%,
+    rgba(255, 214, 140, 0.08) 0%,
+    rgba(16, 22, 42, 0.42) 46%,
+    rgba(5, 8, 18, 0.8) 100%);
+}
+.content { position: relative; z-index: 1; }
+
+/* ============ 页头 ============ */
+.gf-hero { text-align: center; padding: 24rpx 0 36rpx; }
+.gf-title {
+  font-size: 52rpx;
+  font-weight: 700;
+  color: #FDF6E3;
+  letter-spacing: 2rpx;
+}
+.gf-sub { margin-top: 12rpx; font-size: 27rpx; color: rgba(253, 246, 227, 0.72); }
+.gf-to {
+  margin-top: 18rpx;
+  display: inline-block;
+  padding: 10rpx 24rpx;
+  border-radius: 999rpx;
+  background: rgba(183, 149, 11, 0.18);
+  border: 2rpx solid rgba(183, 149, 11, 0.55);
+  font-size: 26rpx;
+  color: #F1C40F;
+}
+.gf-beat { margin-top: 14rpx; font-size: 26rpx; color: rgba(253, 246, 227, 0.8); }
+
+/* ============ 无收礼人 / 自己的卡片 ============ */
+.gf-empty {
+  margin-top: 20rpx;
+  padding: 40rpx 32rpx;
+  border-radius: 22rpx;
+  background: rgba(253, 246, 227, 0.94);
+  box-shadow: 0 8rpx 24rpx rgba(5, 8, 18, 0.35);
+  text-align: center;
+}
+.gf-empty-title { font-size: 34rpx; font-weight: 700; color: #6E2B22; }
+.gf-empty-sub { margin-top: 14rpx; font-size: 27rpx; line-height: 1.7; color: #5A5145; }
+
+/* ============ 区块 ============ */
+.gf-section { margin-top: 36rpx; }
+.gf-section-title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #F1C40F;
+  margin-bottom: 18rpx;
+}
+
+/* ============ 四份心意 ============ */
+.gf-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18rpx;
+}
+.gf-card {
+  width: calc((100% - 18rpx) / 2);
+  box-sizing: border-box;
+  padding: 26rpx 22rpx 24rpx;
+  border-radius: 20rpx;
+  background: rgba(253, 246, 227, 0.95);
+  border: 3rpx solid rgba(183, 149, 11, 0.35);
+  box-shadow: 0 6rpx 18rpx rgba(5, 8, 18, 0.28);
+}
+.gf-card.on {
+  border-color: #B7950B;
+  background: linear-gradient(160deg, #FFF6D8, #F7EBCB);
+  box-shadow: 0 8rpx 22rpx rgba(183, 149, 11, 0.32);
+}
+.gf-icon { font-size: 44rpx; line-height: 1.2; }
+.gf-name { margin-top: 8rpx; font-size: 30rpx; font-weight: 700; color: #6E2B22; }
+.gf-desc { margin-top: 10rpx; font-size: 26rpx; line-height: 1.6; color: #5A5145; }
+.gf-price { margin-top: 14rpx; font-size: 32rpx; font-weight: 700; color: #8A6A12; }
+
+/* ============ 祝福语 ============ */
+.gf-bless { display: flex; flex-direction: column; gap: 16rpx; }
+.gf-bless-item {
+  padding: 22rpx 24rpx;
+  border-radius: 18rpx;
+  background: rgba(253, 246, 227, 0.95);
+  border: 3rpx solid rgba(183, 149, 11, 0.3);
+}
+.gf-bless-item.on {
+  border-color: #B7950B;
+  background: linear-gradient(160deg, #FFF6D8, #F7EBCB);
+}
+.gf-bo { font-size: 40rpx; color: #6E2B22; line-height: 1.5; }
+.gf-zh { margin-top: 8rpx; font-size: 29rpx; font-weight: 700; color: #8A6A12; }
+.gf-note { margin-top: 6rpx; font-size: 26rpx; line-height: 1.6; color: #6E6759; }
+
+/* ============ 输入框 ============ */
+.gf-input {
+  width: 100%;
+  box-sizing: border-box;
+  height: 88rpx;
+  padding: 0 24rpx;
+  border-radius: 16rpx;
+  background: rgba(253, 246, 227, 0.96);
+  border: 3rpx solid rgba(183, 149, 11, 0.4);
+  font-size: 30rpx;
+  color: #2C3E50;
+}
+.gf-placeholder { color: #9A9284; }
+.gf-hint { margin-top: 12rpx; font-size: 26rpx; color: rgba(253, 246, 227, 0.7); }
+
+/* ============ 性别三档 ============ */
+.gf-genders { display: flex; gap: 16rpx; margin-top: 20rpx; }
+.gf-gender {
+  flex: 1;
+  text-align: center;
+  padding: 18rpx 0;
+  border-radius: 14rpx;
+  background: rgba(253, 246, 227, 0.9);
+  border: 3rpx solid rgba(183, 149, 11, 0.3);
+  font-size: 28rpx;
+  color: #5A5145;
+}
+.gf-gender.on {
+  border-color: #B7950B;
+  background: linear-gradient(160deg, #FFF6D8, #F7EBCB);
+  color: #6E2B22;
+  font-weight: 700;
+}
+
+.gf-make-btn {
+  margin-top: 22rpx;
+  background: linear-gradient(160deg, #B7950B, #8A6D08);
+  color: #FFF6D8;
+  font-size: 30rpx;
+  border-radius: 16rpx;
+  padding: 18rpx 0;
+}
+.gf-name-card {
+  margin-top: 22rpx;
+  padding: 26rpx 24rpx;
+  border-radius: 18rpx;
+  background: linear-gradient(160deg, #FFF6D8, #F7EBCB);
+  border: 3rpx solid #B7950B;
+  text-align: center;
+}
+.gf-name-big { font-size: 46rpx; font-weight: 700; color: #6E2B22; }
+.gf-name-mean { margin-top: 10rpx; font-size: 28rpx; color: #8A6A12; }
+.gf-name-note { margin-top: 12rpx; font-size: 26rpx; line-height: 1.6; color: #6E6759; }
+
+/* ============ 合规提示 / 未开通 / 状态 ============ */
+.gf-notice {
+  margin-top: 32rpx;
+  padding: 20rpx 24rpx;
+  border-radius: 14rpx;
+  background: rgba(253, 246, 227, 0.14);
+  border-left: 6rpx solid #B7950B;
+  font-size: 26rpx;
+  line-height: 1.7;
+  color: rgba(253, 246, 227, 0.88);
+}
+.gf-off {
+  margin-top: 24rpx;
+  padding: 22rpx 24rpx;
+  border-radius: 14rpx;
+  background: rgba(253, 246, 227, 0.92);
+  font-size: 27rpx;
+  line-height: 1.7;
+  color: #6E2B22;
+}
+.gf-state {
+  margin-top: 26rpx;
+  text-align: center;
+  font-size: 28rpx;
+  color: rgba(253, 246, 227, 0.86);
+  line-height: 1.7;
+}
+.gf-state.done { color: #F1C40F; font-weight: 700; font-size: 30rpx; }
+.gf-state.err { color: #FFB3A7; }
+
+/* ============ 底栏 ============ */
+.gf-bar { margin-top: 40rpx; display: flex; flex-direction: column; gap: 18rpx; }
+.gf-btn {
+  background: linear-gradient(160deg, #C0392B, #8E2A20);
+  color: #FFF6D8;
+  font-size: 32rpx;
+  font-weight: 700;
+  border-radius: 18rpx;
+  padding: 24rpx 0;
+  box-shadow: 0 8rpx 20rpx rgba(94, 22, 14, 0.4);
+}
+.gf-btn.ghost {
+  background: transparent;
+  border: 3rpx solid rgba(241, 196, 15, 0.7);
+  color: #F1C40F;
+  box-shadow: none;
+}
+.gf-home-btn {
+  background: rgba(253, 246, 227, 0.1);
+  border: 3rpx solid rgba(253, 246, 227, 0.35);
+  color: rgba(253, 246, 227, 0.9);
+  font-size: 28rpx;
+  border-radius: 18rpx;
+  padding: 20rpx 0;
+}
+
+/* ============ 卷轴装饰（与结算页同款） ============ */
+.roller {
+  position: absolute;
+  left: 4%;
+  right: 4%;
+  height: 22rpx;
+  border-radius: 11rpx;
+  background: linear-gradient(180deg, #9C7A4B 0%, #6B4A26 55%, #4A3218 100%);
+  box-shadow: 0 6rpx 14rpx rgba(74, 50, 24, 0.38);
+  z-index: 5;
+}
+.roller-bottom { bottom: -12rpx; }

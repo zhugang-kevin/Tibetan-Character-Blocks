@@ -1581,6 +1581,38 @@
     </div>
   </section>
 
+  <!-- ============ 送一份祝福（D112 B 端 · 体验版镜像） ============
+       体验版**不接支付**（没有 wx.requestVirtualPayment，也拿不到服务端签名），
+       所以这里的「送出」是**明确禁用**并写明原因，而不是假装有支付 ——
+       与项目一贯的口径一致：做不到的就明说，绝不显示一个点了没反应的按钮。
+       除支付外，其余（四份心意 / 挑祝福 / 收礼人 / 不支持退款提示）与小程序端同构。 -->
+  <section id="screen-gift" class="screen">
+    <div class="gf-hero">
+      <div class="gf-title">送一份祝福</div>
+      <div class="gf-sub">不是礼物，是一句带到的话</div>
+      <div class="gf-to" id="gf-to"></div>
+    </div>
+
+    <div class="gf-section">
+      <div class="gf-section-title">挑一份心意</div>
+      <div class="gf-grid" id="gf-grid"></div>
+    </div>
+
+    <div class="gf-section" id="gf-bless-sec" style="display:none">
+      <div class="gf-section-title">挑一句藏文</div>
+      <div class="gf-bless" id="gf-bless"></div>
+    </div>
+
+    <div class="gf-notice">虚拟祝福一经送出不支持退款，送出前请确认心意</div>
+    <div class="gf-off">体验版不接支付（浏览器里没有微信支付，签名也只能由服务端算）—— 真机小程序里才能送出。</div>
+
+    <div class="gf-bar">
+      <button class="gf-btn" id="gf-submit" disabled>送出</button>
+      <button class="gf-home-btn" onclick="showScreen('home')">返回首页</button>
+    </div>
+    <div class="roller roller-bottom" aria-hidden="true"></div>
+  </section>
+
   <!-- ============ 文化护照（总档案） ============ -->
   <section id="screen-passport" class="screen">
     <div class="pp-cover">
@@ -2792,7 +2824,95 @@ function drawYak(ctx, s) {
   ctx.arc(s * 0.24, s * 0.57, s * 0.014, 0, Math.PI * 2);
   ctx.fill();
 }
-const DRAWERS = { knot: drawKnot, barley: drawBarley, mountain: drawMountain, yak: drawYak };
+// 哈达（icon_05）：双手捧起的长丝巾 —— 中央飘带 + 两端折角 + 两道竖褶（与小程序端同构）
+function drawHada(ctx, s) {
+  ctx.beginPath();
+  ctx.moveTo(s * 0.12, s * 0.44); ctx.quadraticCurveTo(s * 0.50, s * 0.26, s * 0.88, s * 0.44);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(s * 0.12, s * 0.58); ctx.quadraticCurveTo(s * 0.50, s * 0.74, s * 0.88, s * 0.58);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(s * 0.12, s * 0.44); ctx.quadraticCurveTo(s * 0.06, s * 0.51, s * 0.12, s * 0.58);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(s * 0.88, s * 0.44); ctx.quadraticCurveTo(s * 0.94, s * 0.51, s * 0.88, s * 0.58);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(s * 0.40, s * 0.325); ctx.quadraticCurveTo(s * 0.37, s * 0.43, s * 0.40, s * 0.685);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(s * 0.62, s * 0.335); ctx.quadraticCurveTo(s * 0.65, s * 0.43, s * 0.62, s * 0.665);
+  ctx.stroke();
+}
+// 酥油茶（icon_06）：木碗（扁口 + 收底）+ 三缕蒸汽
+function drawButterTea(ctx, s) {
+  ctx.beginPath();
+  ctx.moveTo(s * 0.24, s * 0.52);
+  ctx.quadraticCurveTo(s * 0.50, s * 0.44, s * 0.76, s * 0.52);
+  ctx.quadraticCurveTo(s * 0.50, s * 0.60, s * 0.24, s * 0.52);
+  ctx.closePath();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(s * 0.24, s * 0.52);
+  ctx.quadraticCurveTo(s * 0.30, s * 0.80, s * 0.41, s * 0.83);
+  ctx.lineTo(s * 0.59, s * 0.83);
+  ctx.quadraticCurveTo(s * 0.70, s * 0.80, s * 0.76, s * 0.52);
+  ctx.stroke();
+  const sx = [0.40, 0.50, 0.60];
+  for (let i = 0; i < sx.length; i++) {
+    ctx.beginPath();
+    ctx.moveTo(s * sx[i], s * 0.38); ctx.quadraticCurveTo(s * (sx[i] - 0.05), s * 0.30, s * sx[i], s * 0.22);
+    ctx.stroke();
+  }
+}
+// 藏袍（icon_07）：长袍剪影（肩 / 宽袖 / 长身）+ 右衽斜襟 + 腰带
+function drawRobe(ctx, s) {
+  ctx.beginPath();
+  ctx.moveTo(s * 0.36, s * 0.16); ctx.lineTo(s * 0.64, s * 0.16);
+  ctx.lineTo(s * 0.82, s * 0.33); ctx.lineTo(s * 0.71, s * 0.40);
+  ctx.lineTo(s * 0.66, s * 0.30); ctx.lineTo(s * 0.72, s * 0.86);
+  ctx.lineTo(s * 0.28, s * 0.86); ctx.lineTo(s * 0.34, s * 0.30);
+  ctx.lineTo(s * 0.29, s * 0.40); ctx.lineTo(s * 0.18, s * 0.33);
+  ctx.closePath();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(s * 0.50, s * 0.16); ctx.quadraticCurveTo(s * 0.44, s * 0.33, s * 0.34, s * 0.41);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(s * 0.30, s * 0.56); ctx.lineTo(s * 0.70, s * 0.56);
+  ctx.stroke();
+}
+// 藏式民居（icon_08）：上窄下宽的白墙小楼 + 平顶女儿墙 + 拱门 + 两扇方窗
+function drawHouse(ctx, s) {
+  ctx.beginPath();
+  ctx.moveTo(s * 0.20, s * 0.80); ctx.lineTo(s * 0.24, s * 0.30);
+  ctx.lineTo(s * 0.76, s * 0.30); ctx.lineTo(s * 0.80, s * 0.80);
+  ctx.closePath();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(s * 0.24, s * 0.30); ctx.lineTo(s * 0.24, s * 0.22);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(s * 0.76, s * 0.30); ctx.lineTo(s * 0.76, s * 0.22);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(s * 0.44, s * 0.80); ctx.lineTo(s * 0.44, s * 0.58);
+  ctx.quadraticCurveTo(s * 0.50, s * 0.52, s * 0.56, s * 0.58);
+  ctx.lineTo(s * 0.56, s * 0.80);
+  ctx.stroke();
+  const patches = [[0.29, 0.40, 0.12], [0.59, 0.40, 0.12]];
+  for (let i = 0; i < patches.length; i++) {
+    const x = patches[i][0], y = patches[i][1], w = patches[i][2];
+    ctx.beginPath();
+    ctx.moveTo(s * x, s * y); ctx.lineTo(s * (x + w), s * y);
+    ctx.lineTo(s * (x + w), s * (y + w)); ctx.lineTo(s * x, s * (y + w));
+    ctx.closePath();
+    ctx.stroke();
+  }
+}
+const DRAWERS = { knot: drawKnot, barley: drawBarley, mountain: drawMountain, yak: drawYak,
+  hada: drawHada, buttertea: drawButterTea, robe: drawRobe, house: drawHouse };
 
 const iconCache = {};
 function iconDataUrl(id, ink) {
@@ -3027,7 +3147,7 @@ const $ = function (id) { return document.getElementById(id); };
 function showScreen(name) {
   // 每次换屏都推进 token：用来作废「通关后延迟 1.2s 才切结算页」这类待执行的跳转
   state.screenToken = (state.screenToken || 0) + 1;
-  ['home', 'game', 'result', 'cert', 'passport', 'benefits'].forEach(function (n) {
+  ['home', 'game', 'result', 'cert', 'passport', 'benefits', 'gift'].forEach(function (n) {
     $('screen-' + n).classList.toggle('active', n === name);
   });
   // 首页专用：左右悬浮入口 + 底部大平层（其他屏幕隐藏，避免遮挡）

@@ -648,8 +648,8 @@ function mockCtx(sink) {
   check('每关补充池非空（下落机制真的会发生）', levels.every(function (c) {
     return Math.max(2, Math.ceil(c.cols * c.rows / 4 / 2) * 2) > 0;
   }));
-  check('元素库 34 项（30字母+4图标）', ev('Object.keys(ELEMENTS).length') === 34);
-  check('文化卡 34 张', ev('CARDS.length') === 34);
+  check('元素库 38 项（30字母+8图标）', ev('Object.keys(ELEMENTS).length') === 38);
+  check('文化卡 38 张', ev('CARDS.length') === 38);
   check('藏文排序正确（ཀ ཁ ག ང ཅ ཆ ཇ ཉ）',
     ev('["letter_01","letter_02","letter_03","letter_04","letter_05","letter_06","letter_07","letter_08"].map(function(k){return ELEMENTS[k].tibetan}).join("")')
     === 'ཀཁགངཅཆཇཉ');
@@ -1521,11 +1521,12 @@ function mockCtx(sink) {
   await sleep(60);
 
   check('结算页出现进度锚区块（#res-journey）', !!$('#res-journey'));
-  check('进度锚有 34 个收藏槽位', $$('#res-journey .j-slot').length === 34,
+  check('进度锚有 38 个收藏槽位', $$('#res-journey .j-slot').length === 38,
     '实际 ' + $$('#res-journey .j-slot').length);
   check('已收藏槽位 = 2（本关认识的两个字母）', $$('#res-journey .j-slot.got').length === 2,
     '实际 ' + $$('#res-journey .j-slot.got').length);
-  check('未收藏槽位 = 32', $$('#res-journey .j-unknown').length === 32,
+  // 基线更新（元素库从 34 扩到 38：新增 icon_05哈达 / 06 酥油茶 / 07 藏袍 / 08 藏式民居）
+  check('未收藏槽位 = 36', $$('#res-journey .j-unknown').length === 36,
     '实际 ' + $$('#res-journey .j-unknown').length);
   check('未收藏槽位只显示「?」，不剧透下一张的名字', $$('#res-journey .j-unknown').every(function (n) {
     return n.textContent.trim() === '?';
@@ -1540,12 +1541,12 @@ function mockCtx(sink) {
     ($('#res-journey .j-step') || {}).textContent);
   check('进度锚有旅程天数', /旅行第 \d+ 天/.test($('#res-journey .j-day').textContent),
     $('#res-journey .j-day').textContent);
-  check('进度条宽度 = 已收藏比例（2/34 ≈ 6%）',
-    ($('#res-journey .j-bar-in').getAttribute('style') || '').indexOf('6%') > -1,
+  check('进度条宽度 = 已收藏比例（2/38 ≈ 5%）',
+    ($('#res-journey .j-bar-in').getAttribute('style') || '').indexOf('5%') > -1,
     $('#res-journey .j-bar-in').getAttribute('style'));
   check('文案给出「还剩多少没遇见」（牵引下一关）',
-    $('#res-journey .j-note').textContent.indexOf('已认识 2 / 34') > -1 &&
-    $('#res-journey .j-note').textContent.indexOf('还有 32 个') > -1,
+    $('#res-journey .j-note').textContent.indexOf('已认识 2 / 38') > -1 &&
+    $('#res-journey .j-note').textContent.indexOf('还有 36 个') > -1,
     $('#res-journey .j-note').textContent);
   check('反向：进度锚不出现「?」以外的未收藏字形泄漏',
     $('#res-journey .j-note').textContent.indexOf('吉祥结') === -1 &&
@@ -1712,7 +1713,7 @@ function mockCtx(sink) {
   check('海报按真实进度印出字母行',
     posterTexts.indexOf('已认识 3 / 30 个藏文字母') > -1, posterTexts.join(' | '));
   check('海报按真实进度印出文化卡与印章行（3 字母 + 1 图标 = 4 张卡 · 1 枚印章）',
-    posterTexts.indexOf('文化卡 4 / 34 · 护照印章 1 / 7') > -1, posterTexts.join(' | '));
+    posterTexts.indexOf('文化卡 4 / 38 · 护照印章 1 / 7') > -1, posterTexts.join(' | '));
   check('反向：海报不再出现写死的字母数',
     !posterTexts.some(function (t) { return /认了\s*8|学会了\s*8|认识\s*8\s*个/.test(t); }),
     posterTexts.join(' | '));
@@ -2076,8 +2077,9 @@ function mockCtx(sink) {
       ev('DATA.elements.icon_04.iconKey') === 'yak' &&
       ev('DATA.elements.icon_04.char') === '牦' &&
       ev('DATA.elements.icon_04.color') === '#8A6A12');
-    check('元素库为 34 个元素（30 辅音扩充后的新基线，换题材不缩库）',
-      ev('Object.keys(DATA.elements).length') === 34);
+    check('元素库为 38 个元素（30 辅音 + 8 图标：新题材不缩库）',
+      ev('Object.keys(DATA.elements).length') === 38,
+      '实际 ' + ev('Object.keys(DATA.elements).length'));
     check('注入体验版的元素库 JSON 不含任何宗教符号字面', SYMS.every(function (s) {
       return ev('JSON.stringify(DATA.elements)').indexOf(s) === -1;
     }));
@@ -2094,8 +2096,10 @@ function mockCtx(sink) {
       String(ev('CARD_BY_ID.icon_04.subtitle')).indexOf('གཡག') > -1);
 
     // 32.3 绘制器两端同构：新题材在、旧符号亡
-    check('体验版绘制器映射 = {knot, barley, mountain, yak}',
-      ev('Object.keys(DRAWERS).sort().join()') === 'barley,knot,mountain,yak');
+    check('体验版绘制器映射 = 8 个新题材（knot…house，无旧宗教符号）',
+      ev('Object.keys(DRAWERS).sort().join()') ===
+        'barley,buttertea,hada,house,knot,mountain,robe,yak',
+      '实际 ' + ev('Object.keys(DRAWERS).sort().join()'));
     check('旧符号绘制器已不存在（ DRAWERS 上无 lotus / flags 键）',
       ev('DRAWERS.lotus') === undefined && ev('DRAWERS.flags') === undefined);
     check('两种新图标都能渲染出牌面图（普通牌面奶白墨）',

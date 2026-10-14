@@ -119,7 +119,12 @@ function getProgress() {
     //   实测事故：renderLearn 里 addPoints 走 getProgress→save，把上一行刚落库的
     //   learnDone 整个写丢 → 本级永远差一课、证书永远不颁。
     learnDone: (p && p.learnDone) || {},
-    learnStats: (p && p.learnStats) || {}
+    learnStats: (p && p.learnStats) || {},
+    // D112 收礼人匿名 id（打赏链路用）。⚠️ 必须进白名单，否则 save(p) 会把它写丢，
+    //   下一次 ensureUid 又生成一个新 uid = 换身份（旧分享卡片全部找不到你）。
+    uid: (p && p.uid) || '',
+    // D112 已收到的礼物 id（按 id 去重，防止同步/重连时重复入账）
+    seenGifts: (p && p.seenGifts) || []
   };
 }
 
@@ -546,6 +551,37 @@ function getSeenCards() { return getProgress().seenCards; }
 
 function getStampCount() { return getProgress().stamps.length; }
 
+// ---- D112 收礼箱（A 端）----
+// 「收到的祝福」以**礼物 id（= out_trade_no）**去重：
+//   服务端那边幂等靠主键（同一个单号只可能有一件礼物），
+//   客户端这边再按 id 入一次账 —— 于是「重复拉取 / 断线重连 / 回调重推」都不会重复发奖。
+//   ⚠️ seenGifts 必须在 getProgress() 白名单里（已在），否则 save(p) 会把它写丢。
+function getSeenGifts() {
+  var v = getProgress().seenGifts;
+  return Array.isArray(v) ? v : [];
+}
+/**
+ * 把一批礼物标记为已入账，返回**这次真的新入账**的那些 id。
+ * 调用方据此决定要不要发奖（灯火 +1 / 祝福卡入收藏 …），从而做到「只发一次」。
+ */
+function markGiftsSeen(ids) {
+  var fresh = [];
+  if (!ids || !ids.length) return fresh;
+  var p = getProgress();
+  var seen = Array.isArray(p.seenGifts) ? p.seenGifts : [];
+  for (var i = 0; i < ids.length; i++) {
+    var id = String(ids[i] || '');
+    if (!id || seen.indexOf(id) > -1) continue;
+    seen.push(id);
+    fresh.push(id);
+  }
+  if (fresh.length) {
+    p.seenGifts = seen;
+    save(p);
+  }
+  return fresh;
+}
+
 
 // D96 学习线（150 关）进度。
 function getLearnDone() {
@@ -610,6 +646,35 @@ function getLearnStats(lv) {
   return { acc: vals.length ? sum / vals.length : 0, clean: !!cur.clean, n: vals.length };
 }
 
+// ---------- D112 收礼人匿名 id（uid）----------
+// 打赏链路（A 分享 → B 送祝福 → 服务端记账 → A 收礼）里，A 需要一个**能被卡片带着走**
+//   的身份。但不能用 openid：openid 只能由服务端用 code 换（官方红线：不进前端），
+//   所以分享卡片带的是一个**本地生成的匿名 uid**（zc_ + 12 位随机），服务端只在
+//   A 自己同步时把它绑定到 A 的 openid 上。B 送礼物时只写「送给哪个 uid」。
+//   uid 一旦生成就**钉死**（与藏族名字同思路）：重生成 = 换身份，旧卡片就找不到你了。
+var UID_PREFIX = 'zc_';
+function genUid() {
+  var abc = 'abcdefghjkmnpqrstuvwxyz23456789';   // 去掉易混淆的 i/l/o/0/1
+  var out = '';
+  for (var i = 0; i < 12; i++) out += abc[Math.floor(Math.random() * abc.length)];
+  return UID_PREFIX + out;
+}
+/** 取本机 uid（没有就生成并落库；同一个装机用户永远同一个） */
+function ensureUid() {
+  var p = getProgress();
+  if (p.uid && /^zc_[a-z2-9]{12}$/.test(p.uid)) return p.uid;
+  var uid = genUid();
+  var q = getProgress();
+  q.uid = uid;
+  save(q);
+  return uid;
+}
+/** 只读（不生成）：供「分享时带上」之外的展示用 */
+function getUid() {
+  var p = getProgress();
+  return (p && p.uid) || '';
+}
+
 module.exports = {
   getLearnDone: getLearnDone,
   markLearnStageDone: markLearnStageDone,
@@ -617,6 +682,10 @@ module.exports = {
   getLearnNextStage: getLearnNextStage,
   recordLearnResult: recordLearnResult,
   getLearnStats: getLearnStats,
+  ensureUid: ensureUid,
+  getUid: getUid,
+  getSeenGifts: getSeenGifts,
+  markGiftsSeen: markGiftsSeen,
   MAX_LEVEL: MAX_LEVEL,
   getProgress: getProgress,
   completeLevel: completeLevel,

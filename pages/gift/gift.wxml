@@ -1,0 +1,143 @@
+<view class="page">
+
+  <!-- 藏文化背景层（与首页/游戏页/结算页统一：底图 / 纹样 / 藏纸颗粒 / 雪山 / 夜色罩） -->
+  <view class="scenery" aria-hidden="true">
+    <image class="sc-bg" src="/images/bg-global.jpg" mode="aspectFill" />
+    <view class="sc-pattern"></view>
+    <view class="grain"></view>
+    <image class="sc-ground" src="/images/bg-ground.png" mode="widthFix" />
+    <image class="sc-sky" src="/images/bg-sky.png" mode="widthFix" />
+    <view class="sc-night"></view>
+  </view>
+
+  <view class="content">
+
+    <view class="gf-hero">
+      <view class="gf-title">送一份祝福</view>
+      <view class="gf-sub">不是礼物，是一句带到的话</view>
+      <view wx:if="{{toUid && !isSelf}}" class="gf-to">致 · 编号 {{toShort}} 的朋友</view>
+      <view wx:if="{{beatText}}" class="gf-beat">{{beatText}}</view>
+    </view>
+
+    <!-- 没有收礼人：说明这份心意只能跟着分享卡片一起来（不造关系链，也不做兜底入口） -->
+    <view wx:if="{{noRecipient || isSelf}}" class="gf-empty">
+      <view class="gf-empty-title">{{isSelf ? '这是你自己的卡片' : '还不知道要送给谁'}}</view>
+      <view class="gf-empty-sub">
+        {{isSelf ? '把它分享给朋友，朋友点开来就能给你送一份祝福。'
+                 : '小程序里没有关系链，祝福只能跟着朋友分享出来的卡片一起来 —— 请从 TA 发给你的那张卡片点进来。'}}
+      </view>
+      <button class="gf-home-btn" bindtap="goHome">返回首页</button>
+    </view>
+
+    <block wx:if="{{!noRecipient && !isSelf}}">
+
+      <!-- 四份心意 -->
+      <view class="gf-section">
+        <view class="gf-section-title">挑一份心意</view>
+        <view class="gf-grid">
+          <view
+            wx:for="{{gifts}}"
+            wx:key="productId"
+            class="gf-card {{picked === item.productId ? 'on' : ''}}"
+            data-id="{{item.productId}}"
+            bindtap="pickGift"
+          >
+            <view class="gf-icon">{{item.icon}}</view>
+            <view class="gf-name">{{item.name}}</view>
+            <view class="gf-desc">{{item.desc}}</view>
+            <view class="gf-price">{{item.priceText}}</view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 藏文祝福：挑一句（¥3 专用） -->
+      <view wx:if="{{picked === 'tib_blessing_3'}}" class="gf-section">
+        <view class="gf-section-title">挑一句藏文</view>
+        <view class="gf-bless">
+          <view
+            wx:for="{{blessingList}}"
+            wx:key="id"
+            class="gf-bless-item {{blessingId === item.id ? 'on' : ''}}"
+            data-id="{{item.id}}"
+            bindtap="pickBlessing"
+          >
+            <view class="gf-bo tibetan">{{item.bo}}</view>
+            <view class="gf-zh">{{item.zh}} · {{item.mean}}</view>
+            <view class="gf-note">{{item.note}}</view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 藏族名字：按 TA 的名字取一个（¥9.9 专用） -->
+      <view wx:if="{{picked === 'tib_name_99'}}" class="gf-section">
+        <view class="gf-section-title">先写上 TA 的名字</view>
+        <input
+          class="gf-input"
+          value="{{toName}}"
+          maxlength="10"
+          placeholder="TA 的名字"
+          placeholder-class="gf-placeholder"
+          bindinput="onToNameInput"
+        />
+        <view class="gf-genders">
+          <view
+            wx:for="{{genderOptions}}"
+            wx:key="key"
+            class="gf-gender {{gender === item.key ? 'on' : ''}}"
+            data-key="{{item.key}}"
+            bindtap="pickGender"
+          >{{item.label}}</view>
+        </view>
+        <button class="gf-make-btn" bindtap="makeName">为 TA 取一个名字</button>
+        <view wx:if="{{namePicked}}" class="gf-name-card">
+          <view class="gf-name-big">{{namePicked.name}}</view>
+          <view class="gf-name-mean">{{namePicked.mean}}</view>
+          <view class="gf-name-note">藏族名字目前提供中文音译；藏文写法待母语者审校后补上</view>
+        </view>
+      </view>
+
+      <!-- 署名 -->
+      <view class="gf-section">
+        <view class="gf-section-title">留下你的名字</view>
+        <input
+          class="gf-input"
+          value="{{fromName}}"
+          maxlength="10"
+          placeholder="朋友"
+          placeholder-class="gf-placeholder"
+          bindinput="onFromNameInput"
+        />
+        <view class="gf-hint">会一起送到 TA 手上，让 TA 知道是谁</view>
+      </view>
+
+      <!-- 合规提示：下单页可见（D89 防御设计：虚拟内容不支持退款） -->
+      <view class="gf-notice">{{notice}}</view>
+
+      <!-- 未开通：明确告知缺什么，既不隐藏也不误导 -->
+      <view wx:if="{{!ready}}" class="gf-off">
+        祝福通道还没开通（{{missingText}}）。你可以先去首页生成一张祝福卡分享给 TA。
+      </view>
+
+      <!-- 状态区 -->
+      <view wx:if="{{state === 'paying'}}" class="gf-state">正在唤起支付…</view>
+      <view wx:if="{{state === 'confirming'}}" class="gf-state">已送出，正在确认…</view>
+      <view wx:if="{{state === 'pending'}}" class="gf-state">已送出，正在确认 —— TA 稍后就能看到，你也可以先离开</view>
+      <view wx:if="{{state === 'done'}}" class="gf-state done">已送到 TA 的收礼箱 · 扎西德勒</view>
+      <view wx:if="{{state === 'failed'}}" class="gf-state err">{{errText}}</view>
+
+      <!-- 底栏 -->
+      <view class="gf-bar">
+        <button wx:if="{{state === 'failed'}}" class="gf-btn ghost" bindtap="retry">再试一次</button>
+        <button wx:elif="{{state === 'done' || state === 'pending'}}" class="gf-btn" bindtap="goHome">返回首页</button>
+        <button wx:else class="gf-btn" disabled="{{!ready}}" bindtap="submit">
+          {{state === 'paying' || state === 'confirming' ? '送出中…' : (pickedPrice ? ('送出 · ' + pickedPrice) : '送出')}}
+        </button>
+        <button class="gf-home-btn" bindtap="goHome">返回首页</button>
+      </view>
+
+    </block>
+
+  </view>
+
+  <view class="roller roller-bottom" aria-hidden="true"></view>
+</view>

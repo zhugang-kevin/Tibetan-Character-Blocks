@@ -140,7 +140,10 @@ Page({
     genderPicked: null,
     tibetanName: { name: '', mean: '', gender: '' },
     // 朝圣天梯入场动效（纯视觉类名，不含任何数据）
-    ladderIn: false
+    ladderIn: false,
+    // D112 从朋友分享卡进来的收礼人匿名 uid（为空 = 不是从卡片来的 → 不显示送祝福入口）
+    giftUid: '',
+    giftShow: false
   },
 
   // D101：卸载后关掉存活标记，让在飞的定时器回调自己退出
@@ -149,6 +152,11 @@ Page({
     this._alive = false;
   },
 
+  // D112：记下「这张卡是谁分享出来的」（?to= 匿名 uid）。
+  //   首页没有 onLoad 之前，从分享卡进来的参数会丢 —— 而打赏链路全靠这个参数。
+  onLoad: function (query) {
+    this._to = String((query || {}).to || '');
+  },
   onShow: function () {
     // D101：页面存活标记 —— 定时器回调里 setData 前必须检查
     this._alive = true;
@@ -253,7 +261,11 @@ Page({
       thangkaCells: this.buildThangka(frags),
       thangkaDone: storage.getThangkaDone(),
       pot: storage.getPot(),
-      ladderIn: intro
+      ladderIn: intro,
+      // D112：从朋友的分享卡进来（?to=uid）→ 顶部出现「给 TA 送一份祝福」。
+      //   入口**只挂在分享上**：没有关系链，也就没有别的合法途径知道该送给谁。
+      giftUid: this._to || '',
+      giftShow: !!this._to && this._to !== storage.ensureUid()
     });
 
     // 万家灯火：每天首次打开时，先与远方的灯火同明一次（纯本地判断）
@@ -727,6 +739,13 @@ Page({
   // 打开权益中心（双轨制到店权益，凭课程进度领取）
   openBenefits: function () {
     wx.navigateTo({ url: '/pages/benefits/benefits' });
+  },
+
+  // D112：给分享这张卡的朋友送一份祝福（入口只在 ?to= 存在时出现）。
+  //   只带匿名 uid，绝不带 openid —— openid 只能由服务端用 code 换，不进前端。
+  openGift: function () {
+    if (!this.data.giftUid) return;
+    wx.navigateTo({ url: '/pages/gift/gift?to=' + this.data.giftUid });
   },
 
   // 把生成的祝福签卡直接分享给微信好友（官方图片分享面板，无需截屏）
