@@ -12,6 +12,9 @@ var privacy = require('../../utils/privacy');
 // 「藏文可以组合」预告的数据源（纯展示；由页面注入 utils/collect.js 的纯判据函数，
 // 这样「哪一关讲解拼合」只写在数据文件里，页面不内联关卡号）
 var comboData = require('../../data/combo');
+// 学习体系（D51/D111）：15 级 × 150 关。结算页据此渲染学习分支。
+var learningData = require('../../data/learning');
+var learning = require('../../utils/learning');
 // 秘境揭图（D31）：通关即整幅揭晓，结算页是揭晓的高光时刻
 var revealsData = require('../../data/reveals');
 // 藏地密码：完成即解锁一则藏地小知识（解锁状态 = completedLevels，不新增存储字段）
@@ -94,15 +97,52 @@ Page({
     // ---- 藏地密码：本关解锁的一则小知识 + 图鉴进度 ----
     secret: null,        // { tag, title, text }
     secretGot: 0,
-    secretTotal: 10
+    secretTotal: 10,
+    // ---- D111 学习体系线（?lv=N&stage=M）----
+    // learnMode 为真时，整个页面走学习分支：标题 / 进度 / 下一课 / 本级证书，
+    // 老线的揭图 / 藏地密码 / 阶段证书 / 印记一律不出现（学习关卡没有这些内容）。
+    learnMode: false,
+    learnLv: 0,
+    learnStage: 0,
+    learnName: '',       // 本级名（如「辅音三十」）
+    learnGoal: '',       // 本级学习目标
+    learnIndex: 0,       // 全局课序号 1..150（「第 37 / 150 课」）
+    learnTotal: 150,
+    learnDoneN: 0,       // 本级已完成几课（0-10）
+    learnNextLv: 0,      // 下一课所属级（本级未完 → 同 lv；本级完 → lv+1）
+    learnNextStage: 0,   // 下一课序号（0 = 全部 15 级已完成）
+    learnNextLabel: '',  // 底栏按钮文案
+    learnNextDesc: '',   // 进度卡里的下一站描述
+    learnAllDone: false, // 15 级 × 10 课全部完成
+    learnAcc: 0,         // 本课正确率（%）
+    learnStepsUsed: 0,
+    learnStepsBudget: 0,
+    learnCert: null,     // 本课让本级满 10 课时颁发的学习证书
+    learnCertNew: false,
+    learnCertUpgraded: false,
+    learnCertOwned: 0    // 已获学习证书张数（含终极的进度提示）
   },
   onLoad: function (query) {
+    // D111：藏地密码讲解音频在 praiseVoice 分包（286KB 不进主包），进结算页即预热，
+    //   玩家点「听讲解」时不必等分包下载。失败静默（不影响结算页本身）。
+    try { wx.loadSubpackage && wx.loadSubpackage({ name: 'praiseVoice' }); } catch (e) {}
     var level = parseInt(query.level, 10) || 1;
     var pairs = parseInt(query.pairs, 10) || 0;
     var score = parseInt(query.score, 10) || 0;
     var combo = parseInt(query.combo, 10) || 0;
     var att = parseInt(query.att, 10) || 0;      // 配对尝试次数
     var miss = parseInt(query.miss, 10) || 0;    // 配对失败次数
+    // ================= D111 学习体系线结算（?lv=N&stage=M）=================
+    // 与老 10 关线**完全隔离**：学习关卡不写 completedLevels / levelStats / stars / 碎片，
+    // 也不发老线的揭图、藏地密码、阶段证书与护照印记（那些都按老 10 关设计）。
+    // （真实事故：学习线曾把累计序号 1..150 当老线 level 传进来，把 11..150
+    //   写进了 completedLevels，进度数据被污染。）
+    var learnLv = parseInt(query.lv, 10) || 0;
+    var learnStage = parseInt(query.stage, 10) || 0;
+    if (learnLv > 0) {
+      this.renderLearn(query, learnLv, learnStage, pairs, score, combo, att, miss);
+      return;
+    }
     // 记录通关 + 解锁下一关
     storage.completeLevel(level);
     // 成长阶梯 · 证书：先记录本关成绩，再判断该阶段是否通关并（升级）颁发证书
@@ -216,6 +256,122 @@ Page({
     // 录音就绪后这句话有 2-3 秒，离开页面也要立刻停（onUnload / onHide 停语音）。
     var that = this;
     this.blessTimer = setTimeout(function () { audio.blessing(); }, 650);
+  },
+  // ================= D111 学习体系线结算 =================
+  // 学习关卡（?lv=N&stage=M）走这里：标题 / 本级进度 / 下一课 / 本级证书。
+  // 与老 10 关线隔离：老线数据（completedLevels / levelStats / stars / 碎片 /
+  // 揭图 / 藏地密码 / 阶段证书 / 印记）都按 10 关设计，学习线一个都不碰。
+  renderLearn: function (query, lv, stage, pairs, score, combo, att, miss) {
+    var L = learningData.byLevel(lv);
+    if (!L) { wx.redirectTo({ url: '/pages/index/index' }); return; }
+    var stepsUsed = parseInt(query.steps, 10) || 0;
+    var stepsBudget = parseInt(query.budget, 10) || 0;
+    // 进度落库（幂等；game.js 通关时已记一次，这里兜底「直接进结算页」的情况）
+    storage.markLearnStageDone(lv, stage);
+    var acc = att > 0 ? pairs / att : 1;      // 与老线同口径：matches / attempts
+    var clean = miss === 0;
+    storage.recordLearnResult(lv, stage, acc, clean);
+    var doneN = storage.getLearnLevelDone(lv);
+    var levelDone = doneN >= L.stages;
+    // 下一课：本级未完 → 本级下一课；本级完 → 下一级第 1 课；15 级全完 → 返回首页
+    var nextLv = 0, nextStage = 0, nextLabel = '', nextDesc = '', allLearnDone = false;
+    if (!levelDone) {
+      nextLv = lv;
+      nextStage = storage.getLearnNextStage(lv) || 1;
+      nextLabel = '下一课 →';
+      nextDesc = '下一课：本级第 ' + nextStage + ' 课';
+    } else if (lv < learningData.LEVELS.length) {
+      nextLv = lv + 1;
+      nextStage = 1;
+      nextLabel = '进入 L' + nextLv + ' · ' + (learningData.byLevel(nextLv) || {}).name + ' →';
+      nextDesc = '下一级：L' + nextLv + ' · ' + (learningData.byLevel(nextLv) || {}).name + '（' +
+        (learningData.byLevel(nextLv) || {}).goal + '）';
+    } else {
+      allLearnDone = true;
+      nextLabel = '返回首页';
+      nextDesc = '15 级 · 150 课全部完成 —— 你已通读整个藏文拼读体系';
+    }
+    // 本级证书：本级 10 课全过才颁（只升不降，重练提升正确率可升级）
+    var certRes = levelDone ? certificate.issueLearningCert(lv, storage.getLearnStats(lv)) : null;
+    var owned = certificate.learningList().owned;
+    // 星级/收藏进度只做**当场展示**（rateStars 纯计算，不落库）：
+    //   学习线的星级不进老线 stars 映射（键会是 11..150，污染老线数据）。
+    var stars = collect.rateStars(att > 0 ? att : pairs, miss, combo);
+    storage.addPoints(score);
+    var cp = collect.cardProgress(CARD_ORDER, storage.getSeenCards());
+    var openLog = storage.getOpenLog();
+    this.setData({
+      // 学习分支里 level = 全局课序号（1..150），只用于「第 N / 150 课」展示；
+      // isFinal 恒 false（祝福卡是老 10 关线的内容，学习线不出现）。
+      level: learning.cumulativeIndex(lv, stage),
+      pairs: pairs,
+      score: score,
+      combo: combo,
+      isFinal: false,
+      accuracy: Math.round(acc * 100),
+      clean: clean,
+      // 学习分支字段
+      learnMode: true,
+      learnLv: lv,
+      learnStage: stage,
+      learnName: L.name,
+      learnGoal: L.goal,
+      learnIndex: learning.cumulativeIndex(lv, stage),
+      learnTotal: learningData.totalStages(),
+      learnDoneN: doneN,
+      learnNextLv: nextLv,
+      learnNextStage: nextStage,
+      learnNextLabel: nextLabel,
+      learnNextDesc: nextDesc,
+      learnAllDone: allLearnDone,
+      learnAcc: Math.round(acc * 100),
+      learnStepsUsed: stepsUsed,
+      learnStepsBudget: stepsBudget,
+      learnCert: certRes ? certRes.cert : null,
+      learnCertNew: !!(certRes && certRes.isNew),
+      learnCertUpgraded: !!(certRes && certRes.upgraded),
+      learnCertOwned: owned,
+      // 展示用（不落库）：星级 / 收藏进度 / 旅程天数
+      stars: stars,
+      starList: [1, 2, 3].map(function (i) { return stars >= i ? 'on' : 'off'; }),
+      starsImproved: false,
+      pointsGained: score,
+      journeyDay: openLog.total || 1,
+      cardSlots: cp.slots,
+      cardGot: cp.got,
+      cardTotal: cp.total,
+      cardLeft: cp.left,
+      cardPercent: cp.total ? Math.round(cp.got * 100 / cp.total) : 0,
+      stampCount: storage.getStampCount(),
+      totalLevels: learningData.totalStages(),
+      // 老线专属内容在学习分支一律不出现
+      reveal: null, secret: null, comboTease: null, cert: null, newStamp: false,
+      collected: (query.cards || '').split(',').filter(Boolean).map(function (id) {
+        var el = elements[id] || {};
+        var card = null;
+        for (var k = 0; k < cardsData.length; k++) if (cardsData[k].id === id) { card = cardsData[k]; break; }
+        return { id: id, label: el.tibetan || (el.char || ''), name: card ? card.title : '', color: el.color || '#C0392B', isLetter: el.type === 'letter' };
+      })
+    });
+    var that = this;
+    this.blessTimer = setTimeout(function () { audio.blessing(); }, 650);
+  },
+  // 下一课（学习线）：本级未完进下一课，本级完进下一级，15 级全完回首页
+  goNextLearn: function () {
+    tracker.track('next_level_click');
+    var d = this.data;
+    if (d.learnAllDone || !d.learnNextLv) {
+      wx.redirectTo({ url: '/pages/index/index' });
+      return;
+    }
+    wx.redirectTo({ url: '/pages/game/game?lv=' + d.learnNextLv + '&stage=' + (d.learnNextStage || 1) });
+  },
+  // 查看本级学习证书（证书页按 key 认学习证书）
+  openLearnCert: function () {
+    var c = this.data.learnCert;
+    if (!c) return;
+    tracker.track('cert_view');
+    wx.navigateTo({ url: '/pages/cert/cert?learn=' + c.lv });
   },
   // 离开结算页：撤掉未播放的定时器 + 立刻停掉正在播的祝福语音。
   // 语音通道是全局单声道（utils/audio.js 的 activeVoice），不清理会播到别的页面去。

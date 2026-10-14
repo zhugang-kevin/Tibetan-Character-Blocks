@@ -200,7 +200,7 @@ Page({
     // D51：支持两种入口
     //   ① 老 10 关线：?level=N         → data/levels.js 的盘面配置（行为完全不变）
     //   ② 学习体系线：?lv=N&stage=M     → utils/learning.js 生成的关卡（15 级 × 150 关）
-    //   未带 lv/stage 时走老线，零回归；学习线的 UI 入口（首页「学习体系」）在后续迭代接。
+    //   未带 lv/stage 时走老线，零回归；学习线入口见首页「学习体系 · 十五级」面板（D96/D111）。
     // D86：解析挑战参数（来自好友分享的卡片）。ch = 挑战者用了几步
     this.challenge = null;
     var chSteps = parseInt(query.ch, 10);
@@ -780,6 +780,13 @@ Page({
     setTimeout(function () {
       // 用户在这 1.2 秒里点了返回/退出：页面已销毁，不能再把他硬推到结算页
       if (!that._alive) return;
+      // D111：学习线带 lv/stage/steps 走学习结算分支（结算页据此渲染
+      //   「L1 · 第 3 课 / 下一课 / 本级证书」，不再把累计序号当老线 level 传）。
+      //   老线不带这些参数，行为零变化。步数 = 配对尝试次数（学习线每试一次扣一步）。
+      var learnPart = that.learnCfg
+        ? ('&lv=' + that.learnCfg.lv + '&stage=' + that.learnCfg.stage +
+           '&steps=' + that.attempts + '&budget=' + (that.stepsBudget || 0))
+        : '';
       wx.redirectTo({
         url: '/pages/result/result?level=' + that.data.level +
           '&pairs=' + that.data.totalPairs +
@@ -791,7 +798,7 @@ Page({
           '&combo=' + ((that.comboState && that.comboState.maxCombo) || 0) +
           // 正确率（证书质量门槛）：attempts = 尝试次数，misses = 失败次数
           '&att=' + that.attempts +
-          '&miss=' + that.misses
+          '&miss=' + that.misses + learnPart
       });
     }, 1500);
   },

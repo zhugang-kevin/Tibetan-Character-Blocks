@@ -388,6 +388,30 @@
   color: #C9BFA8;
 }
 
+/* D111 学习体系进度卡（学习线专属；老线不渲染） */
+.learn-progress {
+  background: linear-gradient(135deg, #FFFBF0 0%, #FFFFFF 100%);
+  border: 3rpx solid rgba(138, 106, 18, 0.55);
+  border-radius: 20rpx;
+  padding: 26rpx 28rpx;
+  margin-bottom: 28rpx;
+  box-shadow: 0 10rpx 26rpx rgba(96, 78, 44, 0.16);
+}
+.lp-head { display: flex; align-items: center; gap: 14rpx; }
+.lp-tag {
+  font-size: 22rpx; font-weight: 700; color: #FFFFFF;
+  background: #8A6A12; border-radius: 8rpx; padding: 4rpx 12rpx;
+}
+.lp-lv { font-size: 30rpx; font-weight: 700; color: #2C3E50; }
+.lp-goal { margin-top: 10rpx; font-size: 24rpx; color: #6E6759; line-height: 1.5; }
+.lp-bar {
+  margin-top: 16rpx; height: 14rpx; border-radius: 7rpx;
+  background: rgba(138, 106, 18, 0.16); overflow: hidden;
+}
+.lp-bar-in { height: 100%; border-radius: 7rpx; background: #8A6A12; }
+.lp-note { margin-top: 12rpx; font-size: 24rpx; color: #2C3E50; }
+.lp-next { color: #8A6A12; font-weight: 600; }
+
 .result-acc.ok {
   color: #8A6A12;
   font-weight: 600;

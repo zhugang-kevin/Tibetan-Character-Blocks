@@ -60,6 +60,13 @@ VOICE_INDEX.ids.concat(VOICE_INDEX.extras).forEach(function (k) { VOICE_SET[k] =
 function hasVoice(id) {
   return !!VOICE_SET[id];
 }
+// D111：语音文件位置。藏地密码十条中文讲解（secret_*，286KB）只在结算页「听讲解」用，
+//   与赞美音频同性质 → 移进 praiseVoice 分包（结算页进页即预热，见 pages/result）。
+//   元素发音 / 情绪语音 / 日签语音留主包：第一秒就要响的不能等分包下载。
+// 判据是**前缀**（secret_ → 分包）而不是逐条名单 —— 名单会漂移，规则不会。
+function voiceRootOf(id) {
+  return /^secret_/.test(id) ? PRAISE_VOICE_ROOT : '/audio/voice/';
+}
 function pronounce(id) {
   // 没有音源就不要假装播了：直接返回 false，让调用方给出诚实的反馈。
   // （过去这里会照常建 ctx 并 return true ——  misses 要等异步 onError 才知道，UI 无从判断。）
@@ -67,15 +74,16 @@ function pronounce(id) {
   try {
     if (!voiceCtx[id]) {
       var c = wx.createInnerAudioContext();
-      // 双扩展名（2026-10-08）：mp3 为主（中文播报 praise_*/secret_* 与压缩后的元素音），
+      var vroot = voiceRootOf(id);
+      // 双扩展名（2026-10-08）：mp3 为主（中文播报与压缩后的元素音），
       // 失败自动回退 .wav（天翼 TTS 原始产物）；两个都没有时静默，不影响游戏。
       c.__triedWav = false;
-      c.src = '/audio/voice/' + id + '.mp3';
+      c.src = vroot + id + '.mp3';
       c.obeyMuteSwitch = true;
       c.onError(function () {
         if (!c.__triedWav) {
           c.__triedWav = true;
-          try { c.src = '/audio/voice/' + id + '.wav'; c.play(); } catch (e) { /* 静默 */ }
+          try { c.src = vroot + id + '.wav'; c.play(); } catch (e) { /* 静默 */ }
         }
       });
       voiceCtx[id] = c;

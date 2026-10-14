@@ -24,6 +24,11 @@ Page({
     certs: [],           // 12 张证书的位置（已得高亮 / 未得灰色）
     owned: 0,
     certTotal: 12,
+    // D111 学习体系证书：15 级各一张 + 集齐解锁终极「藏文拼读宗师」
+    learnCerts: [],
+    learnOwned: 0,
+    learnTotal: 15,
+    learnUltimate: null,
     nextStage: null,     // 下一个可争取的阶段
     stamps: [],
     stampOwned: 0,
@@ -102,9 +107,15 @@ Page({
     var g = storage.getGender();
     var nm = storage.getTibetanName();
 
+    // D111 学习体系证书（15 级各一张 + 终极）
+    var learnList = certificate.learningList();
     this.setData({
       certs: list,      owned: owned,
       nextStage: next,
+      learnCerts: learnList.rows,
+      learnOwned: learnList.owned,
+      learnTotal: learnList.total,
+      learnUltimate: learnList.ultimate,
       stamps: stamps,
       stampOwned: stamps.length,
       cardsSeen: p.seenCards.length,
@@ -151,6 +162,17 @@ Page({
   },
 
   // 打开某阶段的证书页（未获得时进入「未解锁」说明页）
+  // D111：点学习证书格 → 证书页按 ?learn=lv 渲染（未获得时只提示，不开空页）
+  openLearnCert: function (e) {
+    var lv = parseInt(e.currentTarget.dataset.lv, 10) || 0;
+    if (!lv) return;
+    if (!certificate.findLvCert(lv)) {
+      wx.showToast({ title: '完成该级全部 10 课即颁发', icon: 'none' });
+      return;
+    }
+    tracker.track('cert_view');
+    wx.navigateTo({ url: '/pages/cert/cert?learn=' + lv });
+  },
   openCert: function (e) {
     var stage = parseInt(e.currentTarget.dataset.stage, 10);
     if (!stage) return;

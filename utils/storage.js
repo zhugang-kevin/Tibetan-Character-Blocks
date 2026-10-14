@@ -569,11 +569,48 @@ function getLearnNextStage(lv) {
   return 0;
 }
 
+// D111 学习线成绩（每级聚合，给「某级 10 课全过 → 颁证书」定档用）。
+//   口径与 certificate.aggregate 的「各关最佳正确率平均 / 全程无失误」同义：
+//     best[stage] = 该课历史最佳正确率（重练只升不降）；
+//     clean      = 该级只要有一课有失误就不是「零失误」（金质门槛）。
+//   ⚠️ 与老 10 关线**完全隔离**：学习线的正确率不进 levelStats（那是阶段证书的口径），
+//      老线的 completedLevels / stars 也不被学习线写脏（D111 事故：学习线曾把
+//      累计序号当 level 传给结算页，把 11..150 写进了 completedLevels）。
+function recordLearnResult(lv, stage, acc, clean) {
+  if (!lv || !stage) return null;
+  var p = rawRead() || {};
+  var s = (typeof p.learnStats === 'object' && !Array.isArray(p.learnStats)) ? p.learnStats : {};
+  var cur = s[lv];
+  if (!cur || typeof cur !== 'object' || Array.isArray(cur)) cur = { best: {}, clean: true };
+  var a = Math.max(0, Math.min(1, acc));
+  var prev = (typeof cur.best[stage] === 'number') ? cur.best[stage] : 0;
+  cur.best[stage] = Math.max(prev, a);
+  if (!clean) cur.clean = false;
+  s[lv] = cur;
+  p.learnStats = s;
+  rawWrite(p);
+  return getLearnStats(lv);
+}
+/** 某级聚合成绩：{ acc: 0..1（各课最佳的平均）, clean: 是否零失误, n: 已记录课数 } */
+function getLearnStats(lv) {
+  var p = rawRead() || {};
+  var s = (p && typeof p.learnStats === 'object' && !Array.isArray(p.learnStats)) ? p.learnStats : {};
+  var cur = s[lv];
+  if (!cur || typeof cur !== 'object' || Array.isArray(cur)) return { acc: 0, clean: true, n: 0 };
+  var best = (cur.best && typeof cur.best === 'object') ? cur.best : {};
+  var vals = Object.keys(best).map(function (k) { return best[k]; }).filter(function (v) { return typeof v === 'number'; });
+  var sum = 0;
+  for (var i = 0; i < vals.length; i++) sum += vals[i];
+  return { acc: vals.length ? sum / vals.length : 0, clean: !!cur.clean, n: vals.length };
+}
+
 module.exports = {
   getLearnDone: getLearnDone,
   markLearnStageDone: markLearnStageDone,
   getLearnLevelDone: getLearnLevelDone,
   getLearnNextStage: getLearnNextStage,
+  recordLearnResult: recordLearnResult,
+  getLearnStats: getLearnStats,
   MAX_LEVEL: MAX_LEVEL,
   getProgress: getProgress,
   completeLevel: completeLevel,

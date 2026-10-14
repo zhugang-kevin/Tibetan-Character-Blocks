@@ -33,7 +33,7 @@ cd tibetan-match
 node scripts/build-h5.js
 ```
 
-**自动验收**（模拟真人点击，527 项断言）：
+**自动验收**（模拟真人点击，658 项断言）：
 
 ```bash
 NODE_PATH="C:/Users/zhuga/.workbuddy/binaries/node/workspace/node_modules" \

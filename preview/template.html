@@ -136,6 +136,9 @@
   }
   /* nowrap：flex:1 的中间标题在窄屏会被挤到 29px 宽，「第 9 课」会断成两行（实测 390px 复现） */
   .status-mid { flex: 1; text-align: center; font-size: 14px; font-weight: 700; white-space: nowrap; }
+  /* D111 学习线步数预算：≤3 步转红（与小程序 game.wxml 的 low 态同义） */
+  .status-steps { flex-shrink: 0; font-size: 12px; font-weight: 700; color: #E8C87A; white-space: nowrap; }
+  .status-steps.low { color: #FF8A7A; }
   .status-right { font-size: 13px; color: var(--gold); font-weight: 700; text-align: right; min-width: 82px; }
   .status-right .sc { color: var(--ink); }
   .combo-pill { font-size: 11px; color: var(--muted); font-weight: 400; }
@@ -672,6 +675,21 @@
   #screen-game .status-right { color: #FFD98A; }
   #screen-game .status-right .sc { color: #FFD98A; }
   #screen-game .combo-pill { color: #B9C7D6; }
+  /* D111 学习线步数条（HUD 中部；≤3 步转红见 .status-steps.low） */
+  #screen-game .status-steps { color: #E8C87A; }
+
+  /* D51/D111 长按放大预览（L11 起）：暗底 + 居中大号藏文，点任意处收起 */
+  .zoom-mask {
+    position: fixed; inset: 0; z-index: 90;
+    background: rgba(6, 14, 26, 0.86);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .zoom-box { text-align: center; padding: 24px; }
+  .zoom-glyph {
+    font-size: 96px; line-height: 1.25; color: #FFD98A;
+    text-shadow: 0 4px 18px rgba(0, 0, 0, 0.6);
+  }
+  .zoom-tip { margin-top: 18px; font-size: 13px; color: #B9C7D6; }
 
   /* 第二层：暗金浮雕底盘（金色渐变 + 厚重外阴影），从夜色光晕中浮起 */
   /* 分隔感三件套：① 金色描边外圈 ② 厚重外阴影（含投影偏移，产生"悬空"）③ 内圈凹槽下沉 */
@@ -1118,6 +1136,24 @@
   .learn-goal { font-size: 11px; color: #6E6759; margin-top: 2px; }
   /* 四层附加字的读音规则（后加字 / 再后加字 / 前加字 / 上加字 / 下加字） */
   .learn-rule { font-size: 11px; color: #8A7A5C; margin-top: 4px; line-height: 1.6; }
+  /* D111 学习进度卡（结算页复用 journey 容器渲染；与小程序 result.wxss 同契） */
+  .lp-head { display: flex; align-items: center; gap: 8px; }
+  .lp-tag { font-size: 11px; font-weight: 700; color: #FFF6DC; background: #8A6A12; border-radius: 5px; padding: 2px 7px; }
+  .lp-lv { font-size: 15px; font-weight: 700; color: #3A3226; }
+  .lp-goal { margin-top: 6px; font-size: 12px; color: #6E6759; line-height: 1.5; }
+  .lp-bar { margin-top: 9px; height: 8px; border-radius: 4px; background: rgba(138,106,18,.16); overflow: hidden; }
+  .lp-bar-in { height: 100%; border-radius: 4px; background: #8A6A12; }
+  .lp-note { margin-top: 7px; font-size: 12px; color: #3A3226; }
+  .lp-note.lp-next { color: #8A6A12; font-weight: 700; }
+  /* D111：学习行可点（进度 + 证书档位徽章；未解锁置灰） */
+  .learn-row.locked { opacity: .45; }
+  .learn-row:not(.locked) { cursor: pointer; }
+  .learn-row:not(.locked):active { background: rgba(138, 106, 18, 0.08); }
+  .learn-prog { flex: 0 0 auto; font-size: 12px; font-weight: 700; color: #8A6A12; text-align: right; padding-top: 1px; }
+  .learn-cert {
+    display: inline-block; margin-left: 5px; padding: 0 5px; border-radius: 5px;
+    font-size: 11px; font-weight: 700; color: #FFF6DC; background: #8A6A12;
+  }
 
   .entry-grid { display: flex; flex-wrap: wrap; gap: 9px; }
   .entry-metric { flex: 1 1 46%; padding: 12px; border-radius: 11px; background: #FBF6E8; border: 1px solid rgba(214,202,176,.8); display: flex; flex-direction: column; gap: 3px; }
@@ -1449,6 +1485,8 @@
     <div class="statusbar">
       <button class="back-btn" id="game-back" title="返回首页" aria-label="返回首页">←</button>
       <div class="status-mid" id="status-mid">第 1 课</div>
+      <!-- D111 学习线步数预算（每试一次扣一步；老线为空不显示） -->
+      <div class="status-steps" id="status-steps"></div>
       <div class="status-right">
         <div><span class="sc" id="status-score">0</span> 分</div>
         <div class="combo-pill" id="status-combo">已消除 0/0 对</div>
@@ -1471,6 +1509,15 @@
     </div>
     <!-- 档位跃迁（等级 4 起）的一次性光环：重新挂载节点让动画重播 -->
     <div class="praise-burst" id="praise-burst" style="display:none"></div>
+
+    <!-- D51/D111 长按放大预览：L11 以上的复合词 / 句子在 3×3 格里偏小，
+         长按牌面即看大图，点任意处收起（与小程序 pages/game 的 zoom-mask 同契）。 -->
+    <div class="zoom-mask" id="zoom-mask" style="display:none">
+      <div class="zoom-box">
+        <div class="zoom-glyph tib" id="zoom-glyph"></div>
+        <div class="zoom-tip">松开手，继续配对</div>
+      </div>
+    </div>
 
     <div class="game-body" id="game-body">
       <div class="board-panel">
@@ -1571,6 +1618,17 @@
       <div class="pp-sub">每 10 课一个阶段，完成即颁发一张证书。集齐 12 张，就是一套完整的藏文入门档案。</div>
       <div class="cert-grid" id="pp-cert-grid"></div>
       <div class="pp-next" id="pp-next"></div>
+    </div>
+
+    <!-- D111 藏文拼读证书（学习体系 15 级各一张 + 终极「藏文拼读宗师」） -->
+    <div class="pp-section">
+      <div class="pp-head">
+        <span class="pp-h-title">藏文拼读证书</span>
+        <span class="pp-h-count" id="pp-learn-cert-count">0 / 15</span>
+      </div>
+      <div class="pp-sub">学习体系共 15 级 · 每级 10 课。完成一整级即颁发一张证书；集齐 15 张，解锁「藏文拼读宗师」。</div>
+      <div class="cert-grid" id="pp-learn-cert-grid"></div>
+      <div class="pp-next" id="pp-learn-next"></div>
     </div>
 
     <div class="pp-section">
@@ -1721,6 +1779,73 @@ const LEVELS = DATA.levels;
 const REVEALS = DATA.reveals;   // 秘境揭图（D31）：十关各一张，程序绘制
 const SECRETS = DATA.secrets;   // 藏地密码（PRD 5.2）：十关各一则，完成解锁（不落库）
 const STAGES = DATA.stages;
+// D111 学习体系（15 级 × 10 课 = 150 课）：盘面由小程序同一份生成器在构建期算好注入
+//   （scripts/build-h5.js → utils/learning.js），两端逐字节同源，模板里不另写生成逻辑。
+const LEARN_LEVELS = DATA.learning && DATA.learning.LEVELS ? DATA.learning.LEVELS : [];
+const LEARN_STAGES = DATA.learnStages || [];
+const LEARN_BY_KEY = {};
+const LEARN_TILES = {};        // lrn_* 元素 id → { type, tibetan, color, char }
+LEARN_STAGES.forEach(function (st) {
+  LEARN_BY_KEY[st.lv + '-' + st.stage] = st;
+  Object.keys(st.tiles || {}).forEach(function (id) { LEARN_TILES[id] = st.tiles[id]; });
+});
+function learnStageOf(lv, stage) { return LEARN_BY_KEY[lv + '-' + stage] || null; }
+function learnMeta(lv) {
+  for (var i = 0; i < LEARN_LEVELS.length; i++) if (LEARN_LEVELS[i].lv === lv) return LEARN_LEVELS[i];
+  return null;
+}
+// 学习线进度（与小程序 utils/storage.js 的 learnDone 同一 schema：{'lv-stage': 1}）
+function getLearnDone() {
+  const p = readRaw();
+  const v = (p && p.learnDone) || {};
+  return (typeof v === 'object' && !Array.isArray(v)) ? v : {};
+}
+function markLearnStageDone(lv, stage) {
+  if (!lv || !stage) return false;
+  const p = readRaw() || {};
+  const d = (typeof p.learnDone === 'object' && !Array.isArray(p.learnDone)) ? p.learnDone : {};
+  d[lv + '-' + stage] = 1;
+  p.learnDone = d;
+  writeRaw(p);
+  return true;
+}
+function learnLevelDone(lv) {
+  const d = getLearnDone();
+  let n = 0;
+  for (let i = 1; i <= 10; i++) if (d[lv + '-' + i]) n++;
+  return n;
+}
+function learnNextStage(lv) {
+  const d = getLearnDone();
+  for (let i = 1; i <= 10; i++) if (!d[lv + '-' + i]) return i;
+  return 0;
+}
+// 学习线成绩（每级聚合：各课最佳正确率的平均 + 是否零失误）—— 给本级证书定档用，
+// 与小程序 utils/storage.js 的 learnStats 同一 schema。
+function recordLearnResult(lv, stage, acc, clean) {
+  if (!lv || !stage) return null;
+  const p = readRaw() || {};
+  const s = (typeof p.learnStats === 'object' && !Array.isArray(p.learnStats)) ? p.learnStats : {};
+  let cur = s[lv];
+  if (!cur || typeof cur !== 'object' || Array.isArray(cur)) cur = { best: {}, clean: true };
+  const a = Math.max(0, Math.min(1, acc));
+  cur.best[stage] = Math.max(cur.best[stage] || 0, a);
+  if (!clean) cur.clean = false;
+  s[lv] = cur;
+  p.learnStats = s;
+  writeRaw(p);
+  return getLearnStats(lv);
+}
+function getLearnStats(lv) {
+  const p = readRaw() || {};
+  const s = (p && typeof p.learnStats === 'object' && !Array.isArray(p.learnStats)) ? p.learnStats : {};
+  const cur = s[lv];
+  if (!cur || typeof cur !== 'object' || Array.isArray(cur)) return { acc: 0, clean: true, n: 0 };
+  const best = (cur.best && typeof cur.best === 'object') ? cur.best : {};
+  const vals = Object.keys(best).map(function (k) { return best[k]; }).filter(function (v) { return typeof v === 'number'; });
+  const sum = vals.reduce(function (x, y) { return x + y; }, 0);
+  return { acc: vals.length ? sum / vals.length : 0, clean: !!cur.clean, n: vals.length };
+}
 const Merchants = DATA.merchants;   // 权益中心（双轨制到店权益）
 const CARD_BY_ID = {};
 CARDS.forEach(function (c) { CARD_BY_ID[c.id] = c; });
@@ -1798,7 +1923,12 @@ function getProgress() {
     // 万家灯火祈福跳窗：上次展示日期（每天首次打开只出现一次）
     lampDay: (p && p.lampDay) || '',
     // 每日打开记录（本地留存粗指标）
-    openLog: (p && p.openLog) || { days: [], lastDate: '', streak: 0, total: 0, first: '' }
+    openLog: (p && p.openLog) || { days: [], lastDate: '', streak: 0, total: 0, first: '' },
+    // D111 学习体系（150 关）进度与成绩 —— 与小程序 utils/storage.js 同 schema。
+    //   ⚠️ 必须列进白名单：getProgress 是显式挑字段的，漏一处就读成 undefined，
+    //      表现为「进度永远不记得」（D101 的 waterDay 就是这么漏过的）。
+    learnDone: (p && p.learnDone) || {},
+    learnStats: (p && p.learnStats) || {}
   };
 }
 function saveProgress(p) { writeRaw(p); }
@@ -2118,6 +2248,87 @@ function certList() {
 }
 
 function ownedCertCount() { return getProgress().certs.length; }
+
+/* ---------------- D111 学习体系证书（15 级各一张 + 终极「藏文拼读宗师」） ----------------
+   与小程序 utils/certificate.js 的同名函数同契：key = 'lv'+lv（与阶段证书的 stage 键区分），
+   两者共用同一个 certs 列表与流水号；定档口径一致（金 ≥95% 且零失误 / 银 ≥80% / 普）。 */
+function findLearnCert(lv) {
+  const all = getProgress().certs;
+  for (let i = 0; i < all.length; i++) if (all[i].key === 'lv' + lv) return all[i];
+  return null;
+}
+function learnTier(acc, clean) {
+  if (acc >= TIERS.gold.minAccuracy && clean) return TIERS.gold;
+  if (acc >= TIERS.silver.minAccuracy) return TIERS.silver;
+  return TIERS.bronze;
+}
+function buildLearnCert(lv, agg) {
+  const L = learnMeta(lv);
+  if (!L) return null;
+  const tier = learnTier(agg.acc, agg.clean);
+  const p = getProgress();
+  const prev = findLearnCert(lv);
+  const seq = (prev && prev.seq) || ((p.certSeq || 0) + 1);
+  const lines = (lv === 15 && DATA.learning && DATA.learning.ULTIMATE && DATA.learning.ULTIMATE.lines)
+    ? DATA.learning.ULTIMATE.lines
+    : ['完成 ' + L.stages + ' 个学习课', '正确率 ' + Math.round(agg.acc * 100) + '%'];
+  return {
+    key: 'lv' + lv,
+    kind: 'learning',
+    lv: lv,
+    name: L.name,
+    goal: L.goal,
+    stages: L.stages,
+    lines: lines,
+    tier: tier.key,
+    tierLabel: tier.label,
+    tierSeal: tier.seal,
+    tierColor: tier.color,
+    tierRule: tier.rule,
+    acc: Math.round(agg.acc * 100),
+    clean: !!agg.clean,
+    seq: seq,
+    no: certNo(seq),
+    holder: getHolderName() || '藏文学习者',
+    date: formatDate()
+  };
+}
+/** 某级 10 课全过后调用：颁发 / 升级（只升不降）。未达更好成绩原样返回旧证书。 */
+function issueLearnCert(lv, agg) {
+  const a = agg || { acc: 1, clean: false };
+  const prev = findLearnCert(lv);
+  const next = buildLearnCert(lv, { acc: a.acc, clean: !!a.clean });
+  if (!next) return null;
+  if (prev && TIER_RANK[prev.tier] >= TIER_RANK[next.tier]) {
+    return { cert: prev, isNew: false, upgraded: false };
+  }
+  const p = getProgress();
+  if (!prev) p.certSeq = (p.certSeq || 0) + 1;
+  p.certs = p.certs.filter(function (c) { return c.key !== 'lv' + lv; }).concat([next]);
+  saveProgress(p);
+  return { cert: next, isNew: !prev, upgraded: !!prev };
+}
+/** 15 张学习证书 + 终极状态（护照页 / 学习面板用） */
+function learnCertList() {
+  const rows = LEARN_LEVELS.map(function (L) {
+    const got = findLearnCert(L.lv);
+    return {
+      lv: L.lv, key: 'lv' + L.lv, name: L.name, goal: L.goal,
+      stages: L.stages, unlocked: !!got, cert: got,
+      tier: got ? got.tier : null, tierLabel: got ? got.tierLabel : '',
+      tierColor: got ? got.tierColor : '', accuracy: got ? got.acc : 0
+    };
+  });
+  const owned = rows.filter(function (r) { return r.unlocked; }).length;
+  const U = (DATA.learning && DATA.learning.ULTIMATE) || { name: '藏文拼读宗师', goal: '', lines: [] };
+  return {
+    rows: rows, owned: owned, total: rows.length,
+    ultimate: {
+      unlocked: owned >= rows.length, name: U.name, goal: U.goal, lines: U.lines,
+      need: Math.max(0, rows.length - owned)
+    }
+  };
+}
 function getHolderName() { return getProgress().holderName || ''; }
 function setHolderName(name) {
   const p = getProgress();
@@ -2794,7 +3005,20 @@ const state = {
   benefitMode: '', benefitCity: 'lhasa', benefitDone: 0,
   benefitClaimable: 0, benefitGot: 0, lastBenefitCode: '',
   reveal: null,                             // 秘境揭图（D31）：当前关的揭示图元数据
-  revealPct: 0
+  revealPct: 0,
+  // D111 盘面代号：换盘面（startLevel / startLearn）时 +1。drainQueue 的延迟结算
+  //   （SHATTER_MS=340ms）只在代号未变时才执行 —— 否则上一盘面排队的消除会落到新盘面上：
+  //   boardCreateLevel 的 uid 每盘都从 1 重新编号，旧 uid 在新盘面上「找得到」但是另
+  //   一张牌 → 两张无辜牌被消掉 / 随机错配（小程序端由页面生命周期守卫，H5 没有）。
+  boardToken: 0,
+  // D111 学习体系（150 关）：learn 非空 = 学习模式（{lv, stage, steps, stepsLeft}）。
+  //   学习关没有揭图 / 藏地密码 / 障碍物，也不写老线的 completedLevels / stars。
+  learn: null,
+  stepsBudget: 0,
+  stepsLeft: 0,
+  // D51 长按放大预览（L11 起）：复合音节在 3×3 格里偏小，长按看大图，点任意处收起
+  zoomable: false,
+  zoom: { show: false, tibetan: '', color: '' }
 };
 
 const $ = function (id) { return document.getElementById(id); };
@@ -3331,23 +3555,47 @@ function openPanel(key) {
       }).join('') +
       '<div class="entry-note mon-src">资料整理自中国西藏网、驻外使馆官网《西藏寺庙》与 2015 年国新办白皮书。</div></div>';
   } else if (key === 'learn') {
-    // D110：藏文学习体系（15 级 × 10 课）。数据来自 data/learning.js（build-h5 注入），
-    //   与小程序同一份；这里的 rule 是四层附加字的**读音规则**（后加字/再后加字/前加字/上加字/下加字）。
-    //   ⚠️ 此前 H5 完全没有这个面板，而功能对等检查拿 'learn' 当特征串，
-    //      被注入 JSON 里的 "learning" 命中 → 一直显示「已覆盖」的假绿。
-    const LEVELS = (DATA.learning && DATA.learning.LEVELS) || [];
+    // D110/D111：藏文学习体系（15 级 × 10 课 = 150 课）。
+    //   ⚠️ 2026-10-14 前这里只是**只读清单**（结尾写着「上课请使用小程序」）——
+    //      玩家在体验版里打完 10 关后无路可走，学习体系等于不存在。现在整条线可玩：
+    //      点一级 → 直接进该级的下一课，进度写本机（learnDone，与小程序同 schema）。
+    //   rule 是四层附加字的读音规则（后加字/再后加字/前加字/上加字/下加字）。
+    const LEVELS = LEARN_LEVELS;
     body.innerHTML =
-      '<div class="entry-note">共 ' + LEVELS.length + ' 级 · 每级 10 课 · 从三十个辅音一路学到完整句子</div>' +
+      '<div class="entry-note">共 ' + LEVELS.length + ' 级 · 每级 10 课 · 共 150 课。从三十个辅音一路学到完整句子。</div>' +
+      (learnLevelDone(1) ? '' : '<div class="entry-note">从 L1 开始：每课 3 个新辅音，10 课走完三十个辅音。</div>') +
       '<div class="learn-list">' + LEVELS.map(function (L) {
-        return '<div class="learn-row">' +
+        // 解锁规则与小程序首页一致：L1 直进；其余要先过前一级（10 课）
+        const locked = L.lv > 1 && learnLevelDone(L.lv - 1) < L.stages;
+        const done = learnLevelDone(L.lv);
+        const next = learnNextStage(L.lv) || 1;
+        const cert = findLearnCert(L.lv);
+        const prog = locked ? '🔒'
+          : (done >= L.stages ? ('已完成' + (cert ? ' · ' + cert.tierSeal : '')) : (done + ' / ' + L.stages));
+        return '<div class="learn-row' + (locked ? ' locked' : '') + '" data-lv="' + L.lv + '" data-stage="' + next + '">' +
           '<div class="learn-lv">L' + L.lv + '</div>' +
           '<div class="learn-main">' +
-          '<div class="learn-name">' + L.name + '</div>' +
+          '<div class="learn-name">' + L.name + (cert ? ' <span class="learn-cert">' + cert.tierLabel + '</span>' : '') + '</div>' +
           '<div class="learn-goal">' + L.goal + '</div>' +
           (L.rule ? '<div class="learn-rule">读音：' + L.rule + '</div>' : '') +
-          '</div></div>';
+          '</div>' +
+          '<div class="learn-prog">' + prog + '</div>' +
+          '</div>';
       }).join('') + '</div>' +
-      '<div class="entry-note">体验版展示课程与读音规则；上课与进度保存请使用小程序。</div>';
+      '<div class="entry-note">进度只保存在本机。点任意一级即可上课（未解锁的级需要先完成前一级）。</div>';
+    // 行点击 → 进该级下一课（与小程序 onTapLearnLevel 同规则）
+    body.querySelectorAll('.learn-row').forEach(function (row) {
+      row.addEventListener('click', function () {
+        const lv = parseInt(row.dataset.lv, 10) || 0;
+        const stage = parseInt(row.dataset.stage, 10) || 1;
+        if (lv > 1 && learnLevelDone(lv - 1) < 10) {
+          showTip('先完成 L' + (lv - 1) + ' 的 10 课，这一级就会打开');
+          return;
+        }
+        closePanel();
+        startLearn(lv, stage);
+      });
+    });
   } else if (key === 'market') {
     body.innerHTML = '<div class="entry-note">八廓街集市即「藏文权益中心」：用课程进度领取由商家提供并兑现的到店体验，平台不参与交易、不经手资金。</div>' +
       '<div class="entry-btn" id="market-btn">进入藏文权益中心</div>';
@@ -3861,7 +4109,8 @@ function praiseOnMiss(st) {
 /* 造一张牌（含全部显示字段）。盘面模型只负责把它在格与格之间搬运。 */
 let occCount = {};   // 精灵表帧计数：同字母第 n 次出现 → 帧 floor(n/2)%4
 function makeTile(id, uid) {
-  const el = ELEMENTS[id];
+  // D111：学习线的元素 id 是 lrn_{lv}_{stage}_{i}，不在 ELEMENTS 里 —— 查 LEARN_TILES。
+  const el = ELEMENTS[id] || LEARN_TILES[id] || ELEMENTS.letter_01;
   const t = {
     uid: uid, id: id, type: el.type,
     tibetan: withTseg(el.tibetan || ''), color: el.color,
@@ -3891,6 +4140,16 @@ function totalPairs() { return state.board ? state.board.total / 2 : 0; }
 function startLevel(level) {
   const cfg = LEVELS[level - 1];
   if (!cfg) return;
+  // D111：从学习关回老线时必须把学习态清干净 —— 否则 layoutBoard 仍按列数反算格子、
+  //   HUD 仍显示步数、结算仍走学习分支（真实发生：学完一课回首页点老关，牌面变小）。
+  state.learn = null;
+  state.stepsBudget = 0;
+  state.stepsLeft = 0;
+  state.zoomable = false;
+  state.zoom = { show: false, tibetan: '', color: '' };
+  const zm = $('zoom-mask'); if (zm) zm.style.display = 'none';
+  state.boardToken++;                 // D111：作废上一盘面在飞的结算/发音定时器
+  clearTimeout(state._voiceTimer);
   state.level = level;
   state.cols = cfg.cols;
   state.rows = cfg.rows;
@@ -3965,6 +4224,91 @@ function startLevel(level) {
 function updateHud() {
   $('status-score').textContent = state.score;
   $('status-combo').textContent = '已消除 ' + state.matchedCount + '/' + totalPairs() + ' 对';
+  // D111 学习线：步数预算（每试一次扣一步，用完结算）
+  const st = $('status-steps');
+  if (st) {
+    if (state.learn) {
+      st.textContent = '剩余 ' + state.stepsLeft + '/' + state.stepsBudget + ' 步';
+      st.className = 'status-steps' + (state.stepsLeft <= 3 ? ' low' : '');
+    } else {
+      st.textContent = '';
+      st.className = 'status-steps';
+    }
+  }
+}
+
+/* D111 学习体系入口（15 级 × 150 关）。
+   与 startLevel 的关系：盘面模型 / 下落 / 补充 / 结算全部同一套代码，
+   差别只在三处 —— 内容来自构建期注入的 learnStages（不来自 data/levels.js）、
+   格子尺寸按列数反算（6×6 小格 → 3×3 大格）、多一个步数预算。
+   学习关**没有**揭图 / 藏地密码 / 障碍物（那三样都按老 10 关设计）。 */
+function startLearn(lv, stage) {
+  const cfg = learnStageOf(lv, stage);
+  if (!cfg) return;
+  const meta = learnMeta(lv) || {};
+  state.learn = { lv: lv, stage: stage };
+  state.level = cfg.index;            // 全局课序号 1..150（只用于展示）
+  state.cols = cfg.cols;
+  state.rows = cfg.rows;
+  state.firstUid = null;
+  state.matchedCount = 0;
+  state.score = 0;
+  state.combo = 0;
+  state.maxCombo = 0;
+  state.praiseState = praiseInitState();
+  const praiseOffSaved = getProgress().praiseOff;
+  state.praiseOff = praiseOffSaved;
+  const praiseToggleEl = $('praise-toggle');
+  if (praiseToggleEl) {
+    praiseToggleEl.textContent = praiseOffSaved ? '文案 关' : '文案 开';
+    praiseToggleEl.className = 'status-praise' + (praiseOffSaved ? ' off' : '');
+  }
+  const praiseBoxEl = $('praise-fx');
+  if (praiseBoxEl) praiseBoxEl.className = 'praise-fx';
+  state.removeQueue = [];
+  state.draining = false;
+  state.finished = false;
+  state.fresh = {};
+  state.locked = false;
+  state.collected = [];
+  state.attempts = 0;
+  state.matches = 0;
+  state.misses = 0;
+  state.goldenId = null;              // 学习关不设「重点字」（老线的双倍练习概念）
+  state.reveal = null;                // 学习关没有秘境揭图
+  state.revealPct = 0;
+  updateRevealCap();
+  // 步数预算：每关 = 对数 × 2.5（与小程序 utils/learning.js 的 STEP_MULT 同值）
+  state.stepsBudget = cfg.steps;
+  state.stepsLeft = cfg.steps;
+  // 长按放大预览：L11 以上（复合词 / 句子在 3×3 格里偏小）
+  state.zoomable = lv >= 11;
+  state.zoom = { show: false, tibetan: '', color: '' };
+  state.boardToken++;                 // D111：同上（换盘即作废在飞的定时器）
+  clearTimeout(state._voiceTimer);
+
+  occCount = {};
+  state.board = boardCreateLevel(cfg, makeTile);
+  state.tiles = state.board.cells;
+  state.freed = [];
+  for (let i = 0; i < state.board.slots; i++) state.freed.push(false);
+  // 学习关无障碍物布点（cfg.obstacles 为 undefined，planOverlays 自然空转）
+  state.frostTotal = 0;
+  state.crateTotal = 0;
+  state.ropeTotal = 0;
+  state.brokenCount = 0;
+
+  $('status-mid').textContent = 'L' + lv + ' · 第 ' + stage + ' 课';
+  layoutBoard();
+  renderBoard({ phase: 'settle' });
+  updateHud();
+  showScreen('game');
+  nextFrame(layoutBoard);
+
+  if (!isOnboardDone()) {
+    state.guideStep = 1;
+    showGuide();
+  }
 }
 
 /* ---------------- 盘面布局：全关卡统一牌面尺寸 ----------------
@@ -3985,8 +4329,14 @@ function layoutBoard() {
   const meas = (host && host.clientWidth) ? host.clientWidth : wrap.clientWidth;
   const availW = meas - 2 * 10 - 4;               // outline padding + border
   const gap = 7;                                  // 固定间距：各关牌面尺寸完全一致
-  const tile = Math.max(30, Math.floor((availW - gap * (REF_COLS - 1)) / REF_COLS));
-  const tileH = Math.round(tile * 1.2);
+  // D111 学习线：格子尺寸**反过来由列数决定**（与小程序 utils/grid.js 的 cellPx 同契）——
+  //   6×6 → 小格、5×5 → 中格、4×4 → 大格、3×3 → 特大格（cell = 可用宽 / 列数）。
+  //   老线仍走 8 列基准（各关牌面一样大），两条口径互不影响。
+  const cols = state.cols || REF_COLS;
+  const tile = state.learn
+    ? Math.max(34, Math.floor((availW - gap * (cols - 1)) / cols))
+    : Math.max(30, Math.floor((availW - gap * (REF_COLS - 1)) / REF_COLS));
+  const tileH = state.learn ? tile : Math.round(tile * 1.2);
 
   state.tileW = tile;
   state.tileH = tileH;
@@ -4105,8 +4455,48 @@ function ensureTile(t) {
   d._sig = tileSig(t);
   tileEls[t.uid] = d;
   $('board').appendChild(d);
+  bindTileLongPress(d);   // D51/D111：L11 起长按放大预览
   return d;
 }
+
+/* D51/D111 长按放大预览（L11 以上的复合词 / 句子在 3×3 格里偏小）。
+   按住 380ms 出大图；松手那一下的 click 必须被吞掉，否则预览一闪就没。 */
+let zoomTimer = null, zoomUid = null, zoomJustOpened = false;
+function bindTileLongPress(d) {
+  d.addEventListener('pointerdown', function () {
+    if (!state.zoomable || state.zoom.show) return;
+    zoomUid = d.dataset.uid;
+    if (zoomTimer) clearTimeout(zoomTimer);
+    zoomTimer = setTimeout(function () { openZoom(zoomUid); }, 380);
+  });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (ev) {
+    d.addEventListener(ev, function () {
+      if (zoomTimer) { clearTimeout(zoomTimer); zoomTimer = null; }
+    });
+  });
+}
+function openZoom(uid) {
+  zoomTimer = null;
+  const st = state.board;
+  if (!st) return;
+  for (let i = 0; i < st.cells.length; i++) {
+    const t = st.cells[i];
+    if (t && String(t.uid) === String(uid)) {
+      // t.tibetan 在 makeTile 里已 withTseg，这里直接显示（不要再补一次）
+      state.zoom = { show: true, tibetan: t.tibetan || '', color: t.color || '#FFD98A' };
+      zoomJustOpened = true;
+      const m = $('zoom-mask'); if (m) m.style.display = 'flex';
+      const g = $('zoom-glyph'); if (g) { g.textContent = t.tibetan || ''; g.style.color = t.color || '#FFD98A'; }
+      haptic('light');
+      return;
+    }
+  }
+}
+function closeZoom() {
+  state.zoom = { show: false, tibetan: '', color: '' };
+  const m = $('zoom-mask'); if (m) m.style.display = 'none';
+}
+$('zoom-mask').addEventListener('click', function () { closeZoom(); });
 
 /* phase='settle' 一次到位；phase='in' 让补充牌停在盘外上方 + 透明（首帧），
    下一帧再 'settle' 落到位置 → 于是「从顶上掉下来」。 */
@@ -4174,6 +4564,8 @@ window.addEventListener('resize', function () {
    D33：盘面改绝对定位后牌会换格，所以点击用**事件委托**绑在盘面上一次，
    再用 uid 反查当前格号 —— 不能把 idx 写死在节点上（牌一落就错位）。 */
 $('board').addEventListener('click', function (e) {
+  // D51/D111：长按刚出预览时，松手那一下的 click 直接吞掉（不让它关掉刚打开的预览）
+  if (zoomJustOpened) { zoomJustOpened = false; return; }
   const d = e.target && e.target.closest ? e.target.closest('.tile') : null;
   if (!d || d.dataset.uid == null) return;
   const idx = indexOfUid(d.dataset.uid);
@@ -4198,6 +4590,8 @@ function setTileState(tile, st) {
 
 function onTapTile(idx) {
   if (state.locked) return;
+  // D51/D111：放大预览开着时，这一次点击只用来收起它（不误选牌）
+  if (state.zoom && state.zoom.show) { closeZoom(); return; }
   const tile = state.board && state.board.cells[idx];
   if (!tile || tile.state === 'removing') return;
 
@@ -4232,6 +4626,18 @@ function onTapTile(idx) {
 
   // 一次配对尝试（成功或失败都算）——正确率 = matches / attempts
   state.attempts++;
+
+  // D111 学习线：每次配对尝试消耗一步（成功失败都消耗，这就是「步数预算」的含义）。
+  //   预算用完而盘面未空 → 本课结束走结算（不扣分；与「正确率」分开统计）。
+  if (state.learn) {
+    state.stepsLeft = Math.max(0, state.stepsBudget - state.attempts);
+    updateHud();
+    if (state.stepsLeft <= 0) {
+      state.locked = true;
+      setTimeout(function () { finishLevel(); }, 700);
+      return;
+    }
+  }
 
   if (a.id === b.id) {
     state.matches++;
@@ -4396,8 +4802,10 @@ function handleMatch(i, j) {
   const id = a.id;
   if (state.collected.indexOf(id) === -1) state.collected.push(id);
 
-  const firstTime = !isCardSeen(id);
-  if (firstTime) markCardSeen(id);
+  // D111：学习关的字是 lrn_*（没有文化卡）—— 不写 seenCards，
+  //   否则收藏进度里会塞进一堆永不显示的 id（cardProgress 不认它们，但数据会脏）。
+  const firstTime = !state.learn && !isCardSeen(id);
+  if (!state.learn && firstTime) markCardSeen(id);
 
   // 每次配对成功都朗读该元素发音（学习闭环：看得见 → 听得见）
   // 延后 300ms 让配对音效先响，避免人声与铃声糊在一起
@@ -4422,7 +4830,10 @@ function drainQueue() {
   if (state.draining || !state.removeQueue.length) return;
   state.draining = true;
   const uids = state.removeQueue.shift();
+  const token = state.boardToken;   // D111：延时结算归属哪个盘面（换盘后旧队列作废）
   setTimeout(function () {
+    // 旧盘面的排队：直接作废（不碰 state.draining —— 新盘面的队列状态才是权威）
+    if (token !== state.boardToken) { return; }
     // 结算时才把 uid 解析成格号：排队期间前面的下落已经把牌挪过位置了。
     // 这两张牌一定还在盘面上（只有它们自己的结算才会移走它们），所以必然找得到。
     const pair = [indexOfUid(uids[0]), indexOfUid(uids[1])];
@@ -4595,8 +5006,203 @@ function finishLevel() {
   renderResult();
 }
 
+/* D111 学习线结算（?lv&stage 的浏览器等价物：state.learn 非空）。
+   与老线的差异只有三处：标题口径（L{级}·第{课}课）、进度（本级 n/10 + 下一课）、
+   本级证书（10 课全过才颁）。星级只当场展示（不写老线 stars 映射 —— 键会是 11..150）。 */
+function renderLearnResult() {
+  const lv = state.learn.lv, stage = state.learn.stage;
+  const L = learnMeta(lv) || {};
+  const meta = learnStageOf(lv, stage) || {};
+  markLearnStageDone(lv, stage);                       // 幂等（finishLevel 里也可能已记）
+  const att = state.attempts > 0 ? state.attempts : state.matchedCount;
+  const acc = att > 0 ? state.matchedCount / att : 1;
+  const clean = state.misses === 0;
+  recordLearnResult(lv, stage, acc, clean);
+  const done = learnLevelDone(lv);
+  const levelDone = done >= (L.stages || 10);
+  // 下一课：本级未完 → 本级下一课；本级完 → 下一级第 1 课；15 级全完 → 返回首页
+  let nextLv = 0, nextStageNo = 0, nextLabel = '', nextDesc = '';
+  if (!levelDone) {
+    nextLv = lv; nextStageNo = learnNextStage(lv) || 1;
+    nextLabel = '下一课 →'; nextDesc = '下一课：本级第 ' + nextStageNo + ' 课';
+  } else if (lv < LEARN_LEVELS.length) {
+    const nl = learnMeta(lv + 1) || {};
+    nextLv = lv + 1; nextStageNo = 1;
+    nextLabel = '进入 L' + nextLv + ' · ' + nl.name + ' →';
+    nextDesc = '下一级：L' + nextLv + ' · ' + nl.name + '（' + nl.goal + '）';
+  } else {
+    nextLabel = '返回首页';
+    nextDesc = '15 级 · 150 课全部完成 —— 你已通读整个藏文拼读体系';
+  }
+  // 本级证书：一整级 10 课全过才颁（只升不降）
+  const certRes = levelDone ? issueLearnCert(lv, getLearnStats(lv)) : null;
+  const learnCerts = learnCertList();
+  addPoints(state.score);                              // 学习得分入账（全局计数器）
+  const stars = rateStars(att, state.misses, state.maxCombo);
+
+  $('res-title').textContent = 'L' + lv + ' · 第 ' + stage + ' 课完成！';
+  $('res-sub').textContent = (L.name || '') + ' · 第 ' + (meta.index || 0) + ' / 150 课 · 学习得分 ' + state.score;
+  $('res-acc').textContent = '本课正确率 ' + Math.round(acc * 100) + '%' +
+    (clean ? ' · 全程无失误 ✦' : '') +
+    (state.stepsBudget ? (' · 用了 ' + state.attempts + ' / ' + state.stepsBudget + ' 步') : '');
+  $('res-acc').className = 'result-acc' + (clean ? ' ok' : '');
+  $('res-stars').innerHTML = [1, 2, 3].map(function (i) {
+    return '<span class="rs-star' + (stars >= i ? ' on' : '') + '">★</span>';
+  }).join('') + '<span class="rs-tip">本课评价</span>';
+
+  $('res-rewards').innerHTML =
+    '<div class="reward-box"><div class="rw-v">+' + state.score + '</div><div class="rw-k">学习得分入账</div></div>' +
+    '<div class="reward-box"><div class="rw-v">' + done + ' / ' + (L.stages || 10) + '</div>' +
+    '<div class="rw-k">' + (levelDone ? '本级已完成' : 'L' + lv + ' 学习进度') + '</div></div>';
+
+  // 统计行（学习线同样有得分与连击；文化卡恒 0 —— 学习关没有文化卡）
+  $('res-score').textContent = state.score;
+  $('res-combo').textContent = '×' + state.maxCombo;
+  $('res-cards').textContent = 0;
+
+  // 学习关没有揭图 / 藏地密码 / 印记 / 祝福卡（那四样都按老 10 关设计）
+  $('res-reveal').innerHTML = '';
+  $('res-secret').innerHTML = '';
+  $('res-stamp').innerHTML = '';
+  $('res-combo-tease').innerHTML = '';
+  $('res-chips').innerHTML = '';
+  $('res-bless').innerHTML = '';
+
+  // 进度卡（复用 journey 容器）：本级目标 + 进度条 + 下一站
+  $('res-journey').innerHTML =
+    '<div class="lp-head"><span class="lp-tag">学习体系</span><span class="lp-lv">L' + lv + ' · ' + (L.name || '') + '</span></div>' +
+    '<div class="lp-goal">' + (L.goal || '') + '</div>' +
+    '<div class="lp-bar"><div class="lp-bar-in" style="width:' + (done * 10) + '%"></div></div>' +
+    '<div class="lp-note">本级进度 ' + done + ' / ' + (L.stages || 10) + ' 课' +
+      (levelDone ? ' · 本级已完成' : '') + ' · 已获证书 ' + learnCerts.owned + ' / ' + learnCerts.total + '</div>' +
+    '<div class="lp-note lp-next">' + nextDesc + '</div>';
+
+  // 证书横幅 / 终极进度
+  const certEl = $('res-cert');
+  if (certRes && certRes.cert) {
+    certEl.innerHTML =
+      '<div class="cert-banner" style="border-color:' + certRes.cert.tierColor + ';">' +
+      '<div class="cert-seal" style="background:' + certRes.cert.tierColor + ';">' + certRes.cert.tierSeal + '</div>' +
+      '<div class="cert-info">' +
+      '<div class="cert-line">' + (certRes.isNew ? '获得藏文拼读证书' : (certRes.upgraded ? '证书升级' : '本级证书')) +
+        ' · ' + certRes.cert.tierLabel + '</div>' +
+      '<div class="cert-line2">L' + certRes.cert.lv + ' · ' + certRes.cert.name + ' · 正确率 ' + certRes.cert.acc + '%</div>' +
+      '</div><div class="cert-go" id="learn-cert-go">查看 ›</div></div>';
+    const go = $('learn-cert-go');
+    if (go) go.addEventListener('click', function () { showLearnCert(lv); });
+  } else if (!learnCerts.ultimate.unlocked) {
+    certEl.innerHTML = '<div class="cert-hint">学习证书 ' + learnCerts.owned + ' / ' + learnCerts.total +
+      ' · 集齐解锁「' + learnCerts.ultimate.name + '」</div>';
+  } else {
+    certEl.innerHTML = '<div class="cert-hint">🏆 已集齐 15 张 · 解锁「' + learnCerts.ultimate.name + '」</div>';
+  }
+
+  // 底栏：下一课 / 下一级 / 返回首页
+  const actions = $('res-actions');
+  actions.innerHTML = '';
+  const next = document.createElement('button');
+  next.className = 'primary-btn';
+  next.textContent = nextLabel;
+  next.setAttribute('style', 'background: var(--red); color:#fff; border:0; border-radius:26px; padding:13px 0; width:100%; font-size:16px; font-weight:700; cursor:pointer;');
+  next.addEventListener('click', function () {
+    if (!nextLv) { renderHome(); return; }
+    startLearn(nextLv, nextStageNo);
+  });
+  actions.appendChild(next);
+  const links = document.createElement('div');
+  links.className = 'bar-links';
+  const passport = document.createElement('button');
+  passport.className = 'passport-btn';
+  passport.textContent = '文化护照 · ' + ownedCertCount() + ' 张证书';
+  passport.setAttribute('style', 'border:1.5px solid #1E8449; border-radius:22px; padding:10px 0; font-size:14px; font-weight:700; color:#176B3C; background:rgba(255,255,255,.9); cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;');
+  passport.addEventListener('click', showPassport);
+  links.appendChild(passport);
+  const back = document.createElement('button');
+  back.className = 'ghost-btn';
+  back.textContent = '返回首页';
+  back.setAttribute('style', 'border:1.5px solid var(--line); border-radius:22px; padding:10px 0; font-size:14px; font-weight:700; color:var(--ink); background:rgba(255,255,255,.9); cursor:pointer;');
+  back.addEventListener('click', renderHome);
+  links.appendChild(back);
+  actions.appendChild(links);
+}
+
+/* D111 查看学习证书：复用证书页（?learn=lv 的小程序等价物），没有证书时给诚实提示。
+   学习证书与阶段证书**同形不同键**（key='lv'+lv），这里整成同一套视图模型渲染：
+   stage = 级号、stageName = 级名，其余字段（tier/lines/no/holder/date）完全一致。 */
+function showLearnCert(lv) {
+  const cert = findLearnCert(lv);
+  const body = $('cert-body');
+  if (!cert) {
+    const L = learnMeta(lv) || {};
+    body.innerHTML =
+      '<div class="locked-box">' +
+      '<div class="ic">🔒</div>' +
+      '<div class="t">L' + lv + ' · ' + (L.name || '') + '</div>' +
+      '<div class="s">' + (L.goal || '') + '</div>' +
+      '<div class="p">当前进度 ' + learnLevelDone(lv) + ' / 10 课</div>' +
+      '<div class="r">完成 L' + lv + ' 本级全部 10 课，即可获得「' + (L.name || '') + '」证书</div>' +
+      '</div>' +
+      '<div class="tier-box"><div class="tt">证书等级（质量门槛）</div>' +
+      ['gold', 'silver', 'bronze'].map(function (k) {
+        const t = TIERS[k];
+        return '<div class="tier-row"><div class="dot" style="background:' + t.color + ';"></div>' +
+          '<div class="nm" style="color:' + t.color + ';">' + t.label + '</div>' +
+          '<div class="rl">' + t.rule + '</div></div>';
+      }).join('') +
+      '</div>';
+    showScreen('cert');
+    return;
+  }
+  body.innerHTML =
+    '<div class="cert-sheet" style="border-color:' + cert.tierColor + ';">' +
+    '<div class="cert-sheet-inner">' +
+    '<div class="cert-orn l">✦</div><div class="cert-orn r">✦</div>' +
+    '<div class="cs-tib tib">' + CERT_TIB + '</div>' +
+    '<div class="cs-title">藏文拼读证书</div>' +
+    '<div class="cs-rule"></div>' +
+    '<div class="cs-stage">第 ' + cert.lv + ' 级</div>' +
+    '<div class="cs-name" style="color:' + cert.tierColor + ';">' + cert.name + '</div>' +
+    '<div class="cs-tier" style="background:' + cert.tierColor + ';">' + cert.tierLabel + '</div>' +
+    '<div class="cs-lines">' +
+    cert.lines.map(function (l) { return '<div class="cs-line">✦  ' + l + '</div>'; }).join('') +
+    '</div>' +
+    '<div class="cs-meta">' +
+    '<div class="cs-row"><span class="cs-k">证书编号</span><span class="cs-v">' + cert.no + '</span></div>' +
+    '<div class="cs-row"><span class="cs-k">持 有 人</span><span class="cs-v">' + cert.holder +
+    ' <span class="edit" id="cs-edit">✎</span></span></div>' +
+    '<div class="cs-row"><span class="cs-k">颁发日期</span><span class="cs-v">' + cert.date + '</span></div>' +
+    '<div class="cs-row"><span class="cs-k">学习表现</span><span class="cs-v">正确率 ' + cert.acc + '%' +
+    (cert.clean ? ' · 零失误' : '') + '</span></div>' +
+    '</div>' +
+    '<div class="cs-foot"><img src="' + IMAGES.logo80 + '" alt=""><div class="cs-code">小程序码</div></div>' +
+    '<div class="cs-slogan">认藏文，从方块开始</div>' +
+    '</div></div>' +
+    '<div class="cert-actions"><button class="solid" id="cert-gen">生成证书图片</button></div>' +
+    '<div id="cert-out"></div>' +
+    '<div class="cert-tip">证书是学习证明。正确率越高，等级越高：金质 &gt; 银质 &gt; 普通。集齐 15 张解锁「' +
+    (learnCertList().ultimate.name) + '」。</div>';
+
+  $('cert-gen').addEventListener('click', function () { generateCertImage(cert); });
+  $('cs-edit').addEventListener('click', function () {
+    let name = null;
+    try {
+      name = window.prompt('证书持有人（最多 10 个字）', cert.holder === '藏文学习者' ? '' : cert.holder);
+    } catch (e) { name = null; }
+    if (name === null) return;
+    const n = (String(name).trim() || '藏文学习者').slice(0, 10);
+    setHolderName(n);
+    updateCertHolder(n);
+    showLearnCert(lv);
+  });
+  showScreen('cert');
+}
+
 function renderResult() {
   const level = state.level;
+  // D111 学习线结算分支：内容 / 进度 / 下一课 / 本级证书，**不碰老线数据**
+  //   （老线的 completedLevels / levelStats / stars / 碎片 / 揭图 / 藏地密码 / 印记
+  //     全是按 10 关设计的；把学习课的全局序号当 level 传进去会污染它们）。
+  if (state.learn) { renderLearnResult(); return; }
   const hadStamp = getProgress().stamps.indexOf('lhasa') > -1;
   completeLevel(level);
   const stampNew = !hadStamp && grantStamp('lhasa');
@@ -4992,6 +5598,27 @@ function showPassport() {
       '<b>还差 ' + (next.total - next.progress) + ' 课</b>')
     : (owned ? '已集齐当前已开放阶段的全部证书' : '');
 
+  // D111 学习体系证书（15 级各一张 + 终极）；点格 → showLearnCert（未获得给诚实提示）
+  const learn = learnCertList();
+  $('pp-learn-cert-count').textContent = learn.owned + ' / ' + learn.total;
+  const lgrid = $('pp-learn-cert-grid');
+  lgrid.innerHTML = learn.rows.map(function (it) {
+    const inner = it.unlocked
+      ? '<div class="slot-tier" style="background:' + it.tierColor + ';">' + it.tierLabel + '</div>' +
+        '<div class="slot-no">' + it.cert.no + '</div>'
+      : '<div class="slot-lock">🔒</div>' +
+        '<div class="slot-progress">' + learnLevelDone(it.lv) + '/10 课</div>';
+    return '<div class="cert-slot ' + (it.unlocked ? 'got' : 'locked') + '" data-lv="' + it.lv + '">' +
+      '<div class="slot-top">L' + it.lv + '</div>' +
+      '<div class="slot-name">' + it.name + '</div>' + inner + '</div>';
+  }).join('');
+  Array.prototype.forEach.call(lgrid.querySelectorAll('.cert-slot'), function (el) {
+    el.addEventListener('click', function () { showLearnCert(parseInt(el.dataset.lv, 10)); });
+  });
+  $('pp-learn-next').innerHTML = learn.ultimate.unlocked
+    ? ('🏆 已集齐 15 张 · 解锁「' + learn.ultimate.name + '」')
+    : ('终极证书「' + learn.ultimate.name + '」<b>还差 ' + learn.ultimate.need + ' 张</b>');
+
   $('pp-cards-count').textContent = p.seenCards.length + ' / ' + CARDS.length;
   $('pp-cards-bar').style.width = Math.round(p.seenCards.length / CARDS.length * 100) + '%';
 
@@ -5152,18 +5779,20 @@ function generateCertImage(cert) {
 
   ctx.fillStyle = '#2C3E50';
   ctx.font = '700 46px "PingFang SC","Microsoft YaHei",sans-serif';
-  ctx.fillText('藏文成长证书', W / 2, 268);
+  // D111：学习证书画「藏文拼读证书」，阶段证书仍是「藏文成长证书」
+  const isLearn = cert.kind === 'learning';
+  ctx.fillText(isLearn ? '藏文拼读证书' : '藏文成长证书', W / 2, 268);
   ctx.strokeStyle = 'rgba(183,149,11,.6)';
   ctx.lineWidth = 2;
   ctx.beginPath(); ctx.moveTo(W / 2 - 150, 300); ctx.lineTo(W / 2 + 150, 300); ctx.stroke();
 
   ctx.fillStyle = '#8A8375';
   ctx.font = '400 28px "PingFang SC","Microsoft YaHei",sans-serif';
-  ctx.fillText('第 ' + cert.stage + ' 阶段', W / 2, 352);
+  ctx.fillText(isLearn ? ('第 ' + cert.lv + ' 级') : ('第 ' + cert.stage + ' 阶段'), W / 2, 352);
 
   ctx.fillStyle = accent;
   ctx.font = '700 76px "PingFang SC","Microsoft YaHei",sans-serif';
-  ctx.fillText(cert.stageName, W / 2, 442);
+  ctx.fillText(isLearn ? cert.name : cert.stageName, W / 2, 442);
 
   ctx.fillStyle = accent;
   ctx.fillRect((W - 250) / 2, 470, 250, 60);

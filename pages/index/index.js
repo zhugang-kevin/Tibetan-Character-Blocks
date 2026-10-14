@@ -508,7 +508,12 @@ Page({
         done: done,
         total: cfg.stages,
         next: next,
-        locked: cfg.lv > 1 && storage.getLearnLevelDone(cfg.lv - 1) < cfg.stages
+        locked: cfg.lv > 1 && storage.getLearnLevelDone(cfg.lv - 1) < cfg.stages,
+        // D111：本级证书档位（拿到才显示，未拿为空串）—— 学习线的「成就可见性」
+        certTier: (function () {
+          var c = certificate.findLvCert(cfg.lv);
+          return c ? c.tierLabel : '';
+        })()
       });
     });
     return out;

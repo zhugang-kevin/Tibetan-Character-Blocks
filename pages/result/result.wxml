@@ -16,16 +16,39 @@
 
   <view class="result-hero">
     <view class="result-check">✓</view>
-    <view class="result-title">第 {{level}} 课完成！</view>
-    <view class="result-sub">共消除 {{pairs}} 对 · 学习得分 {{score}} · 连续正确 ×{{combo}}</view>
+    <!-- D111 学习线：标题走「L{级} · 第{课}课」；老 10 关线不变 -->
+    <view class="result-title">{{learnMode ? ('L' + learnLv + ' · 第 ' + learnStage + ' 课完成！') : ('第 ' + level + ' 课完成！')}}</view>
+    <view class="result-sub">{{learnMode ? (learnName + ' · 第 ' + learnIndex + ' / ' + learnTotal + ' 课 · 学习得分 ' + score) : ('共消除 ' + pairs + ' 对 · 学习得分 ' + score + ' · 连续正确 ×' + combo)}}</view>
     <view class="result-acc {{clean ? 'ok' : ''}}">
-      本课正确率 {{accuracy}}% {{clean ? '· 全程无失误 ✦' : ''}}
+      本课正确率 {{learnMode ? learnAcc : accuracy}}% {{clean ? '· 全程无失误 ✦' : ''}}<text wx:if="{{learnMode && learnStepsBudget}}"> · 用了 {{learnStepsUsed}} / {{learnStepsBudget}} 步</text>
     </view>
-    <!-- PRD v4：本关星级评价（只增不减） -->
+    <!-- PRD v4：本关星级评价（只增不减；学习线为当场展示，不落库） -->
     <view class="result-stars">
       <text class="rs-star {{item}}" wx:for="{{starList}}" wx:key="*this">★</text>
       <text class="rs-tip">{{starsImproved ? '刷新了本课最佳评价' : '本课评价'}}</text>
     </view>
+  </view>
+
+  <!-- D111 学习体系：本级进度 + 下一课预告（学习线专属，老线不渲染） -->
+  <view wx:if="{{learnMode}}" class="learn-progress">
+    <view class="lp-head">
+      <text class="lp-tag">学习体系</text>
+      <text class="lp-lv">L{{learnLv}} · {{learnName}}</text>
+    </view>
+    <view class="lp-goal">{{learnGoal}}</view>
+    <view class="lp-bar"><view class="lp-bar-in" style="width: {{learnDoneN * 10}}%;"></view></view>
+    <view class="lp-note">本级进度 {{learnDoneN}} / 10 课<text wx:if="{{learnDoneN >= 10}}"> · 本级已完成</text> · 已获证书 {{learnCertOwned}} / 15</view>
+    <view class="lp-note lp-next">{{learnNextDesc}}</view>
+  </view>
+
+  <!-- D111 本级证书（一整级 10 课全过才颁发；只升不降） -->
+  <view wx:if="{{learnMode && learnCert}}" class="cert-banner" style="border-color: {{learnCert.tierColor}};">
+    <view class="cert-seal" style="background: {{learnCert.tierColor}};">{{learnCert.tierSeal}}</view>
+    <view class="cert-info">
+      <view class="cert-line">{{learnCertNew ? '获得藏文拼读证书' : (learnCertUpgraded ? '证书升级' : '本级证书')}} · {{learnCert.tierLabel}}</view>
+      <view class="cert-line2">L{{learnCert.lv}} · {{learnCert.name}} · 正确率 {{learnCert.acc}}%</view>
+    </view>
+    <view class="cert-go" bindtap="openLearnCert">查看 ›</view>
   </view>
 
   <!-- PRD v4：唐卡碎片掉落 + 学习得分入账 -->
@@ -41,7 +64,7 @@
   </view>
 
   <!-- 秘境揭图揭晓（D31）：通关即整幅揭晓，图收入护照「揭示图鉴」 -->
-  <view wx:if="{{reveal}}" class="reveal-card">
+  <view wx:if="{{reveal && !learnMode}}" class="reveal-card">
     <view class="reveal-head">
       <text class="reveal-tag">秘境图揭晓</text>
       <text class="reveal-name">{{reveal.name}}</text>
@@ -57,7 +80,7 @@
 
   <!-- 藏地密码：完成即解锁一则藏地小知识，收入护照「藏地密码」。
        解锁状态 = completedLevels（不新增存储字段），与揭示图鉴同一口径。 -->
-  <view wx:if="{{secret}}" class="secret-card">
+  <view wx:if="{{secret && !learnMode}}" class="secret-card">
     <view class="secret-head">
       <text class="secret-tag">藏地密码</text>
       <text class="secret-kind">{{secret.tag}}</text>
@@ -93,7 +116,7 @@
   <!-- 「藏文可以组合」预告：只在第 2 关的结算页出现（该关通关即认全 ཀ ཁ ག ང）。
        用「两个完整音节的对比」讲拼合，绝不裸渲染元音符号（否则会落成 ◌ི 虚圈，
        违反 docs/tibetan-typography.md 的「绝不拆音节」）。文案取自 data/combo.js。 -->
-  <view wx:if="{{comboTease}}" class="combo-tease">
+  <view wx:if="{{comboTease && !learnMode}}" class="combo-tease">
     <view class="ct-head">
       <text class="ct-tag">{{comboTease.tag}}</text>
     </view>
@@ -108,7 +131,7 @@
   </view>
 
   <!-- 成长阶梯 · 证书（完成某阶段最后一关时颁发 / 升级） -->
-  <view wx:if="{{cert}}" class="cert-banner" style="border-color: {{cert.tierColor}};">
+  <view wx:if="{{cert && !learnMode}}" class="cert-banner" style="border-color: {{cert.tierColor}};">
     <view class="cert-seal" style="background: {{cert.tierColor}};">{{cert.tierSeal}}</view>
     <view class="cert-info">
       <view class="cert-line">{{certTitle}} · {{cert.tierLabel}}</view>
@@ -118,7 +141,7 @@
   </view>
 
   <!-- 尚未拿到证书时，显示阶段进度与「还差什么」的牵引 -->
-  <view wx:if="{{!cert && stageNo}}" class="cert-hint">
+  <view wx:if="{{!cert && !learnMode && stageNo}}" class="cert-hint">
     <text>第 {{stageNo}} 阶段 · {{stageName}}</text>
     <text wx:if="{{skillHint}}" class="cert-hint-skill">{{skillHint}}</text>
   </view>
@@ -126,7 +149,7 @@
   <!-- 阶段完结时的「下一步」预告（D27）。
        12 阶段路线图此前只在证书页可见，而「要不要继续」的决定发生在这里。
        阶段名与目标全部取自 data/stages.js，页面不写死。 -->
-  <view wx:if="{{cert && nextStageNo}}" class="next-stage">
+  <view wx:if="{{cert && !learnMode && nextStageNo}}" class="next-stage">
     <view class="ns-head">
       <text class="ns-tag">下一阶段</text>
       <text class="ns-name">第 {{nextStageNo}} 阶段 · {{nextStageName}}</text>
@@ -136,7 +159,7 @@
   </view>
 
   <!-- 文化护照印记 v0 -->
-  <view wx:if="{{newStamp}}" class="stamp-banner">
+  <view wx:if="{{newStamp && !learnMode}}" class="stamp-banner">
     <view class="stamp-seal">拉萨</view>
     <view class="stamp-text">
       <text class="stamp-title">获得文化护照印记</text>
@@ -178,7 +201,12 @@
        此前这三个按钮排在长内容之后，实测「下一课」落在折线下 622px（普通关）/ 972px（第 10 关），
        玩完一关要继续得先滑一屏——本条把主操作钉在屏幕上，内容照旧可滚（下内边距由 .page.has-bar 让位）。 -->
   <view class="result-bar">
-    <button wx:if="{{!isFinal}}" class="next-btn" bindtap="goNext">下一课 →</button>
+    <block wx:if="{{learnMode}}">
+      <button class="next-btn" bindtap="goNextLearn">{{learnNextLabel}}</button>
+    </block>
+    <block wx:elif="{{!isFinal}}">
+      <button class="next-btn" bindtap="goNext">下一课 →</button>
+    </block>
     <block wx:else>
       <button wx:if="{{!imagePath}}" class="next-btn" bindtap="openNameModal" disabled="{{generating}}">{{generating ? '生成中…' : '生成我的祝福卡'}}</button>
       <button wx:else class="next-btn" open-type="share">分享给朋友</button>

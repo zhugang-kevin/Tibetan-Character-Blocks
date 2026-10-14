@@ -233,6 +233,7 @@
               <text wx:if="{{item.locked}}">🔒</text>
               <text wx:elif="{{item.done >= item.total}}" class="learn-done">已完成</text>
               <text wx:else>{{item.done}} / {{item.total}}</text>
+              <text wx:if="{{item.certTier}}" class="learn-cert">{{item.certTier}}</text>
             </view>
           </view>
         </view>

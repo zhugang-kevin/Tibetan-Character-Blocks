@@ -5,7 +5,7 @@
 用途（2026-10-08 用户要求）：
   · 激励鼓励播报：配对连击时播「很好 / 非常好 / 你好厉害 / 你简直就是无敌」
   · 文化知识播报：「藏地密码」每则的「听讲解」（精简版，完整文字在屏幕上）
-  · 全部为**离线预生成**静态资产（audio/voice/*.mp3），运行时零请求（不触碰 D3/D13）。
+  · 全部为**离线预生成**静态资产（package-praise/audio/voice/*.mp3，分包），运行时零请求（不触碰 D3/D13）。
 
 与 scripts/gen_voice.py 的分工：
   · gen_voice.py         → 藏文元素发音（天翼卫藏 TTS，WS 协议，输出 WAV）
@@ -35,7 +35,9 @@ import subprocess
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT_DIR = os.path.join(ROOT, 'audio', 'voice')
+# D111：讲解音频住在 praiseVoice 分包（主包 2MB 硬上限；与 utils/audio.js 的
+#   voiceRootOf 同规则）。重跑本脚本会写回同一位置，不会又把 286KB 塞回主包。
+OUT_DIR = os.path.join(ROOT, 'package-praise', 'audio', 'voice')
 VOICE = 'zh-CN-XiaoxiaoNeural'   # 亲和力强的女声（中文）
 RATE_SECRET = '-8%'              # 讲解稍慢，舒缓
 RATE_PRAISE = '+0%'              # 激励词保持自然节奏
@@ -99,7 +101,7 @@ for _k in SECRETS:
 
 
 def synth_one(key, text, kbps):
-    """edge-tts 合成 → ffmpeg 压缩 → audio/voice/{key}.mp3；返回最终体积。"""
+    """edge-tts 合成 → ffmpeg 压缩 → 分包 audio/voice/{key}.mp3；返回最终体积。"""
     import edge_tts
     rate = RATE_PRAISE if key.startswith('praise') else RATE_SECRET
     tmp = os.path.join(OUT_DIR, '_raw_' + key + '.mp3')

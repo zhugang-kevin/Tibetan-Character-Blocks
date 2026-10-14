@@ -2046,7 +2046,10 @@ function mockCtx(sink) {
     d34pair = findPair();
     await clickTile(d34pair[0]);
     await clickTile(d34pair[1]);
-    await sleep(420);
+    // 发音延后 300ms（让配对音效先响）。jsdom 里每张牌重排都要跑 canvas 量算，
+    // 负载高时 300ms 定时器会滑过 420ms 的固定等待 → 轮询到点为止（D107 同款教训：
+    // 测试不能拿墙上时钟碰运气，偶发失败会随机堵住流水线）。
+    for (let w = 0; w < 40 && ev('state.pronounceCount') <= speakDry; w++) await sleep(50);
     check('关掉文案后配对仍朗读藏文发音', ev('state.pronounceCount') > speakDry,
       speakDry + ' → ' + ev('state.pronounceCount'));
     check('关掉文案后浮字仍不上屏（开关真的只作用在文案上）',
@@ -2377,6 +2380,173 @@ function mockCtx(sink) {
     check('性别真的变了才换名（男 ≠ ' + pinned36 + '）',
       ev('getTibetanName().name') !== pinned36, ev('getTibetanName().name'));
     ev("setGender('')");
+  }
+
+  /* ---------- 37. D111 学习体系（15 级 × 150 课）：体验版整条线可玩 ----------
+     用户 2026-10-14 原话：「现在游戏只有第十关，没有办法继续」。
+     根因：学习线在体验版里只有**只读面板**（结尾写着「上课请使用小程序」），
+     打完老 10 关即无路可走。本节把「进得去 / 玩得动 / 记得住 / 不污染老线」钉住。 */
+  section('37. D111 学习体系（150 课）：入口 · 玩法 · 进度 · 数据隔离');
+  {
+    // 37.1 面板与解锁态
+    ev('clearProgress()');
+    ev('renderHome()');
+    ev("openPanel('learn')");
+    await sleep(60);
+    check('学习面板渲染 15 行', $$('.learn-row').length === 15, '实际 ' + $$('.learn-row').length);
+    check('L1 直进（无前置）', !$('.learn-row[data-lv="1"]').classList.contains('locked'));
+    check('L2 起要过前一级（未完成 → 锁）', $('.learn-row[data-lv="2"]').classList.contains('locked'));
+    check('面板不再是只读清单（行带 data-lv/data-stage）',
+      !!$('.learn-row[data-lv="1"]').dataset.lv && !!$('.learn-row[data-lv="1"]').dataset.stage);
+
+    // 37.2 点一级 → 进该级下一课；HUD / 步数 / 牌面
+    $('.learn-row[data-lv="1"]').click();
+    await sleep(120);
+    check('点 L1 进游戏页', activeScreen() === 'screen-game', activeScreen());
+    check('HUD 显示 L1 · 第 1 课', $('#status-mid').textContent === 'L1 · 第 1 课', $('#status-mid').textContent);
+    check('步数预算上屏（学习关特有）', /剩余 \d+\/\d+ 步/.test($('#status-steps').textContent), $('#status-steps').textContent);
+    check('L1 是 6×6 = 36 张牌', $$('#board .tile').length === 36, '实际 ' + $$('#board .tile').length);
+    check('牌面是带 tsheg 的藏文音节（不是裸字母）',
+      /[\u0F00-\u0FFF]་$/.test(($('#board .tile .glyph') || {}).textContent || ''),
+      ($('#board .tile .glyph') || {}).textContent || '');
+    check('学习关不设揭图（老线机制）', ev('state.reveal') === null);
+    check('学习关无障碍物', ev('state.frostTotal') === 0 && ev('state.crateTotal') === 0 && ev('state.ropeTotal') === 0);
+    check('L1 不需要长按放大（L11 才开）', ev('state.zoomable') === false);
+
+    // 37.3 步数：每次配对尝试扣一步（成功失败都扣）
+    const steps0 = ev('state.stepsLeft');
+    const mm = findMismatch();
+    if (mm) {
+      await clickTile(mm[0]);
+      await clickTile(mm[1]);
+      check('错配也消耗一步（步数预算的含义）', ev('state.stepsLeft') === steps0 - 1,
+        steps0 + ' → ' + ev('state.stepsLeft'));
+    }
+
+    // 37.4 打通本课 → 学习结算（不碰老线数据）
+    for (let guard = 0; guard < 80; guard++) {
+      if (ev('state.finished')) break;
+      const pr = findPair();
+      if (!pr) { await sleep(150); continue; }
+      await clickTile(pr[0]);
+      await clickTile(pr[1]);
+      await sleep(400);
+    }
+    await sleep(1600);
+    check('通关后进结算页', activeScreen() === 'screen-result', activeScreen());
+    check('标题是「L1 · 第 1 课完成！」', $('#res-title').textContent === 'L1 · 第 1 课完成！', $('#res-title').textContent);
+    check('副标题带全局课序号（第 1 / 150 课）', $('#res-sub').textContent.indexOf('第 1 / 150 课') > -1, $('#res-sub').textContent);
+    check('进度卡显示本级 1 / 10 课', $('#res-journey').textContent.indexOf('本级进度 1 / 10 课') > -1);
+    check('老线揭图不出现在学习结算', $('#res-reveal').innerHTML === '');
+    check('老线藏地密码不出现在学习结算', $('#res-secret').innerHTML === '');
+    check('老线印记不出现在学习结算', $('#res-stamp').innerHTML === '');
+    check('底栏是「下一课 →」', ($('#res-actions .primary-btn') || {}).textContent === '下一课 →',
+      ($('#res-actions .primary-btn') || {}).textContent);
+    check('学习进度落库（learnDone["1-1"]）', ev('getLearnDone()["1-1"]') === 1);
+    check('成绩落库（learnStats[1]）', ev('getLearnStats(1).n') === 1, JSON.stringify(ev('getLearnStats(1)')));
+    check('★ 老线 completedLevels 不被写脏（曾把 11..150 写进去）',
+      ev('getProgress().completedLevels.length') === 0,
+      JSON.stringify(ev('getProgress().completedLevels')));
+    check('★ 老线 stars 不被写脏（键不会是 11..150）',
+      Object.keys(ev('getProgress().stars')).length === 0,
+      JSON.stringify(ev('getProgress().stars')));
+
+    // 37.5 下一课 → 本级第 2 课；换盘后旧盘面的在飞定时器不得错消新盘面
+    $('#res-actions .primary-btn').click();
+    await sleep(150);
+    check('点「下一课」进 L1 第 2 课', $('#status-mid').textContent === 'L1 · 第 2 课', $('#status-mid').textContent);
+    check('换盘后步数预算重置', /剩余 \d+\/\d+ 步/.test($('#status-steps').textContent));
+    check('换盘后旧盘面消除队列已清空', ev('state.removeQueue.length') === 0);
+    await sleep(500);
+    check('旧盘面在飞的结算没有错消新盘面（36 张仍在）', $$('#board .tile').length === 36,
+      '实际 ' + $$('#board .tile').length);
+
+    // 37.6 未解锁的级：点了只提示，不跳关
+    ev('renderHome()');
+    await sleep(80);
+    ev("openPanel('learn')");
+    await sleep(60);
+    $('.learn-row[data-lv="3"]').click();
+    await sleep(80);
+    check('点未解锁的级不跳关（仍在家页）', activeScreen() === 'screen-home', activeScreen());
+
+    // 37.7 L11+ 长按放大预览（复合词 / 句子在 3×3 格里偏小）
+    ev('clearProgress()');
+    // 直接把前 10 级标记为已完成来解锁 L11（进度是既成事实，不是算出来的值）
+    ev('(function(){var p=getProgress();p.learnDone=p.learnDone||{};' +
+       'for(var lv=1;lv<=10;lv++)for(var s=1;s<=10;s++)p.learnDone[lv+"-"+s]=1;saveProgress(p);})()');
+    ev('startLearn(11, 1)');
+    await sleep(150);
+    // 3×3 = 9 格；6 种元素 × 2 张起手 = 8~9 张在盘（9 格装不下 12 张起手，余下进补充池）
+    check('L11 是 3×3 盘面（9 格 / 起手 8~9 张）',
+      ev('state.board.slots') === 9 && $$('#board .tile').length >= 8 && $$('#board .tile').length <= 9,
+      'slots=' + ev('state.board.slots') + ' 在盘=' + $$('#board .tile').length);
+    check('L11 开启长按放大预览', ev('state.zoomable') === true);
+    check('L11 牌面是多字复合词', (($('#board .tile .glyph') || {}).textContent || '').length >= 2,
+      ($('#board .tile .glyph') || {}).textContent || '');
+
+    // 37.8 本级证书：10 课全过才颁（预置 L1 全过，再打一课触发颁发）
+    ev('clearProgress()');
+    ev('(function(){var p=getProgress();p.learnDone=p.learnDone||{};' +
+       'for(var s=1;s<=9;s++)p.learnDone["1-"+s]=1;saveProgress(p);})()');
+    ev('startLearn(1, 10)');
+    await sleep(150);
+    for (let guard = 0; guard < 80; guard++) {
+      if (ev('state.finished')) break;
+      const pr = findPair();
+      if (!pr) { await sleep(150); continue; }
+      await clickTile(pr[0]);
+      await clickTile(pr[1]);
+      await sleep(400);
+    }
+    await sleep(1600);
+    check('本级第 10 课完成即颁学习证书', ev('findLearnCert(1)') !== null,
+      JSON.stringify(ev('findLearnCert(1)') || null));
+    const lc = ev('findLearnCert(1)');
+    if (lc) {
+      check('证书键是 lv1（与阶段证书的 stage 键区分）', lc.key === 'lv1' && lc.kind === 'learning');
+      check('证书按正确率定档（100% 零失误 → 金质）', lc.tier === 'gold', lc.tier);
+      check('证书有编号 / 持有人 / 日期', !!lc.no && !!lc.holder && !!lc.date, lc.no);
+      check('结算页显示证书横幅', $('#res-cert').textContent.indexOf('藏文拼读证书') > -1,
+        $('#res-cert').textContent.replace(/\s+/g, ' ').slice(0, 80));
+      check('底栏变「进入 L2 · 元音符号 →」',
+        ($('#res-actions .primary-btn') || {}).textContent.indexOf('进入 L2') === 0,
+        ($('#res-actions .primary-btn') || {}).textContent);
+    }
+    // 终极进度：15 张才解锁（刚发 1 张 → 还差 14）
+    check('集齐 15 张前终极证书未解锁', ev('learnCertList().ultimate.unlocked') === false);
+    check('终极进度「还差 14 张」', ev('learnCertList().ultimate.need') === 14,
+      'need=' + ev('learnCertList().ultimate.need'));
+
+    // 37.9 证书页可查看（复用 cert 屏幕，学习证书同形不同键）
+    ev('showLearnCert(1)');
+    await sleep(80);
+    check('证书页渲染学习证书（第 1 级）', $('#cert-body').textContent.indexOf('第 1 级') > -1);
+    check('证书页标题是「藏文拼读证书」', $('#cert-body').textContent.indexOf('藏文拼读证书') > -1);
+    ev('showLearnCert(9)');
+    await sleep(80);
+    check('未获得的级：证书页给进度与门槛（不渲染空证书）',
+      $('#cert-body').textContent.indexOf('当前进度') > -1 && $('#cert-body').textContent.indexOf('🔒') > -1);
+
+    // 37.10 护照页学习证书墙
+    ev('showPassport()');
+    await sleep(80);
+    check('护照页有 15 格学习证书墙', $$('#pp-learn-cert-grid .cert-slot').length === 15,
+      '实际 ' + $$('#pp-learn-cert-grid .cert-slot').length);
+    check('护照页显示已得 1 / 15', $('#pp-learn-cert-count').textContent === '1 / 15',
+      $('#pp-learn-cert-count').textContent);
+    check('终极提示「还差 14 张」', $('#pp-learn-next').textContent.indexOf('还差 14 张') > -1,
+      $('#pp-learn-next').textContent);
+
+    // 37.11 讲解音频移到分包后，体验版仍能播（build-h5 两个目录都扫）
+    check('体验版注入了讲解语音（分包搬迁后不能静默）', ev('!!VOICES["secret_01"]') === true);
+    // ⚠️ 用 letter_02：§5 的「无音源」反向用例会 delete 掉 letter_01 且不还原（既有行为）
+    check('元素发音仍在场', ev('!!VOICES["letter_02"]') === true,
+      'keys=' + ev('Object.keys(VOICES).length') + ' has02=' + ev('Object.keys(VOICES).indexOf("letter_02")'));
+
+    // 收尾：复位进度，避免污染后续断言
+    ev('clearProgress()');
+    ev('renderHome()');
   }
 
   /* ---------- 汇总 ---------- */

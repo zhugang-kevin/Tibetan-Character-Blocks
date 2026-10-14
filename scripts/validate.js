@@ -8,6 +8,9 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
+// D111：藏地密码讲解音频（secret_*，286KB）住在 praiseVoice 分包里（主包 2MB 硬上限）。
+//   与 utils/audio.js 的 voiceRootOf 同一条规则：secret_ 前缀 → 分包。改位置只改这一处。
+const SECRET_VOICE_DIR = 'package-praise/audio/voice';
 let errors = [];
 let warnings = [];
 let passed = 0;
@@ -233,9 +236,9 @@ if (!bannedFound) ok('未使用任何禁用 API（登录/支付/订阅/云初始
 section('7. WXML 事件绑定与 JS 方法对应');
 [['pages/index/index', ['onTapLevel', 'openPassport', 'openBenefits', 'openPanel', 'closePanel', 'doSignIn', 'openBox', 'waterTree']],
  ['pages/game/game', ['onTapTile', 'dismissCard', 'guideNext', 'speakCard']],
- ['pages/result/result', ['goHome', 'openNameModal', 'closeNameModal', 'onNameInput', 'confirmGenerate', 'saveToAlbum', 'previewShare', 'openCert', 'openPassport']],
+ ['pages/result/result', ['goHome', 'openNameModal', 'closeNameModal', 'onNameInput', 'confirmGenerate', 'saveToAlbum', 'previewShare', 'openCert', 'openPassport', 'goNextLearn', 'openLearnCert']],
  ['pages/cert/cert', ['openNameModal', 'closeNameModal', 'onNameInput', 'confirmName', 'generate', 'saveToAlbum', 'previewShare', 'goPassport', 'goHome']],
- ['pages/passport/passport', ['openCert', 'goHome']],
+ ['pages/passport/passport', ['openCert', 'openLearnCert', 'goHome']],
  ['pages/benefits/benefits', ['onSwitchMode', 'onPickCity', 'onClaim', 'goHome']]
 ].forEach(([page, handlers]) => {
   const wxml = read(page + '.wxml');
@@ -1600,8 +1603,9 @@ section('23. 拼合预告（第 2 关 · 只讲概念，不提前开放机制）
 
   // 23.8 小程序源码上屏位置正确
   const resWxml = read('pages/result/result.wxml');
-  if (/<view wx:if="\{\{comboTease\}\}" class="combo-tease">/.test(resWxml))
-    ok('结算页 wxml 用 comboTease 做显示条件');
+  // D111：学习线结算页也要守同一条（预告只在老线第 2 关出现），条件允许附加 !learnMode
+  if (/<view wx:if="\{\{comboTease(\s*&&\s*!learnMode)?\}\}" class="combo-tease">/.test(resWxml))
+    ok('结算页 wxml 用 comboTease 做显示条件（老线专属，学习线不出现）');
   else err('结算页 wxml 未按 comboTease 条件渲染拼合预告');
   if (read('pages/result/result.wxss').indexOf('.combo-tease') > -1)
     ok('结算页 wxss 有 .combo-tease 样式');
@@ -4011,11 +4015,12 @@ section('39. 中文播报与藏文书写细则');
   else ok('（激励语音尚未生成，跳过——生成命令见 scripts/gen_chinese_voice.py）');
 
   const secretKeys = Array.from({ length: 10 }, (_, i) => 'secret_' + String(i + 1).padStart(2, '0'));
-  const haveS = secretKeys.filter(k => exists('audio/voice/' + k + '.mp3'));
+  // D111：讲解音频在 praiseVoice 分包（286KB 不进主包），路径随位置改，判据不变
+  const haveS = secretKeys.filter(k => exists(SECRET_VOICE_DIR + '/' + k + '.mp3'));
   if (haveS.length === secretKeys.length) {
     // D52：讲解改为播整段正文（约 130 字 @10kbps ≈ 26KB），单条上限随之放宽到 32KB
-    const overS = haveS.filter(k => fs.statSync(path.join(ROOT, 'audio/voice/' + k + '.mp3')).size > 32 * 1024);
-    if (!overS.length) ok('藏地密码讲解 10 条就位且 ≤32KB/条（播整段）');
+    const overS = haveS.filter(k => fs.statSync(path.join(ROOT, SECRET_VOICE_DIR + '/' + k + '.mp3')).size > 32 * 1024);
+    if (!overS.length) ok('藏地密码讲解 10 条就位且 ≤32KB/条（播整段，分包）');
     else err('讲解语音超限：' + overS.join(','));
   } else if (haveS.length) err('讲解语音不完整（' + haveS.length + '/10）');
   else ok('（讲解语音尚未生成，跳过）');
@@ -4467,14 +4472,14 @@ section('43. 藏地密码讲解「播整段」');
   }
 
   const keys43 = Array.from({ length: 10 }, (_, i) => 'secret_' + String(i + 1).padStart(2, '0'));
-  const miss43 = keys43.filter(k => !exists('audio/voice/' + k + '.mp3'));
+  const miss43 = keys43.filter(k => !exists(SECRET_VOICE_DIR + '/' + k + '.mp3'));
   if (miss43.length) {
     ok('（讲解语音未生成，跳过时长反证：' + miss43.length + '/10 缺失）');
   } else if (secList43 && secList43.length === 10) {
     const rows = secList43.map(s => {
       const k = 'secret_' + String(s.level).padStart(2, '0');
       const n = (s.title + '。' + s.text).length;
-      const d = mp3Duration('audio/voice/' + k + '.mp3');
+      const d = mp3Duration(SECRET_VOICE_DIR + '/' + k + '.mp3');
       return { k, n, d, rate: d ? n / d : null };
     });
     const bad = rows.filter(r => r.d === null);
@@ -4984,10 +4989,20 @@ section('48. 打扰预算 + 发音诚实（D57）：不多弹窗 / 不假装能�
   //    拿它去比对磁盘必然误报 —— 第一版就是栽在这里。
   {
     const idx = require('../data/voices.js');
-    const vdir = path.join(ROOT, 'audio', 'voice');
-    const onDisk = fs.readdirSync(vdir)
-      .filter(f => /\.(mp3|wav)$/i.test(f))
-      .map(f => path.basename(f, path.extname(f)));
+    // D111：清单的来源是两个目录 —— 主包 audio/voice + 分包里的 secret_*（讲解）。
+    //   分包里的 praise_bo_* 故意不进清单（档位赞美音走 speakPraiseBo 自己的判据），
+    //   所以这里只取 secret_ 前缀，与 gen_voice_index.py 的 SUBPKG_PREFIX 同规则。
+    const onDisk = [path.join(ROOT, 'audio', 'voice')].concat(
+      fs.existsSync(path.join(ROOT, SECRET_VOICE_DIR)) ? [path.join(ROOT, SECRET_VOICE_DIR)] : []
+    ).reduce(function (acc, d) {
+      fs.readdirSync(d).forEach(function (f) {
+        if (!/\.(mp3|wav)$/i.test(f)) return;
+        const id = path.basename(f, path.extname(f));
+        if (d !== path.join(ROOT, 'audio', 'voice') && id.indexOf('secret_') !== 0) return;
+        acc.push(id);
+      });
+      return acc;
+    }, []);
     const claimed = idx.ids.concat(idx.extras);
     const ghost = claimed.filter(id => onDisk.indexOf(id) === -1);
     const forgot = onDisk.filter(id => claimed.indexOf(id) === -1);
@@ -6729,6 +6744,161 @@ section('61. 二进制资产 magic bytes（D72：唯一字体其实是 HTML）')
   if (/\| \*\*D72\*\* \|/.test(read('docs/DECISIONS.md')))
     ok('docs/DECISIONS.md 已登记 D72（字体损坏与二进制资产校验）');
   else err('缺少 D72 决策行 —— 这次事故没有留下可查的记录');
+}
+
+// 62. 实景照授权台账反假绿（docs/photo-attribution.json）
+// 原则同藏文读音 Gate 2：verified 只能由用户本人逐张核对后置 true，脚本/门禁不代签。
+// 门禁职责：任何 verified=true 的槽位必须同时满足「文件在场 + 授权字段填全 + 许可证在允许清单」，
+// 否则 err（红）——这是拦住假绿的地方。未核对的在场图片只做信息性提示，不计警告、不假装已授权。
+section('62. 实景照授权台账反假绿（CC-BY/CC-BY-SA/CC0）');
+if (exists('docs/photo-attribution.json')) {
+  let attr = null;
+  try { attr = JSON.parse(read('docs/photo-attribution.json')); } catch (e) { attr = null; }
+  if (!attr || !attr.slots) {
+    err('docs/photo-attribution.json 结构异常——无法核对实景照授权');
+  } else {
+    const allowed = new Set((attr.licensePolicy && attr.licensePolicy.allowed) || []);
+    const fields = ['sourceUrl', 'author', 'license', 'licenseUrl'];
+    let verified = 0, pending = 0, bad = 0;
+    Object.keys(attr.slots).forEach(function (key) {
+      const s = attr.slots[key] || {};
+      const file = s.file || '';
+      const present = !!file && exists(file);
+      const filled = fields.every(function (f) { return String(s[f] || '').trim(); });
+      const lic = String(s.license || '').trim();
+      if (s.verified) {
+        verified++;
+        if (!present) { err('photo[' + key + '] verified=true 但文件缺失（' + file + '）——不得标绿'); bad++; }
+        else if (!filled) { err('photo[' + key + '] verified=true 但授权字段未填全——无出处不得标绿'); bad++; }
+        else if (!allowed.has(lic)) { err('photo[' + key + '] 许可证 ' + lic + ' 不在允许清单（仅 CC-BY/CC-BY-SA/CC0）'); bad++; }
+      } else if (present) {
+        pending++;
+      }
+    });
+    if (bad === 0 && verified > 0) ok('实景照授权台账：' + verified + ' 张已用户核对，全部合规');
+    if (pending > 0) console.log('  · ' + pending + ' 张场景图在场、授权待用户逐张核对（docs/photo-attribution.json，verified=false）');
+    if (verified === 0 && pending === 0) ok('实景照授权台账：暂无在场照片需核对');
+  }
+} else {
+  const anyEnabled = /:\s*'\/images\/scene\//.test(read('data/photo-assets.js'));
+  if (anyEnabled) err('缺 docs/photo-attribution.json——有启用实景照却无从核对授权（应由 prepare-assets.py --scene / --attribution 生成）');
+}
+
+// ---------- 63. D111：学习体系（15 级 × 150 关）两端可玩 + 与老 10 关线数据隔离 ----------
+// 事故背景（用户 2026-10-14 原话）：「现在游戏只有第十关，没有办法继续」。
+//   根因：项目有两套关卡 —— 老线 levels.js 只有 10 关（首页那 10 个节点），
+//   学习线 learning.js 是 15 级 × 10 课 = 150 课；学习线长期**没有可玩的入口**：
+//   小程序侧接了一半（能进关卡，但结算页把累计序号当老线 level 传，污染老线数据），
+//   体验版侧的面板是**只读清单**（结尾写着「上课请使用小程序」）→ 打完 10 关即无路可走。
+//   本节把「整条链路两端都能玩 + 老线数据不被写脏」钉成机械断言。
+section('63. D111 学习体系（150 课）两端可玩 · 老线数据隔离');
+{
+  const gj = read('pages/game/game.js');
+  const rj = read('pages/result/result.js');
+  const rw = read('pages/result/result.wxml');
+  const cj = read('pages/cert/cert.js');
+  const pj = read('pages/passport/passport.js');
+  const pw = read('pages/passport/passport.wxml');
+  const ij = read('pages/index/index.js');
+  const st = read('utils/storage.js');
+  const au = read('utils/audio.js');
+  const tpl = read('preview/template.html');
+  const bh = read('scripts/build-h5.js');
+  const gvi = read('scripts/gen_voice_index.py');
+
+  // 63.1 小程序：通关带 lv/stage/steps 走学习结算分支
+  if (/lv=' \+ that\.learnCfg\.lv/.test(gj) && /&stage=' \+ that\.learnCfg\.stage/.test(gj))
+    ok('game.js 通关时带 lv/stage 跳结算（学习线不再把累计序号当老线 level）');
+  else err('game.js 通关未带 lv/stage —— 结算页无法区分学习线');
+
+  // 63.2 结算页：学习分支存在，且**不碰老线数据**
+  if (/renderLearn: function/.test(rj) && /if \(learnLv > 0\)\s*\{\s*this\.renderLearn/.test(rj))
+    ok('result.js 有学习结算分支（learnMode）');
+  else err('result.js 缺学习结算分支');
+  const learnFn = (rj.match(/renderLearn: function[\s\S]*?\n  \},/) || [''])[0];
+  if (learnFn) {
+    if (!/completeLevel|recordStars|onLevelComplete|addFragment|grantStamp/.test(learnFn))
+      ok('学习分支不写老线数据（completedLevels / levelStats / stars / 碎片 / 印记一律不碰）');
+    else err('学习分支仍在写老线数据 —— 11..150 会污染 completedLevels');
+    if (/markLearnStageDone/.test(learnFn) && /recordLearnResult/.test(learnFn))
+      ok('学习分支落学习线进度与成绩（learnDone / learnStats）');
+    else err('学习分支未落学习线进度');
+    if (/issueLearningCert/.test(learnFn)) ok('本级 10 课全过才颁学习证书（只升不降）');
+    else err('学习分支未颁发学习证书');
+    if (/goNextLearn/.test(rj) && /learnNextStage/.test(learnFn)) ok('结算页有「下一课 / 下一级」推进');
+    else err('学习结算页没有下一课推进');
+  } else err('未能解析 renderLearn 函数体（结构变了？）');
+
+  // 63.3 wxml：老线专属内容在学习线不渲染
+  ['reveal && !learnMode', 'secret && !learnMode', 'comboTease && !learnMode', 'cert && !learnMode', 'newStamp && !learnMode']
+    .forEach(function (k) {
+      if (rw.indexOf(k) > -1) ok('学习线不渲染老线内容：' + k);
+      else err('学习线仍在渲染老线内容：' + k);
+    });
+  if (/learnNextLabel/.test(rw) && /goNextLearn/.test(rw)) ok('学习线底栏是「下一课 / 下一级 / 返回首页」');
+  else err('学习线底栏未接 goNextLearn');
+
+  // 63.4 证书页 / 护照页：学习证书可查看、可保存、可分享
+  if (/query\.learn/.test(cj) && /findLvCert/.test(cj) && /refreshLearn/.test(cj))
+    ok('证书页支持学习证书（?learn=lv，未获得不回首页渲染空证书）');
+  else err('证书页不支持学习证书');
+  if (/openLearnCert/.test(pj) && /learningList/.test(pj)) ok('护照页有 15 张学习证书墙 + 终极进度');
+  else err('护照页缺学习证书墙');
+  if (/learnCerts/.test(pw) && /learnUltimate/.test(pw)) ok('护照页渲染学习证书格（点格进证书页）');
+  else err('护照页未渲染学习证书格');
+
+  // 63.5 存储：学习线成绩聚合（给证书定档）两端同 schema
+  if (/function recordLearnResult/.test(st) && /function getLearnStats/.test(st))
+    ok('storage 有学习线成绩聚合（各课最佳平均 + 零失误）');
+  else err('storage 缺学习线成绩聚合');
+
+  // 63.6 首页学习面板：进度 + 证书档位可见
+  if (/certTier/.test(ij) && /findLvCert/.test(ij)) ok('首页学习面板显示本级证书档位');
+  else err('首页学习面板不显示证书档位');
+
+  // 63.7 体验版：150 关由构建期注入（与小程序同一份生成器），面板可点，关卡可玩
+  if (/learnStages:/.test(bh) && /utils', 'learning'/.test(bh))
+    ok('build-h5.js 注入 150 关生成产物（utils/learning.js 单一事实源）');
+  else err('build-h5.js 未注入学习关 —— 体验版无法玩学习线');
+  if (/function startLearn/.test(tpl) && /function learnStageOf/.test(tpl) && /LEARN_TILES/.test(tpl))
+    ok('体验版有学习关入口与牌面数据（lrn_* 元素）');
+  else err('体验版缺学习关入口');
+  if (/function renderLearnResult/.test(tpl) && /markLearnStageDone/.test(tpl) && /recordLearnResult/.test(tpl))
+    ok('体验版学习结算：进度落库 + 成绩记录');
+  else err('体验版缺学习结算');
+  if (/data-lv="' \+ L\.lv/.test(tpl) && /startLearn\(lv, stage\)/.test(tpl))
+    ok('体验版学习面板可点（点一级 → 进该级下一课）');
+  else err('体验版学习面板仍是只读清单');
+  if (/learnDone:/.test(tpl) && /learnStats:/.test(tpl))
+    ok('体验版 getProgress 白名单含 learnDone / learnStats（漏一处就读成 undefined）');
+  else err('体验版 getProgress 缺 learnDone / learnStats');
+  if (/state\.boardToken/.test(tpl)) ok('体验版换盘作废在飞的结算定时器（旧盘面 uid 会在新盘面撞号）');
+  else err('体验版缺盘面代号守卫');
+
+  // 63.8 学习关的特有机制：步数预算 + 长按放大（L11+）
+  if (/status-steps/.test(tpl) && /stepsLeft/.test(tpl) && /stepsBudget/.test(tpl))
+    ok('体验版有步数预算（用完结算，与小程序同口径）');
+  else err('体验版缺步数预算');
+  if (/zoom-mask/.test(tpl) && /zoomable/.test(tpl) && /lv >= 11/.test(tpl))
+    ok('体验版 L11 起有长按放大预览');
+  else err('体验版缺长按放大预览');
+
+  // 63.9 包体腾挪：讲解音频进分包，两端都认（否则体验版「听讲解」静默）
+  if (/voiceRootOf/.test(au) && /\^secret_/.test(au))
+    ok('audio.js 按前缀解析语音位置（secret_ → 分包）');
+  else err('audio.js 缺分包语音路径解析');
+  if (SECRET_VOICE_DIR && exists(SECRET_VOICE_DIR + '/secret_01.mp3'))
+    ok('讲解音频在 praiseVoice 分包（286KB 不进主包）');
+  else err('讲解音频不在分包 —— 主包 2MB 上限会红');
+  if (/vroot \+ id/.test(au))
+    ok('元素发音仍走主包路径（第一秒就要响的不能等分包下载）');
+  else err('元素发音路径被改坏');
+  if (/SUBPKG_VOICE_DIR/.test(gvi) && /package-praise/.test(gvi))
+    ok('发音清单生成器认分包里的 secret_*（否则 hasVoice 说「没有」）');
+  else err('gen_voice_index.py 不认分包讲解音频');
+  if (/package-praise', 'audio', 'voice'/.test(bh))
+    ok('build-h5.js 注入语音时两个目录都扫（体验版单文件不能缺讲解）');
+  else err('build-h5.js 只扫主包语音目录');
 }
 
 console.log('通过: ' + passed + ' | 错误: ' + errors.length + ' | 警告: ' + warnings.length);

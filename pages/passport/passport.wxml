@@ -98,6 +98,41 @@
       </view>
     </view>
 
+    <!-- 1b. 藏文拼读证书（D111：学习体系 15 级各一张 + 终极「藏文拼读宗师」） -->
+    <view class="section">
+      <view class="section-head">
+        <text class="section-title">藏文拼读证书</text>
+        <text class="section-count">{{learnOwned}} / {{learnTotal}}</text>
+      </view>
+      <view class="section-sub">学习体系共 15 级 · 每级 10 课。完成一整级即颁发一张证书；集齐 15 张，解锁「{{learnUltimate.name}}」。</view>
+
+      <view class="cert-grid">
+        <view
+          wx:for="{{learnCerts}}"
+          wx:key="lv"
+          class="cert-slot {{item.unlocked ? 'got' : 'locked'}}"
+          data-lv="{{item.lv}}"
+          bindtap="openLearnCert"
+        >
+          <view class="slot-top">L{{item.lv}}</view>
+          <view class="slot-name">{{item.name}}</view>
+          <block wx:if="{{item.unlocked}}">
+            <view class="slot-tier" style="background: {{item.tierColor}};">{{item.tierLabel}}</view>
+            <view class="slot-no">{{item.cert.no}}</view>
+          </block>
+          <block wx:else>
+            <view class="slot-lock">🔒</view>
+          </block>
+        </view>
+      </view>
+
+      <view class="next-hint" wx:if="{{!learnUltimate.unlocked}}">
+        终极证书「{{learnUltimate.name}}」
+        <text class="next-need">还差 {{learnUltimate.need}} 张</text>
+      </view>
+      <view class="next-hint" wx:else>🏆 已集齐 15 张 · 解锁「{{learnUltimate.name}}」</view>
+    </view>
+
     <!-- 2. 文化收藏册 -->
     <view class="section">
       <view class="section-head">

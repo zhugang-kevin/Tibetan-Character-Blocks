@@ -23,7 +23,7 @@
           <view class="sheet-title">藏文成长证书</view>
           <view class="sheet-rule"></view>
 
-          <view class="sheet-stage">第 {{cert.stage}} 阶段</view>
+          <view class="sheet-stage">{{learnMode ? ('第 ' + cert.stage + ' 级') : ('第 ' + cert.stage + ' 阶段')}}</view>
           <view class="sheet-name" style="color: {{cert.tierColor}};">{{cert.stageName}}</view>
           <view class="sheet-tier" style="background: {{cert.tierColor}};">{{cert.tierLabel}}</view>
 
@@ -78,11 +78,11 @@
     <block wx:else>
       <view class="locked-box">
         <view class="locked-icon">🔒</view>
-        <view class="locked-title">第 {{stage}} 阶段 · {{stageInfo.name}}</view>
+        <view class="locked-title">{{learnMode ? ('L' + learnLv + ' · ' + stageInfo.name) : ('第 ' + stage + ' 阶段 · ' + stageInfo.name)}}</view>
         <view class="locked-sub">{{stageInfo.goal}}</view>
         <view class="locked-progress">当前进度 {{progress}} / {{total}} 课</view>
         <view class="locked-rule">
-          完成第 {{stageInfo.from}}-{{stageInfo.to}} 课，即可获得「{{stageInfo.name}}」证书
+          {{learnMode ? ('完成 L' + learnLv + ' 本级全部 ' + total + ' 课，即可获得「' + stageInfo.name + '」证书') : ('完成第 ' + stageInfo.from + '-' + stageInfo.to + ' 课，即可获得「' + stageInfo.name + '」证书')}}
         </view>
       </view>
 

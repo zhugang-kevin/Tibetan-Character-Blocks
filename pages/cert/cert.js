@@ -3,6 +3,9 @@
 // 证书是「学习证明」：写的是这一阶段真的学会了什么，而不是积分奖励。
 // 未获得时展示该阶段的进度与门槛规则（还差几关 / 还差多少正确率）。
 var certificate = require('../../utils/certificate');
+// D111 学习体系证书（15 级各一张）：级名 / 关数从数据来，页面不写死
+var learningData = require('../../data/learning');
+var learning = require('../../utils/learning');
 var storage = require('../../utils/storage');
 var tracker = require('../../utils/tracker');
 var tibText = require('../../utils/tibetan-text');
@@ -14,6 +17,9 @@ Page({
   data: {
     stage: 1,
     stageInfo: null,
+    // D111：?learn=lv 时渲染学习体系证书（与阶段证书并存，不同形状）
+    learnMode: false,
+    learnLv: 0,
     cert: null,
     progress: 0,
     total: 10,
@@ -29,6 +35,19 @@ Page({
   },
   onLoad: function (query) {
     this._alive = true;   // D101：供定时器回调判断页面是否还在
+    // D111：学习体系证书（?learn=lv）—— 级号非法或未拿到该级证书时回首页，
+    //   不渲染空证书（与阶段证书同一纪律）。
+    var learnLv = parseInt(query.learn, 10) || 0;
+    if (learnLv > 0) {
+      if (!learningData.byLevel(learnLv) || !certificate.findLvCert(learnLv)) {
+        wx.redirectTo({ url: '/pages/index/index' });
+        return;
+      }
+      this.setData({ learnMode: true, learnLv: learnLv });
+      this.refresh();
+      tracker.track('cert_view');
+      return;
+    }
     var stage = parseInt(query.stage, 10) || 1;
     // 阶段号非法（越界 / 被手改）时直接回首页，避免渲染空证书
     if (!certificate.stageByNo(stage)) {
@@ -44,6 +63,7 @@ Page({
     this.refresh();
   },
   refresh: function () {
+    if (this.data.learnMode) { this.refreshLearn(); return; }
     var stage = this.data.stage;
     var info = certificate.stageByNo(stage);
     var cert = storage.findCert(stage);
@@ -57,6 +77,20 @@ Page({
       cert: cert,
       progress: slot ? slot.progress : 0,
       total: slot ? slot.total : 10,
+      tiers: [certificate.TIERS.gold, certificate.TIERS.silver, certificate.TIERS.bronze]
+    });
+  },
+  // D111 学习体系证书刷新：把学习证书整形成与阶段证书同形的视图模型
+  //   （stage = 级号、stageName = 级名），复用同一套渲染与 Canvas 导出。
+  refreshLearn: function () {
+    var lv = this.data.learnLv;
+    var L = learningData.byLevel(lv);
+    var cert = certificate.findLvCert(lv);
+    this.setData({
+      cert: cert ? Object.assign({}, cert, { stage: cert.lv, stageName: cert.name }) : null,
+      stageInfo: L ? { name: L.name, goal: L.goal } : null,
+      progress: storage.getLearnLevelDone(lv),
+      total: learning.stagesOf(lv) || 10,
       tiers: [certificate.TIERS.gold, certificate.TIERS.silver, certificate.TIERS.bronze]
     });
   },
@@ -269,7 +303,9 @@ Page({
     var cert = this.data.cert;
     return {
       title: cert
-        ? ('我拿到了「' + cert.stageName + '」' + cert.tierLabel + ' · 藏文成长证书')
+        ? (this.data.learnMode
+            ? ('我拿到了「L' + cert.stage + ' · ' + cert.stageName + '」' + cert.tierLabel + ' · 藏文拼读证书')
+            : ('我拿到了「' + cert.stageName + '」' + cert.tierLabel + ' · 藏文成长证书'))
         : '藏字方块，认藏文，从方块开始',
       path: '/pages/index/index',
       imageUrl: this.data.imagePath || undefined

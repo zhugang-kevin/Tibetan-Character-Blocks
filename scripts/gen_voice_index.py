@@ -26,24 +26,35 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 VOICE_DIR = os.path.join(ROOT, 'audio', 'voice')
 CARDS = os.path.join(ROOT, 'data', 'cards.js')
 OUT = os.path.join(ROOT, 'data', 'voices.js')
+# D111：藏地密码讲解（secret_*，286KB）已移进 praiseVoice 分包 —— 主包 2MB 硬上限。
+#   清单必须仍然认得它们（否则 utils/audio.js 的 hasVoice 会说「没有」，
+#   「听讲解」变成死按钮）。**只认 secret_ 前缀**：分包里的 praise_bo_* 是档位赞美音，
+#   走 speakPraiseBo 自己的 accessSync 判据，不进本表（进了会让 pronounce 找错路径）。
+SUBPKG_VOICE_DIR = os.path.join(ROOT, 'package-praise', 'audio', 'voice')
+SUBPKG_PREFIX = 'secret_'
 
 # 音频资产允许的扩展名（mp3 是压缩后的正式资产；wav 是 TTS 原始产物，尚未压缩）
 EXTS = ('.mp3', '.wav')
 
 
 def read_map():
-    """{ id: 扩展名 } —— 多扩展名时 mp3 优先。"""
+    """{ id: 扩展名 } —— 多扩展名时 mp3 优先。来源 = 主包目录 + 分包里的 secret_*。"""
     found = {}
     if not os.path.isdir(VOICE_DIR):
         print('✗ 找不到 %s' % VOICE_DIR)
         sys.exit(2)
-    for f in sorted(os.listdir(VOICE_DIR)):
-        name, ext = os.path.splitext(f)
-        if ext.lower() not in EXTS:
+    for d, only in ((VOICE_DIR, None), (SUBPKG_VOICE_DIR, SUBPKG_PREFIX)):
+        if not os.path.isdir(d):
             continue
-        prev = found.get(name)
-        if prev is None or (ext.lower() == '.mp3' and prev != '.mp3'):
-            found[name] = ext.lower()
+        for f in sorted(os.listdir(d)):
+            name, ext = os.path.splitext(f)
+            if ext.lower() not in EXTS:
+                continue
+            if only and not name.startswith(only):
+                continue
+            prev = found.get(name)
+            if prev is None or (ext.lower() == '.mp3' and prev != '.mp3'):
+                found[name] = ext.lower()
     return found
 
 
@@ -68,7 +79,8 @@ def main():
     body = [
         '// data/voices.js — **哪些元素真的有藏文发音**（由 scripts/gen_voice_index.py 生成，勿手改）',
         '//',
-        '// 生成依据只有一个：audio/voice/ 目录里到底有哪些文件。录音放进去后重跑脚本即可，',
+        '// 生成依据只有一个：audio/voice/ 目录里到底有哪些文件（含分包里的 secret_* 讲解）。\n'
+        '// 录音放进去后重跑脚本即可，',
         '// 不需要改代码；scripts/validate.js 会校对「表 vs 目录」是否一致（漂移即报错）。',
         '//',
         '// 为什么要在构建期算这张表：小程序没有列目录的 API，运行时只能「先播了再说」，',

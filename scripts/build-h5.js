@@ -47,6 +47,22 @@ const DATA = {
   lamp: require(path.join(ROOT, 'data', 'lamp')),
   // 藏文学习体系（D51）：15 级 × 10 课 = 150 课的课程与格子尺寸表
   learning: require(path.join(ROOT, 'data', 'learning')),
+  // D111：150 关的**盘面生成结果**由小程序同一份生成器（utils/learning.js）在构建期算好注入。
+  //   为什么注入产物而不是把生成器镜像进模板：生成器 250 行、依赖 data/affixes.js 的合法组合表，
+  //   镜像一次就多一份会漂移的真相源；而它的输出是纯数据、确定性（同 lv/stage 永远同一张盘），
+  //   构建期算一次注入，两端内容逐字节同源。
+  learnStages: (function () {
+    const gen = require(path.join(ROOT, 'utils', 'learning'));
+    const out = [];
+    (require(path.join(ROOT, 'data', 'learning')).LEVELS || []).forEach(function (L) {
+      for (let s = 1; s <= L.stages; s++) {
+        const st = gen.buildStage(L.lv, s);
+        if (!st) { console.error('✗ 学习关生成失败：L' + L.lv + ' 第 ' + s + ' 课'); process.exit(1); }
+        out.push(st);
+      }
+    });
+    return out;
+  })(),
   // 「藏文可以组合」拼合预告（纯展示数据）
   combo: require(path.join(ROOT, 'data', 'combo')),
   // 即时应激励文案库（D34：五档中藏双语赞美）
@@ -106,19 +122,22 @@ html = html.replace('/*__IMAGES__*/', JSON.stringify(IMAGES));
 // ---------- 2.5 注入藏文发音（audio/voice/*.wav（TTS 产物）与 *.mp3（旧录音）→ base64；缺文件 = 空表静默） ----------
 // 体验版的 play.html 是单文件（双击即玩），相对路径取不到语音；把录音/TTS 产物内联进来，
 // 一次构建后浏览器里也能听到发音播报。文件未录制时 VOICES = {}，行为与现在一致（静默不报错）。
+// D111：藏地密码讲解（secret_*）已移进 praiseVoice 分包（主包 2MB 上限）—— 体验版没有
+//   分包概念，两边目录都要扫，否则「听讲解」在浏览器里会静默（小程序却正常）。
 const VOICES = {};
 (function () {
-  const dir = path.join(ROOT, 'audio', 'voice');
-  if (!fs.existsSync(dir)) return;
   const pick = {};
-  fs.readdirSync(dir).forEach(function (f) {
-    const mm = /^(.*)\.(wav|mp3)$/i.exec(f);
-    if (!mm) return;
-    const id = mm[1], ext = mm[2].toLowerCase();
-    if (pick[id] === 'mp3') return;                       // mp3 优先（中文播报与压缩后的元素音）；wav 兼容保留
-    pick[id] = ext;
-    const buf = fs.readFileSync(path.join(dir, f));
-    VOICES[id] = (ext === 'wav' ? 'data:audio/wav;base64,' : 'data:audio/mpeg;base64,') + buf.toString('base64');
+  [path.join(ROOT, 'audio', 'voice'), path.join(ROOT, 'package-praise', 'audio', 'voice')].forEach(function (dir) {
+    if (!fs.existsSync(dir)) return;
+    fs.readdirSync(dir).forEach(function (f) {
+      const mm = /^(.*)\.(wav|mp3)$/i.exec(f);
+      if (!mm) return;
+      const id = mm[1], ext = mm[2].toLowerCase();
+      if (pick[id] === 'mp3') return;                       // mp3 优先（中文播报与压缩后的元素音）；wav 兼容保留
+      pick[id] = ext;
+      const buf = fs.readFileSync(path.join(dir, f));
+      VOICES[id] = (ext === 'wav' ? 'data:audio/wav;base64,' : 'data:audio/mpeg;base64,') + buf.toString('base64');
+    });
   });
 })();
 html = html.replace('/*__VOICES__*/', JSON.stringify(VOICES));
@@ -199,6 +218,49 @@ DATA.levels.forEach(function (cfg) {
   }
 });
 if (bad) process.exit(1);
+
+// ---------- 4.5 学习体系（D111）：150 关注入产物一致性 ----------
+// 与 utils/board.js 同口径的三条守恒：每种偶数 / 每种 ≥2 / 总数 = 格数 + 池。
+// 注入的是生成器产物，这里独立复算一遍 —— 「注入即信任」等于没有校验。
+{
+  let learnBad = 0;
+  const stages = DATA.learnStages || [];
+  if (stages.length !== 150) {
+    console.error('✗ 学习关注入数应为 150，实际 ' + stages.length);
+    learnBad++;
+  }
+  const byLv = {};
+  // 奇数格数（3×3 = 9 格）时总数会被 evenize +1（utils/learning.js：溢出的一张给「本关主角」），
+  // 所以守恒口径是 total === evenize(格数 + 池)，不是死等于格数 + 池。
+  const evenize = function (n) { return n % 2 === 0 ? n : n + 1; };
+  stages.forEach(function (st) {
+    byLv[st.lv] = (byLv[st.lv] || 0) + 1;
+    const slots = st.cols * st.rows;
+    const pool = Math.max(2, Math.ceil(slots / 4 / 2) * 2);
+    const total = st.elements.reduce(function (s, e) { return s + e[1]; }, 0);
+    if (st.elements.some(function (e) { return e[1] % 2 !== 0; })) {
+      console.error('✗ L' + st.lv + ' 第 ' + st.stage + ' 课配比含奇数'); learnBad++;
+    }
+    if (st.elements.some(function (e) { return e[1] < 2; })) {
+      console.error('✗ L' + st.lv + ' 第 ' + st.stage + ' 课有元素不足 2 张（开局看不见它）'); learnBad++;
+    }
+    if (total !== evenize(slots + pool)) {
+      console.error('✗ L' + st.lv + ' 第 ' + st.stage + ' 课牌数不符：' + total + ' ≠ evenize(' + slots + '+' + pool + ')'); learnBad++;
+    }
+    if (!st.tiles || Object.keys(st.tiles).length !== st.elements.length) {
+      console.error('✗ L' + st.lv + ' 第 ' + st.stage + ' 课 tiles 与 elements 不配对'); learnBad++;
+    }
+    if (!(st.steps > 0)) {
+      console.error('✗ L' + st.lv + ' 第 ' + st.stage + ' 课步数预算非正数'); learnBad++;
+    }
+  });
+  const lvs = Object.keys(byLv);
+  if (lvs.length !== 15 || lvs.some(function (k) { return byLv[k] !== 10; })) {
+    console.error('✗ 学习关应按 15 级 × 10 课分布，实际 ' + JSON.stringify(byLv)); learnBad++;
+  }
+  if (learnBad) process.exit(1);
+  console.log('  学习体系：150 关注入产物三条守恒全部通过（15 级 × 10 课）');
+}
 
 // ---------- 5. 成长阶梯一致性抽查（每阶段 10 关、区间连续、不重叠） ----------
 const stages = DATA.stages;
