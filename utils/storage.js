@@ -113,7 +113,13 @@ function getProgress() {
     // 万家灯火祈福跳窗：上次展示的日期（用于「每天首次打开只出现一次」）
     lampDay: (p && p.lampDay) || '',
     // 每日打开记录（本地留存粗指标）：{ days, lastDate, streak, total, first }
-    openLog: (p && p.openLog) || { days: [], lastDate: '', streak: 0, total: 0, first: '' }
+    openLog: (p && p.openLog) || { days: [], lastDate: '', streak: 0, total: 0, first: '' },
+    // D111 学习线（150 课）进度与成绩。⚠️ **必须列进白名单**：getProgress 是显式挑字段的，
+    //   漏列 = save(p) 时被静默丢掉（D101 的 waterDay 就是这么漏的：上限判断永远通过）。
+    //   实测事故：renderLearn 里 addPoints 走 getProgress→save，把上一行刚落库的
+    //   learnDone 整个写丢 → 本级永远差一课、证书永远不颁。
+    learnDone: (p && p.learnDone) || {},
+    learnStats: (p && p.learnStats) || {}
   };
 }
 

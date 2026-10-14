@@ -6851,6 +6851,12 @@ section('63. D111 学习体系（150 课）两端可玩 · 老线数据隔离');
   if (/function recordLearnResult/.test(st) && /function getLearnStats/.test(st))
     ok('storage 有学习线成绩聚合（各课最佳平均 + 零失误）');
   else err('storage 缺学习线成绩聚合');
+  // ⚠️ D111 实测事故：getProgress 是显式挑字段的白名单，learnDone/learnStats 漏列 →
+  //   save(p) 时被静默写丢（addPoints 就走这条路）→ 本级永远差一课、证书永远不颁。
+  //   与 D101 的 waterDay 同一族坑，这里钉住两端白名单都必须含这两个字段。
+  if (/learnDone:/.test(st) && /learnStats:/.test(st))
+    ok('storage.getProgress 白名单含 learnDone / learnStats（漏列会被 save 静默写丢）');
+  else err('storage.getProgress 白名单缺 learnDone / learnStats —— addPoints 会把学习进度写丢');
 
   // 63.6 首页学习面板：进度 + 证书档位可见
   if (/certTier/.test(ij) && /findLvCert/.test(ij)) ok('首页学习面板显示本级证书档位');

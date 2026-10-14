@@ -2442,7 +2442,10 @@ function mockCtx(sink) {
     check('老线印记不出现在学习结算', $('#res-stamp').innerHTML === '');
     check('底栏是「下一课 →」', ($('#res-actions .primary-btn') || {}).textContent === '下一课 →',
       ($('#res-actions .primary-btn') || {}).textContent);
-    check('学习进度落库（learnDone["1-1"]）', ev('getLearnDone()["1-1"]') === 1);
+    // ⚠️ 这条同时是 D111 实测事故的回归锁：renderLearnResult 里的 addPoints 走
+    //   getProgress→save，白名单漏列 learnDone 会把它静默写丢（本级永远差一课）。
+    check('学习进度落库且在 addPoints 之后不丢（learnDone["1-1"]）', ev('getLearnDone()["1-1"]') === 1,
+      JSON.stringify(ev('getLearnDone()')));
     check('成绩落库（learnStats[1]）', ev('getLearnStats(1).n') === 1, JSON.stringify(ev('getLearnStats(1)')));
     check('★ 老线 completedLevels 不被写脏（曾把 11..150 写进去）',
       ev('getProgress().completedLevels.length') === 0,
