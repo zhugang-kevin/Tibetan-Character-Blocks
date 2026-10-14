@@ -2,14 +2,17 @@
 // 合规：非遗盲盒只抽「文化小知识」，不含任何优惠券 / 金额 / 结算字段（validate 会机械校验）
 module.exports = {
   // 雪域日签：藏语祝福 + 中文翻译 + 小知识（7 天一循环）
+  // D114：7 条全部换成用户本人录音所念的文本（原文本只有 tashi_delek 与之相同）。
+  //   硬规则 R1/R2 要求每条以 tsheg 结尾，故 6 条补了尾随 ་（不是照抄截图）。
+  //   roman 为学习者读音（非严格 Wylie），与既有字段风格一致。
   greetings: [
-    { tibetan: 'བཀྲ་ཤིས་བདེ་ལེགས་', voice: 'tashi_delek', roman: 'tashi delek', cn: '吉祥如意', tip: '藏地最常用的问候，见面与道别都能用。' },
-    { tibetan: 'སེམས་ཁྲལ་མེད་པར་སྤྲོ་པོ་ཡོང་བར་ཤོག་', voice: 'blessing_01', roman: 'sem tral me par dro po yong war shok', cn: '愿你无忧无虑，心生欢喜', tip: '安慰与祝福他人时最温柔的一句。' },
-    { tibetan: 'ཁྱེད་རང་བདེ་མོ་ཡིན་པས་དགའ་པོ་ཡོད།', voice: 'greet_03', roman: 'khyé rang dé mo yin pé ga po yö', cn: '你安好，我便欢喜', tip: '藏语里表达牵挂的方式很含蓄。' },
-    { tibetan: 'ཞི་བདེ་དང་བཀྲ་ཤིས་ཡོང་བར་ཤོག་', voice: 'greet_04', roman: 'zhi dé dang ta shi yong war shok', cn: '愿平安与吉祥常伴', tip: '常写在风马旗与门楣上的祈愿。' },
-    { tibetan: 'ལོ་གསར་བཀྲ་ཤིས་བདེ་ལེགས་', voice: 'greet_05', roman: 'lo sar ta shi de lek', cn: '新年吉祥', tip: '藏历新年的标准祝词。' },
-    { tibetan: 'ཐུགས་རྗེ་ཆེ།', voice: 'greet_06', roman: 'thuk jé ché', cn: '谢谢（字面：大慈悲）', tip: '道谢用的词，本身带着「心怀慈悲」的意思。' },
-    { tibetan: 'བདེ་ལེགས་སམ།', voice: 'greet_07', roman: 'de lek sam', cn: '你好吗？', tip: '字面是「吉祥吗」，回答可以说「བདེ་ལེགས་」（很好）.' }
+    { tibetan: 'བཀྲ་ཤིས་བདེ་ལེགས་', voice: 'tashi_delek', roman: 'tashi delek', cn: '扎西德勒，吉祥如意', tip: '藏地最常用的问候，见面与道别都能用。' },
+    { tibetan: 'བསོད་ནམས་ཤོག་', voice: 'blessing_01', roman: 'bsod nams shog', cn: '愿吉祥相随', tip: '祝福句的通用收尾——ཤོག表示「愿……成就」，加在前一句之后就成一句祝愿。' },
+    { tibetan: 'དགེ་སློང་འཕེལ་བའི་ཤོག་', voice: 'greet_03', roman: 'de long \'pel wa\'i shog', cn: '愿美好与福泽不断增长', tip: 'འཕེལ་བ་是「增长、累积」，常用于祝你一天比一天好。' },
+    { tibetan: 'བདེ་སྐྱིད་བདེ་བའི་ཤོག་', voice: 'greet_04', roman: 'de kyi de wa\'i shog', cn: '愿幸福与安乐降临', tip: 'བདེ་སྐྱིད་是「幸福」，དེ་བའི་是「那个……的」，合起来即「愿那份幸福降临」。' },
+    { tibetan: 'བཀྲ་ཤིས་དབང་ལེགས་ཕུན་སུམ་ཚོགས་', voice: 'greet_05', roman: 'tashi dbang legs phun sum tsogs', cn: '吉祥圆满，福乐丰盛', tip: '四个吉祥词连缀（吉祥·威德·善·圆满），是藏语祝福里最隆重的一句。' },
+    { tibetan: 'སམོད་རང་བརྒྱུད་བདེ་ཤོག་', voice: 'greet_06', roman: 'smod rang rgyud de shog', cn: '愿心中所愿顺利成就', tip: 'བརྒྱུད་བདེ་直译是「愿愿成真」，是许愿时最该说的一句。' },
+    { tibetan: 'ཞི་བདེ་ཡོང་བའི་ཤོག་', voice: 'greet_07', roman: 'zhi de yong wa\'i shog', cn: '愿祥和与安宁相伴', tip: '短而轻，适合在结束时说一句收尾祝愿。' }
   ],
   // 祈福长明灯：7 天循环签到奖励（纯本地点数/道具，无金额、无券）
   signInRewards: [

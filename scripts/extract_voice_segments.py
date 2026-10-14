@@ -126,12 +126,25 @@ def db_of(a):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('only', nargs='?', default=None)
+    ap.add_argument('--sentence', action='store_true',
+                    help='按长句阈值切分（句子是整句多遍连录，音节间隔与停顿同量级）')
     args = ap.parse_args()
 
     os.makedirs(OUT_DIR, exist_ok=True)
-    files = sorted(f for f in os.listdir(SRC) if re.match(r'^(letter_\d+|icon_\d+)\.mp3\.m4a$', f))
+    # D114：句子与辅音**互斥扫描**。两种阈值下的段边界完全不同
+    #   （tashi_delek 在句子阈值下是 5 段 × ~1.2s，在辅音阈值下会被打碎成
+    #   0.24s 的气口碎片）。混在一份清单里必然有一方是错的，所以按模式分开。
+    if args.sentence:
+        files = sorted(f for f in os.listdir(SRC) if re.match(
+            r'^(tashi_delek|blessing_\d+|greet_\d+)\.mp3\.m4a$', f))
+        MIN_MS, GAP_MS = 400, 700
+    else:
+        files = sorted(f for f in os.listdir(SRC) if re.match(
+            r'^(letter_\d+|icon_\d+)\.mp3\.m4a$', f))
+        MIN_MS, GAP_MS = 90, 140
     if args.only:
         files = [f for f in files if f.startswith(args.only)]
+    print('扫描到 %d 个文件，最小段长=%dms 间隙=%dms' % (len(files), MIN_MS, GAP_MS))
 
     L = []
     L.append('# 单次念候选段 · 试听清单')
@@ -152,7 +165,7 @@ def main():
     for f in files:
         vid = f.replace('.mp3.m4a', '')
         x = load(os.path.join(SRC, f))
-        segs = segments(x)
+        segs = segments(x, min_ms=MIN_MS, gap_ms=GAP_MS)
         if not segs:
             continue
         info = []
@@ -193,15 +206,23 @@ def main():
     L.append('- 我可以按「峰值优先 + 时长居中」自动选，你在试听后否决即可。')
     L.append('')
 
-    with io.open(PICK_MD, 'w', encoding='utf-8') as fh:
+    # D114：辅音与句子**必须写不同的清单文件**。
+    #   踩过的坑：两种阈值（辅音 90ms/140ms，句子 400ms/700ms）共用一个
+    #   `_segments.json`，后跑的那次会把前一次的清单整个覆盖掉 ——
+    #   表现为「刚切好的句子段又消失了」，而且是静默的。
+    #   现在句子写`_segments_sentences.json`，互不覆盖。
+    sj_name = '_segments_sentences.json' if args.sentence else '_segments.json'
+    md_name = 'voice-pick-list-sentences.md' if args.sentence else 'voice-pick-list.md'
+    with io.open(os.path.join(ROOT, 'docs', md_name), 'w', encoding='utf-8') as fh:
         fh.write('\n'.join(L))
     # JSON 供后续入库脚本使用
-    with io.open(os.path.join(OUT_DIR, '_segments.json'), 'w', encoding='utf-8') as fh:
+    with io.open(os.path.join(OUT_DIR, sj_name), 'w', encoding='utf-8') as fh:
         json.dump({vid: info for vid, info in rows}, fh, ensure_ascii=False, indent=1)
 
     print('提取完成：%d 条录音 → %d 个候选段' % (len(rows), total_segs))
     print('WAV：%s' % OUT_DIR)
-    print('清单：%s' % PICK_MD)
+    print('清单：%s' % os.path.join('docs', md_name))
+    print('JSON：%s' % os.path.join(OUT_DIR, sj_name))
     print()
     print('%-12s %5s %s' % ('条目', '遍数', '各段时长'))
     for vid, info in rows:

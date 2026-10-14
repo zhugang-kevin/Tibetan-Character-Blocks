@@ -88,7 +88,10 @@ def pick_segment_above(vid, min_dur=0.25):
     那就必须如实报「需重录」，不能靠放宽判据蒙混过关。
     """
     import numpy as np
+    #辅音与句子各有自己的清单（阈值不同，段边界也不同）
     sj = os.path.join(CAND, '_segments.json')
+    if vid.startswith(('greet_', 'blessing_', 'tashi_delek')):
+        sj = os.path.join(CAND, '_segments_sentences.json')
     if not os.path.exists(sj):
         return None
     segs = json.load(io.open(sj, encoding='utf-8'))
@@ -156,10 +159,37 @@ def collect_targets(scheme, only):
     if scheme == 'static':
         ids = ['tashi_delek', 'blessing_01',
                'greet_03', 'greet_04', 'greet_05', 'greet_06', 'greet_07']
+        # D114修正：原先这里直接把 SRC_M4A 的**整段多遍录音**交给管线 ——
+        #   与 a3 分支「只取候选段」的做法不一致，等于把「玩家点一下喇叭
+        #   听到 5 遍连读」的错误又放回来。必须同样走候选段。
+        #   优先 picked.json（人工/自动挑过），回退 _segments.json（客观择优）。
+        pj = os.path.join(CAND, 'picked.json')
+        _sj = os.path.join(CAND, '_segments_sentences.json')
+        pk = json.load(io.open(pj, encoding='utf-8')) if os.path.exists(pj) else {}
+        sgs = json.load(io.open(_sj, encoding='utf-8')) if os.path.exists(_sj) else {}
         for vid in ids:
-            p = os.path.join(SRC_M4A, vid + '.mp3.m4a')
-            if os.path.exists(p):
-                out.append((vid, p))
+            seg_path = None
+            if vid in pk:
+                c = os.path.join(CAND, pk[vid]['file'])
+                if os.path.exists(c):
+                    seg_path = c
+            if seg_path is None:
+                arr = sgs.get(vid) or []
+                # D114：句子择优**必须加时长窗**，不能只按峰值排。
+                #   实测 7 条的「完整一遍」全部落在 1.0~1.6s；
+                #   而 2.8~6.8s 的段是**两遍以上被粘连**的结果
+                #   （遍间停顿 0.6s 恰好略低于 700ms 阈值，没被切开）。
+                #   若只按 peak 排序，greet_03 会选中 6.84s 那段 ——
+                #   玩家点一下喇叭要听 5 遍连读，正是本脚本要防的缺陷。
+                ok = [s for s in arr if 0.90 <= s['dur'] <= 1.80]
+                if ok:
+                    ok.sort(key=lambda s: -s['peak_db'])
+                    seg_path = os.path.join(CAND, ok[0]['file'])
+            if seg_path:
+                out.append((vid, seg_path))
+            else:
+                print('  [拒收] %s：候选集里没有达标的单次念段（≥0.6s）。' % vid)
+                print('         请先跑python scripts/extract_voice_segments.py --sentence')
         return out
     # a3：从 picked.json 取推荐段
     pj = os.path.join(CAND, 'picked.json')
