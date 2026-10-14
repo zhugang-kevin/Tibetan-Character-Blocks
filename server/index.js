@@ -101,7 +101,7 @@ async function handleOrder(req, res, body) {
   }
   store.saveSession(sess.openid, sess.session_key);   // 必须存最新那份（旧的算 signature 会 -15007）
 
-  // ---- D112 防御：限额（docs/gifting-product-design.md 第五节）----
+  // ---- D113 防御：限额（docs/gifting-product-design.md 第五节）----
   // 为什么放在**下单前**而不是发货前：让用户在付钱之前就知道被拦，而不是付完才被告知。
   // 为什么必须在服务端算：客户端的限额用户改一个字段就能绕过，等于没有。
   let attachObj = {};
@@ -172,7 +172,7 @@ function handleNotify(req, res, body, raw) {
   return ok(res, { errcode: 0, errmsg: 'ok' });
 }
 
-// 发货动作（D112：**真的入收礼箱**，不再只是打日志）
+// 发货动作（D113：**真的入收礼箱**，不再只是打日志）
 //
 // 「送到」这件事由三件事共同保证，缺一不可：
 //   ① 幂等 —— 主键 out_trade_no（INSERT OR IGNORE），微信回调重推不会重复入账；
@@ -202,7 +202,7 @@ function deliver(order) {
     put ? '' : '（已入过，本次为重推）');
 }
 
-// ---------- ④b 收礼箱（D112）----------
+// ---------- ④b 收礼箱（D113）----------
 // A 端用它取「别人送我的」。身份只认 code→openid→progress.uid ——
 //   uid 是匿名收礼地址，客户端拿它来问，服务端绝不反向暴露是谁。
 async function handleGiftInbox(req, res, body) {
@@ -263,7 +263,7 @@ async function handleSyncSave(req, res, body) {
   const sess = await code2Session(body.code);
   if (!sess.openid) return fail(res, 500, '登录态获取失败');
   store.saveSession(sess.openid, sess.session_key);   // 顺带刷新（支付要用）
-  // D112：uid 是**客户端生成的匿名收礼地址**，由客户端带来、服务端绑定到 openid 上。
+  // D113：uid 是**客户端生成的匿名收礼地址**，由客户端带来、服务端绑定到 openid 上。
   //   它不含任何身份信息（不是 openid、不是手机号），所以可以直接存。
   const row = store.saveProgress(sess.openid, {
     doneStages: body.doneStages, lamps: body.lamps,
@@ -287,7 +287,7 @@ function fail(res, code, msg) { res.writeHead(code, { 'Content-Type': 'applicati
 const ROUTES = {
   '/pay/order': handleOrder, '/pay/notify': handleNotify, '/pay/query': handleQuery,
   '/sync/save': handleSyncSave, '/sync/load': handleSyncLoad,
-  '/gift/inbox': handleGiftInbox     // D112：A 端拉「别人送我的」
+  '/gift/inbox': handleGiftInbox     // D113：A 端拉「别人送我的」
 };
 
 const server = http.createServer((req, res) => {

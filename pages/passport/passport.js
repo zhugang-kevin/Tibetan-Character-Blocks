@@ -12,7 +12,7 @@ var secretsData = require('../../data/secrets');
 var tracker = require('../../utils/tracker');
 // D54 性别 + 藏族名字：三档取值与选名算法（与 utils/storage.js 同一份）
 var tibetanName = require('../../utils/tibetan-name.js');
-// D112 礼物展示口径（与送礼页同一份，避免两处文案漂移）
+// D113 礼物展示口径（与送礼页同一份，避免两处文案漂移）
 var giftView = require('../../utils/gift-view');
 var blessingsData = require('../../data/blessings');
 
@@ -45,7 +45,7 @@ Page({
     syncDone: false,
     syncTip: '换手机后进度会丢。点右侧按钮可备份到云端。',
     levelsDone: 0,
-    // D112 收到的祝福（A 端收礼箱）：进页面拉一次，不做后台轮询
+    // D113 收到的祝福（A 端收礼箱）：进页面拉一次，不做后台轮询
     gifts: [],
     giftCount: 0,
     inboxBusy: false,
@@ -83,7 +83,7 @@ Page({
     this.loadInbox();
   },
 
-  // ---------- D112 收到的祝福（A 端收礼箱）----------
+  // ---------- D113 收到的祝福（A 端收礼箱）----------
   // 只有用户自己点才联网（与云同步同一条合规口径）：进页面自动拉一次，
   //   但**不做**后台轮询、不做订阅推送 —— 省掉「订阅消息」这条合规重路。
   // 去重：服务端幂等靠主键（同一单号只有一件礼物），客户端再按 id 入账一次，
@@ -204,7 +204,7 @@ Page({
       genderOptions: tibetanName.GENDERS.map(function (x) { return { key: x.key, label: x.label }; }),
       tibetanName: nm.name,
       tibetanNameMean: nm.mean,
-      // D112 收到的祝福（列表由 loadInbox 单独填，避免每次 refresh 把已读状态冲掉）
+      // D113 收到的祝福（列表由 loadInbox 单独填，避免每次 refresh 把已读状态冲掉）
       giftCount: storage.getSeenGifts().length
     });
   },
@@ -264,7 +264,7 @@ Page({
     }
     this.setData({ syncBusy: true });
     syncModule.save({
-      // D112：顺带把匿名收礼地址绑到本 openid 上 —— 别人往这个 uid 送的礼，
+      // D113：顺带把匿名收礼地址绑到本 openid 上 —— 别人往这个 uid 送的礼，
       //   服务端才知道该投递给谁。只传匿名 uid，不传 openid（服务端用 code 自己换）。
       uid: storage.ensureUid(),
       doneStages: this.data.levelsDone + '',

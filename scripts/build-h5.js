@@ -45,6 +45,9 @@ const DATA = {
   daily: require(path.join(ROOT, 'data', 'daily')),
   // 万家灯火祈福跳窗（展示数据固定写死，不接任何后端）
   lamp: require(path.join(ROOT, 'data', 'lamp')),
+  // D113 朋友互赠的藏文祝福语（与小程序同一份 data/blessings.js —— 体验版不镜像文案，
+  //   否则「挑一句藏文」在两端会各说一套）
+  blessings: require(path.join(ROOT, 'data', 'blessings')),
   // 藏文学习体系（D51）：15 级 × 10 课 = 150 课的课程与格子尺寸表
   learning: require(path.join(ROOT, 'data', 'learning')),
   // D111：150 关的**盘面生成结果**由小程序同一份生成器（utils/learning.js）在构建期算好注入。

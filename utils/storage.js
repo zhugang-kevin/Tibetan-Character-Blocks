@@ -120,10 +120,10 @@ function getProgress() {
     //   learnDone 整个写丢 → 本级永远差一课、证书永远不颁。
     learnDone: (p && p.learnDone) || {},
     learnStats: (p && p.learnStats) || {},
-    // D112 收礼人匿名 id（打赏链路用）。⚠️ 必须进白名单，否则 save(p) 会把它写丢，
+    // D113 收礼人匿名 id（打赏链路用）。⚠️ 必须进白名单，否则 save(p) 会把它写丢，
     //   下一次 ensureUid 又生成一个新 uid = 换身份（旧分享卡片全部找不到你）。
     uid: (p && p.uid) || '',
-    // D112 已收到的礼物 id（按 id 去重，防止同步/重连时重复入账）
+    // D113 已收到的礼物 id（按 id 去重，防止同步/重连时重复入账）
     seenGifts: (p && p.seenGifts) || []
   };
 }
@@ -551,7 +551,7 @@ function getSeenCards() { return getProgress().seenCards; }
 
 function getStampCount() { return getProgress().stamps.length; }
 
-// ---- D112 收礼箱（A 端）----
+// ---- D113 收礼箱（A 端）----
 // 「收到的祝福」以**礼物 id（= out_trade_no）**去重：
 //   服务端那边幂等靠主键（同一个单号只可能有一件礼物），
 //   客户端这边再按 id 入一次账 —— 于是「重复拉取 / 断线重连 / 回调重推」都不会重复发奖。
@@ -646,7 +646,7 @@ function getLearnStats(lv) {
   return { acc: vals.length ? sum / vals.length : 0, clean: !!cur.clean, n: vals.length };
 }
 
-// ---------- D112 收礼人匿名 id（uid）----------
+// ---------- D113 收礼人匿名 id（uid）----------
 // 打赏链路（A 分享 → B 送祝福 → 服务端记账 → A 收礼）里，A 需要一个**能被卡片带着走**
 //   的身份。但不能用 openid：openid 只能由服务端用 code 换（官方红线：不进前端），
 //   所以分享卡片带的是一个**本地生成的匿名 uid**（zc_ + 12 位随机），服务端只在

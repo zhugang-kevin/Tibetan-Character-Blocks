@@ -141,7 +141,7 @@ Page({
     tibetanName: { name: '', mean: '', gender: '' },
     // 朝圣天梯入场动效（纯视觉类名，不含任何数据）
     ladderIn: false,
-    // D112 从朋友分享卡进来的收礼人匿名 uid（为空 = 不是从卡片来的 → 不显示送祝福入口）
+    // D113 从朋友分享卡进来的收礼人匿名 uid（为空 = 不是从卡片来的 → 不显示送祝福入口）
     giftUid: '',
     giftShow: false
   },
@@ -152,7 +152,7 @@ Page({
     this._alive = false;
   },
 
-  // D112：记下「这张卡是谁分享出来的」（?to= 匿名 uid）。
+  // D113：记下「这张卡是谁分享出来的」（?to= 匿名 uid）。
   //   首页没有 onLoad 之前，从分享卡进来的参数会丢 —— 而打赏链路全靠这个参数。
   onLoad: function (query) {
     this._to = String((query || {}).to || '');
@@ -262,7 +262,7 @@ Page({
       thangkaDone: storage.getThangkaDone(),
       pot: storage.getPot(),
       ladderIn: intro,
-      // D112：从朋友的分享卡进来（?to=uid）→ 顶部出现「给 TA 送一份祝福」。
+      // D113：从朋友的分享卡进来（?to=uid）→ 顶部出现「给 TA 送一份祝福」。
       //   入口**只挂在分享上**：没有关系链，也就没有别的合法途径知道该送给谁。
       giftUid: this._to || '',
       giftShow: !!this._to && this._to !== storage.ensureUid()
@@ -741,7 +741,7 @@ Page({
     wx.navigateTo({ url: '/pages/benefits/benefits' });
   },
 
-  // D112：给分享这张卡的朋友送一份祝福（入口只在 ?to= 存在时出现）。
+  // D113：给分享这张卡的朋友送一份祝福（入口只在 ?to= 存在时出现）。
   //   只带匿名 uid，绝不带 openid —— openid 只能由服务端用 code 换，不进前端。
   openGift: function () {
     if (!this.data.giftUid) return;

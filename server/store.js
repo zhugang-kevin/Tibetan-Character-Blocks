@@ -78,14 +78,14 @@ db.exec(`
   )
 `);
 
-// D112 收礼地址：progress 上补一个匿名 uid 列。
+// D113 收礼地址：progress 上补一个匿名 uid 列。
 //   为什么不是「uid 表」：uid 与 openid **一对一**（一个人就一个收礼地址），
 //   多开一张表反而要维护一致性；直接在 progress 上加一列最省，也最少出错。
 //   ⚠️ 老的库文件没有这一列 → 用 ALTER 补（已存在时 SQLite 会报错，吞掉即可）。
 try { db.exec('ALTER TABLE progress ADD COLUMN uid TEXT'); } catch (e) { /* 已有该列 */ }
 db.exec('CREATE INDEX IF NOT EXISTS idx_progress_uid ON progress(uid)');
 
-// D112 收礼箱：谁给谁送了什么。
+// D113 收礼箱：谁给谁送了什么。
 //   out_trade_no 做主键 = **发货幂等**落到数据库层（回调重推不会重复入账，
 //   前端也因此可以放心按它去重：同一个单号永远只对应一件礼物）。
 db.exec(`
@@ -127,7 +127,7 @@ const stmt = {
       cards=excluded.cards, owner_name=excluded.owner_name,
       uid=excluded.uid, updated_at=excluded.updated_at`),
   getProgress: db.prepare('SELECT done_stages, lamps, cards, owner_name, uid, updated_at FROM progress WHERE openid = ?'),
-  // ---- D112 收礼箱 ----
+  // ---- D113 收礼箱 ----
   // 幂等靠主键：同一个 out_trade_no 插不进第二次（回调重推 / 并发都安全）
   insertGift: db.prepare(`INSERT OR IGNORE INTO gifts
     (out_trade_no, from_openid, to_uid, product_id, amount, payload, created_at)
@@ -175,7 +175,7 @@ function getSession(openid) {
 function listPendingDelivery(limit) { return stmt.pendingDelivery.all(limit || 50); }
 
 // 进度读写：**openid 由调用方从 code2Session 取**，绝不接受客户端传入的 openid
-// D112：顺带把匿名收礼地址 uid 绑到这个 openid 上（客户端只传 uid，不传 openid）。
+// D113：顺带把匿名收礼地址 uid 绑到这个 openid 上（客户端只传 uid，不传 openid）。
 //   uid 为空时**不覆盖**已有的 —— 否则一次没带 uid 的同步会把收礼地址清空。
 function saveProgress(openid, d) {
   if (!openid) throw new Error('saveProgress: openid 必填');
@@ -194,7 +194,7 @@ function openidOfUid(uid) {
   return r ? r.openid : '';
 }
 
-// ---- D112 收礼箱 ----
+// ---- D113 收礼箱 ----
 /** 一天的开始（本地时区）。限额都按「自然日」算，与用户直觉一致。 */
 function startOfToday() {
   const d = new Date();
@@ -232,7 +232,7 @@ module.exports = {
   listPendingDelivery,
   saveProgress,
   getProgress,
-  // D112 收礼箱
+  // D113 收礼箱
   openidOfUid,
   putGift,
   inboxOf,

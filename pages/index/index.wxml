@@ -26,7 +26,7 @@
     <view wx:if="{{bestCombo > 1}}" class="profile-combo">最高连续正确 ×{{bestCombo}}</view>
   </view>
 
-  <!-- D112：朋友分享的卡片带你来到这里 → 给 TA 送一份祝福。
+  <!-- D113：朋友分享的卡片带你来到这里 → 给 TA 送一份祝福。
        入口**只挂在分享卡上**（?to= 匿名 uid）。没有关系链，也就没有别的途径知道送给谁；
        不做常驻入口，是为了不把「心意」变成常驻消费入口（D89 红线）。 -->
   <view wx:if="{{giftShow}}" class="gift-entry" bindtap="openGift">

@@ -1303,6 +1303,45 @@
 .mon-meta { font-size: 11px; color: #9C8B74; margin-top: 2px; }
 .mon-note { font-size: 11.5px; color: #CDBFA8; line-height: 1.6; margin-top: 4px; }
 .mon-src { margin-top: 6px; font-size: 11px; color: #8A7A64; }
+
+/* ============ D113 送一份祝福（体验版镜像，与 pages/gift/gift.wxss 同构） ============
+   ⚠️ 字号下限 11px（validate §54.3 硬线）：px 不随屏宽缩放，小屏与平板都按这个值走。 */
+.gf-hero { text-align: center; padding: 12px 0 18px; }
+.gf-title { font-size: 26px; font-weight: 700; color: #FDF6E3; letter-spacing: 1px; }
+.gf-sub { margin-top: 6px; font-size: 13px; color: rgba(253, 246, 227, .72); }
+.gf-to { margin-top: 9px; display: inline-block; padding: 5px 12px; border-radius: 999px;
+  background: rgba(183, 149, 11, .18); border: 1px solid rgba(183, 149, 11, .55);
+  font-size: 12px; color: #F1C40F; }
+.gf-section { margin-top: 18px; }
+.gf-section-title { font-size: 15px; font-weight: 700; color: #F1C40F; margin-bottom: 9px; }
+.gf-grid { display: flex; flex-wrap: wrap; gap: 9px; }
+.gf-card { width: calc((100% - 9px) / 2); box-sizing: border-box; padding: 13px 11px 12px;
+  border-radius: 10px; background: rgba(253, 246, 227, .95);
+  border: 2px solid rgba(183, 149, 11, .35); cursor: pointer; }
+.gf-card.on { border-color: #B7950B; background: linear-gradient(160deg, #FFF6D8, #F7EBCB); }
+.gf-icon { font-size: 22px; line-height: 1.2; }
+.gf-name { margin-top: 4px; font-size: 15px; font-weight: 700; color: #6E2B22; }
+.gf-desc { margin-top: 5px; font-size: 12px; line-height: 1.6; color: #5A5145; }
+.gf-price { margin-top: 7px; font-size: 16px; font-weight: 700; color: #8A6A12; }
+.gf-bless { display: flex; flex-direction: column; gap: 8px; }
+.gf-bless-item { padding: 11px 12px; border-radius: 9px; background: rgba(253, 246, 227, .95);
+  border: 2px solid rgba(183, 149, 11, .3); cursor: pointer; }
+.gf-bless-item.on { border-color: #B7950B; background: linear-gradient(160deg, #FFF6D8, #F7EBCB); }
+.gf-bo { font-size: 20px; color: #6E2B22; line-height: 1.5; }
+.gf-zh { margin-top: 4px; font-size: 14px; font-weight: 700; color: #8A6A12; }
+.gf-note { margin-top: 3px; font-size: 12px; line-height: 1.6; color: #6E6759; }
+.gf-notice { margin-top: 16px; padding: 10px 12px; border-radius: 7px;
+  background: rgba(253, 246, 227, .14); border-left: 3px solid #B7950B;
+  font-size: 12px; line-height: 1.7; color: rgba(253, 246, 227, .88); }
+.gf-off { margin-top: 12px; padding: 11px 12px; border-radius: 7px;
+  background: rgba(253, 246, 227, .92); font-size: 13px; line-height: 1.7; color: #6E2B22; }
+.gf-bar { margin-top: 20px; display: flex; flex-direction: column; gap: 9px; }
+.gf-btn { background: linear-gradient(160deg, #C0392B, #8E2A20); color: #FFF6D8;
+  font-size: 16px; font-weight: 700; border-radius: 9px; padding: 12px 0;
+  box-shadow: 0 4px 10px rgba(94, 22, 14, .4); }
+.gf-btn:disabled { opacity: .55; }
+.gf-home-btn { background: rgba(253, 246, 227, .1); border: 2px solid rgba(253, 246, 227, .35);
+  color: rgba(253, 246, 227, .9); font-size: 14px; border-radius: 9px; padding: 10px 0; }
 </style>
 </head>
 <body>
@@ -1581,7 +1620,7 @@
     </div>
   </section>
 
-  <!-- ============ 送一份祝福（D112 B 端 · 体验版镜像） ============
+  <!-- ============ 送一份祝福（D113 B 端 · 体验版镜像） ============
        体验版**不接支付**（没有 wx.requestVirtualPayment，也拿不到服务端签名），
        所以这里的「送出」是**明确禁用**并写明原因，而不是假装有支付 ——
        与项目一贯的口径一致：做不到的就明说，绝不显示一个点了没反应的按钮。
@@ -3144,6 +3183,70 @@ const state = {
 const $ = function (id) { return document.getElementById(id); };
 
 /* ---------------- 屏幕切换 ---------------- */
+/* ================= D113 送一份祝福（体验版镜像） =================
+   与小程序 pages/gift 同构的部分：四份心意 / 挑一句藏文 / 收礼人 / 「不支持退款」提示。
+   不同的一处（必须写明）：**体验版不接支付** —— 浏览器里没有 wx.requestVirtualPayment，
+   签名也只能由服务端算。所以「送出」在这里是禁用 + 说明原因，而不是一个点了没反应的按钮。
+   入口同样只挂在分享上：靠 URL 上的 ?to=xxxx 判断收礼人，没有 to 就不显示这份心意给谁。 */
+var GIFT_VIEW = {
+  tib_lamp_1:     { icon: '\u{1F56F}', name: '点一盏酥油灯', desc: '为 TA 点一盏灯，照亮这一程', price: 100 },
+  tib_blessing_3: { icon: '\u{1F4DC}', name: '送一句藏文祝福', desc: '挑一句藏文，随卡送到 TA 手上', price: 300 },
+  tib_khata_6:    { icon: '\u{1F90D}', name: '献一条哈达', desc: '最郑重的敬意，也是最轻的礼', price: 600 },
+  tib_name_99:    { icon: '\u{1F524}', name: '为 TA 取一个藏族名字', desc: '按 TA 的名字取一个藏族名字，附词义', price: 990 }
+};
+function giftPriceText(cents) {
+  const n = (cents || 0) / 100;
+  return '¥' + (Math.round(n * 100) % 100 === 0 ? String(Math.round(n)) : String(n));
+}
+function showGift(uid) {
+  state.giftUid = String(uid || '');
+  state.giftPicked = '';
+  state.giftBlessing = '';
+  renderGift();
+  showScreen('gift');
+}
+function renderGift() {
+  const uid = state.giftUid || '';
+  $('gf-to').textContent = uid ? ('致 · 编号 ' + uid.slice(-4) + ' 的朋友') : '';
+  const grid = $('gf-grid');
+  grid.innerHTML = (Object.keys(GIFT_VIEW) || []).map(function (pid) {
+    const g = GIFT_VIEW[pid];
+    return '<div class="gf-card' + (state.giftPicked === pid ? ' on' : '') + '" data-gift="' + pid + '">' +
+      '<div class="gf-icon">' + g.icon + '</div>' +
+      '<div class="gf-name">' + g.name + '</div>' +
+      '<div class="gf-desc">' + g.desc + '</div>' +
+      '<div class="gf-price">' + giftPriceText(g.price) + '</div></div>';
+  }).join('');
+  grid.querySelectorAll('[data-gift]').forEach(function (el) {
+    el.addEventListener('click', function () {
+      state.giftPicked = el.getAttribute('data-gift');
+      renderGift();
+    });
+  });
+  // 挑一句藏文：只在选中「送一句藏文祝福」时出现（与小程序同一条规则）
+  const blessSec = $('gf-bless-sec');
+  const isBless = state.giftPicked === 'tib_blessing_3';
+  blessSec.style.display = isBless ? '' : 'none';
+  if (isBless) {
+    const list = ((DATA && DATA.blessings && DATA.blessings.list) || []);
+    $('gf-bless').innerHTML = list.map(function (b) {
+      return '<div class="gf-bless-item' + (state.giftBlessing === b.id ? ' on' : '') + '" data-bless="' + b.id + '">' +
+        '<div class="gf-bo tibetan">' + b.bo + '</div>' +
+        '<div class="gf-zh">' + b.zh + ' · ' + b.mean + '</div>' +
+        '<div class="gf-note">' + b.note + '</div></div>';
+    }).join('');
+    $('gf-bless').querySelectorAll('[data-bless]').forEach(function (el) {
+      el.addEventListener('click', function () {
+        state.giftBlessing = el.getAttribute('data-bless');
+        renderGift();
+      });
+    });
+  }
+  $('gf-submit').textContent = state.giftPicked
+    ? ('送出 · ' + giftPriceText(GIFT_VIEW[state.giftPicked].price))
+    : '送出';
+}
+
 function showScreen(name) {
   // 每次换屏都推进 token：用来作废「通关后延迟 1.2s 才切结算页」这类待执行的跳转
   state.screenToken = (state.screenToken || 0) + 1;

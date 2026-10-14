@@ -2556,6 +2556,55 @@ function mockCtx(sink) {
     ev('renderHome()');
   }
 
+  /* ---------- 38. D113 朋友互赞（送祝福）：体验版镜像 ----------
+     与小程序 pages/gift 同构的部分要真的能跑；不同的一处（**体验版不接支付**）也要真的
+     看得出来 —— 否则就是给了用户一个点了没反应的按钮，这是本项目一贯不许的事。 */
+  section('38. D113 送一份祝福：四份心意 · 挑祝福 · 不接支付要写明');
+  {
+    // 38.1 进礼物页（带收礼人匿名 uid，模拟从朋友的分享卡点进来）
+    ev("showGift('zc_abcd1234efgh')");
+    await sleep(60);
+    check('进礼物页', activeScreen() === 'screen-gift', activeScreen());
+    check('收礼人只显示编号后 4 位（不暴露完整 id）',
+      $('#gf-to').textContent.indexOf('efgh') > -1 && $('#gf-to').textContent.indexOf('abcd1234') === -1,
+      $('#gf-to').textContent);
+
+    // 38.2 四份心意 + 价格口径（分 → 元，990 分 = ¥9.9）
+    check('四份心意全部渲染', $$('#gf-grid .gf-card').length === 4,
+      '实际 ' + $$('#gf-grid .gf-card').length);
+    const prices = $$('#gf-grid .gf-price').map(e => e.textContent);
+    check('价格按「分 → 元」显示（¥1 / ¥3 / ¥6 / ¥9.9）',
+      prices.join(',') === '¥1,¥3,¥6,¥9.9', prices.join(','));
+
+    // 38.3 挑一句藏文：只在选中「送一句藏文祝福」时出现
+    check('未选礼物时不显示祝福语', $('#gf-bless-sec').style.display === 'none');
+    $('#gf-grid .gf-card[data-gift="tib_blessing_3"]').click();
+    await sleep(60);
+    check('选中「送一句藏文祝福」后出现 6 句藏文',
+      $('#gf-bless-sec').style.display !== 'none' && $$('#gf-bless .gf-bless-item').length === 6,
+      '实际 ' + $$('#gf-bless .gf-bless-item').length);
+    const bo0 = ($$('#gf-bless .gf-bo')[0] || {}).textContent || '';
+    check('祝福语是藏文且以 shad 收尾（不裸渲染）', /[\u0F00-\u0FFF]།$/.test(bo0), bo0);
+    $('#gf-bless .gf-bless-item').click();
+    await sleep(40);
+    check('可以选中一句（选中态上屏）',
+      $$('#gf-bless .gf-bless-item')[0].classList.contains('on'));
+
+    // 38.4 体验版**不接支付**：按钮必须是禁用 + 页面写明原因（不许点了没反应）
+    check('送出按钮为禁用（体验版不接支付）', $('#gf-submit').disabled === true);
+    check('页面写明「体验版不接支付」', $('.gf-off').textContent.indexOf('不接支付') > -1,
+      $('.gf-off').textContent);
+    check('下单页可见「不支持退款」提示', $('.gf-notice').textContent.indexOf('不支持退款') > -1,
+      $('.gf-notice').textContent);
+    check('送出按钮带价格（送出 · ¥3）', $('#gf-submit').textContent.indexOf('¥3') > -1,
+      $('#gf-submit').textContent);
+
+    // 38.5 离开礼物页不残留（与小程序 onUnload 清定时器同口径）
+    ev("showScreen('home')");
+    await sleep(40);
+    check('可正常离开礼物页', activeScreen() === 'screen-home', activeScreen());
+  }
+
   /* ---------- 汇总 ---------- */
   check('全程无脚本运行时错误', errors.length === 0, errors[0]);
 

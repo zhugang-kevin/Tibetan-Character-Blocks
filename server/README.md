@@ -9,7 +9,7 @@
 | 文件 | 作用 |
 |---|---|
 | `sign.js` | 双签名 + 回调验签。**算法出处：腾讯云官方《Signature and Verification》** |
-| `index.js` | 三个接口：下单 / 发货回调 / 主动查单。**零依赖**（只用 Node 内置模块） |
+| `index.js` | 五个接口：下单 / 发货回调 / 主动查单 / 进度同步 / **收礼箱**。**零依赖**（只用 Node 内置模块） |
 | `test-sign.js` | 签名回归测试。**不依赖任何凭证**，跑一次就知道算法有没有被改坏 |
 
 ## 跑测试（**任何凭证都没有也能跑**）
@@ -20,13 +20,16 @@ node server/test-sign.js     # 期望：通过 8 / 失败 0
 
 期望值来自**独立实现**（Python hmac/hashlib）按官方公式复算，两次结果逐字符一致。
 
-## 三个接口
+## 五个接口
 
 | 接口 | 用途 |
 |---|---|
 | `POST /pay/order` | 前端下单 → 返回 `{ signData, paySig, signature, mode }` |
 | `POST /pay/notify` | 微信发货回调 → **验签 → 幂等发货** |
 | `POST /pay/query` | 主动查单（回调丢了时的兜底，官方建议每 5 分钟一次） |
+| `POST /sync/save` | D94 进度云同步（**顺带绑定匿名收礼地址 uid**，D113） |
+| `POST /sync/load` | 进度取回 |
+| `POST /gift/inbox` | **D113 收礼箱**：凭 code→openid→uid 取「别人送我的」 |
 | `GET /health` | 健康检查 + 是否已配置 |
 
 ## 环境变量（**全部不进代码库**）

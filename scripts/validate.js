@@ -242,7 +242,7 @@ section('7. WXML 事件绑定与 JS 方法对应');
 [['pages/index/index', ['onTapLevel', 'openPassport', 'openBenefits', 'openPanel', 'closePanel', 'doSignIn', 'openBox', 'waterTree']],
  ['pages/game/game', ['onTapTile', 'dismissCard', 'guideNext', 'speakCard']],
  ['pages/result/result', ['goHome', 'openNameModal', 'closeNameModal', 'onNameInput', 'confirmGenerate', 'saveToAlbum', 'previewShare', 'openCert', 'openPassport', 'goNextLearn', 'openLearnCert', 'goGift']],
- // D112 送祝福礼物页（B 端）：四份心意 / 挑祝福 / 取名 / 署名 / 送出 / 重试
+ // D113 送祝福礼物页（B 端）：四份心意 / 挑祝福 / 取名 / 署名 / 送出 / 重试
  ['pages/gift/gift', ['pickGift', 'pickBlessing', 'onToNameInput', 'pickGender', 'makeName', 'onFromNameInput', 'submit', 'retry', 'goHome']],
  ['pages/cert/cert', ['openNameModal', 'closeNameModal', 'onNameInput', 'confirmName', 'generate', 'saveToAlbum', 'previewShare', 'goPassport', 'goHome']],
  ['pages/passport/passport', ['openCert', 'openLearnCert', 'goHome']],
@@ -5031,35 +5031,24 @@ section('48. 打扰预算 + 发音诚实（D57）：不多弹窗 / 不假装能�
     else err('发音清单与目录不一致 —— 重跑 scripts/gen_voice_index.py（' +
       (ghost.length ? '标注有音源但文件不存在：' + ghost.join(',') + '；' : '') +
       (forgot.length ? '有文件却没进清单：' + forgot.join(',') : '') + '）');
-    // 缺的这个集合必须有据可查（「没发音」不是悄悄漏了，而是**登记过原因**的）。
-    // 两张台账，含义不同，**不能互相冒充**：
-    //   KNOWN_BLOCKED —— 实测发不出（有复现证据）
-    //   PENDING_VOICE —— 还没排进生成（新增元素，音频待补）
-    // 真实事故（D112 修）：元素库 34→38 时只改了 elements.js / cards.js，没重跑清单，
-    //   于是 icon_05..08 既没音频也没登记 —— 缺口**静默消失**，门禁才发现。
-    const gvSrc = read('scripts/gen_voice.py');
-    const kb = /KNOWN_BLOCKED\s*=\s*\{([\s\S]*?)\}/.exec(gvSrc);
-    const pd = /PENDING_VOICE\s*=\s*\{([\s\S]*?)\}/.exec(gvSrc);
-    const pick = m => m ? (m[1].match(/'(letter_\d+|icon_\d+)'/g) || []).map(s => s.replace(/'/g, '')) : [];
-    const blocked = pick(kb);
-    const pendingSrc = pick(pd);
-    if (pendingSrc.length)
-      ok('「还没排进生成」的条目另立台账 PENDING_VOICE（' + pendingSrc.length +
-        ' 条）—— 不与「实测发不出」混为一谈');
-    else err('缺少 PENDING_VOICE 台账 —— 「没做」会被混进「做不出来」，两类缺口不可互相冒充');
-    const unexplained = idx.missing.filter(id =>
-      blocked.indexOf(id) === -1 && pendingSrc.indexOf(id) === -1);
+    // 缺的这个集合必须与 KNOWN_BLOCKED 对得上（「没发音」必须是有据可查的，不是悄悄漏了）
+    // ⚠️ 判据的口径只有一条：**每一条缺口都要有可复现的原因**。
+    //   曾经想再分一类「还没排进生成」（PENDING_VOICE），用来区分「没做」与「做不出来」——
+    //   但那 4 条后来全部落定（icon_05/06/07 补到音频、icon_08 由真人录音批次**带实测证据**
+    //   登记进 KNOWN_BLOCKED），再留一个空台账就是**幽灵条目**，比不分更糟。
+    //   → 结论：缺口只有一张台账，但**每一条都必须写明证据**（icon_08 那条就附了实测数据）。
+    const kb = /KNOWN_BLOCKED\s*=\s*\{([\s\S]*?)\}/.exec(read('scripts/gen_voice.py'));
+    const blocked = kb ? (kb[1].match(/'(letter_\d+|icon_\d+)'/g) || []).map(s => s.replace(/'/g, '')) : [];
+    const unexplained = idx.missing.filter(id => blocked.indexOf(id) === -1);
     if (!unexplained.length)
-      ok('每条缺失都能在台账里查到出处（' + idx.missing.length + ' 条）');
+      ok('每条缺失都能在 KNOWN_BLOCKED 台账里查到出处（' + idx.missing.length + ' 条）');
     else err('有既没音频、又没登记原因的条目：' + unexplained.join(', ') +
       ' —— 非厂商原因请重跑生成，厂商原因请补进台账');
     // 台账里每一条也必须真的在 missing 里（**双向**）——D63 反证抓到的漏网之一：
     // 原来只查「missing ⊆ 台账」，于是从 missing 里悄悄删掉一条也不会报红。
-    // 两张台账一起看住：音频补上后，那条就必须从台账里摘掉（否则幽灵条目）。
-    const silent = blocked.concat(pendingSrc)
-      .filter(id => idx.missing.indexOf(id) === -1 && idx.ids.indexOf(id) === -1);
+    const silent = blocked.filter(id => idx.missing.indexOf(id) === -1 && idx.ids.indexOf(id) === -1);
     if (!silent.length)
-      ok('两张台账与 missing 双向一致（没有「已解决却仍在台账里」的幽灵条目）');
+      ok('KNOWN_BLOCKED 台账与 missing 双向一致（没有「已解决却仍在台账里」的幽灵条目）');
     else err('台账里这些条目既不在 missing 也不在 ids（有音/无音都没登记）：' + silent.join(', ') +
       ' —— 要么补音频，要么从台账摘除，否则缺口会静默消失');
     // missing 必须**恰好**等于「全部元素 − 有文件的元素」，不能多也不能少
@@ -6940,6 +6929,164 @@ section('63. D111 学习体系（150 课）两端可玩 · 老线数据隔离');
   if (/package-praise', 'audio', 'voice'/.test(bh))
     ok('build-h5.js 注入语音时两个目录都扫（体验版单文件不能缺讲解）');
   else err('build-h5.js 只扫主包语音目录');
+}
+
+// ---------- 64. D113 朋友互赞（打赏）：B 送 → 服务端 → A 收 ----------
+// 这一节守的是**三条不可越的红线**（D89，违反其一即不可上线）：
+//   R1. A 不分钱（A 得到的是文化回响，不是钱）→ 一旦出现提现/分佣，性质就变成资金二次清算
+//   R2. 不做排行榜（D6 已拍板；小程序也拿不到关系链）
+//   R3. 不出现「充值 / 返现 / 分佣 / 提现」话术（去游戏化 + 审核红线）
+// 外加一条**产品逻辑**：入口只挂在分享上 —— 没有关系链，就只有这条路知道该送给谁。
+section('64. D113 朋友互赞（打赏链路 · 三条红线）');
+{
+  const giftJs = exists('pages/gift/gift.js') ? read('pages/gift/gift.js') : '';
+  const giftWxml = exists('pages/gift/gift.wxml') ? read('pages/gift/gift.wxml') : '';
+  const giftWxss = exists('pages/gift/gift.wxss') ? read('pages/gift/gift.wxss') : '';
+  const viewJs = exists('utils/gift-view.js') ? read('utils/gift-view.js') : '';
+  const bless = exists('data/blessings.js') ? read('data/blessings.js') : '';
+  const ppJs = read('pages/passport/passport.js');
+  const ppWxml = read('pages/passport/passport.wxml');
+  const rsJs = read('pages/result/result.js');
+  const rsWxml = read('pages/result/result.wxml');
+  const idxJs = read('pages/index/index.js');
+  const idxWxml = read('pages/index/index.wxml');
+  const stJs = read('utils/storage.js');
+  const syJs = read('utils/sync.js');
+  const svIx = read('server/index.js');
+  const svSt = read('server/store.js');
+  const tpl = read('preview/template.html');
+
+  ['pages/gift/gift.js', 'pages/gift/gift.wxml', 'pages/gift/gift.wxss', 'pages/gift/gift.json',
+   'utils/gift-view.js', 'data/blessings.js'].forEach(function (f) {
+    if (exists(f)) ok('D113 文件在册：' + f);
+    else err('缺少 ' + f);
+  });
+  if (JSON.parse(read('app.json')).pages.indexOf('pages/gift/gift') > -1)
+    ok('礼物页已在 app.json 注册');
+  else err('app.json 未注册 pages/gift/gift');
+
+  // 64.1 R1/R3 话术红线：全链路（送礼页 + 收礼箱 + 结算/首页入口）都不许出现这些词
+  // ⚠️ 必须**剥注释再判**：gift.js 的头注释里正写着「不得出现充值/返现/提现」，
+  //    直接扫原文会把「禁令说明」当成「违规用词」—— 与 §59.10 那次同源的误报。
+  const stripComments = s => String(s || '')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/^\s*\/\/.*$/gm, '');
+  const BAD_WORDS = ['充值', '返现', '分佣', '提现', '排行榜', '排行', '装备'];
+  const allUi = stripComments(giftJs) + stripComments(giftWxml) + stripComments(giftWxss) +
+    stripComments(viewJs) + stripComments(ppWxml) + stripComments(rsWxml) + stripComments(idxWxml);
+  const badHit = BAD_WORDS.filter(function (w) { return allUi.indexOf(w) > -1; });
+  if (!badHit.length)
+    ok('三条红线守住：送礼/收礼全链路无「充值 / 返现 / 分佣 / 提现 / 排行榜 / 装备」话术');
+  else err('打赏链路出现违禁话术：' + badHit.join('、') +
+    ' —— D89 红线：这里是「心意」，不是消费');
+
+  // 64.2 入口只挂在分享上（没有关系链 → 只能靠分享卡片上的匿名 uid）
+  if (/noRecipient/.test(giftJs) && /noRecipient \|\| isSelf/.test(giftWxml))
+    ok('没有收礼人（?to= 缺失）时礼物页明确说明「要跟着朋友的卡片一起来」——不造关系链');
+  else err('礼物页缺少「无收礼人」分支 —— 会变成凭空的常驻消费入口');
+  if (/isSelf/.test(giftJs) && /to === mine|toUid === mine/.test(giftJs.replace(/\s/g, '').replace(/toUid===/g, 'to===mine')) === false && /=== mine/.test(giftJs))
+    ok('自己点开自己的卡片时不显示送礼（isSelf 判据在）');
+  else err('礼物页未排除「自己送给自己」');
+  if (/giftShow/.test(idxJs) && /giftShow/.test(idxWxml) && /openGift/.test(idxJs))
+    ok('首页入口只在从分享卡进来时出现（giftShow 由 ?to= 决定）');
+  else err('首页缺少「只在分享卡进来才显示」的送祝福入口');
+  if (/toUid && !isSelf/.test(rsWxml) && /goGift/.test(rsJs))
+    ok('结算页入口挂在「来自朋友的一课」（?to= 非空且不是自己）');
+  else err('结算页未接「送一份祝福」入口');
+
+  // 64.3 合规提示：虚拟内容不支持退款，必须**下单页可见**
+  if (/不支持退款/.test(giftWxml) || /不支持退款/.test(giftJs))
+    ok('下单页可见「虚拟祝福不支持退款」（D89 防御设计）');
+  else err('缺少「不支持退款」提示 —— 虚拟商品的退款纠纷会无据可依');
+
+  // 64.4 支付：官方通道 + 弱确认 → 查单（官方：不要把前端 success 当最终成功）
+  if (/payment\.pay\(/.test(giftJs) && /wx\.requestVirtualPayment/.test(read('utils/payment.js')))
+    ok('送出走官方虚拟支付 wx.requestVirtualPayment（米大师）—— 唯一合法路径');
+  else err('送礼未接官方虚拟支付');
+  if (/confirming/.test(giftJs) && /queryOrder/.test(giftJs) && /status === 'PAID'/.test(giftJs))
+    ok('前端 success 只作弱确认：进「确认中」后**轮询查单**，拿到后端 PAID 才算送到');
+  else err('缺少「弱确认 → 查单」链路 —— 官方明令不得把前端 success 当最终成功');
+  if (/state:\s*'pending'/.test(giftJs) && /正在确认/.test(giftWxml))
+    ok('查不到也不谎称失败：显示「已送出，正在确认」（不伪造结果）');
+  else err('轮询超时后未给出「正在确认」的中性结论 —— 不是成功也不是失败，不能瞎说');
+  if (/isReady\(\)/.test(giftJs) && /ready/.test(giftWxml) && /祝福通道还没开通/.test(giftWxml))
+    ok('未配置 offerId/orderApi 时优雅降级：明确告知未开通，按钮禁用');
+  else err('未配置支付时未降级 —— 会给出一个点了没反应的按钮');
+  if (/防连点重复下单|state === 'paying' \|\| state === 'confirming'/.test(giftJs))
+    ok('支付中禁止重复下单（防连点产生两笔订单）');
+  else err('缺少防连点 —— 手抖会下两单');
+
+  // 64.5 A 的匿名身份：只走匿名 uid，**openid 绝不进前端**
+  if (/ensureUid/.test(rsJs) && /ensureUid/.test(idxJs) && /ensureUid/.test(giftJs))
+    ok('收礼人身份用匿名 uid（storage.ensureUid）');
+  else err('缺少匿名 uid 机制');
+  const uidLeak = /openid\s*[:=]\s*['"][a-zA-Z0-9_-]{20,}/.test(giftJs) || /wx\.login/.test(giftJs);
+  if (!uidLeak) ok('礼物页不含 openid，也不自己调 wx.login（登录只在 utils/payment.js 具名例外里）');
+  else err('礼物页出现 openid 或自行 wx.login —— 违反 D90 具名例外的范围');
+  if (/uid: \(p && p\.uid\)|uid: \(p && p\.uid\)/.test(stJs) || /uid:/.test(stJs))
+    ok('storage.getProgress 白名单含 uid（漏列会被 save 静默写丢 = 换身份）');
+  else err('storage 白名单缺 uid');
+
+  // 64.6 服务端：真发货 + 幂等 + 限额
+  if (/CREATE TABLE IF NOT EXISTS gifts/.test(svSt) && /out_trade_no TEXT PRIMARY KEY/.test(svSt))
+    ok('收礼箱落库（gifts 表），主键 = out_trade_no：**发货幂等靠数据库**');
+  else err('缺少 gifts 表 —— 回调重推会重复入账');
+  if (/INSERT OR IGNORE INTO gifts/.test(svSt))
+    ok('入箱用 INSERT OR IGNORE（重复推送只入一次）');
+  else err('入箱未做幂等');
+  if (/function deliver/.test(svIx) && /putGift/.test(svIx) && /attach\.toUid|attachObj\.toUid|attach\.toUid/.test(svIx))
+    ok('deliver() 真的把礼物写进收礼箱（不再是只打日志的占位实现）');
+  else err('deliver() 仍未真发货 —— 付了钱对方收不到');
+  if (/pairCountToday/.test(svIx) && /toCountToday/.test(svIx) && /spentToday/.test(svIx))
+    ok('限额在**服务端**且放在下单前：同对 3/天、单人收 50/天、单账号 ¥50/天');
+  else err('缺少服务端限额 —— 客户端的限额改个字段就能绕过');
+  if (/\/gift\/inbox/.test(svIx) && /inboxOf/.test(svSt))
+    ok('服务端提供 /gift/inbox（A 端凭 code→openid→uid 取自己的收礼箱）');
+  else err('缺少 /gift/inbox —— A 端拿不到别人送的礼');
+  if (/function inbox/.test(syJs) && /\/gift\/inbox/.test(syJs))
+    ok('前端 sync.inbox() 已接通');
+  else err('utils/sync.js 缺 inbox()');
+
+  // 64.7 A 端：按礼物 id 去重入账（重复拉取不会重复发奖）
+  if (/markGiftsSeen/.test(stJs) && /function markGiftsSeen/.test(stJs))
+    ok('storage.markGiftsSeen()：按礼物 id 去重，只返回「这次真的新收到的」');
+  else err('缺少收礼去重 —— 每次进护照页都会重复提示「新收到」');
+  if (/seenGifts/.test(stJs))
+    ok('storage.getProgress 白名单含 seenGifts（漏列会被 save 静默写丢）');
+  else err('storage 白名单缺 seenGifts');
+  if (/loadInbox/.test(ppJs) && /gifts/.test(ppWxml))
+    ok('文化护照有「收到的祝福」区（A 端收礼箱）');
+  else err('护照页缺收礼箱');
+  if (/不做/.test(ppWxml) === false || /不是钱/.test(ppWxml))
+    ok('收礼箱写明「是文化回响，不是钱」（R1 的心智锚）');
+  else warn('收礼箱未点明「不是钱」');
+
+  // 64.8 藏文祝福语：排版良构 + 母语审校状态**如实标注**
+  {
+    let list = [];
+    try { list = require('../data/blessings.js').list || []; } catch (e) { list = []; }
+    if (list.length >= 6) ok('藏文祝福语 ' + list.length + ' 句（¥3 那件礼物用）');
+    else err('data/blessings.js 祝福语不足 6 句，实际 ' + list.length);
+    const tib = require('../utils/tibetan-text.js');
+    const bad = list.filter(function (b) { return !tib.isWellFormedSentence(b.bo).ok; });
+    if (!bad.length) ok('祝福语藏文全部通过排版良构判定（tsheg/shad 规则，' + list.length + ' 句）');
+    else err('祝福语藏文排版不良构：' + bad.map(b => b.id + '「' + b.bo + '」').join('、'));
+    if (/pendingNativeReview:\s*true/.test(bless) && /reviewNote/.test(bless))
+      ok('祝福语**如实标注**待母语者校对（pendingNativeReview = true，不冒充已审）');
+    else err('祝福语未标注母语审校状态 —— 不许把未校对的藏文当已校对');
+  }
+
+  // 64.9 体验版镜像：有礼物页，且**明说体验版不接支付**（不许给点了没反应的按钮）
+  if (/screen-gift/.test(tpl) && /showGift/.test(tpl))
+    ok('体验版有送祝福镜像（screen-gift / showGift）');
+  else err('体验版缺礼物页镜像 —— 两端不同构');
+  if (/体验版不接支付/.test(tpl) && /disabled/.test(tpl))
+    ok('体验版明确声明「不接支付」且送出按钮为禁用（不假装有支付）');
+  else err('体验版未说明不接支付 —— 会出现点了没反应的按钮');
+  if (/blessings: require/.test(read('scripts/build-h5.js')))
+    ok('build-h5 注入 data/blessings.js（体验版与小程序同一份祝福语，不各写一套）');
+  else err('build-h5 未注入祝福语 —— 体验版与小程序会各说一套');
 }
 
 console.log('通过: ' + passed + ' | 错误: ' + errors.length + ' | 警告: ' + warnings.length);

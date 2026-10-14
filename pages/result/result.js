@@ -121,7 +121,7 @@ Page({
     learnCertNew: false,
     learnCertUpgraded: false,
     learnCertOwned: 0,   // 已获学习证书张数（含终极的进度提示）
-    // ---- D112 来自朋友的挑战 / 送祝福入口 ----
+    // ---- D113 来自朋友的挑战 / 送祝福入口 ----
     // toUid 非空 = 这一课是从**朋友的分享卡**进来的（B 打完可以给 A 送祝福）。
     // 自己玩自己的关卡时 toUid 为空 → 结算页不出现任何打赏入口（不设常驻消费入口）。
     toUid: '',
@@ -147,7 +147,7 @@ Page({
     //   写进了 completedLevels，进度数据被污染。）
     var learnLv = parseInt(query.lv, 10) || 0;
     var learnStage = parseInt(query.stage, 10) || 0;
-    // D112：这份「来自谁的分享」上下文在**两条线都要算**（学习线 / 老 10 关线），
+    // D113：这份「来自谁的分享」上下文在**两条线都要算**（学习线 / 老 10 关线），
     //   所以在这里统一算好再往下传，避免两条分支各写一遍导致口径不一致。
     var gift = giftCtx(query);
     if (learnLv > 0) {
@@ -252,7 +252,7 @@ Page({
       })(),
       secretGot: collect.secretProgress(secretsData, storage.getProgress().completedLevels).got,
       secretTotal: secretsData.length,
-      // D112 来自朋友的挑战（toUid 为空 = 不是从分享卡进来的 → wxml 不渲染）
+      // D113 来自朋友的挑战（toUid 为空 = 不是从分享卡进来的 → wxml 不渲染）
       toUid: gift.toUid,
       isSelf: gift.isSelf,
       chSteps: gift.chSteps,
@@ -363,7 +363,7 @@ Page({
       totalLevels: learningData.totalStages(),
       // 老线专属内容在学习分支一律不出现
       reveal: null, secret: null, comboTease: null, cert: null, newStamp: false,
-      // D112 来自朋友的挑战（学习线的「步数」= 已用步数，正是挑战对比的量）
+      // D113 来自朋友的挑战（学习线的「步数」= 已用步数，正是挑战对比的量）
       toUid: gift ? gift.toUid : '',
       isSelf: gift ? gift.isSelf : false,
       chSteps: gift ? gift.chSteps : 0,
@@ -389,7 +389,7 @@ Page({
     }
     wx.redirectTo({ url: '/pages/game/game?lv=' + d.learnNextLv + '&stage=' + (d.learnNextStage || 1) });
   },
-  // D112：给分享这一课的朋友送一份祝福（入口只在 ?to= 存在时出现）
+  // D113：给分享这一课的朋友送一份祝福（入口只在 ?to= 存在时出现）
   //   只带匿名 uid 与成绩，绝不带 openid（openid 只能由服务端用 code 换，不进前端）。
   goGift: function () {
     var d = this.data;
@@ -636,7 +636,7 @@ Page({
     wx.previewImage({ urls: [this.data.imagePath] });
   },
   // 好友分享（右上角菜单 / 按钮 open-type="share"）
-  // D112：卡片带 to=<uid>（A 的匿名收礼地址）—— 朋友从这张卡进来才能给 A 送祝福。
+  // D113：卡片带 to=<uid>（A 的匿名收礼地址）—— 朋友从这张卡进来才能给 A 送祝福。
   //   ⚠️ 只带匿名 uid，绝不带 openid（openid 只能由服务端用 code 换，不进前端）。
   onShareAppMessage: function () {
     var to = storage.ensureUid();
@@ -661,7 +661,7 @@ Page({
     if (wx.showShareMenu) wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] });
   }
 });
-// D112：从结算页参数里读出「这一课是从谁的分享卡进来的」。
+// D113：从结算页参数里读出「这一课是从谁的分享卡进来的」。
 //   to   = 分享人的匿名 uid（只有从好友卡片进来才非空）
 //   ch   = TA 用了几步（挑战赛）
 //   steps= 我用了几步（学习线的已用步数）

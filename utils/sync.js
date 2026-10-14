@@ -41,7 +41,7 @@ function getCode() {
     });
   });
 }
-/** 把本地进度存到云端（D112：同时把收礼人匿名 uid 绑定到本 openid 上） */
+/** 把本地进度存到云端（D113：同时把收礼人匿名 uid 绑定到本 openid 上） */
 function save(local) {
   return getCode().then(function (code) {
     if (!code) return { ok: false, reason: 'login_failed' };
@@ -58,7 +58,7 @@ function save(local) {
   }).catch(function () { return { ok: false, reason: 'network' }; });
 }
 /**
- * D112 收礼箱：取「别人送给本机 uid」的礼物列表。
+ * D113 收礼箱：取「别人送给本机 uid」的礼物列表。
  * 服务端用 code 换 openid → 反查该 openid 绑定的所有 uid → 返回这些 uid 的礼物。
  * 前端按礼物 id 去重后入账（progress.seenGifts），所以重复拉取不会重复发奖。
  */
