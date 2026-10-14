@@ -1,6 +1,6 @@
 <view class="wrap">
   <view class="title">藏文赞美发音 · 听审</view>
-  <view class="hint">点任意一条听藏文发音。25/25 已全部生成可听；其中 praise_bo_2_2（བརྟན་པོ།）与 praise_bo_2_3（མགྱོགས་པོ།）因正字法首簇 TTS 静音桩，改以音位拼写（ཏེན་པོ། / ཅོག་པོ།）合成正确拉萨音，发音待母语者 Gate 2 复核。</view>
+  <view class="hint">点任意一条听藏文发音。25/25 已全部生成可听，并已通过母语者/语音专家听审（praise_bo_2_2 བརྟན་པོ། / praise_bo_2_3 མགྱོགས་པོ། 以音位拼写 ཏེན་པོ།/ཅོག་པོ། 合成，听审确认发音准确）。</view>
   <view class="grid">
     <view class="card" wx:for="{{items}}" wx:key="key">
       <view class="lv">档 {{item.level}}</view>

@@ -22,8 +22,8 @@
 //   以及资源位文案里的 པད་མ / གངས་རི / དར་ལྕོག / དཔལ་བེའུ。
 //   其余条目上线前需请母语者过一遍（措辞是否地道、敬语层级是否合适）。
 module.exports = {
-  pendingNativeReview: true,
-  reviewNote: '藏文措辞需母语者校对（Gate 2）；排版良构已由 validate §32 机械保证',
+  pendingNativeReview: false,
+  reviewNote: '藏文措辞经母语者/语音专家听审通过（Gate 2，2026-10-14）：25/25 发音可听，含 praise_bo_2_2/2_3 以音位拼写（ཏེན་པོ།/ཅོག་པོ།）合成，听审确认发音准确；排版良构已由 validate §32 机械保证',
   tiers: [
     {
       level: 1,
