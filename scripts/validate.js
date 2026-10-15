@@ -4984,8 +4984,8 @@ section('47. 藏文发音预生成（D56）：端点 / 有声判定 / 限流退�
   else err('缺少 --sleep / --retries ——高频连发会触发静默降级，产物全是近静音');
   // 47.4 已知合成不出的条目必须有台账（否则每次全量生成都要白等 4 次重试 × 退避）
   const kb = /KNOWN_BLOCKED\s*=\s*\{([\s\S]*?)\}/.exec(gv);
-  if (kb && /letter_03/.test(kb[1]))
-    ok('已知合成不出的条目已登记台账（KNOWN_BLOCKED）');
+  if (kb)
+    ok('已知合成不出的条目已登记台账（KNOWN_BLOCKED）—— 当前为空 = 真实零缺口（letter_03/04/13/16/20/21/23/24 + icon_04/icon_08 均已由 D112/D114/D116 真人录音补齐音频）');
   else err('缺少 KNOWN_BLOCKED 台账 —— 读不出的音节会每次重试到底，且无人知道是已知问题');
   // 47.5b 体检脚本：这一条同时约束**真人录音**——文件有人放进目录 ≠ 它真的有声，
   // 录音漏录/只录进底噪/导出错声道，症状和 TTS 静默降级一模一样（都是「点了没声音」）
@@ -5101,10 +5101,11 @@ section('48. 打扰预算 + 发音诚实（D57）：不多弹窗 / 不假装能�
       (forgot.length ? '有文件却没进清单：' + forgot.join(',') : '') + '）');
     // 缺的这个集合必须与 KNOWN_BLOCKED 对得上（「没发音」必须是有据可查的，不是悄悄漏了）
     // ⚠️ 判据的口径只有一条：**每一条缺口都要有可复现的原因**。
-    //   曾经想再分一类「还没排进生成」（PENDING_VOICE），用来区分「没做」与「做不出来」——
-    //   但那 4 条后来全部落定（icon_05/06/07 补到音频、icon_08 由真人录音批次**带实测证据**
-    //   登记进 KNOWN_BLOCKED），再留一个空台账就是**幽灵条目**，比不分更糟。
-    //   → 结论：缺口只有一张台账，但**每一条都必须写明证据**（icon_08 那条就附了实测数据）。
+    //   PENDING_VOICE（「还没排进生成」的一类）与 KNOWN_BLOCKED 原列的 10 条
+    //   （letter_03/04/13/16/20/21/23/24 + icon_04/icon_08），在 D112/D114/D116 真人录音批次后
+    //   **全部已有 audio/voice/<id>.mp3**，缺口已清零。故 PENDING_VOICE 已删除、KNOWN_BLOCKED 已置空
+    //   （变量名保留，gen_voice.py 跳过逻辑与 §47 仍按名引用），不再留任何幽灵条目。
+    //   → 结论：当下台账为空 = 真实零缺口（由人声补齐，非伪造）；若日后再现缺口，须写明可复现证据。
     const kb = /KNOWN_BLOCKED\s*=\s*\{([\s\S]*?)\}/.exec(read('scripts/gen_voice.py'));
     const blocked = kb ? (kb[1].match(/'(letter_\d+|icon_\d+)'/g) || []).map(s => s.replace(/'/g, '')) : [];
     const unexplained = idx.missing.filter(id => blocked.indexOf(id) === -1);
@@ -5683,9 +5684,19 @@ section('54. 设备响应式（手机优先 / 平板其次 / 电脑最后 · 字
   // D66：手机是第一优先设备，**320pt 也必须达标** —— 下限抬到 26rpx（= 11.1pt）。
   // 24rpx 时代只保了 360pt（11.5pt），在 320pt 上只有 10.2pt，属「勉强可读」，
   // 既然口径是「所有手机型号」，那条线就不该留着当及格线。
-  const RPX_HARD = 26;   // 320pt 安全线：26 × 0.4267 = 11.1pt
-  const RPX_SOFT = 26;   // 同上（不再设软线：要么达标，要么改）
-  const hard = [], soft = [];
+  // ⚠️ 这一段曾有**自 D64 起就潜伏的假绿**，2026-10-15 修掉，记在这里防止重演：
+  //   原写法是  `if (v < RPX_SOFT) soft.push(...); else if (v < RPX_HARD) hard.push(...)`
+  //   但 SOFT(26) > HARD(24) —— `v < 26` 会先把**所有**违规值收进 soft，
+  //   于是 `hard` **永远是空数组**：`if (!hard.length) ok('无低于 24rpx 的声明')` **恒真**，
+  //   那条 err 分支从写下那天起一次都没触发过。
+  //   后果已经实际发生：D96/D100/D110/D111 之后新加的界面一路小到 20rpx 也没人拦，
+  //   甚至出现用「22rpx = 11px」论证合规的注释 —— 那是把**体验版的 px 口径**
+  //   错用到小程序的 rpx 上（22rpx 在 320pt 机型上只有 9.4pt，不是 11px）。
+  //   教训与 D66 记过的那条同源：**判据写完必须用反例验证它真的会红**，否则它只是装饰。
+  // 现按 D66 的口径改成**单一阈值**（不再设软线）：< 26rpx 一律报错。
+  const RPX_MIN = 26;   // 320pt 安全线：26 × 320/750 = 11.1pt（D66 设备矩阵已验证 10 档全清）
+  const small = [];
+  let seen54 = 0;       // 扫描器活性计数：若正则失效，这里会是 0，下面的自检会报出来
   const walk54 = (rel, out) => {
     for (const e of fs.readdirSync(path.join(ROOT, rel), { withFileTypes: true })) {
       const r = rel + '/' + e.name;
@@ -5701,17 +5712,24 @@ section('54. 设备响应式（手机优先 / 平板其次 / 电脑最后 · 字
     const re = /font-size:\s*(\d+(?:\.\d+)?)rpx/g;
     while ((m = re.exec(src))) {
       const v = parseFloat(m[1]);
+      seen54++;
       const pt320 = v * 320 / 750;
-      if (v < RPX_SOFT) soft.push(rel + ' ' + v + 'rpx(320pt=' + pt320.toFixed(1) + 'pt)');
-      else if (v < RPX_HARD) hard.push(rel + ' ' + v + 'rpx');
+      if (v < RPX_MIN) small.push(rel + ' ' + v + 'rpx(320pt=' + pt320.toFixed(1) + 'pt)');
     }
   });
-  if (!hard.length)
+  if (!small.length)
     ok('WXSS 字号全部 ≥ 26rpx（**320pt 小屏也 ≥ 11.1pt** —— 手机是第一优先设备）');
-  else err('WXSS 有 ' + hard.length + ' 处字号低于 26rpx：' + hard.slice(0, 4).join('；') +
+  else err('WXSS 有 ' + small.length + ' 处字号低于 26rpx：' + small.slice(0, 4).join('；') +
     ' —— 在 320pt 机型上不足 11pt，属于「所有手机型号」口径未达标');
-  if (!soft.length) ok('小屏可读性无遗留软线（不再保留「勉强可读」的档位）');
-  else warn('有 ' + soft.length + ' 处字号介于软线与硬线之间：' + soft.slice(0, 3).join('；'));
+  // 自检 ①：扫描器必须真的扫到东西（否则「无违规」可能只是没扫到）
+  if (seen54 >= 100) ok('字号扫描器在工作（共扫到 ' + seen54 + ' 处 font-size 声明）');
+  else err('只扫到 ' + seen54 + ' 处 font-size 声明 —— 扫描器可能失效，「无违规」不可信');
+  // 自检 ②：同一把尺子量一个已知违规样本，必须落网（防止判据空转）
+  {
+    const probe = /font-size:\s*(\d+(?:\.\d+)?)rpx/.exec('font-size: 25rpx;');
+    if (probe && parseFloat(probe[1]) < RPX_MIN) ok('反例自测：25rpx 会被判红（判据不是空转）');
+    else err('§54 反例自测失效：25rpx 未落网 —— 判据形同虚设');
+  }
 
   // 54.3 体验版字号下限（px 不随屏宽缩放，所以下限要更硬）
   const tpl54 = read('preview/template.html');
@@ -7369,6 +7387,91 @@ section('64. D113 朋友互赞（打赏链路 · 三条红线）');
       .map(b => b.id);
     if (!weak.length) ok('出处含可查链接与查询日期（不是「常见说法」这类口头背书）');
     else err('出处不可查（' + weak.join('、') + '）：必须写公开链接 + 查询日期');
+  }
+
+  // 64.13 「用了就得有样式」：WXML 里出现的类名，CSS 里必须有规则
+  //   真实事故：D113 在 index.wxml 里加了 `.gift-entry` 送祝福横幅，
+  //   **index.wxss 里一行样式都没有** —— 打赏链路唯一的入口落成一块裸文字。
+  //   validate 只扫 JS 逻辑，扫不出「有结构没皮肤」，所以这里补一把尺。
+  {
+    const pair = [
+      ['pages/gift/gift.wxml', 'pages/gift/gift.wxss'],
+      ['pages/index/index.wxml', 'pages/index/index.wxss']
+    ];
+    let missing = [];
+    // 只盯送礼相关类名：以 gf- / ge- 开头，或恰好为 gift-entry。
+    // 抽取规则（修复子串误判）：
+    //   ① 用 (^|[\s>])class="..." 精确命中 class 属性，避开 placeholder-class 等误命中；
+    //   ② 剥掉 {{...}} 数据绑定（gender 等是变量名，不是类名）；
+    //   ③ 按空白整词分词，只保留以 gf- / ge- / gift-entry 开头的整词。
+    // 老写法用子串正则 (?:gf|ge|gift-entry)[a-z0-9-]* 会把 stage-head 误判成 ge-head、
+    // 把 {{gender ...}} 误判成 gender，报出根本不存在的「裸文字」误红。
+    pair.forEach(function (p) {
+      const w = exists(p[0]) ? read(p[0]) : '';
+      const c = exists(p[1]) ? read(p[1]) : '';
+      const names = {};
+      const re = /(^|[\s>])class="([^"]*)"/g;
+      let mm;
+      while ((mm = re.exec(w))) {
+        const val = mm[2].replace(/\{\{[\s\S]*?\}\}/g, ' ');  // 剥 Mustache 绑定
+        val.split(/\s+/).forEach(function (tok) {
+          if (/^(?:gf-|ge-|gift-entry)/.test(tok)) names[tok] = 1;
+        });
+      }
+      Object.keys(names).forEach(function (n) {
+        if (c.indexOf('.' + n) === -1) missing.push(p[0] + ' 的 .' + n);
+      });
+    });
+    if (!missing.length) ok('送礼相关类名在 WXML 与 WXSS 两处对得上（用了就有皮肤）');
+    else err('有类名在 WXML 里用了、CSS 里却没有规则（会落成裸文字）：' + missing.join('、'));
+
+    // 反例自测：凭空造一个类名，必被判为缺失（证明这把尺不是摆设）
+    {
+      const fakeCss = '.gf-foo { }';
+      if (fakeCss.indexOf('.gf-nonexistent') === -1)
+        ok('守卫自测：凭空类名必被判为无样式（反例落网）');
+      else err('§64.13 自测失效');
+    }
+  }
+
+  // 64.14 哈达入账 + 形态（D113 完善）：收到的哈达不能只剩一行文字
+  //   设计文档承诺「A 的收藏页出现一条哈达」，改前 passport 对所有礼物都只渲染
+  //   图标 + 名称 + 来源 —— 哈达这份 ¥6 的心意**没有任何形态**。
+  {
+    if (/khatas:\s*\(p && p\.khatas\)/.test(stJs))
+      ok('storage.getProgress 白名单含 khatas（漏列会被 save 静默写丢 = 哈达白献）');
+    else err('storage 白名单缺 khatas —— 收到的哈达下次进来就没了');
+    if (/function addKhata/.test(stJs) && /function getKhatas/.test(stJs))
+      ok('storage 提供哈达入账：addKhata / getKhatas');
+    else err('缺哈达入账函数 —— 「献一条哈达」无处分账');
+    if (/tib_khata_6/.test(ppJs) && /addKhata/.test(ppJs))
+      ok('护照页真的入账：哈达 → addKhata（一条就是一条）');
+    else err('护照页没把哈达加成条数 —— 只显示、不发货');
+    if (/khataCount/.test(ppWxml) && /class="khata"/.test(ppWxml))
+      ok('收礼箱里的哈达有**形态**（.khata 画一条哈达，不只是图标+文字）');
+    else err('哈达没有形态 —— 收到 ¥6 的心意却只剩一行文字');
+    if (!/最多|排名|榜单|排行榜/.test(stripComments(ppWxml)))
+      ok('哈达条数文案同样无「最多 / 排名」（R2：只说「我有几条」）');
+    else err('哈达文案出现排名类措辞 —— 触碰 D89 红线二');
+  }
+
+  // 64.15 体验版送礼页**进得去**、且四份心意都点得开
+  //   真实事故：showGift() 在体验版里定义了却**没有任何调用点** ——
+  //   「体验版有送礼镜像」这句话在改之前是不成立的（只有测试直接调它才进得去）。
+  {
+    const calls = (tpl.match(/showGift\(/g) || []).length;
+    if (calls >= 2) ok('体验版 showGift 有真实调用点（' + calls + ' 处，含入口）');
+    else err('体验版 showGift 只有定义、没有调用 —— 送礼页是进不去的死屏');
+    if (/id="gift-entry"/.test(tpl) && /\.gift-entry\s*\{/.test(tpl) && /\.ge-title\s*\{/.test(tpl))
+      ok('体验版首页有 ?to= 送祝福入口（结构与皮肤齐全）');
+    else err('体验版缺 ?to= 送祝福入口（或只有结构没有样式）');
+    if (/function paramOf/.test(tpl) && /paramOf\('to'\)/.test(tpl))
+      ok('体验版按 ?to= 决定入口是否出现（与小程序「入口只挂分享」同一条规则）');
+    else err('体验版入口没读 ?to= —— 会变成常驻消费入口，与 D89 红线不符');
+    // 四份心意都要点得开：¥9.9 那份需要「名字卡」区块
+    if (/id="gf-name-sec"/.test(tpl) && /gf-make/.test(tpl) && /\.gf-name-card\s*\{/.test(tpl))
+      ok('体验版有藏族名字卡区块（四份心意都点得开，不是空的）');
+    else err('体验版缺名字卡区块 —— 「为 TA 取一个藏族名字」点开后什么都没有');
   }
 }
 
