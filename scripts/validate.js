@@ -4701,14 +4701,49 @@ section('45. 性别 + 藏族名字 D54（自填三档 / 不愿透露出口 / 仅
     ok('男女名池无交集（' + m45.length + ' 男名 / ' + f45.length + ' 女名 / ' + n45.length + ' 中性名）');
   else err('男女名池存在重名：' + overlap45.join(','));
 
-  // --- 45.4 只出中文音译，不写藏文（藏文写法待母语审校，见 data/tibetan-names.js 文件头） ---
+  // --- 45.4 藏文**只允许出现在 bo 字段**，且逐条必须写出处（D113b）---
+  // 历史：本条原为「名字只出中文音译、全文件禁止藏文码位」，
+  //   理由是 Gate 2「母语者校对」当时仍有 25 条在排队 —— 不宜再开新的藏文文本源。
+  //   该阻塞已于 2026-10-14 解除（见 data/praise.js#pendingNativeReview = false），
+  //   而 ¥9.9 的「藏文名字定制」本来就承诺要给出**藏文写法**。
+  // 现在的规则不是「放开」，而是**收紧到可追溯**：
+  //   ① 藏文只允许写在 bo: '...' 里（别处出现即红）
+  //   ② 每条都必须有 boSrc（出处），不许凭汉语音自己拼藏文
+  //   ③ bo 必须过排版良构（tsheg/shad 收尾、无孤立组合符号）
   // 藏文码位 U+0F00–U+0FFF
-  if (!/[\u0F00-\u0FFF]/.test(names45))
-    ok('名字只出中文音译（无藏文码位 U+0F00–U+0FFF）');
-  else err('data/tibetan-names.js 含藏文码位 —— 母语审校前不得开新的藏文文本源');
-  // 反例自测：喂一个藏文码位进去必须落网
-  if (/[\u0F00-\u0FFF]/.test('བཀྲ་ཤིས')) ok('守卫自测：藏文码位必被拦下（反例落网）');
-  else err('§45.4 守卫自测失效（藏文反例未落网）');
+  {
+    const stripped45 = names45.replace(/bo:\s*'[^']*'/g, "bo: ''");
+    if (!/[\u0F00-\u0FFF]/.test(stripped45))
+      ok('藏文只出现在 bo 字段（剥离 bo 后文件内无藏文码位）');
+    else err('data/tibetan-names.js 在 bo 之外出现了藏文码位 —— 藏文只准写在 bo 字段里');
+
+    const entries45 = [];
+    (names45.match(/\{\s*name:\s*'[^']*'[\s\S]*?\}/g) || []).forEach(function (block) {
+      const nm = (/name:\s*'([^']*)'/.exec(block) || [])[1] || '';
+      const bo = (/bo:\s*'([^']*)'/.exec(block) || [])[1] || '';
+      const src = (/boSrc:\s*'[^']*'/.test(block));
+      entries45.push({ name: nm, bo: bo, hasSrc: src });
+    });
+    if (entries45.length === 15)
+      ok('名字条目数 = 15（男女各 6 + 中性 3）');
+    else err('名字条目数应为 15，实际 ' + entries45.length);
+
+    const noSrc45 = entries45.filter(e => !e.hasSrc).map(e => e.name);
+    if (!noSrc45.length) ok('每条名字都写了藏文出处 boSrc（15/15）');
+    else err('缺 boSrc 出处的名字：' + noSrc45.join('、') + ' —— 不许凭音拼字');
+
+    // 45.12 bo 必须过排版良构（复用 §59 的同一把尺，不另立标准）
+    const tib45b = require(path.join(ROOT, 'utils', 'tibetan-text.js'));
+    const badBo45 = entries45.filter(e => e.bo && !tib45b.isWellFormedSentence(e.bo).ok)
+      .map(e => e.name + '「' + e.bo + '」');
+    if (!badBo45.length) ok('名字藏文写法全部通过排版良构判定（15/15）');
+    else err('名字藏文排版不良构：' + badBo45.join('、'));
+
+    // 反例自测：往 bo 里塞一个孤立元音（ུ）必须被判错 —— 证明这把尺不是摆设
+    if (!tib45b.isWellFormedSentence('ུ').ok)
+      ok('守卫自测：孤立组合符号必被判错（反例落网）');
+    else err('§45.4 守卫自测失效（孤立组合符号未被判错）');
+  }
 
   // --- 45.5 确定性选名：同 seed 必得同名（不会每次刷新都变） ---
   if (/Math\.floor\(n\)\s*%\s*pool\.length/.test(util45))
@@ -4783,7 +4818,8 @@ section('45. 性别 + 藏族名字 D54（自填三档 / 不愿透露出口 / 仅
   else err('§45.11 反例自测未复现「扩容挪下标」，守卫失去说服力');
 
   // --- 45.6 两端字段同源（小程序 storage ↔ 体验版 getProgress 白名单逐字段比对） ---
-  const FN45 = ['gender', 'tibetanName', 'tibetanNameMean'];
+  // D113b：tibetanNameBo（藏文写法）也必须两端齐备 —— 只加一端 = 另一端读成 undefined
+  const FN45 = ['gender', 'tibetanName', 'tibetanNameBo', 'tibetanNameMean'];
   FN45.forEach(f => {
     const inStore = new RegExp('^\\s*' + f + ':', 'm').test(store45);
     const inH5 = new RegExp('^\\s*' + f + ':', 'm').test(t45);
@@ -6219,8 +6255,14 @@ section('59. 藏文书写规范（出处 / 判据 / 机械检验）');
       ok('未配置 offerId/orderApi 时优雅降级（不发请求、明确告知缺什么）');
     else err('缺少未配置时的降级路径 —— 未配置就崩或发无效请求');
     // ⑧ 价格必须是**分**（整数）且与后台一致的口径
+    // D113b：价格已抽到 data/goods.js（唯一事实源）—— 判据随之改看那里，
+    //   并额外要求 payment.js **引用**它（而不是自己再写一份）。
     if (/price:\s*\d+\b/.test(pay)) ok('道具价格以「分」为单位（整数）—— 与官方 goodsPrice 口径一致');
-    else warn('道具价格单位不明确（官方 goodsPrice 单位是分）');
+    else if (/require\('\.\.\/data\/goods\.js'\)\.list/.test(pay)) {
+      if (/price:\s*\d+\b/.test(read('data/goods.js')))
+        ok('道具价格以「分」为单位（整数）—— 唯一来源 data/goods.js，payment.js 引用它');
+      else warn('data/goods.js 里没有整数分价 —— 官方 goodsPrice 单位是分');
+    } else warn('道具价格单位不明确（官方 goodsPrice 单位是分）');
   }
   // ⑨ 打赏文案不得出现营销违规词
   const giftDoc = read('docs/gifting-product-design.md');
@@ -6296,8 +6338,11 @@ section('59. 藏文书写规范（出处 / 判据 / 机械检验）');
   else err('接受了客户端传入的 openid —— 可伪造，越权风险');
   // ④ 小程序端只传 code
   const sy = exists('utils/sync.js') ? read('utils/sync.js') : '';
-  if (sy && /code: code/.test(sy) && !/openid/.test(sy.replace(/\/\/[^\n]*/g, '')))
-    ok('小程序端只传 code、不传 openid');
+  // ⚠️ 必须**同时**剥掉块注释与行注释：`/** ... */` 里提到「不传 openid」的说明文字
+  //   不是代码，只看行注释会把它当成真传了 openid（D113 实测踩到 —— 与 §59.10 / §64.1 同族）。
+  const syNoComment = sy.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+  if (sy && /code: code/.test(sy) && !/openid/.test(syNoComment))
+    ok('小程序端只传 code、不传 openid（判据先剥块注释 + 行注释）');
   else warn('小程序端可能传了 openid');
 }
 
@@ -7142,6 +7187,93 @@ section('64. D113 朋友互赞（打赏链路 · 三条红线）');
   if (!/最多|排名|榜单|排行榜/.test(stripComments(ppWxml)))
     ok('灯数文案无「最多 / 排名 / 排行榜」（R2：只说「我有几盏」，不比高低）');
   else err('灯数出现排名类措辞 —— 触碰 D89 红线二');
+
+  // 64.11 道具定价**只有一个真相源**（D113b）
+  // 历史：同一张表被抄在三处（utils/payment.js / server/index.js / preview/template.html）。
+  //   ①② 漂移 → 官方 **-15013** 直接失败；①③ 漂移 → **页面显示价 ≠ 实付价**（投诉级）。
+  //   现在 data/goods.js 是唯一来源，三处都 require 它，且**不许再各自写价格字面量**。
+  {
+    const goodsJs = exists('data/goods.js') ? read('data/goods.js') : '';
+    const payJs = exists('utils/payment.js') ? read('utils/payment.js') : '';
+    if (goodsJs && /productId:\s*'tib_lamp_1'/.test(goodsJs) && /price:\s*100/.test(goodsJs))
+      ok('data/goods.js 存在且含道具表（tib_lamp_1 / 100 分）');
+    else err('data/goods.js 缺失或道具表不完整');
+
+    // 前端：GIFTS 必须**取自** goods.js，而不是自己再抄一遍价格
+    if (/require\('\.\.\/data\/goods\.js'\)\.list/.test(payJs))
+      ok('utils/payment.js 的 GIFTS 取自 data/goods.js（前端不再自抄价格）');
+    else err('utils/payment.js 仍在自己维护价格 —— 与服务端会漂移（-15013）');
+    // 前端不得再出现 100/300/600/990 的价格字面量
+    const payBody = stripComments(payJs).replace(/require\([^)]*\)\.list/, '');
+    if (!/price:\s*(100|300|600|990)\b/.test(payBody))
+      ok('utils/payment.js 内无价格字面量残留');
+    else err('utils/payment.js 仍残留价格字面量 —— 请改为读取 data/goods.js');
+
+    // 服务端：同样必须取自 goods.js
+    if (/require\('\.\.\/data\/goods\.js'\)\.list/.test(svIx))
+      ok('server/index.js 的 GIFTS 取自 data/goods.js（与前端同一份）');
+    else err('server/index.js 仍在自己维护价格 —— 与前端会漂移（-15013）');
+    {
+      const svBody = stripComments(svIx).replace(/require\([^)]*\)\.list/, '');
+      if (!/price:\s*(100|300|600|990)\b/.test(svBody))
+        ok('server/index.js 内无价格字面量残留');
+      else err('server/index.js 仍残留价格字面量 —— 前后端两套价会直接 -15013');
+    }
+
+    // 体验版：价格也必须取 DATA.goods，不在 GIFT_VIEW 里各写一份
+    if (/function goodsPrice\(pid\)/.test(tpl) && /DATA\.goods/.test(tpl))
+      ok('体验版价格取自 DATA.goods（模板内不另写一份价）');
+    else err('体验版仍自写价格 —— 三处漂移');
+    {
+      const gvBlock = (/var GIFT_VIEW = \{[\s\S]*?\n\};/.exec(tpl) || [''])[0];
+      if (!/price:\s*(100|300|600|990)\b/.test(gvBlock))
+        ok('体验版 GIFT_VIEW 内无价格字面量残留');
+      else err('体验版 GIFT_VIEW 仍写死价格 —— 显示价会与实付价不一致');
+    }
+
+    // 四个道具的价格与 give 必须逐条对上 mp 申报表
+    const EXPECT = [
+      ['tib_lamp_1', 100, 'lamp'],
+      ['tib_blessing_3', 300, 'blessing'],
+      ['tib_khata_6', 600, 'khata'],
+      ['tib_name_99', 990, 'name']
+    ];
+    let gBad = 0;
+    try {
+      const goods = require(path.join(ROOT, 'data', 'goods.js')).list;
+      EXPECT.forEach(function (e) {
+        const hit = goods.filter(g => g.productId === e[0])[0];
+        if (!hit || hit.price !== e[1] || hit.give !== e[2]) gBad++;
+      });
+    } catch (e) { gBad = EXPECT.length; }
+    if (!gBad) ok('4 个道具的 productId / 价格 / give 与申报表逐条一致（4/4）');
+    else err('道具表与 docs/virtual-payment-go-live.md 申报表不一致（' + gBad + ' 项）');
+
+    // 反例自测：把价格改掉，上面的判据必须翻红 —— 证明这条不是摆设
+    {
+      const fake = [{ productId: 'tib_lamp_1', price: 999, give: 'lamp' }];
+      const hit = fake.filter(g => g.productId === 'tib_lamp_1')[0];
+      if (hit.price !== 100) ok('守卫自测：价格被改动时判据翻红（反例落网）');
+      else err('§64.11 自测失效：价格改了却仍判为一致');
+    }
+  }
+
+  // 64.12 藏文祝福语：**出处必填** + 排版良构（D113b）
+  // 只保证「排版对」是不够的 —— 「བསམ་པ་ལྷུན་གྲུབ」这类自撰写法排版也合法，
+  //   但藏语里并没人这么说。所以这里额外要求每条都写出处，让母语者**有据可核**。
+  {
+    let bl = [];
+    try { bl = require(path.join(ROOT, 'data', 'blessings.js')).list || []; } catch (e) { bl = []; }
+    const noSrc = bl.filter(b => !b.source).map(b => b.id);
+    if (bl.length && !noSrc.length) ok('祝福语逐条标注出处（' + bl.length + '/' + bl.length + '）');
+    else err('祝福语缺出处 source：' + (noSrc.join('、') || '(读不到)') + ' —— 不许无出处的新藏文');
+
+    // 出处必须是**可查的**公开语料：至少含 URL 与查询日期，不许写「常见说法」这种无从核对的话
+    const weak = bl.filter(b => !/https?:\/\//.test(b.source || '') || !/查询日期/.test(b.source || ''))
+      .map(b => b.id);
+    if (!weak.length) ok('出处含可查链接与查询日期（不是「常见说法」这类口头背书）');
+    else err('出处不可查（' + weak.join('、') + '）：必须写公开链接 + 查询日期');
+  }
 }
 
 section('65. D115 场景祝福语音（五场景接线 + 两端同构 + 频次闸门）');

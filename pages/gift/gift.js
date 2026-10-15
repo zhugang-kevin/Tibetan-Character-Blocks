@@ -54,7 +54,7 @@ Page({
     toName: '',          // TA 的名字（中文）
     gender: '',
     genderOptions: [],
-    namePicked: null,    // { name, mean }
+    namePicked: null,    // { name, bo, mean }
     // ---- 署名 ----
     fromName: '',
     // ---- 支付通道 ----
@@ -155,7 +155,9 @@ Page({
     if (!nm) { wx.showToast({ title: '先写上 TA 的名字', icon: 'none' }); return; }
     if (!d.gender) { wx.showToast({ title: '先选一个称呼', icon: 'none' }); return; }
     var picked = tibetanName.pickFor(d.gender, tibetanName.seedFromText(nm));
-    this.setData({ namePicked: picked ? { name: picked.name, mean: picked.mean } : null });
+    this.setData({
+      namePicked: picked ? { name: picked.name, bo: picked.bo || '', mean: picked.mean } : null
+    });
   },
   // 署名
   onFromNameInput: function (e) {
@@ -192,6 +194,7 @@ Page({
         toName: (d.toName || '').trim().slice(0, 10),
         gender: d.gender,
         tibetanName: d.namePicked ? d.namePicked.name : '',
+        tibetanBo: d.namePicked ? (d.namePicked.bo || '') : '',
         tibetanMean: d.namePicked ? d.namePicked.mean : '',
         fromName: (d.fromName || '').trim().slice(0, 10)
       }

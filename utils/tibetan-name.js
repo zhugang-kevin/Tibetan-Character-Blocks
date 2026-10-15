@@ -7,7 +7,7 @@
 //   ③ **只落本机**：写进 storage（与 holderName 同一份 progress），不上传、不同步、不进埋点。
 //   ④ **可查看 / 可修改 / 可清除**：护照页「我的资料」随时改，改完立即重取名字。
 //
-// 名字只出中文音译（藏文写法待母语审校，见 data/tibetan-names.js 文件头）。
+// 名字 = 中文音译（name）+ 藏文写法（bo，逐条带出处 boSrc，见 data/tibetan-names.js 文件头）。
 //
 // ⚠️ 名字池是 **append-only**（只能在末尾追加，不得重排 / 改名 / 删名）。
 //    理由：`pickFor` 用 seed 对池长取模，池一变长，同一个 seed 就会落到不同位置 ——
@@ -55,7 +55,14 @@ function pickFor(gender, seed) {
   var n = Number(seed);
   if (!isFinite(n) || n < 0) n = 0;
   var i = Math.floor(n) % pool.length;
-  return { name: pool[i].name, mean: pool[i].mean, index: i, gender: normalizeGender(gender) };
+  return {
+    name: pool[i].name,
+    bo: pool[i].bo || '',
+    boSrc: pool[i].boSrc || '',
+    mean: pool[i].mean,
+    index: i,
+    gender: normalizeGender(gender)
+  };
 }
 // 反查下标：老数据（D54 首版）只存了名字没存下标，用它补一个。
 // 找不到（池里已无此名）返回 -1 —— 名字仍照常显示，只是无从定位，绝不因找不到就改名。

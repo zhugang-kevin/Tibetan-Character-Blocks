@@ -47,7 +47,11 @@ FEATURES = [
     ('D107 测试可控时钟', 'preview/template.html', 'function nowMs', 'function nowMs'),
     # D113 朋友互赞：B 端送礼页在 H5 里是**真的镜像**（4 档心意 + 藏文祝福语都在），
     #   只是「送出」按钮禁用并写明「体验版不接支付」—— 那是**能力边界**，不是遗漏。
-    ('D113 送礼页（B 端 4 档心意）', 'utils/payment.js', 'tib_lamp_1', 'gf-grid'),
+    # ⚠️ D113b 之后特征串曾**指错文件**：原来指 `utils/payment.js` 的 `tib_lamp_1`，
+    #   但唯一事实源重构把商品字面量搬进了 `data/goods.js`，payment.js 只剩 require ——
+    #   于是对账表**谎报「小程序无送礼页」**（实际页面一直在）。
+    #   现在指向**页面本身消费商品表**的调用点：证明的是「页面存在」，不只是「数据存在」。
+    ('D113 送礼页（B 端 4 档心意）', 'pages/gift/gift.js', 'payment.GIFTS.map', 'gf-grid'),
     ('D113 藏文祝福语选择', 'data/blessings.js', 'pendingNativeReview', 'gf-bless'),
 ]
 

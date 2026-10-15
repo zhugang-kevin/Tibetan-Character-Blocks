@@ -173,6 +173,8 @@
   border: 3rpx solid #B7950B;
   text-align: center;
 }
+/* D113b 藏文写法（带出处，见 data/tibetan-names.js#boSrc） */
+.gf-name-bo { font-size: 40rpx; color: #6E2B22; line-height: 1.5; }
 .gf-name-big { font-size: 46rpx; font-weight: 700; color: #6E2B22; }
 .gf-name-mean { margin-top: 10rpx; font-size: 28rpx; color: #8A6A12; }
 .gf-name-note { margin-top: 12rpx; font-size: 26rpx; line-height: 1.6; color: #6E6759; }

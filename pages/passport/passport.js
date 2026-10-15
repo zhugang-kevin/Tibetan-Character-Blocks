@@ -57,6 +57,7 @@ Page({
     genderLabel: '未选择',
     genderOptions: [],
     tibetanName: '',
+    tibetanNameBo: '',
     tibetanNameMean: '',
     profileEdit: false,
     // 唐卡收藏（兑现 index 页「完整图收入文化护照」的承诺，2026-10-05 补齐）
@@ -165,6 +166,7 @@ Page({
       isNew: !!g.isNew,
       blessing: blessing,
       tibetanName: extra.tibetanName || '',
+      tibetanBo: extra.tibetanBo || '',
       tibetanMean: extra.tibetanMean || '',
       fromName: extra.fromName || '一位朋友'
     };
@@ -232,6 +234,7 @@ Page({
       genderLabel: g ? tibetanName.labelOf(g) : '未选择',
       genderOptions: tibetanName.GENDERS.map(function (x) { return { key: x.key, label: x.label }; }),
       tibetanName: nm.name,
+      tibetanNameBo: nm.bo || '',
       tibetanNameMean: nm.mean,
       // D113 收到的祝福（列表由 loadInbox 单独填，避免每次 refresh 把已读状态冲掉）
       giftCount: storage.getReceivedGifts().length,

@@ -1507,6 +1507,7 @@
       </div>
       <div id="ga-step-name" style="display:none">
         <div class="ga-title">你的藏族名字</div>
+        <div class="ga-bo tibetan" id="ga-bo" style="font-size:30px;color:#6E2B22;line-height:1.5"></div>
         <div class="ga-name" id="ga-name"></div>
         <div class="ga-mean" id="ga-mean"></div>
         <div class="ga-sub">往后你的证书与藏品，都会写在这个名字下。</div>
@@ -1672,6 +1673,11 @@
       <div class="pp-profile">
         <span class="pp-pk">藏族名字</span>
         <span class="pp-pv" id="pp-tib-name"></span>
+      </div>
+      <!-- D113b 藏文写法（带出处，与小程序 passport.wxml 同构） -->
+      <div class="pp-profile" id="pp-tib-bo-row">
+        <span class="pp-pk">藏文写法</span>
+        <span class="pp-pv tibetan" id="pp-tib-bo" style="font-size:24px"></span>
       </div>
       <div class="pp-sub">性别只用来为你挑一个对应的藏族名字（藏族名字分男女）。只保存在本机，不上传、不同步。</div>
       <div class="pp-pact">
@@ -1975,6 +1981,8 @@ function getProgress() {
     //   与 utils/storage.js#getProgress 同名字段，validate §45.6 逐字段比对两端白名单。
     gender: (p && p.gender) || '',
     tibetanName: (p && p.tibetanName) || '',
+    // D113b：名字的**藏文写法**（与 tibetanName 一起落库、一起钉死；出处见 data/tibetan-names.js#boSrc）
+    tibetanNameBo: (p && p.tibetanNameBo) || '',
     tibetanNameMean: (p && p.tibetanNameMean) || '',
     // 名字在池里的下标（-1 = 没定位到）：「池扩容不换名」的凭据，与小程序同名字段
     tibetanNameIndex: (p && typeof p.tibetanNameIndex === 'number') ? p.tibetanNameIndex : -1,
@@ -2446,7 +2454,10 @@ function namePickFor(gender, seed) {
   let n = Number(seed);
   if (!isFinite(n) || n < 0) n = 0;
   const i = Math.floor(n) % pool.length;
-  return { name: pool[i].name, mean: pool[i].mean, index: i, gender: normalizeGender(gender) };
+  return {
+    name: pool[i].name, bo: pool[i].bo || '', mean: pool[i].mean,
+    index: i, gender: normalizeGender(gender)
+  };
 }
 /* 反查下标：老数据只存了名字没存下标时补一个；查不到留 -1（绝不因查不到就改名） */
 function nameIndexOf(gender, name) {
@@ -2477,7 +2488,7 @@ function getGender() { return normalizeGender(getProgress().gender); }
 function getTibetanName() {
   const p = getProgress();
   return {
-    name: p.tibetanName || '', mean: p.tibetanNameMean || '',
+    name: p.tibetanName || '', bo: p.tibetanNameBo || '', mean: p.tibetanNameMean || '',
     index: (typeof p.tibetanNameIndex === 'number') ? p.tibetanNameIndex : -1,
     gender: normalizeGender(p.gender)
   };
@@ -2491,7 +2502,7 @@ function setGender(v) {
   const p = getProgress();
   const prev = normalizeGender(p.gender);
   if (!g) {
-    p.gender = ''; p.tibetanName = ''; p.tibetanNameMean = ''; p.tibetanNameIndex = -1;
+    p.gender = ''; p.tibetanName = ''; p.tibetanNameBo = ''; p.tibetanNameMean = ''; p.tibetanNameIndex = -1;
     saveProgress(p);
     return '';
   }
@@ -2500,6 +2511,7 @@ function setGender(v) {
   if (needPick) {
     const picked = namePickFor(g, nameSeedFromDate((p.openLog && p.openLog.first) || ''));
     p.tibetanName = picked ? picked.name : '';
+    p.tibetanNameBo = picked ? (picked.bo || '') : '';
     p.tibetanNameMean = picked ? picked.mean : '';
     p.tibetanNameIndex = picked ? picked.index : -1;
   } else if (!(p.tibetanNameIndex >= 0)) {
@@ -3188,12 +3200,21 @@ const $ = function (id) { return document.getElementById(id); };
    不同的一处（必须写明）：**体验版不接支付** —— 浏览器里没有 wx.requestVirtualPayment，
    签名也只能由服务端算。所以「送出」在这里是禁用 + 说明原因，而不是一个点了没反应的按钮。
    入口同样只挂在分享上：靠 URL 上的 ?to=xxxx 判断收礼人，没有 to 就不显示这份心意给谁。 */
+// 展示口径（图标 / 名称 / 说明）—— 与小程序 utils/gift-view.js 同一份契约，改一边要改另一边。
+// ⚠️ 价格**不写在这里**：取 DATA.goods（= data/goods.js，前后端唯一事实源），
+//   否则体验版显示价会与实付价漂移（官方 -15013 / 投诉级问题）。
 var GIFT_VIEW = {
-  tib_lamp_1:     { icon: '\u{1F56F}', name: '点一盏酥油灯', desc: '为 TA 点一盏灯，照亮这一程', price: 100 },
-  tib_blessing_3: { icon: '\u{1F4DC}', name: '送一句藏文祝福', desc: '挑一句藏文，随卡送到 TA 手上', price: 300 },
-  tib_khata_6:    { icon: '\u{1F90D}', name: '献一条哈达', desc: '最郑重的敬意，也是最轻的礼', price: 600 },
-  tib_name_99:    { icon: '\u{1F524}', name: '为 TA 取一个藏族名字', desc: '按 TA 的名字取一个藏族名字，附词义', price: 990 }
+  tib_lamp_1:     { icon: '\u{1F56F}', name: '点一盏酥油灯', desc: '为 TA 点一盏灯，照亮这一程' },
+  tib_blessing_3: { icon: '\u{1F4DC}', name: '送一句藏文祝福', desc: '挑一句藏文，随卡送到 TA 手上' },
+  tib_khata_6:    { icon: '\u{1F90D}', name: '献一条哈达', desc: '最郑重的敬意，也是最轻的礼' },
+  tib_name_99:    { icon: '\u{1F524}', name: '为 TA 取一个藏族名字', desc: '按 TA 的名字取一个藏族名字，附词义' }
 };
+/** 道具价格（分）—— 唯一来源 = data/goods.js */
+function goodsPrice(pid) {
+  const list = ((DATA && DATA.goods && DATA.goods.list) || []);
+  for (let i = 0; i < list.length; i++) if (list[i].productId === pid) return list[i].price;
+  return 0;
+}
 function giftPriceText(cents) {
   const n = (cents || 0) / 100;
   return '¥' + (Math.round(n * 100) % 100 === 0 ? String(Math.round(n)) : String(n));
@@ -3215,7 +3236,7 @@ function renderGift() {
       '<div class="gf-icon">' + g.icon + '</div>' +
       '<div class="gf-name">' + g.name + '</div>' +
       '<div class="gf-desc">' + g.desc + '</div>' +
-      '<div class="gf-price">' + giftPriceText(g.price) + '</div></div>';
+      '<div class="gf-price">' + giftPriceText(goodsPrice(pid)) + '</div></div>';
   }).join('');
   grid.querySelectorAll('[data-gift]').forEach(function (el) {
     el.addEventListener('click', function () {
@@ -3243,7 +3264,7 @@ function renderGift() {
     });
   }
   $('gf-submit').textContent = state.giftPicked
-    ? ('送出 · ' + giftPriceText(GIFT_VIEW[state.giftPicked].price))
+    ? ('送出 · ' + giftPriceText(goodsPrice(state.giftPicked)))
     : '送出';
 }
 
@@ -5850,6 +5871,12 @@ function renderProfile() {
   const pv = $('pp-tib-name');
   pv.textContent = nm.name ? (nm.name + '（' + nm.mean + '）') : '尚未获得';
   pv.className = 'pp-pv' + (nm.name ? '' : ' empty');
+  // D113b 藏文写法（出处见 data/tibetan-names.js#boSrc）
+  const pb = $('pp-tib-bo');
+  if (pb) {
+    pb.textContent = nm.bo || '';
+    pb.style.display = nm.bo ? '' : 'none';
+  }
   $('pp-clear').style.display = g ? '' : 'none';
   $('pp-edit').textContent = profileEdit ? '收起' : '修改性别';
   const gp = $('pp-gp');
@@ -6613,6 +6640,7 @@ function showGenderAsk() {
 function pickGenderH5(key) {
   const g = setGender(key);              // 写库时同步按新性别重取名字
   const nm = getTibetanName();
+  $('ga-bo').textContent = nm.bo || '';
   $('ga-name').textContent = nm.name;
   $('ga-mean').textContent = nm.mean + ' · ' + genderLabel(g);
   $('ga-step-ask').style.display = 'none';

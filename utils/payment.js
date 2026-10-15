@@ -31,14 +31,11 @@ var CONFIG = {
   // 是否已在 mp 后台发布道具（未发布时下单会报 -15010 / -15014）
   goodsPublished: false
 };
-// 礼物道具表：productId 必须与 mp 后台「道具配置」**逐字一致**，价格单位是**分**。
-// （官方 -15013：goodsPrice 与后台不一致会直接失败 —— 这是防止"页面显示价 ≠ 实付价"的投诉）
-var GIFTS = [
-  { productId: 'tib_lamp_1',    price: 100,  name: '点一盏酥油灯',   give: 'lamp' },
-  { productId: 'tib_blessing_3', price: 300,  name: '送一句藏文祝福', give: 'blessing' },
-  { productId: 'tib_khata_6',   price: 600,  name: '献一条哈达',     give: 'khata' },
-  { productId: 'tib_name_99',   price: 990,  name: '藏文名字定制',   give: 'name' }
-];
+// 礼物道具表：productId 与价格来自 data/goods.js **唯一事实源**。
+// ⚠️ 不要在前端另抄一份价格 —— 前端价与服务端价一旦不一致，
+//   要么是官方 -15013 直接失败，要么是「页面显示价 ≠ 实付价」的投诉。
+//   （展示用的名称 / 图标 / 说明在 utils/gift-view.js，与本表靠 productId 对应）
+var GIFTS = require('../data/goods.js').list;
 // 官方错误码 → 人话。**照官方文档逐条抄**，不自行发挥。
 // 覆盖这些码的价值：出问题时能立刻定位，而不是只见「支付失败」四个字。
 var ERR = {

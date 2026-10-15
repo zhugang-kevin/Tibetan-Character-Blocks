@@ -36,13 +36,14 @@ const CFG = {
   port: Number(process.env.PORT || 8787)
 };
 
-// 道具表：**必须与 mp 后台道具配置逐字一致**（productId 与价格）
-const GIFTS = {
-  tib_lamp_1:     { price: 100, give: 'lamp' },
-  tib_blessing_3: { price: 300, give: 'blessing' },
-  tib_khata_6:    { price: 600, give: 'khata' },
-  tib_name_99:    { price: 990, give: 'name' }
-};
+// 道具表：productId 与价格来自 ../data/goods.js **唯一事实源**（前后端同一份）。
+//   ⚠️ 不要在服务端另抄一份价格 —— 与前端漂移会直接 -15013；
+//   ⚠️ 与 mp 后台「虚拟支付 → 道具配置」也必须逐字一致（申报表见
+//      docs/virtual-payment-go-live.md）。
+const GIFTS = {};
+require('../data/goods.js').list.forEach(function (g) {
+  GIFTS[g.productId] = { price: g.price, give: g.give };
+});
 
 // D92：订单与会话已落 SQLite（server/store.js）——
 //   旧版用内存 Map，**重启即丢**：回调重放时找不到订单，或无从判断是否已发货。

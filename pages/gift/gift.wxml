@@ -90,9 +90,10 @@
         </view>
         <button class="gf-make-btn" bindtap="makeName">为 TA 取一个名字</button>
         <view wx:if="{{namePicked}}" class="gf-name-card">
+          <view wx:if="{{namePicked.bo}}" class="gf-name-bo tibetan">{{namePicked.bo}}</view>
           <view class="gf-name-big">{{namePicked.name}}</view>
           <view class="gf-name-mean">{{namePicked.mean}}</view>
-          <view class="gf-name-note">藏族名字目前提供中文音译；藏文写法待母语者审校后补上</view>
+          <view wx:if="{{!namePicked.bo}}" class="gf-name-note">藏族名字目前提供中文音译；藏文写法待母语者审校后补上</view>
         </view>
       </view>
 

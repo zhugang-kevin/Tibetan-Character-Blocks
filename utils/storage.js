@@ -129,7 +129,9 @@ function getProgress() {
     //   ⚠️ 两个都必须进白名单 —— getProgress 是显式挑字段的，漏列 = save(p) 静默写丢
     //   （D101 waterDay、D111 learnDone 都是这么漏的，各被测试抓出一次）。
     lamps: (p && p.lamps) || 0,
-    receivedGifts: (p && p.receivedGifts) || []
+    receivedGifts: (p && p.receivedGifts) || [],
+    // D113b：藏族名字的**藏文写法**（与 tibetanName 一起落库、一起钉死）
+    tibetanNameBo: (p && p.tibetanNameBo) || ''
   };
 }
 
@@ -320,6 +322,7 @@ function setGender(v) {
     // 「清除」：性别回到未选择，名字一并撤掉（个人信息可撤回）
     p.gender = '';
     p.tibetanName = '';
+    p.tibetanNameBo = '';
     p.tibetanNameMean = '';
     p.tibetanNameIndex = -1;
     save(p);
@@ -331,6 +334,7 @@ function setGender(v) {
     var seed = tibetanName.seedFromDate((p.openLog && p.openLog.first) || '');
     var picked = tibetanName.pickFor(g, seed);
     p.tibetanName = picked ? picked.name : '';
+    p.tibetanNameBo = picked ? (picked.bo || '') : '';
     p.tibetanNameMean = picked ? picked.mean : '';
     p.tibetanNameIndex = picked ? picked.index : -1;
   } else if (!(p.tibetanNameIndex >= 0)) {
@@ -346,6 +350,7 @@ function getTibetanName() {
   var p = getProgress();
   return {
     name: p.tibetanName || '',
+    bo: p.tibetanNameBo || '',
     mean: p.tibetanNameMean || '',
     index: (typeof p.tibetanNameIndex === 'number') ? p.tibetanNameIndex : -1,
     gender: tibetanName.normalizeGender(p.gender)

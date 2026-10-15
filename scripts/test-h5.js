@@ -2358,6 +2358,17 @@ function mockCtx(sink) {
     check('护照页显示性别标签（女）', $('#pp-gender').textContent === '女', $('#pp-gender').textContent);
     check('护照页显示藏族名字（' + $('#pp-tib-name').textContent + '）',
       $('#pp-tib-name').textContent.indexOf('（') > -1);
+    // D113b：藏文写法（有出处，见 data/tibetan-names.js#boSrc）+ 排版良构（以 tsheg 收尾）
+    {
+      const bo36 = ($('#pp-tib-bo') || {}).textContent || '';
+      check('护照页显示名字的藏文写法（' + bo36 + '）', /^[\u0F00-\u0FFF]+$/.test(bo36), bo36);
+      check('藏文写法以 tsheg 收尾（不裸渲染 / 不截断）', /་$/.test(bo36), bo36);
+      const clearedBo36 = ev("(function(){ setGender('female'); setGender(''); renderProfile();"
+        + " var v = document.getElementById('pp-tib-bo').textContent;"
+        // 复原现场：后面 36.7 还要断言「当前性别在选择行里高亮」，不能被这条改状态
+        + " setGender('female'); renderProfile(); return v; })()");
+      check('清除后藏文写法一并撤空（不留无主藏文）', clearedBo36 === '', clearedBo36);
+    }
     ev("document.querySelector('#pp-edit').click()");
     check('点「修改性别」展开三档选择行', /show/.test($('#pp-gp').className));
     const cells36 = Array.prototype.map.call(doc.querySelectorAll('#pp-gp .gp-cell'), function (el) {

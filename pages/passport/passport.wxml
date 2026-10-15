@@ -58,6 +58,7 @@
             <view wx:if="{{item.blessing}}" class="gift-bo tibetan">{{item.blessing.bo}}</view>
             <view wx:if="{{item.blessing}}" class="gift-zh">{{item.blessing.zh}}</view>
             <view wx:if="{{item.tibetanName}}" class="gift-zh">藏族名字 · {{item.tibetanName}}<text wx:if="{{item.tibetanMean}}">（{{item.tibetanMean}}）</text></view>
+            <view wx:if="{{item.tibetanBo}}" class="gift-bo tibetan">{{item.tibetanBo}}</view>
           </view>
         </view>
       </view>
@@ -74,6 +75,11 @@
       <view class="profile-row">
         <text class="profile-k">藏族名字</text>
         <text class="profile-v {{tibetanName ? '' : 'empty'}}">{{tibetanName ? tibetanName + '（' + tibetanNameMean + '）' : '尚未获得'}}</text>
+      </view>
+      <!-- D113b 藏文写法（带出处，见 data/tibetan-names.js#boSrc） -->
+      <view wx:if="{{tibetanNameBo}}" class="profile-row">
+        <text class="profile-k">藏文写法</text>
+        <text class="profile-v bo tibetan">{{tibetanNameBo}}</text>
       </view>
       <view class="profile-note">性别只用来为你挑一个对应的藏族名字（藏族名字分男女）。只保存在本机，不上传、不同步。</view>
       <view class="profile-actions">
