@@ -1,4 +1,4 @@
-// scripts/test-religion-compliance.js — 宗教商业化红线门禁（D121/D122/D123 · 藏香变现）
+// scripts/test-religion-compliance.js — 宗教商业化红线门禁（D121/D122/D123/D124 · 藏香变现）
 //
 // ## 为什么单独成一个脚本，而不是塞进 scripts/validate.js
 //   validate.js 是多人并发改动的共享门禁文件；本门禁是**变现专用**的一条线，
@@ -15,6 +15,14 @@
 //       属于正当商事行为的依据（买断/代销 ✅，代场所销售并分成 ❌）
 //   我们是**商业主体 + 非宗教主体设立的互联网平台** → 「寺庙出品 / 寺院监制 / 开光加持」
 //   一律不可用。第 6 条「场所内可以经销」是**给宗教活动场所的许可，不是给商家的**。
+//
+// ## D124 新增 §6「货源与背书匹配」
+//   用户（2026-10-16）把货源从「寺院体系」改成「**民间家庭作坊**」。
+//   换货源**不是**让合规变严（其实变松了：完全脱离宗教主体），真正的风险是**背书串台** ——
+//   货已经不是那家的了，文案还在写「Ⅷ-141」「尼木藏香地理标志」：那是虚假宣传，
+//   而且恰好把第 2 条「以佛教道教名义进行商业宣传」重新请回来。
+//   所以每条背书都标了 `scope`（general / mindrolling_only / gi_only），
+//   §6 机械校验「货源类型 × 实际引用的背书」是否匹配。
 //
 // ## D123 新增 §5「销售主体与命名」
 //   用户（2026-10-16）说「藏香我们自己有渠道 / 用自己的名字帮寺庙出售藏香」。
@@ -58,7 +66,7 @@ function stripCompliance(s) {
   return s;
 }
 
-console.log('宗教商业化红线门禁（D121/D122/D123 · 国宗发〔2017〕88 号）');
+console.log('宗教商业化红线门禁（D121/D122/D123/D124 · 国宗发〔2017〕88 号）');
 
 // ---------- 1. 宗教商业化禁词 ----------
 console.log('[1. 禁词扫描（16 词 x 6 文件）]');
@@ -105,7 +113,8 @@ if (exists('data/incense.js')) {
     var noSrc = [];
     [['origin', inc.origin], ['craft', inc.craft], ['people', inc.people],
       ['compliance', inc.compliance],
-      ['standards', inc.standards], ['selling', inc.selling], ['brand', inc.brand]].forEach(function (n) {
+      ['standards', inc.standards], ['selling', inc.selling],
+      ['brand', inc.brand], ['workshop', inc.workshop]].forEach(function (n) {
       if (!(n[1] && n[1].source)) noSrc.push(n[0]);
     });
     ['honors', 'lineages', 'producers'].forEach(function (k) {
@@ -123,6 +132,7 @@ if (exists('data/incense.js')) {
     chk('standards', inc.standards && inc.standards.source);
     chk('selling', inc.selling && inc.selling.source);
     chk('brand', inc.brand && inc.brand.source);
+    chk('workshop', inc.workshop && inc.workshop.source);
     ['honors', 'lineages', 'producers'].forEach(function (k) {
       (inc[k] || []).forEach(function (h, i) { chk(k + '[' + i + ']', h.source); });
     });
@@ -177,8 +187,55 @@ if (!inc) {
   else err('缺所执行的国家标准号 —— 没有标准号，产品就会被按「佛教道教衍生商品」口径定性');
 }
 
-// ---------- 6. 反例自测 ----------
-console.log('[6. 反例自测]');
+// ---------- 6. 货源与背书匹配 ----------
+// D124（2026-10-16）：货源从「寺院体系」换成「民间家庭作坊」。
+//   换货源的真正风险不是合规变严（其实是变松了），而是**背书串台**：
+//   文案还在用「Ⅷ-141 敏珠林寺藏香制作技艺」「尼木藏香地理标志」，
+//   但货已经不是那家的了 —— 那是虚假宣传，而且恰好把 88 号文第 2 条重新请回来。
+console.log('[6. 货源与背书匹配]');
+var PRODUCER_TYPES = {
+  monastery_factory: '寺院体系藏香厂',
+  household_workshop: '民间家庭作坊',
+  company: '香业公司'
+};
+if (!inc) {
+  err('货源与背书匹配无法校验：data/incense.js 读不出来');
+} else {
+  var pt = (inc.selling && inc.selling.producerType) || '';
+  if (PRODUCER_TYPES[pt]) ok('货源类型已登记：' + PRODUCER_TYPES[pt] + '（' + pt + '）');
+  else err('货源类型未登记或不合法：' + (pt || '未填写')
+    + ' —— 只能是 monastery_factory / household_workshop / company');
+
+  var byId = {};
+  (inc.honors || []).forEach(function (h) { if (h.id) byId[h.id] = h; });
+  var backed = (inc.selling && inc.selling.backedHonors) || [];
+  var ghost = backed.filter(function (id) { return !byId[id]; });
+  if (!backed.length) err('backedHonors 为空 —— 必须写明本货源实际引用了哪几条背书');
+  else if (!ghost.length) ok('引用的背书都能在 honors 里查到：' + backed.join('、'));
+  else err('引用了不存在的背书：' + ghost.join('、'));
+
+  // 🔴 核心：家庭作坊**不得**引用寺院体系专属项目 / 地理标志
+  var wrong = backed.filter(function (id) {
+    return byId[id] && /_only$/.test(byId[id].scope || '') && pt === 'household_workshop';
+  });
+  if (!wrong.length) ok('背书与货源匹配：家庭作坊没有引用寺院体系专属项目或地理标志');
+  else err('背书串台：家庭作坊引用了 '
+    + wrong.map(function (id) { return byId[id].name + '（' + byId[id].scope + '）'; }).join('、')
+    + ' —— 货不是那家的，写它就是虚假宣传');
+
+  // 家庭作坊的特殊坑必须留档，不能只靠口头
+  if (pt === 'household_workshop') {
+    var w = inc.workshop || {};
+    var ok5 = (w.mustHave || []).length >= 5 && (w.cannotClaim || []).length > 0;
+    if (ok5) ok('家庭作坊的三个硬坑已留档（执照/标识/检测/发票 + 不能宣称项 ' + (w.cannotClaim || []).length + ' 条）');
+    else err('家庭作坊路线缺留档：workshop.mustHave 至少 5 条、cannotClaim 非空 —— 三无产品与发票会卡死上架');
+  } else {
+    ok('货源非家庭作坊，跳过作坊专项检查');
+  }
+}
+
+// ---------- 7. 反例自测 ----------
+console.log('[7. 反例自测]');
 var fake = '本品为色拉寺出品，高僧加持，可安神助眠';
 var fakeHit = BANNED.filter(function (w) { return fake.indexOf(w) > -1; });
 if (fakeHit.length) ok('守卫自测：「色拉寺出品 / 高僧加持」必落网（命中 ' + fakeHit.join('、') + '）');
@@ -196,8 +253,8 @@ if (!legalHit.length && !BACKING.test(legal))
   ok('守卫自测：合规销售表述不被误判（「向…藏香厂采购后销售」必须写得出来）');
 else err('反例自测失效：合规表述被误判（命中 ' + (legalHit.join('、') || BACKING.exec(legal)) + '）');
 
-// ---------- 7. 方案留档 ----------
-console.log('[7. 方案留档]');
+// ---------- 8. 方案留档 ----------
+console.log('[8. 方案留档]');
 if (exists('docs/incense-monetization.md')) ok('藏香变现方案已留档（docs/incense-monetization.md）');
 else err('缺 docs/incense-monetization.md —— 卖点/价格锚点/合规边界必须可查');
 if (exists('docs/incense-sourcing-checklist.md')) ok('采购与上架清单已留档（docs/incense-sourcing-checklist.md）');
