@@ -1,4 +1,4 @@
-// scripts/test-religion-compliance.js — 宗教商业化红线门禁（D121/D122/D123/D124 · 藏香变现）
+// scripts/test-religion-compliance.js — 宗教商业化红线门禁（D121/D122/D123/D124/D125 · 藏香变现）
 //
 // ## 为什么单独成一个脚本，而不是塞进 scripts/validate.js
 //   validate.js 是多人并发改动的共享门禁文件；本门禁是**变现专用**的一条线，
@@ -15,6 +15,16 @@
 //       属于正当商事行为的依据（买断/代销 ✅，代场所销售并分成 ❌）
 //   我们是**商业主体 + 非宗教主体设立的互联网平台** → 「寺庙出品 / 寺院监制 / 开光加持」
 //   一律不可用。第 6 条「场所内可以经销」是**给宗教活动场所的许可，不是给商家的**。
+//
+// ## D125 新增 §7「制程宣称真实性」
+//   用户（2026-10-16）最终改定：**工厂藏香（机制），不考虑作坊、不考虑手工**。
+//   前两轮防的是「宗教背书串台」，这一轮防的是「**工艺叙事串台**」：
+//   **非遗保护的是传统制作技艺** —— 机制量产货挂「国家级非遗 / 手工 / 古法手作」
+//   = 引人误解的商业宣传（《反不正当竞争法》第 8 条 / 《广告法》第 4、28 条）。
+//   ⚠️ GB/T 43430-2023 本身适用于机制香，**写标准号没问题，写「手工」才有问题**。
+//   想拿回非遗叙事只有两条正路（见 data/incense.js 的 factory.howToGetIchBack）：
+//   a) 选确为项目保护单位 / 生产性保护示范基地的厂，并把 factoryIchQualified 置 true；
+//   b) 单独做一条手工线，与机制线分开上架、分开写文案。
 //
 // ## D124 新增 §6「货源与背书匹配」
 //   用户（2026-10-16）把货源从「寺院体系」改成「**民间家庭作坊**」。
@@ -66,7 +76,7 @@ function stripCompliance(s) {
   return s;
 }
 
-console.log('宗教商业化红线门禁（D121/D122/D123/D124 · 国宗发〔2017〕88 号）');
+console.log('宗教商业化红线门禁（D121/D122/D123/D124/D125 · 国宗发〔2017〕88 号）');
 
 // ---------- 1. 宗教商业化禁词 ----------
 console.log('[1. 禁词扫描（16 词 x 6 文件）]');
@@ -114,7 +124,7 @@ if (exists('data/incense.js')) {
     [['origin', inc.origin], ['craft', inc.craft], ['people', inc.people],
       ['compliance', inc.compliance],
       ['standards', inc.standards], ['selling', inc.selling],
-      ['brand', inc.brand], ['workshop', inc.workshop]].forEach(function (n) {
+      ['brand', inc.brand], ['workshop', inc.workshop], ['factory', inc.factory]].forEach(function (n) {
       if (!(n[1] && n[1].source)) noSrc.push(n[0]);
     });
     ['honors', 'lineages', 'producers'].forEach(function (k) {
@@ -133,6 +143,7 @@ if (exists('data/incense.js')) {
     chk('selling', inc.selling && inc.selling.source);
     chk('brand', inc.brand && inc.brand.source);
     chk('workshop', inc.workshop && inc.workshop.source);
+    chk('factory', inc.factory && inc.factory.source);
     ['honors', 'lineages', 'producers'].forEach(function (k) {
       (inc[k] || []).forEach(function (h, i) { chk(k + '[' + i + ']', h.source); });
     });
@@ -196,6 +207,7 @@ console.log('[6. 货源与背书匹配]');
 var PRODUCER_TYPES = {
   monastery_factory: '寺院体系藏香厂',
   household_workshop: '民间家庭作坊',
+  factory: '规模化工厂（机制量产）',
   company: '香业公司'
 };
 if (!inc) {
@@ -204,7 +216,7 @@ if (!inc) {
   var pt = (inc.selling && inc.selling.producerType) || '';
   if (PRODUCER_TYPES[pt]) ok('货源类型已登记：' + PRODUCER_TYPES[pt] + '（' + pt + '）');
   else err('货源类型未登记或不合法：' + (pt || '未填写')
-    + ' —— 只能是 monastery_factory / household_workshop / company');
+    + ' —— 只能是 monastery_factory / household_workshop / factory / company');
 
   var byId = {};
   (inc.honors || []).forEach(function (h) { if (h.id) byId[h.id] = h; });
@@ -214,28 +226,87 @@ if (!inc) {
   else if (!ghost.length) ok('引用的背书都能在 honors 里查到：' + backed.join('、'));
   else err('引用了不存在的背书：' + ghost.join('、'));
 
-  // 🔴 核心：家庭作坊**不得**引用寺院体系专属项目 / 地理标志
+  // 🔴 核心：背书 scope 必须与货源匹配
+  //   general           → 任何货源可引用
+  //   mindrolling_only  → 仅寺院体系藏香厂（monastery_factory）可引用
+  //   gi_only           → 谁都不能引用（我们是经销商，专用标志的合法使用人是经核准的**生产者**）
   var wrong = backed.filter(function (id) {
-    return byId[id] && /_only$/.test(byId[id].scope || '') && pt === 'household_workshop';
+    var h = byId[id];
+    if (!h) return false;
+    var sc = h.scope || '';
+    if (sc === 'gi_only') return true;
+    if (sc === 'mindrolling_only') return pt !== 'monastery_factory';
+    return false;
   });
-  if (!wrong.length) ok('背书与货源匹配：家庭作坊没有引用寺院体系专属项目或地理标志');
-  else err('背书串台：家庭作坊引用了 '
+  if (!wrong.length) ok('背书与货源匹配（general 通用 / 寺院体系专属仅限该类货源 / 地理标志谁都不用）');
+  else err('背书串台：' + pt + ' 引用了 '
     + wrong.map(function (id) { return byId[id].name + '（' + byId[id].scope + '）'; }).join('、')
-    + ' —— 货不是那家的，写它就是虚假宣传');
+    + ' —— 货不是那家的（或我们不是经核准的生产者），写它就是虚假宣传');
 
-  // 家庭作坊的特殊坑必须留档，不能只靠口头
+  // 作坊路线的专项留档（本轮已改走工厂，保留判据以便将来回退）
   if (pt === 'household_workshop') {
     var w = inc.workshop || {};
     var ok5 = (w.mustHave || []).length >= 5 && (w.cannotClaim || []).length > 0;
     if (ok5) ok('家庭作坊的三个硬坑已留档（执照/标识/检测/发票 + 不能宣称项 ' + (w.cannotClaim || []).length + ' 条）');
     else err('家庭作坊路线缺留档：workshop.mustHave 至少 5 条、cannotClaim 非空 —— 三无产品与发票会卡死上架');
   } else {
-    ok('货源非家庭作坊，跳过作坊专项检查');
+    ok('非作坊路线，跳过作坊专项（工厂路线由 §7 校验）');
   }
 }
 
-// ---------- 7. 反例自测 ----------
-console.log('[7. 反例自测]');
+// ---------- 7. 制程宣称真实性（D125：工厂机制香不得挂「非遗 / 手工」）----------
+//   前两轮防的是「宗教背书串台」；这一轮防的是「工艺叙事串台」。
+//   非遗保护的是**传统制作技艺**；机制量产货挂「国家级非遗 / 手工 / 古法手作」=
+//   引人误解的商业宣传（《反不正当竞争法》第 8 条 / 《广告法》第 4、28 条）。
+console.log('[7. 制程宣称真实性]');
+var CRAFT_TYPES = { machine: '机制量产', handmade: '手工制作', mixed: '部分工序手工' };
+var HAND_WORDS = ['手工', '手作', '纯手工', '古法手工', '匠人手工', '古法手作'];
+if (!inc) {
+  err('制程宣称无法校验：data/incense.js 读不出来');
+} else {
+  var ct = (inc.selling && inc.selling.craftType) || '';
+  if (CRAFT_TYPES[ct]) ok('制程类型已登记：' + CRAFT_TYPES[ct] + '（' + ct + '）');
+  else err('制程类型未登记或不合法：' + (ct || '未填写') + ' —— 只能是 machine / handmade / mixed');
+
+  var claims = (inc.selling && inc.selling.copyClaims) || [];
+  var fake = [];
+  claims.forEach(function (c) {
+    HAND_WORDS.forEach(function (w) { if (c.indexOf(w) > -1) fake.push(c + '：' + w); });
+  });
+  if (ct === 'handmade' || ct === 'mixed') {
+    ok('手工/混合制程，允许工艺类宣称（共 ' + claims.length + ' 条，已逐条过扫描）');
+  } else if (!fake.length) {
+    ok('机制香未宣称手工 / 古法（' + claims.length + ' 条商品宣称逐条扫过）');
+  } else {
+    err('机制香宣称了手工工艺：' + fake.join('；')
+      + ' —— 非遗保护的是传统制作技艺，机制量产货写「手工」属引人误解的商业宣传');
+  }
+
+  // 想写「非遗」必须同时满足：工厂确有非遗资质 + 制程不是纯机制
+  var bk = (inc.selling && inc.selling.backedHonors) || [];
+  var qIch = inc.selling && inc.selling.factoryIchQualified === true;
+  var useIch = bk.indexOf('ich2008') > -1;
+  if (!useIch) ok('未引用非遗技艺类背书（机制香的默认正确姿势：只写国家标准号）');
+  else if (qIch && (ct === 'handmade' || ct === 'mixed'))
+    ok('引用非遗技艺类背书已通过校验（工厂确有资质 + 制程非纯机制）');
+  else err('机制香引用了 ich2008（非遗制作技艺）—— 需同时满足 factoryIchQualified=true '
+    + '且 craftType 为 handmade/mixed；否则就是拿技艺叙事给量产货背书');
+
+  // 工厂路线的取舍必须留档（优势 + 风险 + 不能宣称 + 怎么把非遗拿回来）
+  var f = inc.factory || {};
+  if ((inc.selling && inc.selling.producerType) !== 'factory') {
+    ok('非工厂路线，跳过工厂专项留档检查');
+  } else if ((f.pros || []).length >= 3 && (f.risks || []).length >= 3
+    && (f.mustHave || []).length >= 5 && (f.cannotClaim || []).length > 0 && f.howToGetIchBack) {
+    ok('工厂路线取舍已留档（优势 ' + f.pros.length + ' / 风险 ' + f.risks.length
+      + ' / 必备 ' + f.mustHave.length + ' / 不能宣称 ' + f.cannotClaim.length + ' / 含"怎么把非遗拿回来"）');
+  } else {
+    err('工厂路线缺留档：factory 需含 pros≥3 / risks≥3 / mustHave≥5 / cannotClaim≥1 / howToGetIchBack');
+  }
+}
+
+// ---------- 8. 反例自测 ----------
+console.log('[8. 反例自测]');
 var fake = '本品为色拉寺出品，高僧加持，可安神助眠';
 var fakeHit = BANNED.filter(function (w) { return fake.indexOf(w) > -1; });
 if (fakeHit.length) ok('守卫自测：「色拉寺出品 / 高僧加持」必落网（命中 ' + fakeHit.join('、') + '）');
@@ -252,9 +323,17 @@ var legalHit = BANNED.filter(function (w) { return legal.indexOf(w) > -1; });
 if (!legalHit.length && !BACKING.test(legal))
   ok('守卫自测：合规销售表述不被误判（「向…藏香厂采购后销售」必须写得出来）');
 else err('反例自测失效：合规表述被误判（命中 ' + (legalHit.join('、') || BACKING.exec(legal)) + '）');
+// 反向自测（D125）：机制香的合规宣称必须写得出来 —— 只写标准号 + 客观产地，不碰工艺叙事
+var mech = ['执行 GB/T 43430-2023《藏香》国家标准', '产自西藏'];
+var mechHit = [];
+mech.forEach(function (c) {
+  HAND_WORDS.forEach(function (w) { if (c.indexOf(w) > -1) mechHit.push(w); });
+});
+if (!mechHit.length) ok('守卫自测：机制香的合规宣称不被误判（标准号 + 客观产地必须写得出来）');
+else err('反例自测失效：合规的机制香表述被误判（命中 ' + mechHit.join('、') + '）');
 
-// ---------- 8. 方案留档 ----------
-console.log('[8. 方案留档]');
+// ---------- 9. 方案留档 ----------
+console.log('[9. 方案留档]');
 if (exists('docs/incense-monetization.md')) ok('藏香变现方案已留档（docs/incense-monetization.md）');
 else err('缺 docs/incense-monetization.md —— 卖点/价格锚点/合规边界必须可查');
 if (exists('docs/incense-sourcing-checklist.md')) ok('采购与上架清单已留档（docs/incense-sourcing-checklist.md）');
