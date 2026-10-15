@@ -7674,6 +7674,88 @@ section('65. D115 场景祝福语音（五场景接线 + 两端同构 + 频次�
     ok('H5 侧同样推迟跳转（两端一致）');
   else err('H5 侧跳转时机与小程序不一致');
 }
+section('66. D118 变现：不卖空气（付费商品必须有真实交付）');
+// 背景（2026-10-15 实测，不是推演）：为推进变现，我先按 docs/monetization-v3.md 的
+//   「引擎 A · 进阶课程包」去卖「解锁第 2-12 阶段」，页面都写好了 —— 然后一查数据：
+//   data/levels.js **只有 10 关**，而证书阶段 2-12 覆盖的是第 11-120 关。
+//   也就是说那 11 个阶段是**空壳**：没有关卡、没有内容。卖它 = 卖空气。
+//   （学习线 data/learning.js 的 150 课是真实存在的，但它是靠「上一级通关」解锁的，
+//    付费卖「提前解锁」在语言学习产品里价值存疑，且会伤害学习逻辑 —— 故本轮不卖。）
+// 同类风险还有：D54 里用户选性别就会**免费**得到一个藏族名字，所以「给自己取名」
+//   也不能拿去收费（别人送你的名字是另一回事，那一份是给 TA 取的）。
+// 这类错误不会让任何现有门禁变红 —— 因为代码「看起来」完全正常。
+//   所以这里补一把尺：**任何在售道具，必须在代码里真有东西可交付。**
+{
+  const gJs = read('data/goods.js');
+  const lvJs = read('data/levels.js');
+  const stJs2 = read('data/stages.js');
+  const nmJs = read('data/tibetan-names.js');
+
+  // 66.1 每个在售道具的 give 都必须有**真实交付实现**（枚举即白名单，新增必须先补实现）
+  const GIVE_IMPL = [
+    ['lamp', /addLamp\(/.test(read('utils/storage.js')), 'storage.addLamp（灯火 +1）'],
+    ['khata', /addKhata\(/.test(read('utils/storage.js')), 'storage.addKhata（哈达 +1）'],
+    ['blessing', /blessingId/.test(read('pages/gift/gift.js')) && /blessings\.js/.test(read('utils/gift-view.js')) || /blessings/.test(read('pages/passport/passport.js')), 'data/blessings.js 6 句真实藏文'],
+    ['name', /function pickFor/.test(read('utils/tibetan-name.js')) && /module\.exports/.test(nmJs), 'data/tibetan-names.js 15 个名字（含藏文写法与出处）']
+  ];
+  let noImpl = [];
+  GIVE_IMPL.forEach(function (g) {
+    if (!g[1]) noImpl.push(g[0] + '（应有：' + g[2] + '）');
+  });
+  if (!noImpl.length) ok('在售道具的 give 逐个都有真实交付实现（4/4：灯火/哈达/祝福/名字）');
+  else err('有道具卖出去却没东西可交付：' + noImpl.join('、'));
+
+  // 66.2 不得出售 data/levels.js 里**不存在**的关卡内容（今天的坑，做成硬闸）
+  const lvCount = (function () {
+    try { return require(path.join(ROOT, 'data', 'levels.js')).length; } catch (e) { return 0; }
+  })();
+  const stageMax = (function () {
+    try {
+      return require(path.join(ROOT, 'data', 'stages.js')).reduce(function (m, s) {
+        return Math.max(m, s.to || 0);
+      }, 0);
+    } catch (e) { return 0; }
+  })();
+  const sellStage = /give:\s*'stage/.test(gJs);
+  if (!sellStage || lvCount >= stageMax)
+    ok('没有在卖「代码里不存在的内容」（levels ' + lvCount + ' 关 / 证书阶段覆盖到 ' + stageMax + ' 关）');
+  else err('在卖不存在的内容：道具 give 含 stage，但 data/levels.js 只有 ' + lvCount +
+    ' 关，而证书阶段要求 ' + stageMax + ' 关 —— 这是卖空气');
+
+  // 反例自测：凭空加一个 stage 类道具，上面的判据必须翻红
+  {
+    const fake = "module.exports={list:[{productId:'x',price:1,give:'stage'}]};";
+    if (/give:\s*'stage/.test(fake) && lvCount < stageMax)
+      ok('守卫自测：凭空卖 stage 必被判为卖空气（反例落网）');
+    else err('§66.2 自测失效：凭空 stage 道具没被拦下');
+  }
+
+  // 66.3 已免费可得的东西不得再拿去收费（D54：选性别就送藏族名字）
+  //   送礼的「为 TA 取一个藏族名字」不冲突 —— 那一份是给收礼人取的，不是给自己的。
+  {
+    const selfNameSell = /give:\s*'name'/.test(gJs) && /scene:\s*'self'|自购|给自己买/.test(gJs);
+    if (!selfNameSell) ok('没有把「已免费可得的藏族名字」再拿去收费');
+    else err('藏族名字在 D54 里选性别即免费赠送 —— 不能再作为自购商品收费');
+  }
+
+  // 66.4 变现相关的违禁话术（判据先剥注释，否则说明文字自己会判红）
+  {
+    // 注意：stripComments 是 §64 里的局部函数，这里不能用 —— 就地剥注释。
+    const strip = s => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+    const src = ['data/goods.js', 'pages/gift/gift.js', 'pages/gift/gift.wxml', 'utils/payment.js']
+      .map(f => strip(read(f))).join('\n');
+    const banned = ['充值', '返现', '分佣', '提现', '金币', '余额'];
+    const hit = banned.filter(w => src.indexOf(w) > -1);
+    if (!hit.length) ok('变现链路无违禁话术（充值/返现/分佣/提现/金币/余额）');
+    else err('变现链路出现违禁话术：' + hit.join('、'));
+  }
+
+  // 66.5 变现方向已锁定且如实留档（避免「口头说在做变现、代码里什么都没有」）
+  if (exists('docs/monetization-audit-2026-10-15.md'))
+    ok('变现审计已留档（docs/monetization-audit-2026-10-15.md）');
+  else err('缺变现审计文档 —— 方向、算账、卡点必须可查，不许只在对话里说过');
+}
+
 console.log('通过: ' + passed + ' | 错误: ' + errors.length + ' | 警告: ' + warnings.length);
 if (errors.length) { console.log('\x1b[31m存在错误，需修复后重试\x1b[0m'); process.exit(1); }
 console.log('\x1b[32m全部自检通过 ✓\x1b[0m');
