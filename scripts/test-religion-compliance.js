@@ -1,4 +1,4 @@
-// scripts/test-religion-compliance.js — 宗教商业化红线门禁（D121/D122 · 藏香变现）
+// scripts/test-religion-compliance.js — 宗教商业化红线门禁（D121/D122/D123 · 藏香变现）
 //
 // ## 为什么单独成一个脚本，而不是塞进 scripts/validate.js
 //   validate.js 是多人并发改动的共享门禁文件；本门禁是**变现专用**的一条线，
@@ -11,8 +11,18 @@
 //     · 第 5 条 **非宗教活动场所/团体/院校和个人设立的互联网宗教信息平台**
 //        不得售卖佛教道教衍生商品、不得接受宗教性捐赠
 //     · 第 1 条 严禁商业资本介入；不得承包经营场所、不得以分红提成等方式获取收益
+//     · 第 7 条 场所**兴办的经济实体**应独立核算、照章纳税 —— 这是「向寺院办的藏香厂采购」
+//       属于正当商事行为的依据（买断/代销 ✅，代场所销售并分成 ❌）
 //   我们是**商业主体 + 非宗教主体设立的互联网平台** → 「寺庙出品 / 寺院监制 / 开光加持」
 //   一律不可用。第 6 条「场所内可以经销」是**给宗教活动场所的许可，不是给商家的**。
+//
+// ## D123 新增 §5「销售主体与命名」
+//   用户（2026-10-16）说「藏香我们自己有渠道 / 用自己的名字帮寺庙出售藏香」。
+//   「**帮寺庙出售**」必须落成「**向藏香厂采购后以我方名义销售**」—— 差别不在措辞，
+//   在**合同主体**与**钱的方向**。§5 把差别做成判据：模式只能是买断/代销、
+//   合同相对方必须是工商注册的经营实体、品牌名不得冠以佛教道教名称、
+//   产品必须写得出 GB/T 43430-2023（ICS 13.120 家用品安全）—— 这是定性证据，
+//   没写标准号就会被按「佛教道教衍生商品」口径定性（第 5 条）。
 //
 // ## 那卖点换成什么（见 docs/incense-monetization.md）
 //   走「非遗」通道，不走「宗教」通道：
@@ -35,16 +45,20 @@ function read(p) {
 function exists(p) { return fs.existsSync(path.join(ROOT, p)); }
 // 判据必须先剥注释：解释「为什么禁这些词」的说明文字自己会把自己判红
 function strip(s) { return s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, ''); }
-// data/incense.js 里 compliance.mustNot 是**禁词清单本体**，扫描前必须先摘掉，
-//   否则「把禁词写进清单」会被判成「用了禁词」（与 §59.10 / §64 同一族的误报）。
+// data/incense.js 里 compliance.mustNot / selling.mustNotSay / brand.rule 都是**禁词清单本体**，
+//   扫描前必须先摘掉，否则「把禁词写进清单」会被判成「用了禁词」
+//   （与 §59.10 / §64 同一族的误报；假红比假绿更伤门禁的可信度）。
 function stripCompliance(s) {
-  var i = s.indexOf('compliance: {');
-  if (i < 0) return s;
-  var j = s.indexOf('\n  }', i);
-  return j < 0 ? s : s.slice(0, i) + s.slice(j);
+  ['compliance: {', 'selling: {', 'brand: {'].forEach(function (key) {
+    var i = s.indexOf(key);
+    if (i < 0) return;
+    var j = s.indexOf('\n  }', i);
+    if (j >= 0) s = s.slice(0, i) + s.slice(j);
+  });
+  return s;
 }
 
-console.log('宗教商业化红线门禁（D121/D122 · 国宗发〔2017〕88 号）');
+console.log('宗教商业化红线门禁（D121/D122/D123 · 国宗发〔2017〕88 号）');
 
 // ---------- 1. 宗教商业化禁词 ----------
 console.log('[1. 禁词扫描（16 词 x 6 文件）]');
@@ -90,13 +104,14 @@ if (exists('data/incense.js')) {
   } else {
     var noSrc = [];
     [['origin', inc.origin], ['craft', inc.craft], ['people', inc.people],
-      ['compliance', inc.compliance]].forEach(function (n) {
+      ['compliance', inc.compliance],
+      ['standards', inc.standards], ['selling', inc.selling], ['brand', inc.brand]].forEach(function (n) {
       if (!(n[1] && n[1].source)) noSrc.push(n[0]);
     });
     ['honors', 'lineages', 'producers'].forEach(function (k) {
       (inc[k] || []).forEach(function (h, i) { if (!h.source) noSrc.push(k + '[' + i + ']'); });
     });
-    if (!noSrc.length) ok('藏香事实源逐块写出处（origin/craft/people/compliance + honors/lineages/producers）');
+    if (!noSrc.length) ok('藏香事实源逐块写出处（origin/craft/people/compliance/standards/selling/brand + honors/lineages/producers）');
     else err('藏香事实源缺出处：' + noSrc.join('、') + ' —— 不许无出处的藏香文案');
 
     // 出处必须是可查的：带查询日期
@@ -105,6 +120,9 @@ if (exists('data/incense.js')) {
     chk('origin', inc.origin && inc.origin.source);
     chk('craft', inc.craft && inc.craft.source);
     chk('people', inc.people && inc.people.source);
+    chk('standards', inc.standards && inc.standards.source);
+    chk('selling', inc.selling && inc.selling.source);
+    chk('brand', inc.brand && inc.brand.source);
     ['honors', 'lineages', 'producers'].forEach(function (k) {
       (inc[k] || []).forEach(function (h, i) { chk(k + '[' + i + ']', h.source); });
     });
@@ -121,8 +139,46 @@ if (exists('data/incense.js')) {
   err('缺 data/incense.js —— 藏香事实源必须先有，文案才不是编的');
 }
 
-// ---------- 5. 反例自测 ----------
-console.log('[5. 反例自测]');
+// ---------- 5. 销售主体与命名 ----------
+// D123（2026-10-16）：用户说「我们自己有渠道 / 用自己的名字帮寺庙出售藏香」。
+//   渠道不用愁是好事；但「**帮寺庙出售**」这五个字必须落成「**向藏香厂采购后以我方名义销售**」——
+//   差别不在措辞，在**合同主体**与**钱的方向**。这一节就是把差别做成判据。
+console.log('[5. 销售主体与命名]');
+var ALLOWED_MODELS = { buy_resell: '买断后自销', consignment: '代销（按结算价付货款）' };
+// 第 2 条「严禁…公司企业冠以佛教、道教名称」
+var NAME_BAN = ['寺', '庙', '佛', '僧', '菩萨', '活佛', '加持', '开光', '功德',
+  '香火', '法门', '般若', '菩提', '舍利', '经幡', '转经'];
+if (!inc) {
+  err('销售主体与命名无法校验：data/incense.js 读不出来');
+} else {
+  var sl = inc.selling || {};
+  // ① 钱的方向：只能买断自销 / 代销；分成、捐赠、替场所抽佣一律不可
+  if (ALLOWED_MODELS[sl.model])
+    ok('销售模式合规：' + ALLOWED_MODELS[sl.model] + '（资金只有一条：我们 → 供方货款）');
+  else err('销售模式违规：' + (sl.model || '未填写')
+    + ' —— 只能是 buy_resell（买断自销）或 consignment（代销）；'
+    + '分成 / 捐赠 / 替场所抽佣 分别踩 88 号文第 1、2、5 条');
+  // ② 合同相对方必须是工商注册的经营实体，不是宗教活动场所本身
+  if (/企业|公司|香厂|经营实体/.test(sl.contractWith || ''))
+    ok('合同相对方是工商注册的经营实体（不是宗教活动场所本身）');
+  else err('合同相对方写的是「' + (sl.contractWith || '未填写')
+    + '」—— 必须是工商注册的经营实体；'
+    + '（第 7 条：场所兴办的经济实体独立核算、照章纳税 → 向它采购是正当商事行为）');
+  // ③ 品牌 / 店铺 / 公司名不得冠以佛教、道教名称
+  var bname = (inc.brand && inc.brand.name) || '';
+  var bad = NAME_BAN.filter(function (w) { return bname.indexOf(w) > -1; });
+  if (bname && !bad.length)
+    ok('品牌/店铺名「' + bname + '」不含宗教词（第 2 条：企业不得冠以佛教、道教名称）');
+  else err('品牌/店铺名违规：' + (bname || '未填写')
+    + (bad.length ? '（含 ' + bad.join('、') + '）' : ''));
+  // ④ 产品按国标定位：写得出标准号，才不会被按「宗教用品」定性
+  if (/GB\/T 43430-2023/.test((inc.standards && inc.standards.national) || ''))
+    ok('产品按 GB/T 43430-2023《藏香》国家标准进销（ICS 13.120 家用品安全）—— 这是定性证据');
+  else err('缺所执行的国家标准号 —— 没有标准号，产品就会被按「佛教道教衍生商品」口径定性');
+}
+
+// ---------- 6. 反例自测 ----------
+console.log('[6. 反例自测]');
 var fake = '本品为色拉寺出品，高僧加持，可安神助眠';
 var fakeHit = BANNED.filter(function (w) { return fake.indexOf(w) > -1; });
 if (fakeHit.length) ok('守卫自测：「色拉寺出品 / 高僧加持」必落网（命中 ' + fakeHit.join('、') + '）');
@@ -133,11 +189,19 @@ else err('反例自测失效：宗教背书句式没被拦下');
 var official = '藏香制作技艺（敏珠林寺藏香制作技艺）· 国家级非物质文化遗产 VIII-141';
 if (!BACKING.test(official)) ok('守卫自测：官方非遗项目名不被误判（假红才是门禁的死因）');
 else err('反例自测失效：官方非遗项目名「敏珠林寺藏香制作技艺」被误判成宗教背书');
+// 反向自测：合规的销售表述**不得**被误判（否则没人敢写「采购自…」，只好绕回模糊措辞）
+var legal = '本店向敏珠林寺藏香厂采购后销售，产品执行 GB/T 43430-2023《藏香》国家标准。';
+var legalHit = BANNED.filter(function (w) { return legal.indexOf(w) > -1; });
+if (!legalHit.length && !BACKING.test(legal))
+  ok('守卫自测：合规销售表述不被误判（「向…藏香厂采购后销售」必须写得出来）');
+else err('反例自测失效：合规表述被误判（命中 ' + (legalHit.join('、') || BACKING.exec(legal)) + '）');
 
-// ---------- 6. 方案留档 ----------
-console.log('[6. 方案留档]');
+// ---------- 7. 方案留档 ----------
+console.log('[7. 方案留档]');
 if (exists('docs/incense-monetization.md')) ok('藏香变现方案已留档（docs/incense-monetization.md）');
 else err('缺 docs/incense-monetization.md —— 卖点/价格锚点/合规边界必须可查');
+if (exists('docs/incense-sourcing-checklist.md')) ok('采购与上架清单已留档（docs/incense-sourcing-checklist.md）');
+else err('缺 docs/incense-sourcing-checklist.md —— 有渠道之后，结构/资质/类目/命名必须可查');
 
 console.log('');
 console.log('通过: ' + pass + ' | 失败: ' + fail);
