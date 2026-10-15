@@ -261,6 +261,24 @@ page,
   color: #6B6455;
 }
 
+/* D113e 收礼提示：未读才高亮（#8A6A12 已过对比度门禁），已读过的只安静报数 */
+.pc-inbox {
+  margin-top: 12rpx;
+  align-self: flex-start;
+  padding: 6rpx 16rpx;
+  border-radius: 999rpx;
+  font-size: 26rpx;
+  color: #6E6759;
+  background: rgba(107, 100, 85, 0.1);
+}
+
+.pc-inbox.new {
+  color: #8A6A12;
+  font-weight: 700;
+  background: #FFF3D0;
+  box-shadow: 0 0 0 2rpx rgba(183, 149, 11, 0.35);
+}
+
 .pc-right {
   text-align: center;
   flex-shrink: 0;

@@ -18,6 +18,9 @@ var privacy = require('../../utils/privacy');
 // D54 性别 + 藏族名字：三档取值与选名算法（纯函数，与护照页同一份）
 var tibetanName = require('../../utils/tibetan-name.js');
 var learningData = require('../../data/learning');   // D96 学习体系（150 关）
+// D113 送礼入口（B 端）/ D113e 收礼提示（A 端）：入账唯一实现，与护照页同一份
+var giftInbox = require('../../utils/gift-inbox');
+var syncModule = require('../../utils/sync');
 var monasteryData = require('../../data/monasteries');   // D100 西藏寺院导览
 
 // 视口高度：优先用 wx.getWindowInfo（基础库 2.20.1+），旧设备回退 getSystemInfoSync，
@@ -143,7 +146,10 @@ Page({
     ladderIn: false,
     // D113 从朋友分享卡进来的收礼人匿名 uid（为空 = 不是从卡片来的 → 不显示送祝福入口）
     giftUid: '',
-    giftShow: false
+    giftShow: false,
+    // D113e 收礼提示（A 端本人）：朋友送来的心意，不该等用户自己翻护照才发现
+    inboxTotal: 0,     // 累计收到的份数（本地口径，断网也看得到）
+    inboxUnread: 0     // 其中还没在收礼箱里露过面的
   },
 
   // D101：卸载后关掉存活标记，让在飞的定时器回调自己退出
@@ -163,6 +169,24 @@ Page({
     // D86：开启分享菜单（含朋友圈入口）
     if (wx.showShareMenu) wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] });
     this.refresh();
+    this.pullInbox();
+  },
+
+  // D113e 静默拉一次收礼箱：让「别人送来的心意」在首页就被看见。
+  //   · 节流 60s —— 每次 onShow（通关返回、切后台回来）都请求是没必要的噪声；
+  //   · 失败**不打扰** —— 首页不是收礼箱，拉不到就沿用本地那份，不弹错；
+  //   · 入账走 utils/gift-inbox.js（与文化护照同一份实现），点灯不会算两遍。
+  pullInbox: function () {
+    var that = this;
+    if (!syncModule.isReady()) return;
+    var now = Date.now();
+    if (this._inboxAt && now - this._inboxAt < 60000) return;
+    this._inboxAt = now;
+    syncModule.inbox().then(function (r) {
+      if (!r || !r.ok) return;
+      var res = giftInbox.absorb(r.gifts || []);
+      that.setData({ inboxTotal: res.total, inboxUnread: res.unread });
+    });
   },
 
   refresh: function () {
@@ -233,6 +257,8 @@ Page({
     // 灯火跳窗会盖住天梯 —— 若今天首次打开，入场动效推迟到关闭跳窗之后再播
     var lampFirst = lamp.isFirstOpenToday(storage.getLampDay(), today);
     var intro = firstBoot && !lampFirst;
+    // D113e 收礼箱本地口径（离线可见）：服务端那份只是「补新的」，不是唯一来源
+    var box = giftInbox.localState();
 
     // 灯油 / 积分 / 唐卡碎片
     var today_daily = collect.pickDaily(dailyData.greetings, collect.dayNumber(today));
@@ -265,7 +291,11 @@ Page({
       // D113：从朋友的分享卡进来（?to=uid）→ 顶部出现「给 TA 送一份祝福」。
       //   入口**只挂在分享上**：没有关系链，也就没有别的合法途径知道该送给谁。
       giftUid: this._to || '',
-      giftShow: !!this._to && this._to !== storage.ensureUid()
+      giftShow: !!this._to && this._to !== storage.ensureUid(),
+      // D113e「有人送了我心意」：先给**本地**口径（断网也看得到），
+      //   再在 pullInbox 里用服务端补新的。未读 = 收到但还没在收礼箱里露过面。
+      inboxTotal: box.total,
+      inboxUnread: box.unread
     });
 
     // 万家灯火：每天首次打开时，先与远方的灯火同明一次（纯本地判断）

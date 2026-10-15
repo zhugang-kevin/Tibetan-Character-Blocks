@@ -129,7 +129,9 @@
       <!-- 底栏 -->
       <view class="gf-bar">
         <button wx:if="{{state === 'failed'}}" class="gf-btn ghost" bindtap="retry">再试一次</button>
-        <button wx:elif="{{state === 'done' || state === 'pending'}}" class="gf-btn" bindtap="goHome">返回首页</button>
+        <!-- D113e：送出之后「回首页」不是唯一出路 —— 返回首页会丢掉 ?to= 参数，
+             想再送一份就得重新从朋友的卡片进来。这里补一个原地再送的出口。 -->
+        <button wx:elif="{{state === 'done' || state === 'pending'}}" class="gf-btn" bindtap="sendAnother">再送一份</button>
         <button wx:else class="gf-btn" disabled="{{!ready}}" bindtap="submit">
           {{state === 'paying' || state === 'confirming' ? '送出中…' : (pickedPrice ? ('送出 · ' + pickedPrice) : '送出')}}
         </button>

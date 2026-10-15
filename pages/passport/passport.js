@@ -14,6 +14,8 @@ var tracker = require('../../utils/tracker');
 var tibetanName = require('../../utils/tibetan-name.js');
 // D113 礼物展示口径（与送礼页同一份，避免两处文案漂移）
 var giftView = require('../../utils/gift-view');
+// D113e 入账唯一实现（首页也用它，别在页面里再抄一遍发奖逻辑）
+var giftInbox = require('../../utils/gift-inbox');
 var blessingsData = require('../../data/blessings');
 
 // 印记定义（v0 仅拉萨；后续扩展七地市）
@@ -110,20 +112,11 @@ Page({
         that.setData({ inboxTip: syncModule.userMessage(r) });
         return;
       }
-      var list = r.gifts || [];
-      // ① 按 id 去重入账（只返回这次真正新增的）—— 重复拉取 / 重连都不会重复发奖
-      // ② 每盏酥油灯真的点亮一盏（+1），哈达 / 祝福卡 / 名字卡留在收礼箱里常驻
-      var fresh = storage.saveReceivedGifts(list);
-      var lamps = 0;
-      var khatas = 0;
-      fresh.forEach(function (g) {
-        if (g.productId === 'tib_lamp_1') lamps++;
-        if (g.productId === 'tib_khata_6') khatas++;
-      });
-      for (var i = 0; i < lamps; i++) storage.addLamp();
-      for (var k = 0; k < khatas; k++) storage.addKhata();
-      that.renderInbox(fresh.length);
-      if (fresh.length) tracker.track('gift_received');
+      // 入账走**唯一实现** utils/gift-inbox.js（去重 + 点灯 + 献哈达 + 落本地），
+      // 首页与文化护照共用同一份 —— 将来改发奖规则只改一处，不会两边漂移。
+      var res = giftInbox.absorb(r.gifts || []);
+      that.renderInbox(res.fresh.length);
+      if (res.fresh.length) tracker.track('gift_received');
     });
   },
   // 用**本地**已入账的礼物渲染收礼箱（离线可见）；newCount = 本次新收到的份数

@@ -115,6 +115,10 @@
         最近获得：第 {{lastCert.stage}} 阶段 · {{lastCert.tierLabel}}
       </view>
       <view wx:else class="pc-sub">完成第 10 课，获得第一张藏文成长证书</view>
+      <!-- D113e 朋友送来的心意：不点开护照也能知道有人想着你。
+           未读用红点提示；没有未读但有收到的，只安静地报个数（不反复提醒）。 -->
+      <view wx:if="{{inboxUnread}}" class="pc-inbox new">🎁 收到 {{inboxUnread}} 份新祝福</view>
+      <view wx:elif="{{inboxTotal}}" class="pc-inbox">🎁 朋友送来的心意 · {{inboxTotal}} 份</view>
     </view>
     <view class="pc-right">
       <view class="pc-count">{{certCount}}<text class="pc-total">/{{certTotal}}</text></view>

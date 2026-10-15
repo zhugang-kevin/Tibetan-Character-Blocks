@@ -246,6 +246,24 @@ Page({
   retry: function () {
     this.setData({ state: 'idle', errText: '', orderNo: '' });
   },
+  // 再送一份（D113e）：回到选礼物的那一步，收礼人 / 署名保留。
+  //   为什么要有它：原来送出后只有「返回首页」，而 goHome 是 redirectTo 且不带 ?to=，
+  //   于是「想再送一份」必须重新从朋友的卡片进来 —— 出口被自己堵死了。
+  //   ⚠️ 只清这一轮的选择，不清流水：state 回 idle 后 submit 会走 payment.makeOutTradeNo
+  //   拿新单号，与上一单互不干扰（服务端按 out_trade_no 主键幂等）。
+  sendAnother: function () {
+    if (this.confirmTimer) { clearTimeout(this.confirmTimer); this.confirmTimer = null; }
+    this.setData({
+      state: 'idle',
+      picked: '',
+      pickedName: '',
+      pickedPrice: '',
+      blessingId: '',
+      namePicked: null,
+      errText: '',
+      orderNo: ''
+    });
+  },
   goHome: function () {
     wx.redirectTo({ url: '/pages/index/index' });
   },

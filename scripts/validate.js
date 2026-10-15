@@ -7126,6 +7126,8 @@ section('64. D113 朋友互赞（打赏链路 · 三条红线）');
   const idxJs = read('pages/index/index.js');
   const idxWxml = read('pages/index/index.wxml');
   const stJs = read('utils/storage.js');
+  // D113e：收礼入账的唯一实现（首页与文化护照共用，不许在页面里各抄一遍）
+  const giJs = exists('utils/gift-inbox.js') ? read('utils/gift-inbox.js') : '';
   const syJs = read('utils/sync.js');
   const svIx = read('server/index.js');
   const svSt = read('server/store.js');
@@ -7287,9 +7289,18 @@ section('64. D113 朋友互赞（打赏链路 · 三条红线）');
   if (/have\[id\]/.test(stJs) && /fresh\.push/.test(stJs))
     ok('saveReceivedGifts 按 id 去重、只返回新增（重复拉取不会重复点灯）');
   else err('saveReceivedGifts 未去重 —— 每次进护照页都会重复 +1 盏');
-  if (/tib_lamp_1/.test(ppJs) && /addLamp/.test(ppJs))
-    ok('护照页真的入账：酥油灯 → addLamp（一盏就是一盏）');
-  else err('护照页没把酥油灯加成灯数 —— 只显示、不发货');
+  // D113e：入账实现从护照页收进 utils/gift-inbox.js（首页也要用，两处各写一遍必漂移）。
+  //   判据跟着升级为三条：① 唯一实现里真的按 productId 点灯；② 护照页真的调它；
+  //   ③ 护照页不再自己直调 saveReceivedGifts —— 否则等于抄了一份，改规则时只会改一处。
+  if (/tib_lamp_1/.test(giJs) && /addLamp\(\)/.test(giJs))
+    ok('入账唯一实现真的点灯：gift-inbox 按 tib_lamp_1 → addLamp（一盏就是一盏）');
+  else err('入账实现没把酥油灯加成灯数 —— 只显示、不发货');
+  if (/giftInbox\.absorb\(/.test(ppJs))
+    ok('护照页走唯一入账实现 giftInbox.absorb（不与首页各写一遍发奖）');
+  else err('护照页没调 giftInbox.absorb —— 发奖逻辑散在页面里，将来改规则必漂移');
+  if (!/storage\.saveReceivedGifts\(/.test(ppJs))
+    ok('护照页不再自己直写入账（入账只有一处，不会两边漂移）');
+  else err('护照页仍在页面里直调 saveReceivedGifts —— 与 gift-inbox 双份实现');
   if (/renderInbox\(\)/.test(ppJs) && /getReceivedGifts/.test(ppJs))
     ok('收礼箱先渲染**本地已入账**的（断网也看得到），再联网补新的');
   else err('收礼箱只认服务端 —— 断网时「收到的祝福」整块空白');
@@ -7444,9 +7455,9 @@ section('64. D113 朋友互赞（打赏链路 · 三条红线）');
     if (/function addKhata/.test(stJs) && /function getKhatas/.test(stJs))
       ok('storage 提供哈达入账：addKhata / getKhatas');
     else err('缺哈达入账函数 —— 「献一条哈达」无处分账');
-    if (/tib_khata_6/.test(ppJs) && /addKhata/.test(ppJs))
-      ok('护照页真的入账：哈达 → addKhata（一条就是一条）');
-    else err('护照页没把哈达加成条数 —— 只显示、不发货');
+    if (/tib_khata_6/.test(giJs) && /addKhata\(\)/.test(giJs))
+      ok('入账唯一实现真的献哈达：gift-inbox 按 tib_khata_6 → addKhata（一条就是一条）');
+    else err('入账实现没把哈达加成条数 —— 只显示、不发货');
     if (/khataCount/.test(ppWxml) && /class="khata"/.test(ppWxml))
       ok('收礼箱里的哈达有**形态**（.khata 画一条哈达，不只是图标+文字）');
     else err('哈达没有形态 —— 收到 ¥6 的心意却只剩一行文字');
@@ -7472,6 +7483,41 @@ section('64. D113 朋友互赞（打赏链路 · 三条红线）');
     if (/id="gf-name-sec"/.test(tpl) && /gf-make/.test(tpl) && /\.gf-name-card\s*\{/.test(tpl))
       ok('体验版有藏族名字卡区块（四份心意都点得开，不是空的）');
     else err('体验版缺名字卡区块 —— 「为 TA 取一个藏族名字」点开后什么都没有');
+  }
+
+  // 64.16 收礼要有「回响」：首页看得到有人送了心意（D113e）
+  //   真实事故：礼物由服务端按匿名 uid 投递，而首页**只在 B 端（?to=）时**才出现送礼入口。
+  //   于是 A 端（被送的人）打开首页时，屏幕上没有任何一处告诉他「有人想着你」——
+  //   打赏链路的最后一环断在「收礼人不知道」。不翻文化护照就永远看不到。
+  {
+    if (/inboxUnread/.test(idxWxml) && /inboxUnread:/.test(idxJs))
+      ok('首页有收礼提示：未读份数在数据与模板两处都接上了');
+    else err('首页没有收礼提示 —— 收礼人不翻护照就永远不知道有人送了心意');
+    if (/function unreadGiftCount/.test(stJs))
+      ok('未读数走 storage.unreadGiftCount（本地口径，断网也算得出来）');
+    else err('未读数没有本地口径 —— 断网/未开通云端时提示恒为 0，等于没有');
+    if (/unread:/.test(giJs) && /giftInbox\.localState\(\)/.test(idxJs))
+      ok('首页首屏先用本地口径渲染（离线可见），再联网补新的');
+    else err('首页收礼提示只认服务端 —— 断网时这块空白，与「离线可见」口径不符');
+    if (/giftInbox\.absorb\(/.test(idxJs) && !/storage\.saveReceivedGifts\(/.test(idxJs))
+      ok('首页入账同样走 giftInbox.absorb（与护照同一份，不会各算一遍灯）');
+    else err('首页自己写了一套入账 —— 与护照/gift-inbox 双份实现，点灯会算两遍');
+    if (/this\._inboxAt/.test(idxJs) && /60000/.test(idxJs))
+      ok('首页静默拉取有 60s 节流（通关返回不会每次都打一次接口）');
+    else err('首页拉取无节流 —— 每次 onShow 都打接口，是没必要的请求噪声');
+    if (!/wx\.showToast/.test((idxJs.match(/pullInbox[\s\S]*?\n  \}/) || [''])[0]))
+      ok('首页拉取失败不弹错（首页不是收礼箱，拉不到就沿用本地那份）');
+    else err('首页拉取失败会弹错 —— 把网络噪声甩给用户，护照里才该报错');
+    if (/sendAnother/.test(giftJs) && /再送一份/.test(giftWxml))
+      ok('送礼页送出后有「再送一份」（返回首页会丢 ?to=，出口不该只有一条）');
+    else err('送出后只能返回首页 —— 想再送一份必须重新从朋友卡片进来');
+    // 反例自测：把「未读」从模板里拿掉，判据必须翻红
+    {
+      const broken = idxWxml.replace(/inboxUnread/g, '');
+      if (broken.indexOf('inboxUnread') === -1 && /inboxUnread/.test(idxWxml))
+        ok('守卫自测：模板去掉未读提示后判据翻红（反例落网，不是摆设）');
+      else err('§64.16 自测失效');
+    }
   }
 }
 

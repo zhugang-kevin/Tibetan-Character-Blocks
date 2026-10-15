@@ -651,6 +651,22 @@ function saveReceivedGifts(list) {
   return fresh;
 }
 
+/**
+ * D113e 未读份数：收到、但还没在收礼箱里露过面的那些。
+ * 为什么要有它：礼物是**别人送的**，本人不主动翻护照就永远不知道 ——
+ *   首页要能在打开的第一眼就说出「有新的心意」，而不是等用户自己找。
+ * 口径（与 renderInbox 的 isNew 完全一致）：id 不在 seenGifts 里 = 未读。
+ * 纯计算，不新增持久化字段 —— 于是不会踩「白名单漏列被 save 写丢」那一族坑。
+ */
+function unreadGiftCount() {
+  var seen = getSeenGifts();
+  var set = {};
+  seen.forEach(function (id) { set[String(id)] = 1; });
+  return getReceivedGifts().filter(function (g) {
+    return !set[String(g && g.id)];
+  }).length;
+}
+
 
 // D96 学习线（150 关）进度。
 function getLearnDone() {
@@ -761,6 +777,7 @@ module.exports = {
   addKhata: addKhata,
   getReceivedGifts: getReceivedGifts,
   saveReceivedGifts: saveReceivedGifts,
+  unreadGiftCount: unreadGiftCount,
   MAX_LEVEL: MAX_LEVEL,
   getProgress: getProgress,
   completeLevel: completeLevel,
