@@ -45,6 +45,9 @@
         <text class="section-count">{{inboxBusy ? '读取中' : (giftCount ? giftCount + ' 份' : '')}}</text>
       </view>
       <view class="section-sub">朋友送来的心意会收在这里。分享你的卡片，祝福才会有人带过来。</view>
+      <!-- D113 入账：酥油灯真的点亮一盏。这里只报**自己**的盏数，
+           不做对比、不做排名（D6 无排行榜 / D89 红线二），措辞是「为你点亮」而非「谁最多」 -->
+      <view wx:if="{{lampCount}}" class="lamp-line">🪔 朋友为你点亮的酥油灯 · {{lampCount}} 盏</view>
       <view wx:if="{{inboxTip}}" class="inbox-tip">{{inboxTip}}</view>
       <view wx:if="{{gifts.length}}" class="gift-list">
         <view wx:for="{{gifts}}" wx:key="id" class="gift-row {{item.isNew ? 'new' : ''}}">

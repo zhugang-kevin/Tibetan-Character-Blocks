@@ -45,6 +45,19 @@ FEATURES = [
     ('D96 学习体系面板', 'pages/index/index.wxml', 'learn-row', 'learn-row'),
     ('D110 四层读音规则', 'data/learning.js', "rule: '", 'learn-rule'),
     ('D107 测试可控时钟', 'preview/template.html', 'function nowMs', 'function nowMs'),
+    # D113 朋友互赞：B 端送礼页在 H5 里是**真的镜像**（4 档心意 + 藏文祝福语都在），
+    #   只是「送出」按钮禁用并写明「体验版不接支付」—— 那是**能力边界**，不是遗漏。
+    ('D113 送礼页（B 端 4 档心意）', 'utils/payment.js', 'tib_lamp_1', 'gf-grid'),
+    ('D113 藏文祝福语选择', 'data/blessings.js', 'pendingNativeReview', 'gf-bless'),
+]
+
+# 按设计**不镜像**的功能（写在这里，是为了不让它混进「未覆盖」里假装成漏做）。
+# 判据：H5 体验版没有服务端、也没有微信登录态 —— 凡是**必须靠服务端投递**的功能，
+#   在 H5 里做一个永远为空的盒子，只会给人「功能已验证」的错觉（比不做更糟）。
+EXEMPTIONS = [
+    ('D113 A 端收礼箱 / 酥油灯入账',
+     '礼物由服务端按匿名 uid 投递（/gift/inbox），H5 无服务端也无 openid，'
+     '做了也永远为空 —— 故不镜像，能力边界已在体验版送礼页写明「不接支付」'),
 ]
 
 
@@ -75,6 +88,13 @@ def main():
             verdict = '— 仅 H5 有'
         print('  %-30s %-8s %-8s %s' % (name, '有' if in_mp else '无',
                                         '有' if in_h5 else '无', verdict))
+
+    if EXEMPTIONS:
+        print('')
+        print('  按设计不镜像（不是遗漏）：')
+        for name, why in EXEMPTIONS:
+            print('    · %s' % name)
+            print('      %s' % why)
 
     print('')
     print('=' * 76)

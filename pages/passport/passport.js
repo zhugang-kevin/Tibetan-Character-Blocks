@@ -48,6 +48,8 @@ Page({
     // D113 收到的祝福（A 端收礼箱）：进页面拉一次，不做后台轮询
     gifts: [],
     giftCount: 0,
+    // D113 入账：别人为你点亮的酥油灯盏数（只属于本人，不排名、不公示）
+    lampCount: 0,
     inboxBusy: false,
     inboxTip: '',
     // D54 我的资料：性别 + 藏族名字（可查看 / 可修改 / 可清除）
@@ -90,8 +92,11 @@ Page({
   //   于是「重复拉取 / 断线重连 / 回调重推」都不会重复计数。
   loadInbox: function () {
     var that = this;
+    // 先把**本地已入账**的渲染出来：断网 / 还没开通云端同步时，
+    // 「收到的祝福」照样看得到 —— 服务端那份只用来补新的，不是唯一来源。
+    this.renderInbox();
     if (!syncModule.isReady()) {
-      this.setData({ inboxTip: '收礼箱要等云端同步开通后才能用' });
+      this.setData({ inboxTip: this.data.giftCount ? '' : '收礼箱要等云端同步开通后才能收到新的' });
       return;
     }
     if (this.data.inboxBusy) return;
@@ -103,21 +108,45 @@ Page({
         return;
       }
       var list = r.gifts || [];
-      // 先按 id 去重入账，拿到「这次真的新收到的」——只有这些才算新通知
-      var fresh = storage.markGiftsSeen(list.map(function (g) { return g.id; }));
-      var freshSet = {};
-      fresh.forEach(function (id) { freshSet[id] = 1; });
-      that.setData({
-        gifts: list.map(function (g) { return that.renderGift(g, !!freshSet[g.id]); }),
-        giftCount: list.length,
-        inboxTip: fresh.length ? ('新收到 ' + fresh.length + ' 份祝福')
-          : (list.length ? '' : '还没有人送你祝福 —— 把你的卡片分享给朋友吧')
+      // ① 按 id 去重入账（只返回这次真正新增的）—— 重复拉取 / 重连都不会重复发奖
+      // ② 每盏酥油灯真的点亮一盏（+1），哈达 / 祝福卡 / 名字卡留在收礼箱里常驻
+      var fresh = storage.saveReceivedGifts(list);
+      var lamps = 0;
+      fresh.forEach(function (g) {
+        if (g.productId === 'tib_lamp_1') lamps++;
       });
+      for (var i = 0; i < lamps; i++) storage.addLamp();
+      that.renderInbox(fresh.length);
       if (fresh.length) tracker.track('gift_received');
     });
   },
+  // 用**本地**已入账的礼物渲染收礼箱（离线可见）；newCount = 本次新收到的份数
+  renderInbox: function (newCount) {
+    var that = this;
+    var mine = storage.getReceivedGifts().slice().sort(function (a, b) {
+      return (b.createdAt || 0) - (a.createdAt || 0);
+    });
+    var seen = storage.getSeenGifts();
+    var seenSet = {};
+    seen.forEach(function (id) { seenSet[String(id)] = 1; });
+    // 「新」只标**这一轮**还没看过的：标完就记为已看，下次进来不再闪红点
+    var freshIds = [];
+    this.setData({
+      gifts: mine.map(function (g) {
+        var id = String(g.id || '');
+        var isNew = !seenSet[id];
+        if (isNew) freshIds.push(id);
+        return that.renderGiftFrom({ id: g.id, productId: g.productId, extra: g.extra || {}, isNew: isNew });
+      }),
+      giftCount: mine.length,
+      lampCount: storage.getLamps(),
+      inboxTip: newCount ? ('新收到 ' + newCount + ' 份祝福')
+        : (mine.length ? '' : '还没有人送你祝福 —— 把你的卡片分享给朋友吧')
+    });
+    if (freshIds.length) storage.markGiftsSeen(freshIds);
+  },
   // 一件礼物 → 展示模型（文案口径全部来自 utils/gift-view.js 与 data/blessings.js）
-  renderGift: function (g, isNew) {
+  renderGiftFrom: function (g) {
     var v = giftView.viewOf(g.productId);
     var extra = g.extra || {};
     var blessing = null;
@@ -133,7 +162,7 @@ Page({
       id: g.id,
       icon: v.icon,
       name: v.name,
-      isNew: isNew,
+      isNew: !!g.isNew,
       blessing: blessing,
       tibetanName: extra.tibetanName || '',
       tibetanMean: extra.tibetanMean || '',
@@ -205,7 +234,8 @@ Page({
       tibetanName: nm.name,
       tibetanNameMean: nm.mean,
       // D113 收到的祝福（列表由 loadInbox 单独填，避免每次 refresh 把已读状态冲掉）
-      giftCount: storage.getSeenGifts().length
+      giftCount: storage.getReceivedGifts().length,
+      lampCount: storage.getLamps()
     });
   },
 

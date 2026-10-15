@@ -124,7 +124,12 @@ function getProgress() {
     //   下一次 ensureUid 又生成一个新 uid = 换身份（旧分享卡片全部找不到你）。
     uid: (p && p.uid) || '',
     // D113 已收到的礼物 id（按 id 去重，防止同步/重连时重复入账）
-    seenGifts: (p && p.seenGifts) || []
+    seenGifts: (p && p.seenGifts) || [],
+    // D113 A 端入账：① 别人为你点亮的酥油灯盏数 ② 收到的礼物本体（离线也能看到）。
+    //   ⚠️ 两个都必须进白名单 —— getProgress 是显式挑字段的，漏列 = save(p) 静默写丢
+    //   （D101 waterDay、D111 learnDone 都是这么漏的，各被测试抓出一次）。
+    lamps: (p && p.lamps) || 0,
+    receivedGifts: (p && p.receivedGifts) || []
   };
 }
 
@@ -582,6 +587,52 @@ function markGiftsSeen(ids) {
   return fresh;
 }
 
+// ---- D113 A 端入账：把「收到的心意」真正变成自己资产 ----
+// 为什么还要本地存一份：服务端只在**拉收礼箱**的那一刻给你列表，
+//   而「收到的祝福」是要**常驻**在护照里的（断网、换手机前也要看得到）。
+//   所以首次拉到就落本地，之后**离线也能渲染**，服务端那份只用来补新的。
+// 灯火：酥油灯礼物的入账口。计数只属于**本人**，既不与人比、也不公示
+//   （D6 没有排行榜，D89 红线二 —— 这里是「我有几盏」，不是「谁最多」）。
+function getLamps() {
+  var n = getProgress().lamps;
+  return (typeof n === 'number' && isFinite(n) && n >= 0) ? Math.floor(n) : 0;
+}
+/** 点亮一盏（+1）。返回点完之后的盏数。 */
+function addLamp() {
+  var p = getProgress();
+  p.lamps = getLamps() + 1;
+  save(p);
+  return p.lamps;
+}
+function getReceivedGifts() {
+  var v = getProgress().receivedGifts;
+  return Array.isArray(v) ? v : [];
+}
+/**
+ * 合并收礼箱到本地（按 id 去重），返回**这次真正新增**的那些。
+ * 只返回新增的意义：调用方据此发奖（点灯 / 提示），做到「一份礼物只入一次账」。
+ */
+function saveReceivedGifts(list) {
+  var fresh = [];
+  if (!list || !list.length) return fresh;
+  var p = getProgress();
+  var mine = Array.isArray(p.receivedGifts) ? p.receivedGifts : [];
+  var have = {};
+  mine.forEach(function (g) { have[String(g && g.id)] = 1; });
+  list.forEach(function (g) {
+    var id = String((g && g.id) || '');
+    if (!id || have[id]) return;
+    mine.push(g);
+    have[id] = 1;
+    fresh.push(g);
+  });
+  if (fresh.length) {
+    p.receivedGifts = mine;
+    save(p);
+  }
+  return fresh;
+}
+
 
 // D96 学习线（150 关）进度。
 function getLearnDone() {
@@ -686,6 +737,10 @@ module.exports = {
   getUid: getUid,
   getSeenGifts: getSeenGifts,
   markGiftsSeen: markGiftsSeen,
+  getLamps: getLamps,
+  addLamp: addLamp,
+  getReceivedGifts: getReceivedGifts,
+  saveReceivedGifts: saveReceivedGifts,
   MAX_LEVEL: MAX_LEVEL,
   getProgress: getProgress,
   completeLevel: completeLevel,
