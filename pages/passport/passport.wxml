@@ -48,11 +48,21 @@
       <!-- D113 入账：酥油灯真的点亮一盏。这里只报**自己**的盏数，
            不做对比、不做排名（D6 无排行榜 / D89 红线二），措辞是「为你点亮」而非「谁最多」 -->
       <view wx:if="{{lampCount}}" class="lamp-line">🪔 朋友为你点亮的酥油灯 · {{lampCount}} 盏</view>
+      <view wx:if="{{khataCount}}" class="lamp-line">🤍 朋友献给您的哈达 · {{khataCount}} 条</view>
       <view wx:if="{{inboxTip}}" class="inbox-tip">{{inboxTip}}</view>
       <view wx:if="{{gifts.length}}" class="gift-list">
         <view wx:for="{{gifts}}" wx:key="id" class="gift-row {{item.isNew ? 'new' : ''}}">
           <view class="gift-ico">{{item.icon}}</view>
           <view class="gift-main">
+            <!-- D113 完善：哈达的形态 —— 一条挂在胸前的哈达（两端收口、中间垂幅），
+                 纯 CSS 画出来，不新增图片资产（主包 2MB 硬上限）。 -->
+            <view wx:if="{{item.isKhata}}" class="khata" aria-label="哈达">
+              <view class="kh-scarf">
+                <view class="kh-end left"></view>
+                <view class="kh-mid"></view>
+                <view class="kh-end right"></view>
+              </view>
+            </view>
             <view class="gift-name">{{item.name}}</view>
             <view class="gift-from">来自 {{item.fromName}}<text wx:if="{{item.isNew}}" class="gift-new"> · 新</text></view>
             <view wx:if="{{item.blessing}}" class="gift-bo tibetan">{{item.blessing.bo}}</view>

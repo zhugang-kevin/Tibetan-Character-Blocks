@@ -50,6 +50,8 @@ Page({
     giftCount: 0,
     // D113 入账：别人为你点亮的酥油灯盏数（只属于本人，不排名、不公示）
     lampCount: 0,
+    // D113 完善：献给您的哈达条数（同 lampCount 口径：只说「我有几条」）
+    khataCount: 0,
     inboxBusy: false,
     inboxTip: '',
     // D54 我的资料：性别 + 藏族名字（可查看 / 可修改 / 可清除）
@@ -113,10 +115,13 @@ Page({
       // ② 每盏酥油灯真的点亮一盏（+1），哈达 / 祝福卡 / 名字卡留在收礼箱里常驻
       var fresh = storage.saveReceivedGifts(list);
       var lamps = 0;
+      var khatas = 0;
       fresh.forEach(function (g) {
         if (g.productId === 'tib_lamp_1') lamps++;
+        if (g.productId === 'tib_khata_6') khatas++;
       });
       for (var i = 0; i < lamps; i++) storage.addLamp();
+      for (var k = 0; k < khatas; k++) storage.addKhata();
       that.renderInbox(fresh.length);
       if (fresh.length) tracker.track('gift_received');
     });
@@ -141,6 +146,7 @@ Page({
       }),
       giftCount: mine.length,
       lampCount: storage.getLamps(),
+      khataCount: storage.getKhatas(),
       inboxTip: newCount ? ('新收到 ' + newCount + ' 份祝福')
         : (mine.length ? '' : '还没有人送你祝福 —— 把你的卡片分享给朋友吧')
     });
@@ -164,6 +170,8 @@ Page({
       icon: v.icon,
       name: v.name,
       isNew: !!g.isNew,
+      // D113 完善：哈达要有**形态** —— 收到的是一条哈达，不该只剩一行文字
+      isKhata: g.productId === 'tib_khata_6',
       blessing: blessing,
       tibetanName: extra.tibetanName || '',
       tibetanBo: extra.tibetanBo || '',
@@ -238,7 +246,8 @@ Page({
       tibetanNameMean: nm.mean,
       // D113 收到的祝福（列表由 loadInbox 单独填，避免每次 refresh 把已读状态冲掉）
       giftCount: storage.getReceivedGifts().length,
-      lampCount: storage.getLamps()
+      lampCount: storage.getLamps(),
+      khataCount: storage.getKhatas()
     });
   },
 

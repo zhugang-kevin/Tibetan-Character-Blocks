@@ -471,9 +471,9 @@ page { max-width: 560px; margin-left: auto; margin-right: auto; }
 
 /* D94 进度云同步 */
 .cloud-row { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; padding: 8rpx 4rpx 4rpx; }
-.cloud-text { flex: 1; font-size: 24rpx; line-height: 1.5; color: #7A6A5A; }
+.cloud-text { flex: 1; font-size: 26rpx; line-height: 1.5; color: #7A6A5A; }
 .cloud-btn {
-  flex-shrink: 0; margin: 0; font-size: 24rpx; color: #FFF6DC;
+  flex-shrink: 0; margin: 0; font-size: 26rpx; color: #FFF6DC;
   background: linear-gradient(160deg, #C0392B, #A93226);
   border-radius: 999rpx; padding: 0 24rpx; line-height: 2.2;
 }
@@ -518,3 +518,33 @@ page { max-width: 560px; margin-left: auto; margin-right: auto; }
 .gift-new { color: #8A6A12; font-weight: 700; }
 .gift-bo { margin-top: 10rpx; font-size: 36rpx; color: #6E2B22; line-height: 1.5; }
 .gift-zh { margin-top: 6rpx; font-size: 26rpx; color: #8A6A12; }
+
+/* D113 完善：哈达的形态。
+   一条哈达 = 中间垂幅 + 两端收口的斜角。用 CSS 三角画收口，
+   **不新增图片资产**（主包 2MB 硬上限，语音与插图都在抢这块额度）。 */
+.khata { margin: 10rpx 0 14rpx; }
+.kh-scarf {
+  display: flex;
+  align-items: stretch;
+  height: 34rpx;
+  border-radius: 6rpx;
+  overflow: hidden;
+}
+.kh-mid {
+  flex: 1;
+  background: linear-gradient(180deg, #FFFFFF 0%, #F2F4F6 55%, #DDE3E8 100%);
+  box-shadow: inset 0 -6rpx 10rpx rgba(120, 130, 140, 0.18);
+}
+/* 两端收口：左右各一个直角三角形（藏式哈达两端是斜裁的） */
+.kh-end {
+  width: 22rpx;
+  background: #FFFFFF;
+}
+.kh-end.left {
+  clip-path: polygon(100% 0, 100% 100%, 22% 100%);
+  background: linear-gradient(180deg, #FFFFFF 0%, #E9EDF1 100%);
+}
+.kh-end.right {
+  clip-path: polygon(0 0, 0 100%, 78% 100%);
+  background: linear-gradient(180deg, #FFFFFF 0%, #E9EDF1 100%);
+}

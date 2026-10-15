@@ -30,19 +30,18 @@ RE_PX = re.compile(r'font-size:[ \t]*(\d+(?:\.\d+)?)px')
 
 
 def bump_rpx(m):
-    global n_rpx
+    # ⚠️ 这里**不再**自增计数。曾同时保留「闭包计数器」与「逐行比对」两套，
+    #    结果把同一个改动数了两遍（实测报「改动 28 处」而真相是 14 处）——
+    #    与 D66 记过的教训同一类：**报告工作量必须来自事实，不能来自自述**。
     v = float(m.group(1))
     if v < RPX_FLOOR:
-        n_rpx += 1
         return 'font-size: %drpx' % RPX_FLOOR
     return m.group(0)
 
 
 def bump_px(m):
-    global n_px
     v = float(m.group(1))
     if v < PX_FLOOR:
-        n_px += 1
         return 'font-size: %dpx' % PX_FLOOR
     return m.group(0)
 

@@ -1342,6 +1342,35 @@
 .gf-btn:disabled { opacity: .55; }
 .gf-home-btn { background: rgba(253, 246, 227, .1); border: 2px solid rgba(253, 246, 227, .35);
   color: rgba(253, 246, 227, .9); font-size: 14px; border-radius: 9px; padding: 10px 0; }
+
+/* D113 完善：藏族名字（¥9.9）区块 —— 与小程序 pages/gift 同构。
+   ⚠️ 改前这一整块在体验版里既没有 DOM 也没有 CSS，「四份心意」里有一份点开后是空的。 */
+.gf-input { width: 100%; box-sizing: border-box; background: rgba(253, 246, 227, .96);
+  border: 2px solid rgba(183, 149, 11, .45); border-radius: 8px; padding: 11px 12px;
+  font-size: 15px; color: #6E2B22; margin-top: 10px; }
+.gf-genders { display: flex; gap: 8px; margin-top: 10px; }
+.gf-gender { flex: 1; text-align: center; padding: 9px 0; border-radius: 8px;
+  background: rgba(253, 246, 227, .92); border: 2px solid rgba(183, 149, 11, .32);
+  font-size: 14px; color: #6E2B22; }
+.gf-gender.on { border-color: #B7950B; background: linear-gradient(160deg, #FFF6D8, #F7EBCB); font-weight: 700; }
+.gf-make-btn { margin-top: 12px; width: 100%; background: linear-gradient(160deg, #1E8449, #176B3C);
+  color: #FFF6D8; font-size: 15px; font-weight: 700; border-radius: 9px; padding: 11px 0; }
+.gf-name-card { margin-top: 14px; padding: 16px 14px; border-radius: 11px;
+  background: linear-gradient(160deg, #FFF6D8, #F7EBCB); border: 2px solid #B7950B; text-align: center; }
+.gf-name-bo { font-size: 22px; color: #6E2B22; line-height: 1.5; }
+.gf-name-big { margin-top: 6px; font-size: 26px; font-weight: 700; color: #6E2B22; }
+.gf-name-mean { margin-top: 6px; font-size: 14px; color: #8A6A12; }
+
+/* D113 完善：首页送祝福入口（与小程序 index.wxml/.wxss 同构）。
+   同样**只有带 ?to= 才出现** —— 入口只能挂在分享上。 */
+.gift-entry { display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px; margin-bottom: 12px; border-radius: 11px;
+  border: 2px solid #B7950B; background: linear-gradient(135deg, #FFF9E6 0%, #FDF3D8 100%);
+  box-shadow: 0 5px 13px rgba(183, 149, 11, .18); position: relative; z-index: 2; cursor: pointer; }
+.ge-left { flex: 1; min-width: 0; }
+.ge-title { font-size: 16px; font-weight: 700; color: #6E2B22; }
+.ge-sub { margin-top: 4px; font-size: 13px; color: #8A6A12; }
+.ge-arrow { flex-shrink: 0; margin-left: 12px; font-size: 22px; font-weight: 700; color: #C0392B; }
 </style>
 </head>
 <body>
@@ -1370,6 +1399,17 @@
     <div class="profile-row">
       <div class="profile-stamps" id="profile-stamps"></div>
       <div class="profile-combo" id="profile-combo">最高连续正确 ×0</div>
+    </div>
+
+    <!-- D113 送祝福入口（与小程序 index.wxml 同构）：**只有从朋友的分享卡进来
+         （URL 带 ?to= 匿名 uid）才出现**。体验版同样不接支付，但入口与形态要对得上 ——
+         否则「体验版有送礼页」就是一句空话（改前 showGift() 根本没有任何地方调用它）。 -->
+    <div class="gift-entry" id="gift-entry" style="display:none">
+      <div class="ge-left">
+        <div class="ge-title">朋友想和你一起认藏文</div>
+        <div class="ge-sub">也可以给 TA 送一份祝福 →</div>
+      </div>
+      <div class="ge-arrow">›</div>
     </div>
 
     <!-- 文化护照入口（总档案：12 张藏文成长证书 + 印章 + 收藏） -->
@@ -1641,6 +1681,20 @@
     <div class="gf-section" id="gf-bless-sec" style="display:none">
       <div class="gf-section-title">挑一句藏文</div>
       <div class="gf-bless" id="gf-bless"></div>
+    </div>
+
+    <!-- 藏族名字：按 TA 的名字取一个（¥9.9 专用）—— 与小程序 pages/gift 同构。
+         改前体验版缺这一整块，于是「四份心意」里有一份点开后什么都没有。 -->
+    <div class="gf-section" id="gf-name-sec" style="display:none">
+      <div class="gf-section-title">先写上 TA 的名字</div>
+      <input class="gf-input" id="gf-toname" maxlength="10" placeholder="TA 的名字" />
+      <div class="gf-genders" id="gf-genders"></div>
+      <button class="gf-make-btn" id="gf-make">为 TA 取一个名字</button>
+      <div class="gf-name-card" id="gf-namecard" style="display:none">
+        <div class="gf-name-bo tibetan" id="gf-namebo"></div>
+        <div class="gf-name-big" id="gf-namebig"></div>
+        <div class="gf-name-mean" id="gf-namemean"></div>
+      </div>
     </div>
 
     <div class="gf-notice">虚拟祝福一经送出不支持退款，送出前请确认心意</div>
@@ -3194,6 +3248,14 @@ const state = {
 
 const $ = function (id) { return document.getElementById(id); };
 
+/* ---------------- URL 参数（体验版用它模拟小程序场景值 / 分享卡参数）----------------
+   小程序是靠 onLoad(query) 拿到 ?to= 的；浏览器没有这个入口，只能自己解析 location.search。
+   只做最简单的 key=value 取用，不做完整解析 —— 本页用到的参数就两三个。 */
+function paramOf(key) {
+  const m = new RegExp('[?&]' + key + '=([^&#]*)').exec(location.search || '');
+  return m ? decodeURIComponent(m[1] || '') : '';
+}
+
 /* ---------------- 屏幕切换 ---------------- */
 /* ================= D113 送一份祝福（体验版镜像） =================
    与小程序 pages/gift 同构的部分：四份心意 / 挑一句藏文 / 收礼人 / 「不支持退款」提示。
@@ -3223,8 +3285,29 @@ function showGift(uid) {
   state.giftUid = String(uid || '');
   state.giftPicked = '';
   state.giftBlessing = '';
+  state.giftGender = '';
+  state.giftNameFor = '';
+  state.giftNamePicked = null;
   renderGift();
   showScreen('gift');
+}
+/* 藏族名字（¥9.9）：与小程序 tibetanName.pickFor + seedFromText 同一条确定性算法 ——
+   同名同性别永远同一个结果。取到的写法 bo 带出处（见 data/tibetan-names.js#boSrc）。 */
+function giftSeedFromText(text) {
+  let sum = 0;
+  const s = String(text || '');
+  for (let i = 0; i < s.length; i++) sum += s.charCodeAt(i);
+  return sum;
+}
+function giftMakeName() {
+  const nm = (state.giftNameFor || '').trim().slice(0, 10);
+  if (!nm) { alert('先写上 TA 的名字'); return; }
+  if (!state.giftGender) { alert('先选一个称呼'); return; }
+  const pool = namePoolOf(state.giftGender);
+  if (!pool.length) return;
+  const i = Math.floor(giftSeedFromText(nm)) % pool.length;
+  state.giftNamePicked = { name: pool[i].name, bo: pool[i].bo || '', mean: pool[i].mean };
+  renderGift();
 }
 function renderGift() {
   const uid = state.giftUid || '';
@@ -3262,6 +3345,43 @@ function renderGift() {
         renderGift();
       });
     });
+  }
+  // 藏族名字（¥9.9）：只在选中那一份时出现（与小程序同一条规则）
+  const nameSec = $('gf-name-sec');
+  const isName = state.giftPicked === 'tib_name_99';
+  nameSec.style.display = isName ? '' : 'none';
+  if (isName) {
+    const gEl = $('gf-genders');
+    if (gEl.getAttribute('data-wired') !== '1') {
+      gEl.innerHTML = GENDERS.map(function (g) {
+        return '<div class="gf-gender" data-key="' + g.key + '">' + g.label + '</div>';
+      }).join('');
+      gEl.querySelectorAll('[data-key]').forEach(function (el) {
+        el.addEventListener('click', function () {
+          state.giftGender = el.getAttribute('data-key');
+          state.giftNamePicked = null;
+          renderGift();
+        });
+      });
+      gEl.setAttribute('data-wired', '1');
+      const inp = $('gf-toname');
+      inp.addEventListener('input', function () {
+        state.giftNameFor = inp.value;
+        state.giftNamePicked = null;
+      });
+      $('gf-make').addEventListener('click', giftMakeName);
+    }
+    gEl.querySelectorAll('[data-key]').forEach(function (el) {
+      el.classList.toggle('on', el.getAttribute('data-key') === state.giftGender);
+    });
+    const picked = state.giftNamePicked;
+    $('gf-namecard').style.display = picked ? '' : 'none';
+    if (picked) {
+      $('gf-namebo').textContent = picked.bo || '';
+      $('gf-namebo').style.display = picked.bo ? '' : 'none';
+      $('gf-namebig').textContent = picked.name;
+      $('gf-namemean').textContent = picked.mean;
+    }
   }
   $('gf-submit').textContent = state.giftPicked
     ? ('送出 · ' + giftPriceText(goodsPrice(state.giftPicked)))
@@ -4004,6 +4124,21 @@ function renderHome() {
     stampsEl.innerHTML = '<div class="stamp-empty">还没有印记 · 完成第 1 课获得</div>';
   }
   $('profile-combo').textContent = '最高连续正确 ×' + p.bestCombo;
+
+  // D113 送祝福入口：与小程序同一条规则 —— **只有带 ?to= 才出现**（入口只挂在分享上）。
+  //   改之前 showGift() 在整个体验版里没有任何调用点，送礼页是**进不去**的死屏。
+  const ge = $('gift-entry');
+  if (ge) {
+    const toUid = paramOf('to');
+    const mine = p.uid || '';
+    if (toUid && toUid !== mine) {
+      ge.style.display = '';
+      ge.onclick = function () { showGift(toUid); };
+    } else {
+      ge.style.display = 'none';
+      ge.onclick = null;
+    }
+  }
 
   // 文化护照入口：证书数 + 当前阶段进度（形成「还差几关」的牵引）
   const slots = certList();

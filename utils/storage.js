@@ -129,6 +129,8 @@ function getProgress() {
     //   ⚠️ 两个都必须进白名单 —— getProgress 是显式挑字段的，漏列 = save(p) 静默写丢
     //   （D101 waterDay、D111 learnDone 都是这么漏的，各被测试抓出一次）。
     lamps: (p && p.lamps) || 0,
+    // D113 完善：献给你的哈达条数（与 lamps 同族：只属于本人，不排名、不公示）
+    khatas: (p && p.khatas) || 0,
     receivedGifts: (p && p.receivedGifts) || [],
     // D113b：藏族名字的**藏文写法**（与 tibetanName 一起落库、一起钉死）
     tibetanNameBo: (p && p.tibetanNameBo) || ''
@@ -609,6 +611,17 @@ function addLamp() {
   save(p);
   return p.lamps;
 }
+function getKhatas() {
+  var n = getProgress().khatas;
+  return (typeof n === 'number' && isFinite(n) && n >= 0) ? Math.floor(n) : 0;
+}
+/** 献上一条哈达（+1）。返回献完之后的条数。 */
+function addKhata() {
+  var p = getProgress();
+  p.khatas = getKhatas() + 1;
+  save(p);
+  return p.khatas;
+}
 function getReceivedGifts() {
   var v = getProgress().receivedGifts;
   return Array.isArray(v) ? v : [];
@@ -744,6 +757,8 @@ module.exports = {
   markGiftsSeen: markGiftsSeen,
   getLamps: getLamps,
   addLamp: addLamp,
+  getKhatas: getKhatas,
+  addKhata: addKhata,
   getReceivedGifts: getReceivedGifts,
   saveReceivedGifts: saveReceivedGifts,
   MAX_LEVEL: MAX_LEVEL,

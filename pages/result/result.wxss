@@ -399,17 +399,17 @@
 }
 .lp-head { display: flex; align-items: center; gap: 14rpx; }
 .lp-tag {
-  font-size: 22rpx; font-weight: 700; color: #FFFFFF;
+  font-size: 26rpx; font-weight: 700; color: #FFFFFF;
   background: #8A6A12; border-radius: 8rpx; padding: 4rpx 12rpx;
 }
 .lp-lv { font-size: 30rpx; font-weight: 700; color: #2C3E50; }
-.lp-goal { margin-top: 10rpx; font-size: 24rpx; color: #6E6759; line-height: 1.5; }
+.lp-goal { margin-top: 10rpx; font-size: 26rpx; color: #6E6759; line-height: 1.5; }
 .lp-bar {
   margin-top: 16rpx; height: 14rpx; border-radius: 7rpx;
   background: rgba(138, 106, 18, 0.16); overflow: hidden;
 }
 .lp-bar-in { height: 100%; border-radius: 7rpx; background: #8A6A12; }
-.lp-note { margin-top: 12rpx; font-size: 24rpx; color: #2C3E50; }
+.lp-note { margin-top: 12rpx; font-size: 26rpx; color: #2C3E50; }
 .lp-next { color: #8A6A12; font-weight: 600; }
 
 .result-acc.ok {
