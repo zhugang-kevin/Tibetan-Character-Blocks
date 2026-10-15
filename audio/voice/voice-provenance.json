@@ -44,7 +44,7 @@
       {
         "date": "2026-10-15",
         "items": 3,
-        "commit": "待提交后回填",
+        "commit": "b718fbf",
         "scheme": "static（volume=-1.5dB, 12kbps）—— 该批源录音已达 0dBFS 满幅，A3 的 +6dB 会削波，故与 D114 整句同口径走静态增益",
         "note": "D116：补 icon_04（牦牛/གཡག）、icon_08（藏式民居/ཁང་པ་）缺失发音；六字真言由真人录音替代原 TTS（用户 2026-10-15：播放一遍即可）",
         "measured": "icon_04 0.26s(RMS -15.1/峰 -1.6/crest 13.5) · icon_08 0.46s(RMS -19.6/峰 -3.6/crest 15.9) · mantra 1.16s(RMS -22.1/峰 -2.0/crest 20.1)"

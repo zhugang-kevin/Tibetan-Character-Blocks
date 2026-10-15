@@ -134,13 +134,19 @@ def main():
     # D114：句子与辅音**互斥扫描**。两种阈值下的段边界完全不同
     #   （tashi_delek 在句子阈值下是 5 段 × ~1.2s，在辅音阈值下会被打碎成
     #   0.24s 的气口碎片）。混在一份清单里必然有一方是错的，所以按模式分开。
+    # D116：① 微信导出文件名可能是 `.m4a` 而非 `.mp3.m4a`，两种都认；
+    #       ②「六字真言.m4a」是**多遍连录**，文件名需重映射到 id `mantra`，
+    #          且它遍间停顿约 0.6s < 700ms，须用更紧的 gap(200) 才能把每一遍切分出来
+    #          （实测 gap=700 会把它粘成 4.8s/2.96s 的大段，即「多遍连读」）。
+    ID_REMAP = {'六字真言': 'mantra'}
+    GAP_OVERRIDE = {'mantra': 200}
     if args.sentence:
         files = sorted(f for f in os.listdir(SRC) if re.match(
-            r'^(tashi_delek|blessing_\d+|greet_\d+)\.mp3\.m4a$', f))
+            r'^(tashi_delek|blessing_\d+|greet_\d+|六字真言)(?:\.mp3)?\.m4a$', f))
         MIN_MS, GAP_MS = 400, 700
     else:
         files = sorted(f for f in os.listdir(SRC) if re.match(
-            r'^(letter_\d+|icon_\d+)\.mp3\.m4a$', f))
+            r'^(letter_\d+|icon_\d+)(?:\.mp3)?\.m4a$', f))
         MIN_MS, GAP_MS = 90, 140
     if args.only:
         files = [f for f in files if f.startswith(args.only)]
@@ -163,9 +169,10 @@ def main():
     rows = []
     total_segs = 0
     for f in files:
-        vid = f.replace('.mp3.m4a', '')
+        base = re.sub(r'(?:\.mp3)?\.m4a$', '', f)
+        vid = ID_REMAP.get(base, base)
         x = load(os.path.join(SRC, f))
-        segs = segments(x, min_ms=MIN_MS, gap_ms=GAP_MS)
+        segs = segments(x, min_ms=MIN_MS, gap_ms=GAP_OVERRIDE.get(vid, GAP_MS))
         if not segs:
             continue
         info = []
@@ -215,9 +222,15 @@ def main():
     md_name = 'voice-pick-list-sentences.md' if args.sentence else 'voice-pick-list.md'
     with io.open(os.path.join(ROOT, 'docs', md_name), 'w', encoding='utf-8') as fh:
         fh.write('\n'.join(L))
-    # JSON 供后续入库脚本使用
-    with io.open(os.path.join(OUT_DIR, sj_name), 'w', encoding='utf-8') as fh:
-        json.dump({vid: info for vid, info in rows}, fh, ensure_ascii=False, indent=1)
+    # D116：合并写入，避免「后跑的 --only 把前一次候选覆盖掉」
+    #   （早期踩过同类坑：句子段被辅音段静默抹掉）。
+    sj_path = os.path.join(OUT_DIR, sj_name)
+    existing = {}
+    if os.path.exists(sj_path):
+        existing = json.load(io.open(sj_path, encoding='utf-8'))
+    existing.update({vid: info for vid, info in rows})
+    with io.open(sj_path, 'w', encoding='utf-8') as fh:
+        json.dump(existing, fh, ensure_ascii=False, indent=1)
 
     print('提取完成：%d 条录音 → %d 个候选段' % (len(rows), total_segs))
     print('WAV：%s' % OUT_DIR)

@@ -121,6 +121,44 @@ def measure(path):
     }
 
 
+SENTENCE_PREFIXES = ('greet_', 'blessing_')
+def is_sentence_id(vid):
+    """整句 / 情绪 / 六字真言走句子清单（时长窗 0.9~1.8s），其余走辅音清单。"""
+    return vid == 'tashi_delek' or vid == 'mantra' or vid.startswith(SENTENCE_PREFIXES)
+
+
+def pick_one_for(vid, dur_min=0.25):
+    """从候选清单里挑「单次念」最优一段。绝不直接用原始多遍 m4a。
+
+    返回 (path, info) 或 (None, None)。
+    优先级：picked.json（人工/自动挑过的最高优先）→ 句子/辅音清单（按峰值择优、时长窗过滤）。
+    ⚠️ 与早期踩过的坑一致：原始 m4a 是 N 遍连录，直接入库 = 玩家听 N 遍连读，故此处永不退回原始文件。
+    """
+    pj = os.path.join(CAND, 'picked.json')
+    if os.path.exists(pj):
+        pk = json.load(io.open(pj, encoding='utf-8'))
+        if vid in pk:
+            c = os.path.join(CAND, pk[vid]['file'])
+            if os.path.exists(c):
+                return c, pk[vid]
+    if is_sentence_id(vid):
+        sj = os.path.join(CAND, '_segments_sentences.json')
+        dmin, dmax = 0.90, 1.80
+    else:
+        sj = os.path.join(CAND, '_segments.json')
+        dmin, dmax = 0.20, 1.00
+    if dur_min:
+        dmin = max(dmin, dur_min)
+    if os.path.exists(sj):
+        arr = json.load(io.open(sj, encoding='utf-8')).get(vid) or []
+        # 时长窗过滤掉「粘连的多遍大段」，再按峰值择优（录得最饱满那一遍）
+        ok = [s for s in arr if dmin <= s['dur'] <= dmax]
+        if ok:
+            ok.sort(key=lambda s: -s['peak_db'])
+            return os.path.join(CAND, ok[0]['file']), ok[0]
+    return None, None
+
+
 def collect_targets(scheme, only):
     """返回 [(id, 源文件)]。only 为列表或 None。"""
     out = []
@@ -129,35 +167,17 @@ def collect_targets(scheme, only):
         ids = only if isinstance(only, list) else [only]
         for vid in ids:
             vid = vid.strip()
-            # ⚠️⚠️ 必须优先走**候选段**，绝不能直接用原始 m4a。
-            #   踩过的坑：`--only letter_09` 时若优先找 SRC_M4A 里的整段，
-            #    会把「念了 12遍的20 秒原始录音」整个塞进 game/ ——
-            #    玩家点一下喇叭要听 16 遍连读。已造成实际错误入库并回滚。
-            #    现在：**只有当候选集里没有该id 时**才允许退回原始 m4a，
-            #    且退回时必须打醒目警告并要求二次确认。
-            seg_path = None
-            if os.path.exists(pj):
-                pk2 = json.load(io.open(pj, encoding='utf-8'))
-                if vid in pk2:
-                    cand = os.path.join(CAND, pk2[vid]['file'])
-                    if os.path.exists(cand):
-                        seg_path = cand
-            if seg_path:
-                out.append((vid, seg_path))
-                continue
-            for pat in (vid + '.mp3.m4a', vid + '.wav', vid + '.m4a'):
-                p = os.path.join(SRC_M4A, pat)
-                if os.path.exists(p):
-                    if ARGS_DRY_RUN[0]:
-                        out.append((vid, p))
-                    else:
-                        print('  [拒收] %s：候选集里没有它的单次念段' % vid)
-                        print('         原始 m4a 是「多遍连录整段」，直接入库会让玩家听到 N 遍连读。')
-                        print('         请先跑 scripts/extract_voice_segments.py 生成候选段。')
-                    break
+            # D116：统一走「候选段择优」，绝不直接用原始多遍 m4a（避免玩家听 N 遍连读）。
+            seg, info = pick_one_for(vid)
+            if seg:
+                out.append((vid, seg))
+            else:
+                print('  [拒收] %s：候选集里没有达标的单次念段' % vid)
+                print('         原始 m4a 是「多遍连录整段」，直接入库会让玩家听到 N 遍连读；')
+                print('         请先跑 scripts/extract_voice_segments.py 生成候选段。')
         return out
     if scheme == 'static':
-        ids = ['tashi_delek', 'blessing_01',
+        ids = ['tashi_delek', 'blessing_01', 'mantra',
                'greet_03', 'greet_04', 'greet_05', 'greet_06', 'greet_07']
         # D114修正：原先这里直接把 SRC_M4A 的**整段多遍录音**交给管线 ——
         #   与 a3 分支「只取候选段」的做法不一致，等于把「玩家点一下喇叭
