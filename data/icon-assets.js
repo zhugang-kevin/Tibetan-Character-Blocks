@@ -5,4 +5,8 @@ module.exports = {
   icon_02: '/images/icons/icon_02.png',
   icon_03: '/images/icons/icon_03.png',
   icon_04: '/images/icons/icon_04.png',
+  icon_05: '/images/icons/icon_05.png',
+  icon_06: '/images/icons/icon_06.png',
+  icon_07: '/images/icons/icon_07.png',
+  icon_08: '/images/icons/icon_08.png',
 };

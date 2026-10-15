@@ -4227,23 +4227,55 @@ section('41. 灯火跳窗改版（释迦牟尼底图 / 真实酥油灯 / 静→�
       ok('六字真言单独降语速（唱诵，0.9 太赶）');
     else err('六字真言未单独设置语速 —— 会与字母同速，听起来不像唱诵');
 
-    // 清单里必须记着它是天翼 zhuoma 合成的（可追溯到具体引擎与语速）
-    let man = null;
-    try { man = JSON.parse(read('scripts/tts-manifest.json')).mantra; } catch (e) { /* 下面报错 */ }
-    if (man && man.voice === 'zhuoma' && man.text === 'ཨོཾ་མ་ཎི་པདྨེ་ཧཱུྃ།')
-      ok('清单记录 mantra 由天翼 zhuoma 合成（voice/text 可追溯）');
-    else err('tts-manifest.json 未记录 mantra 的引擎与文本 —— 无法证明它不是中文');
-    // 时长下限：中文版 3.79s 是逐字念汉字；藏文唱诵实测 2.08s。
-    // ⚠️ 这里读**清单里生成时实测的时长**，不起 ffprobe —— 一是 validate 必须零外部依赖，
-    //    二是清单那个数是「落盘前已通过有声判定」的值，比事后量更可信。
-    if (man && typeof man.dur === 'number' && man.dur >= 1.2)
-      ok('mantra 时长 ' + man.dur + 's（≥1.2s，不像漏念六字）');
-    else err('mantra 时长异常或缺失 —— 过短多半是没念全（当前 ' +
-      (man && man.dur) + '）');
+    // D116：来源判据翻转 —— mantra.mp3 现已由**真人录音**替代原 TTS（用户 2026-10-15：播放一遍即可）。
+    //   原守卫钉的是「天翼 zhuoma TTS」，但那是对 TTS 时代的断言；现在音频是用户本人念的 ཨོཾ་མ་ཎི་པདྨེ་ཧཱུྃ།，
+    //   再声称它是 zhuoma 合成就是**假绿**（anti-fake-green 红线）。故改为查 voice-provenance.json 的
+    //   human_recorded.ids —— 那才是「谁录的」的权威台账（tts-manifest 已明确是「历史 TTS 生成记录」，不随真人覆盖更新）。
+    let prov = null;
+    try { prov = JSON.parse(read('audio/voice/voice-provenance.json')); } catch (e) { /* 下面报错 */ }
+    const humanIds = (prov && prov.human_recorded && prov.human_recorded.ids) || [];
+    if (humanIds.indexOf('mantra') > -1)
+      ok('清单记录 mantra 由真人录音替代原 TTS（来源可追溯，见 voice-provenance.json）');
+    else
+      err('voice-provenance.json 未将 mantra 记为真人录音 —— 无法证明它不是旧 TTS / 中文');
+    // 体积闸：单遍真人念 ཨོཾ་མ་ཎི་པདྨེ་ཧཱུྃ། 约 1.1~1.3s；用已存在性 + ≤18KB 收口（不起 ffprobe，零外部依赖）
+    if (humanIds.indexOf('mantra') > -1 && exists('audio/voice/mantra.mp3')) {
+      const kb = fs.statSync(path.join(ROOT, 'audio/voice/mantra.mp3')).size / 1024;
+      if (kb <= 18) ok('mantra.mp3 体积 ' + kb.toFixed(1) + 'KB ≤ 18KB（真人单遍，无压缩着念）');
+      else err('mantra.mp3 体积 ' + kb.toFixed(1) + 'KB 超预算');
+    }
     // 反例自测：把 padme 拆开必须被上面那条文本守卫抓到
     if (!/'mantra':\s*'[^']*པ་དྨེ/.test(gv58))
       ok('守卫自测：把 པདྨེ 拆成 པ་དྨེ 必被拦下');
     else err('§41.5b 自测失效：mantra 文本里已经出现了拆分写法');
+  }
+
+  // 41.7 D116：真人录音台账漂移守卫（voice-provenance.json ↔ audio/voice/*.mp3 一致）
+  // 背景：该台账是「谁录的」的唯一权威来源；若它记了某 id 为真人，但盘上没有对应 mp3，
+  //       就是「台账说有、实际没有」的假绿；反过来盘上有 mp3 但台账没记，也会让
+  //       gen_voice_worksheet.js 把该条误报成「TTS（真人待补）」。两端必须对齐。
+  {
+    let prov = null;
+    try { prov = JSON.parse(read('audio/voice/voice-provenance.json')); } catch (e) {
+      err('读不到 audio/voice/voice-provenance.json（真人录音台账缺失）'); prov = null;
+    }
+    if (prov && prov.human_recorded && Array.isArray(prov.human_recorded.ids)) {
+      const ids = prov.human_recorded.ids;
+      const missing = ids.filter(function (id) { return !exists('audio/voice/' + id + '.mp3'); });
+      if (missing.length === 0)
+        ok('真人台账 ' + ids.length + ' 条全部有对应 mp3（台账 ↔ 目录一致）');
+      else
+        err('真人台账有 ' + missing.length + ' 条缺 mp3 文件：' + missing.join(', '));
+      // D116 本批新增的三条必须落账 + 落盘
+      ['icon_04', 'icon_08', 'mantra'].forEach(function (id) {
+        if (ids.indexOf(id) === -1)
+          err('voice-provenance.json 未将 ' + id + ' 记为真人录音（D116 新增项）');
+        else if (!exists('audio/voice/' + id + '.mp3'))
+          err('audio/voice/' + id + '.mp3 缺失（D116 入库应已生成）');
+        else
+          ok(id + ' 已入库并记入真人台账（D116）');
+      });
+    }
   }
 
   // 41.6 按钮文案（用户要求 6）：文案在 data/lamp.js 单一来源，两端取用
@@ -6492,12 +6524,76 @@ section('59. 藏文书写规范（出处 / 判据 / 机械检验）');
   else err('缺少读音对账脚本 —— 「念错字」将无法被机器发现');
   if (exists('docs/voice-recording-pending.md')) {
     const doc = read('docs/voice-recording-pending.md');
-    const n = (doc.match(/`letter_/g) || []).length + (doc.match(/`icon_/g) || []).length;
-    if (n >= 15) ok('待录音清单在册（' + n + ' 条，机器对账产出）');
-    else warn('待录音清单条数异常（' + n + '）');
+    // ⚠️ 旧判据是「`letter_`/`icon_` 的出现次数 ≥ 15」—— 那是一个**随进度反向退化**的代理指标：
+    //    D112/D114 把 D102 列的 17 条缺口关掉 15 条之后，清单**如实变短**，
+    //    判据反而误报「条数异常」，而它真正想抓的两件事一件也抓不住。
+    // 改为**把清单钉在构建期实扫出的缺口台账上**：
+    //    · `data/voices.js` 的 missing = 现在**真的没有音频**的元素（由目录实存生成，做不了假）
+    //    · 每一条都必须在清单里**被列出来** → 抹掉记录会红；新元素上了却没录音、清单没登记也会红
+    //      （D113 的教训：icon_05..08 当时「既没音频、也没登记」，缺口**静默消失**）
+    //    · 清单因为「已经录完」而变短 → **不红**：那是进展，不是缺陷
+    const vm = /missing\s*:\s*\[([\s\S]*?)\]/.exec(read('data/voices.js'));
+    const missIds = vm ? (vm[1].match(/'([^']+)'/g) || []).map(s => s.replace(/'/g, '')) : [];
+    const unlisted = missIds.filter(id => doc.indexOf('`' + id + '`') === -1);
+    if (!missIds.length) ok('无硬缺口（data/voices.js.missing 为空）—— 清单无待列项');
+    else if (!unlisted.length)
+      ok('待录音清单在册：实扫出的 ' + missIds.length + ' 条硬缺口全部被列出（' + missIds.join('、') + '）');
+    else err('这些硬缺口**没被登记进清单**（会静默消失）：' + unlisted.join('、'));
+    // 反例自测：把一条**真实存在**的缺口 id 从清单里抹掉，判据必须翻红。
+    // 没有这一步，上面的判据可能只是「恒绿的空转」——本项目已经踩过这种坑。
+    if (missIds.length) {
+      const probe = missIds[0];
+      const stripped = doc.split('`' + probe + '`').join('');
+      const caught = missIds.filter(id => stripped.indexOf('`' + id + '`') === -1).length > 0;
+      if (caught) ok('反例自测：抹掉 `' + probe + '` 的登记会被判红（判据不是空转）');
+      else err('反例自测失败：抹掉缺口登记却仍判绿 —— 判据空转');
+    }
+    if (doc.indexOf('必补') > -1) ok('清单含「必补」节（缺口不会被埋在正文里）');
+    else warn('清单缺「必补」节 —— 缺口不够醒目');
     if (/证明不可用/.test(doc)) ok('已把「双写取首段」的证伪结论写进清单（避免重走弯路）');
     else warn('清单未记录已证伪的捷径');
   } else err('缺少 docs/voice-recording-pending.md —— 待录音项无人可见');
+}
+
+// ---------- 59.18b 真人录音溯源台账（2026-10-15）----------
+// 为什么需要它：在那之前，唯一机器可读的溯源是 `scripts/tts-manifest.json`，
+//   而那是**历史 TTS 生成记录** —— 真人录音覆盖同名文件后它不会变。
+//   已实际发生的后果：工作单把 8 条**已由真人重录**的辅音报成「请一并重录」，
+//   还把藏文显示成长音 `ཀཱ`（照它念会把刚修好的错音再录一遍）。
+// 本门禁守住台账「会不会骗人」的三件事：
+//   ① 台账在册（不在册 → 工作单无从判断「谁录的」）
+//   ② 标了「真人」的 id 必须**真的有音频**（否则是在说谎）
+//   ③ 每条批次都要有出处（date/commit）—— 无出处等于「听我说的」，不可审计
+{
+  const provPath = 'audio/voice/voice-provenance.json';
+  if (!exists(provPath)) err('缺少 ' + provPath + ' —— 「哪条是真人录音」将只活在人的记忆里');
+  else {
+    ok('真人录音台账在册（' + provPath + '）');
+    let prov = null;
+    try { prov = JSON.parse(read(provPath)); } catch (e) { err(provPath + ' 不是合法 JSON：' + e.message); }
+    if (prov) {
+      const ids = (prov.human_recorded && prov.human_recorded.ids) || [];
+      const vjs = read('data/voices.js');
+      const inVjs = id => vjs.indexOf("'" + id + "'") > -1;
+      if (!ids.length) err('台账里一条真人 id 都没有 —— 那它守不住任何东西');
+      else {
+        const phantom = ids.filter(id => !inVjs(id));
+        if (!phantom.length)
+          ok('台账 ' + ids.length + ' 条真人 id 全部**真的有音频**（与 data/voices.js 逐一对得上）');
+        else err('台账标了「真人」却没有音频（台账在说谎）：' + phantom.join('、'));
+      }
+      const batches = (prov.human_recorded && prov.human_recorded.batches) || [];
+      const noEvidence = batches.filter(b => !b.date || !b.commit);
+      if (batches.length && !noEvidence.length)
+        ok('台账每条批次都有出处（' + batches.map(b => b.date + '·' + b.commit).join('；') + '）');
+      else err('台账有批次缺出处（date 与 commit 都要有）—— 不可审计');
+      // 反例自测：把判据喂一个**必然不存在**的 id，必须落网（证明不是空转）
+      const forged = ids.concat(['letter_99']);
+      const caught = forged.filter(id => !inVjs(id));
+      if (caught.length) ok('反例自测：伪造的真人 id（' + caught.join('、') + '）会被判红');
+      else err('反例自测失效：伪造的真人 id 未落网 —— 判据空转');
+    }
+  }
 }
 
 // ---------- 59.19 D104：字母读音标注必须与权威现代卫藏音一致 ----------

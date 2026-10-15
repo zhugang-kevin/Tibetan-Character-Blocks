@@ -8,7 +8,7 @@
 
 用法：
   python scripts/prepare-assets.py --all          # 全部处理
-  python scripts/prepare-assets.py --icons        # 只处理 A 组图标（4 个元素徽章）
+  python scripts/prepare-assets.py --icons        # 只处理 A 组图标（8 个元素徽章）
   python scripts/prepare-assets.py --reveals      # 只处理 B 组揭图（10 张）
   python scripts/prepare-assets.py --bg           # 只处理 C 组背景
   python scripts/prepare-assets.py --logo         # 只处理 D 组品牌（从 logo-master 派生）
@@ -16,7 +16,7 @@
   python scripts/prepare-assets.py --report       # 只打印当前资产与预算对账，不写文件
 
 输入目录（不存在则跳过该组）：
-  assets-src/icons/     icon_01 / icon_knot / barley … 任意含关键词的文件名
+  assets-src/icons/     icon_01 / icon_knot / barley / hada / buttertea / robe / house … 任意含关键词的文件名
   assets-src/reveals/   含 reveal_01..10 或 01..10 编号
   assets-src/bg/        bg-global / bg-sky / bg-ground / pat-tile / grain
   assets-src/logo/      logo-master.png
@@ -88,6 +88,10 @@ ICON_ALIAS = [
     ('barley', 'icon_02'), ('青稞', 'icon_02'), ('icon_02', 'icon_02'),
     ('mountain', 'icon_03'), ('雪山', 'icon_03'), ('icon_03', 'icon_03'),
     ('yak', 'icon_04'), ('牦牛', 'icon_04'), ('icon_04', 'icon_04'),
+    ('hada', 'icon_05'), ('哈达', 'icon_05'), ('khata', 'icon_05'), ('icon_05', 'icon_05'),
+    ('buttertea', 'icon_06'), ('酥油茶', 'icon_06'), ('butter', 'icon_06'), ('icon_06', 'icon_06'),
+    ('robe', 'icon_07'), ('藏袍', 'icon_07'), ('chuba', 'icon_07'), ('icon_07', 'icon_07'),
+    ('house', 'icon_08'), ('民居', 'icon_08'), ('藏式民居', 'icon_08'), ('icon_08', 'icon_08'),
 ]
 BG_ALIAS = [
     ('global', 'bg-global'), ('sky', 'bg-sky'), ('ground', 'bg-ground'),
@@ -187,7 +191,7 @@ def do_icons():
     os.makedirs(ICON_DIR, exist_ok=True)
     matched = find_by(ICON_ALIAS, files)
     if not matched:
-        print('  ✗ 没有识别到图标文件（文件名需含 knot/barley/mountain/yak 或 icon_0N）')
+        print('  ✗ 没有识别到图标文件（文件名需含 knot/barley/mountain/yak/hada/buttertea/robe/house 或 icon_0N）')
         return
     for eid, path in sorted(matched.items()):
         img = Image.open(path).convert('RGBA')

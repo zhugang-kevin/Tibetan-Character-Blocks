@@ -1,0 +1,63 @@
+{
+  "_readme": "藏文语音溯源台账 —— 回答一个问题：「这条音频是真人录音，还是厂商 TTS？」",
+  "_why_it_exists": [
+    "在它之前，唯一机器可读的溯源是 scripts/tts-manifest.json，而那是**历史 TTS 生成记录**：",
+    "真人录音覆盖同名文件后它不会变 —— 它至今仍记着 letter_01 当年是用 ཀཱ（长音）合成的。",
+    "后果已实际发生：docs/voice-worksheet.md 把 8 条**已由真人重录**的辅音报成「请一并重录」，",
+    "并把藏文显示成长音 ཀཱ。照它念，会把 D112 刚修好的错音**再录错一遍**。故立此台账。",
+    "本文件只回答「谁录的」；「念得对不对」仍需人耳签确（母语者关卡，脚本不代翻）。"
+  ],
+  "_how_to_update": [
+    "新增一批真人录音时：在 human_recorded.ids **末尾追加** id，并在 batches 补一条证据（含 commit）。",
+    "不要改历史条目，不要重排 ids（与 data/tibetan-names.js 同一条纪律：顺序变了就对不上账）。",
+    "取不到证据的，一律不写进来 —— 宁可标 TTS，不可猜。"
+  ],
+  "human_recorded": {
+    "ids": [
+      "letter_01", "letter_02", "letter_03", "letter_04", "letter_05",
+      "letter_06", "letter_07", "letter_08", "letter_09", "letter_10",
+      "letter_11", "letter_12", "letter_13", "letter_14", "letter_15",
+      "letter_16", "letter_17", "letter_18", "letter_19", "letter_20",
+      "letter_21", "letter_22", "letter_23", "letter_24", "letter_25",
+      "letter_26", "letter_27", "letter_28", "letter_29", "letter_30",
+      "blessing_01", "greet_03", "greet_04", "greet_05", "greet_06", "greet_07",
+      "tashi_delek",
+      "icon_04", "icon_08", "mantra"
+    ],
+    "batches": [
+      {
+        "date": "2026-10-15",
+        "items": 30,
+        "commit": "5c4e0ae",
+        "scheme": "A3（acompressor + volume=6dB, 12kbps）—— 单字/短词走 A3",
+        "note": "30 条真人辅音入库；同时修掉 8 条元音长度错音（letter_01/06/09/12/14/19/25/27，原用 ཱ 长音合成）",
+        "measured": "RMS 中位 -19.3dBFS / 峰值中位 -4.8 / crest 中位 14.6"
+      },
+      {
+        "date": "2026-10-15",
+        "items": 7,
+        "commit": "69bc34b",
+        "scheme": "static（volume=-1.5dB, 12kbps）—— 整句走静态增益，完整保留 D59 立场",
+        "note": "D114：7 条整句入库；文本同步按用户所念替换（data/daily.js 的 tibetan/roman/tip）",
+        "measured": "RMS 中位 -20.2dBFS / 峰值中位 -2.7 / crest 中位 16.5"
+      },
+      {
+        "date": "2026-10-15",
+        "items": 3,
+        "commit": "待提交后回填",
+        "scheme": "static（volume=-1.5dB, 12kbps）—— 该批源录音已达 0dBFS 满幅，A3 的 +6dB 会削波，故与 D114 整句同口径走静态增益",
+        "note": "D116：补 icon_04（牦牛/གཡག）、icon_08（藏式民居/ཁང་པ་）缺失发音；六字真言由真人录音替代原 TTS（用户 2026-10-15：播放一遍即可）",
+        "measured": "icon_04 0.26s(RMS -15.1/峰 -1.6/crest 13.5) · icon_08 0.46s(RMS -19.6/峰 -3.6/crest 15.9) · mantra 1.16s(RMS -22.1/峰 -2.0/crest 20.1)"
+      }
+    ],
+    "evidence": [
+      "选段记录（一手）：.workbuddy/tmp/voice-candidates/picked.json —— 30 条辅音",
+      "选段记录（一手）：.workbuddy/tmp/voice-candidates/_segments_sentences.json —— 7 条整句",
+      "⚠️ 上述两份在 .workbuddy/tmp/ 下，属**临时目录**（可能被清理）；本文件是它们的持久化摘要。"
+    ]
+  },
+  "excluded_by_user": {
+    "icon_01": "D112 明确记载：用户确认 icon_01.mp3 **不属于基字发音**（剔除）→ 保留 TTS 版，**不按缺口处理**。其 11 遍候选段仍在 .workbuddy/tmp/voice-candidates/，勿因「看起来漏了」而擅自入库 —— 那是已作过的决定。"
+  },
+  "gate_status": "gen_voice_worksheet.js 读本文件；validate 尚无对应门禁（待补，避免本台账日后漂移）"
+}

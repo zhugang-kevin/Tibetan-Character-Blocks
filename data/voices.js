@@ -45,14 +45,14 @@ module.exports = {
     'icon_01',
     'icon_02',
     'icon_03',
+    'icon_04',
     'icon_05',
     'icon_06',
     'icon_07',
+    'icon_08',
   ],
   // 还没有发音的元素 id —— UI 必须据此显示「发音待录入」而不是假装能播
   missing: [
-    'icon_04',
-    'icon_08',
   ],
   // 非元素类语音（情绪 / 中文讲解），键到 id 不存在时才查这里
   extras: [
