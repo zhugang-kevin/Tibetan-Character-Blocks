@@ -271,13 +271,15 @@ Page({
     // 万家灯火：每天首次打开时，先与远方的灯火同明一次（纯本地判断）
     if (lampFirst) {
       this.setData(this.buildLampView());
-      // D109（用户 2026-10-13）：祈福跳窗打开时，用**藏文**念六字真言 4 遍。
-      //   用户原话：「那个祈福的话叫藏语的话，藏文的读音是
-      //   唵嘛呢叭咪吽 唵嘛呢叭咪吽 唵嘛呢叭咪吽 唵嘛呢叭咪吽」。
-      //   音频：audio/voice/mantra_4x.mp3 —— 由已验证单遍拼接 4 遍（350ms 间隔），
-      //   实测 9.38s / 12 个有声段（3 段每遍 × 4），遍数可验。
-      //   ⚠️ 不用 TTS 一次念 4 遍：实测它会把 4 遍压缩成 3.85s（只 1.85 倍时长）。
-      audio.speak('mantra_4x');
+      // D115（用户 2026-10-15：「六字真言播放一遍便可以」）：
+      //   由 mantra_4x（4 遍 / 8.78s）改为 mantra（单遍 / 2.08s）。
+      //   理由不只是时长：日签跳窗是玩家每天首次打开必过的路径，
+      //   在这里念4 遍等于强制 9 秒的静默仪式，玩家会想跳过它。
+      //   单遍足够表达「点灯祈愿」，且把这段路径还给游戏。
+      //   ⚠️ mantra.mp3 目前仍是 TTS 产物 —— 梵音种子里的鼻音符号与下加元音
+      //   TTS 读不准（这正是用户最初反馈「点灯读音错误」的根因）。
+      //   待用户真人录音替换后才是真正闭环 —— 见 docs/voice-recording-pending.md。
+      audio.speak('mantra');
       // 跳窗盖住天梯：入场/绽放推迟到 closeLampWindow（见下）
       this._pendingIntro = firstBoot ? p.unlockedLevel : 0;
       this._pendingBloom = bloomN;

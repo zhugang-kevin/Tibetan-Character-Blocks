@@ -568,11 +568,24 @@ function mockCtx(sink) {
   check('通关用 heavy 档（与选中的 light 区分开）',
     hlog[hlog.length - 1] === 'heavy' || hlog.indexOf('heavy') > -1,
     'hapticLog=' + JSON.stringify(hlog));
-  await sleep(1200);
+  // D115：通关播 tashi_delek（用户对照表标的正是「游戏欢迎、通关」）。
+  //   greet_04 对应的是「完成挑战」，体验版没有挑战模式，那条路径在这里不该触发。
+  //   ⚠️ 同时守时序：NAV_HOLD_MS 已从 1200ms 推迟到 2600ms，
+  //   正是为了让这句念完再跳页 —— 1200ms 会把它腰斩成半句藏语。
+  // ⚠️ 时序：NAV_HOLD_MS=2600 > 触发350 + 让位350 + 最长句1600，
+  //   所以此刻（约 1.2s 处）**必须还在 game 页**—— 已经跳走就说明语音被腰斩了。
+  check('语音未念完时不跳页（D115：NAV_HOLD_MS 推迟跳转）',
+    activeScreen() === 'screen-game',
+    'screen=' + activeScreen() + ' speakLog=' + JSON.stringify(ev('state.speakLog')));
+  // tashi_delek 在 350ms 才起播，等它出现（轮询避免固定 sleep 的时序抖动）
+  for (let bw = 0; bw < 20 && ev('state.speakLog').indexOf('tashi_delek') < 0; bw++) await sleep(100);
   check('通关藏语语音已触发（tashi_delek）', ev('state.speakLog').indexOf('tashi_delek') > -1,
     'speakLog=' + JSON.stringify(ev('state.speakLog')));
-  await sleep(600);
-  check('自动进入结算页', activeScreen() === 'screen-result', activeScreen());
+  check('通关不触发 greet_04（那是「完成挑战」，体验版无挑战模式）',
+    ev('state.speakLog').indexOf('greet_04') === -1,
+    'speakLog=' + JSON.stringify(ev('state.speakLog')));
+  for (let bw = 0; bw < 40 && activeScreen() !== 'screen-result'; bw++) await sleep(100);
+  check('语音念完后自动进入结算页', activeScreen() === 'screen-result', activeScreen());
   check('结算页为唐卡画卷（.unfurl）', !!$('#screen-result .unfurl'));
   check('画卷有上下卷轴杆', $$('#screen-result .roller').length === 2, 'rollers=' + $$('#screen-result .roller').length);
   // 祝福语由 finishLevel 内部 setTimeout(650ms) 触发，等它到达再断言（避免固定 sleep 的时序抖动）
@@ -2437,6 +2450,9 @@ function mockCtx(sink) {
       await sleep(400);
     }
     await sleep(1600);
+    // D115：NAV_HOLD_MS 从 1200 推迟到 2600（让通关藏语念完再跳页），
+    //   所以这里不能沿用旧的固定 sleep —— 改为轮询等真正跳页。
+    for (let bw = 0; bw < 40 && activeScreen() !== 'screen-result'; bw++) await sleep(100);
     check('通关后进结算页', activeScreen() === 'screen-result', activeScreen());
     check('标题是「L1 · 第 1 课完成！」', $('#res-title').textContent === 'L1 · 第 1 课完成！', $('#res-title').textContent);
     check('副标题带全局课序号（第 1 / 150 课）', $('#res-sub').textContent.indexOf('第 1 / 150 课') > -1, $('#res-sub').textContent);

@@ -4206,7 +4206,7 @@ section('41. 灯火跳窗改版（释迦牟尼底图 / 真实酥油灯 / 静→�
   } else err('缺少 audio/voice/mantra.mp3（燃灯播报）');
   if (ijs41.indexOf("audio.speak('mantra')") > -1) ok('小程序 onLightLamp 播报 mantra');
   else err('小程序 onLightLamp 未播报 mantra');
-  if (t41.indexOf("speak('mantra_4x')") > -1) ok('体验版 lightLamp 播报 mantra');
+  if (t41.indexOf("speak('mantra')") > -1) ok('体验版 lightLamp 播报 mantra（D115：单遍）');
   else err('体验版 lightLamp 未播报 mantra');
   // 41.5b **来源必须是藏文 TTS**（D58 的核心守卫）
   // 背景：D50 这条音频是用 Edge TTS 念**中文**「嗡 嘛 呢 叭 咪 吽」，
@@ -6559,12 +6559,28 @@ section('59. 藏文书写规范（出处 / 判据 / 机械检验）');
   } else err('manifest 缺 mantra / mantra_4x 的时长记录');
   if (/拼接 4 遍/.test(man)) ok('manifest 记录 mantra_4x 为拼接而来（可追溯）');
   else err('manifest 未说明 mantra_4x 的构造方式');
-  // 两侧都要播它
+  // D115（用户 2026-10-15：「六字真言播放一遍便可以」）：
+  //   日签跳窗改为播**单遍** mantra。判据随之翻转 —— 原来守的是
+  //   「必须播 4 遍且时长 ≥3.5 倍」，现在要守的是「**不许再回到 4 遍**」，
+  //   否则这次决策会被无声改回去。且 mantra_4x 文件保留不删（D109 已验证过的
+  //   拼接产物，将来若要长诵版仍可用），只是不再被日签路径引用。
   const ix = read('pages/index/index.js');
-  if (ix.indexOf("audio.speak('mantra_4x')") > -1) ok('祈福弹窗播放 mantra_4x（小程序侧）');
-  else err('小程序祈福弹窗未播放 mantra_4x');
-  if (read('preview/template.html').indexOf("speak('mantra_4x')") > -1) ok('祈福弹窗播放 mantra_4x（H5 侧）');
-  else err('H5 祈福弹窗未播放 mantra_4x');
+  if (ix.indexOf("audio.speak('mantra')") > -1) ok('祈福弹窗播放单遍 mantra（小程序侧，D115）');
+  else err('小程序祈福弹窗未播放单遍 mantra');
+  if (ix.indexOf("audio.speak('mantra_4x')") > -1) err('小程序祈福弹窗仍在播 mantra_4x —— 与 D115「播放一遍」矛盾');
+  else ok('小程序祈福弹窗已不再播 4 遍版（D115「播放一遍便可以」）');
+  const h5tpl = read('preview/template.html');
+  if (h5tpl.indexOf("speak('mantra')") > -1) ok('祈福弹窗播放单遍 mantra（H5 侧，D115）');
+  else err('H5 祈福弹窗未播放单遍 mantra');
+  if (h5tpl.indexOf("speak('mantra_4x')") > -1) err('H5 祈福弹窗仍在播 mantra_4x —— 与 D115「播放一遍」矛盾');
+  else ok('H5 祈福弹窗已不再播 4 遍版（D115「播放一遍便可以」）');
+  // mantra_4x 文件仍在盘上（可追溯、可复用），但已无引用 → 体积仍计入主包，
+  //   所以必须确认它不是「白占体积」：记录一下现状，交人判断，不自动删。
+  if (fs.existsSync(ROOT + 'audio/voice/mantra_4x.mp3')) {
+    const sz = fs.statSync(ROOT + 'audio/voice/mantra_4x.mp3').size;
+    ok('mantra_4x.mp3 保留在盘（%sKB，D109 已验证拼接产物，留作长诵版素材）',
+       (sz / 1024).toFixed(1));
+  }
   // 不再有「中文播报」的错注释
   // ⚠️ 判据第一版写 `indexOf('中文播报') === -1` —— 而我自己的**修正说明里**
   //   就含「中文播报」四个字（「会让后来的人以为它是中文播报」），于是自己误报自己。
@@ -7087,8 +7103,200 @@ section('64. D113 朋友互赞（打赏链路 · 三条红线）');
   if (/blessings: require/.test(read('scripts/build-h5.js')))
     ok('build-h5 注入 data/blessings.js（体验版与小程序同一份祝福语，不各写一套）');
   else err('build-h5 未注入祝福语 —— 体验版与小程序会各说一套');
+
+  // 64.10 A 端**入账**：心意要真的变成自己的资产，不是「显示一下」就完
+  //   ⚠️ 同一族坑第三次出现（D101 waterDay → D111 learnDone → D113 lamps）：
+  //   getProgress 是**显式挑字段**的白名单，新字段漏列 → save(p) 把它静默写丢，
+  //   表现为「别人点了灯，退出再进又归零」。所以白名单必须钉住这两个字段。
+  {
+    const PRED = function (src) {
+      return /lamps:\s*\(p && p\.lamps\)/.test(src) &&
+             /receivedGifts:\s*\(p && p\.receivedGifts\)/.test(src);
+    };
+    if (PRED(stJs))
+      ok('storage.getProgress 白名单含 lamps / receivedGifts（漏列会被 save 静默写丢＝灯白点）');
+    else err('storage 白名单缺 lamps / receivedGifts —— 收到的心意下次进来就没了');
+    // 反例自测：把 lamps 从白名单删掉，判据**必须**翻红 —— 证明这条不是摆设
+    const broken = stJs.replace(/lamps:\s*\(p && p\.lamps\)[^,]*,/, '');
+    if (PRED(stJs) && !PRED(broken))
+      ok('守卫自测：白名单删掉 lamps 后判据翻红（反例落网，不是摆设）');
+    else err('§64.10 自测失效：删掉 lamps 仍被判为存在');
+  }
+  if (/function addLamp/.test(stJs) && /function getLamps/.test(stJs) && /function saveReceivedGifts/.test(stJs))
+    ok('storage 提供入账三件套：addLamp / getLamps / saveReceivedGifts');
+  else err('缺入账函数 —— 「酥油灯点亮一盏」无处分账');
+  if (/have\[id\]/.test(stJs) && /fresh\.push/.test(stJs))
+    ok('saveReceivedGifts 按 id 去重、只返回新增（重复拉取不会重复点灯）');
+  else err('saveReceivedGifts 未去重 —— 每次进护照页都会重复 +1 盏');
+  if (/tib_lamp_1/.test(ppJs) && /addLamp/.test(ppJs))
+    ok('护照页真的入账：酥油灯 → addLamp（一盏就是一盏）');
+  else err('护照页没把酥油灯加成灯数 —— 只显示、不发货');
+  if (/renderInbox\(\)/.test(ppJs) && /getReceivedGifts/.test(ppJs))
+    ok('收礼箱先渲染**本地已入账**的（断网也看得到），再联网补新的');
+  else err('收礼箱只认服务端 —— 断网时「收到的祝福」整块空白');
+  if (/lampCount/.test(ppWxml) && /为你点亮/.test(ppWxml))
+    ok('护照显示「朋友为你点亮的酥油灯 · N 盏」（入账对用户可见）');
+  else err('护照未显示灯数 —— 入账了但用户看不见');
+  // ⚠️ 必须先剥注释：wxml 里解释「为什么不做排名」的注释本身就含「排名 / 最多」，
+  //   不剥就会把**说明文字**当成违规措辞（与 §64.1 同一个误报族）。
+  if (!/最多|排名|榜单|排行榜/.test(stripComments(ppWxml)))
+    ok('灯数文案无「最多 / 排名 / 排行榜」（R2：只说「我有几盏」，不比高低）');
+  else err('灯数出现排名类措辞 —— 触碰 D89 红线二');
 }
 
+section('65. D115 场景祝福语音（五场景接线 + 两端同构 + 频次闸门）');
+// 背景：用户给了「连续消除 / 完成挑战 / 稀有奖励 / 目标达成 / 温柔鼓励」五个场景，
+//   但代码里一个都不存在 —— greet_03~07 实际只在「每日祝福签卡」播放。
+//   D115 把五个场景真正接上，并抽出 utils/scene-voice.js 管频次。
+// 本门禁守三件事：① 五个场景在**两端**都接上了 ② 两端映射表逐字一致
+//   ③ 冷却闸门存在（否则连击/错配会每秒播一次藏语）。
+{
+  const sv = read('utils/scene-voice.js');
+  const gm = read('pages/game/game.js');
+  const tpl = read('preview/template.html');
+
+  // 65.1 映射表：五个场景各自对应哪条语音
+  const MAP = [
+    ['combo', 'greet_03', '连续消除'],
+    ['clear', 'greet_04', '完成挑战'],
+    ['rare', 'greet_05', '稀有奖励'],
+    ['goal', 'greet_06', '目标达成'],
+    ['comfort', 'greet_07', '温柔鼓励']
+  ];
+  MAP.forEach(function (m) {
+    const scene = m[0], vid = m[1], cn = m[2];
+    if (sv.indexOf(scene + ": '" + vid + "'") > -1)
+      ok('scene-voice 映射 ' + scene + '（' + cn + '）→ ' + vid);
+    else err('scene-voice 缺映射：' + scene + '（' + cn + '）应 → ' + vid);
+  });
+  // 反例自测：映射表不能是空的或全指向同一条（否则「接线」只是摆设）
+  const uniq = {};
+  MAP.forEach(function (m) { uniq[m[1]] = 1; });
+  if (Object.keys(uniq).length === 5) ok('五个场景指向五条不同语音（非退化映射）');
+  else err('五个场景只映射到 ' + Object.keys(uniq).length + ' 条语音 —— 映射表退化');
+
+  // 65.2 五个触发点：小程序侧
+  //   判据只认 `playSceneVoice('<scene>'` —— combo 那处带第二个参数（连击数），
+  //   所以不能把整串调用逐字比对，只匹配函数名 + 场景名即可。
+  [['combo'], ['clear'], ['rare'], ['goal'], ['comfort']].forEach(function (t) {
+    if (gm.indexOf("playSceneVoice('" + t[0] + "'") > -1)
+      ok('小程序侧已接线：' + t[0] + ' 场景');
+    else err('小程序侧未接线：' + t[0] + ' 场景（playSceneVoice 未调用）');
+  });
+  // 65.3 五个触发点：H5 侧
+  //   ⚠️ 诚实的能力差，不是缺陷：体验版（浏览器单文件）**没有挑战模式**
+  //   （小程序侧来自 D86 分享链路 this.challenge），所以「完成挑战」场景
+  //   在H5 里客观上不会发生。判据因此不是「必须接线」，而是
+  //   「要么接线、要么显式声明为什么不存在」——不许默默缺一个场景。
+  const tplCalls = tpl.replace(/\/\/[^\n]*/g, '');
+  ['combo', 'rare', 'goal', 'comfort'].forEach(function (sc) {
+    if (tpl.indexOf("playSceneVoice('" + sc + "'") > -1)
+      ok('H5 侧已接线：' + sc + ' 场景');
+    else err('H5 侧未接线：' + sc + ' 场景（体验版与小程序不同构）');
+  });
+  if (tpl.indexOf("playSceneVoice('clear'") > -1) {
+    ok('H5 侧已接线：clear 场景');
+  } else if (/体验版不接挑战|没有挑战模式/.test(tpl)) {
+    ok('H5 侧「完成挑战」不适用：体验版无挑战模式（已显式声明，非默默缺失）');
+  } else {
+    err('H5 侧既没接clear 场景，也没声明「体验版无挑战模式」—— 能力差必须写出来');
+  }
+
+  // 65.4 **两端映射表必须逐条一致** —— 这是手写镜像最容易漂移的地方
+  const mini = {};
+  MAP.forEach(function (m) { mini[m[0]] = m[1]; });
+  let drift = 0;
+  MAP.forEach(function (m) {
+    const re = new RegExp(m[0] + ":\\s*'" + m[1] + "'");
+    if (!re.test(tpl)) { drift++; err('H5 镜像的 ' + m[0] + ' 映射与小程序不一致（应为 ' + m[1] + '）'); }
+  });
+  if (!drift) ok('两端映射表逐条一致（5/5，无漂移）');
+
+  // 65.5 频次闸门必须有冷却与连击门槛
+  //   ⚠️ 判据必须**取到具体数值**并逐条断言，不能只判 `SCENE_COOLDOWN` 这个符号在不在。
+  //   踩过的坑：第一版写 /SCENE_COOLDOWN/.test(sv) && /combo:\s*9000/.test(sv)，
+  //   结果把 combo 改成 0 之后门禁照样全绿 —— 因为 SCENE_COOLDOWN 这四个字
+  //   在文件别处（注释里）也出现，第一项照样为真。而 /combo:\s*9000/ 我实测确实
+  //   被挡住了，但整体断言是「与」，只要有一项误判为真就整体失守。
+  //   现在改成：从 SCENE_COOLDOWN 对象体里把每个场景的毫秒数抠出来逐条比。
+  const cdBody = /SCENE_COOLDOWN\s*=\s*\{([\s\S]*?)\}/.exec(sv);
+  if (cdBody) {
+    const cd = {};
+    cdBody[1].replace(/(\w+)\s*:\s*(\d+)/g, function (_, k, v) { cd[k] = parseInt(v, 10); return _; });
+    const WANT = { combo: 9000, rare: 20000, comfort: 15000 };
+    let cdBad = 0;
+    Object.keys(WANT).forEach(function (k) {
+      if (cd[k] === WANT[k]) ok('场景冷却 ' + k + ' = ' + WANT[k] + 'ms');
+      else { cdBad++; err('场景冷却 ' + k + ' 应为 ' + WANT[k] + 'ms，实际 ' + cd[k]); }
+    });
+    if (!cdBad) ok('三类高频场景的冷却闸门齐全（连击 9s / 稀有 20s / 鼓励 15s）');
+  } else {
+    err('scene-voice 缺 SCENE_COOLDOWN 定义 —— 连击与错配会高频重复，藏语会变成噪音');
+  }
+  // 冷却必须**真的被用上**，不能只是定义了常量（与 D57 障碍提示同款判据）
+  if (/lastAt\[scene\][\s\S]{0,200}nowMs\s*-\s*st\.lastAt\[scene\]/.test(sv) ||
+      /st\.lastAt\[scene\]\s*&&\s*\(nowMs\s*-\s*st\.lastAt\[scene\]\)/.test(sv))
+    ok('冷却真的参与判定（读 lastAt[scene] 比时间差，不是摆设常量）');
+  else err('SCENE_COOLDOWN 定义了但判定里没用上 —— 闸门形同虚设');
+  if (/COMBO_THRESHOLD\s*=\s*4/.test(sv))
+    ok('连击门槛 = 4（连2~3 连是最常见操作，那时播祝福等于给日常加噪声）');
+  else err('scene-voice 缺连击门槛');
+  // 门槛必须参与判定（反向：不能只看常量定义）
+  if (/c\s*<\s*COMBO_THRESHOLD/.test(sv))
+    ok('连击门槛真的参与判定（低于门槛直接不播）');
+  else err('COMBO_THRESHOLD 定义了但判定没用上 —— 连 1 连也会播祝福');
+  if (/SCENE_COMBO_THRESHOLD\s*=\s*4/.test(tpl))
+    ok('H5 镜像连击门槛 = 4（两端一致）');
+  else err('H5 镜像的连击门槛与小程序不一致');
+
+  // 65.6 **必须让位于元素发音** —— 否则玩家听到祝福、辅音被吃掉（学习闭环被静音）
+  if (/1200/.test(gm) && /元素发音/.test(gm))
+    ok('场景语音延后 1200ms 播（让位元素发音，学习闭环不被抢）');
+  else err('场景语音未让位元素发音 —— 会把辅音朗读静音掉');
+  // 65.6b **完成挑战必须赶在跳结算页之前播完**（D115 实测踩到）
+  //   背景：greet_04 若沿用 1200ms 延后，会在 350+1200=1550ms 触发，
+  //   而 finishLevel 在 1200ms 就 redirectTo 结算页 —— 祝福落到结算页上播，
+  //   正是 utils/audio.js 的 stopVoice 注释所述真实缺陷。
+  const yBody = /SCENE_YIELD_MS\s*=\s*\{([\s\S]*?)\}/.exec(sv);
+  const yieldClear = yBody ? /clear\s*:\s*(\d+)/.exec(yBody[1]) : null;
+  if (yieldClear && parseInt(yBody && /clear\s*:\s*(\d+)/.exec(yBody[1])[1], 10) <= 800) {
+    ok('完成挑战让位延迟 ≤800ms（350+800=1150ms < 跳结算页 1200ms，来得及播完）');
+  } else {
+    err('完成挑战让位延迟过大 —— 祝福会落到结算页上才播（页面走了语音还在响）');
+  }
+  if (/SCENE_YIELD_MS/.test(tpl) && /clear:\s*350/.test(tpl))
+    ok('H5 镜像让位表与小程序一致（含 clear=350，虽该场景在 H5 不触发）');
+  else err('H5 镜像的让位延迟与小程序不一致 —— 镜像表会漂移，将来加挑战模式就出错');
+  // 延后播放的定时器必须在页面卸载时清理
+  if (/sceneTimer\) clearTimeout\(this\.sceneTimer\)/.test(gm))
+    ok('场景语音定时器在页面卸载时清理（不会把祝福追到别的页面）');
+  else err('场景语音定时器未清理 —— 离开页面后祝福仍在响');
+
+  // 65.7 通关语音：通关 = tashi_delek（用户对照表标的正是「游戏欢迎、通关」），
+  //   完成挑战 = greet_04。**两者是不同场景，不能互相顶替。**
+  //   ⚠️ 我第一版这里写反了：把通关的 tashi_delek 换成 greet_04，等于删掉
+  //   用户已有的功能；被行为测试与 review 同时指出后改正。
+  //   判据只认**真实调用**（剥掉注释后再匹配），否则解释性注释会自己把自己判红。
+  const gmCalls = gm.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+  if (/speak\(\s*['"]tashi_delek['"]/.test(gmCalls) || /tashiDelek\(\s*\)/.test(gmCalls))
+    ok('通关播 tashi_delek（用户表：游戏欢迎、通关）');
+  else err('通关不播 tashi_delek —— 该场景在用户对照表里明写了「游戏欢迎、通关」');
+  // 完成挑战必须真的按「是否挑战局」分流，而不是恒播某一句
+  if (/challenge/.test(gmCalls) && /playSceneVoice\(\s*['"]clear['"]/.test(gmCalls))
+    ok('完成挑战（挑战局通关）播 greet_04，与普通通关分流');
+  else err('完成挑战场景未按挑战局分流 —— greet_04（完成挑战）无处可播');
+  if (/audio\.blessing\(\)/.test(read('pages/result/result.js')))
+    ok('结算页仍播 blessing_01（独立的结算祝福，不与上面两处冲突）');
+  else err('结算页不再播 blessing_01 —— 结算节奏没了');
+
+  // 65.8 跳转时机：语音念完再跳页（否则被腰斩成半句藏语）
+  if (/NAV_HOLD_MS/.test(gm) && /NAV_HOLD_MS\s*=\s*2600/.test(sv))
+    ok('跳结算页推迟到语音念完（NAV_HOLD_MS=2600，由行为测试机检）');
+  else err('跳结算页时机未跟随语音 —— 半句藏语比不念更糟');
+  if (/NAV_HOLD_MS/.test(tpl) && /, NAV_HOLD_MS\)/.test(tpl))
+    ok('H5 侧同样推迟跳转（两端一致）');
+  else err('H5 侧跳转时机与小程序不一致');
+}
 console.log('通过: ' + passed + ' | 错误: ' + errors.length + ' | 警告: ' + warnings.length);
 if (errors.length) { console.log('\x1b[31m存在错误，需修复后重试\x1b[0m'); process.exit(1); }
 console.log('\x1b[32m全部自检通过 ✓\x1b[0m');

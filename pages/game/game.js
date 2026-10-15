@@ -19,6 +19,8 @@ var revealsData = require('../../data/reveals');
 var audio = require('../../utils/audio');
 var icons = require('../../utils/icons');
 var praise = require('../../utils/praise');
+// D115 场景祝福语音：连续消除 / 完成挑战 / 稀有奖励 / 目标达成 / 温柔鼓励
+var sceneVoice = require('../../utils/scene-voice');
 var storage = require('../../utils/storage');
 var photoAssets = require('../../data/photo-assets');   // D47 场景照片层（空 = 不渲染）
 var tracker = require('../../utils/tracker');
@@ -192,6 +194,8 @@ Page({
   toastTimer: null,
   barTimer: null,
   voiceTimer: null,
+  // D115：场景语音频次闸门状态（各场景上次播的时刻 / 连击峰值 / 目标是否已达成）
+  sceneVoiceState: null,
   // 正确率统计（证书质量门槛用）：attempts = 配对尝试次数，misses = 失败次数
   attempts: 0,
   matches: 0,
@@ -260,6 +264,8 @@ Page({
     this.matchedCount = 0;
     // 即时应激励（D34）：本关的连击/档位/抽取历史全部重新起步
     this.comboState = praise.initState();
+    // D115：每关重置场景语音闸门（否则上一关的冷却会把本关该播的压掉）
+    this.sceneVoiceState = sceneVoice.createState(Date.now());
     var praiseOff = storage.getPraiseOff();
     // 统一牌面尺寸：tile 由 8 列基准算出，各关只变列数与行数
     var gap = 8;
@@ -506,6 +512,10 @@ Page({
     if (this.learnCfg) {
       var left = Math.max(0, this.stepsBudget - this.attempts);
       var patch = { stepsLeft: left };
+      // D115 目标达成：只剩最后 3 步时给一句祝福。
+      // 判据用「剩余步数 ≤3」而不是「完成」——盘面清空是**通关**（另一场景），
+      // 这里是「你快到目标了」。两者语义不同，不能混成一句。
+      if (left > 0 && left <= 3) this.playSceneVoice('goal');
       if (left <= 0) {
         patch.locked = true;
         this.setData(patch);
@@ -578,6 +588,9 @@ Page({
     // 现在档位一升，画面同时给一层短促的光晕，色/强度按档位分四档。
     // 刻意做得克制：一闪即收（420ms），不遮挡盘面、不打断 D57 的打扰预算。
     if (dec.level >= 2) this.flashComboAura(dec.level);
+    // D115 连续消除：连到门槛才给一句，且同一关内只在新高时播一次。
+    // 放在flashComboAura 之后 —— 连击的视觉反馈先出，语音再跟上。
+    this.playSceneVoice('combo', { combo: dec.combo.combo });
     // 文案开关只关「文字」，不关音效与元素发音（发音属学习闭环，见 D34）
     if (dec.show && dec.text && !this.data.praiseOff) this.showPraise(dec);
     if (dec.show && dec.level >= 2 && dec.text && !this.data.praiseOff) {
@@ -588,6 +601,9 @@ Page({
     var id = a.id;
     var firstTime = !storage.isCardSeen(id);
     if (firstTime) storage.markCardSeen(id);
+    // D115 稀有奖励：首次发现某个元素 = 抽到新文化卡，是本关最值得给一句的时刻。
+    // 走 showCard 那条路（首次发现才弹完整文化卡），与该浮层的出现对齐。
+    if (firstTime) this.playSceneVoice('rare');
     // 每次配对成功都朗读该元素发音（学习闭环：看得见 → 听得见）
     // 延后 300ms 让配对音效先响，避免人声与铃声糊在一起；连击时新发音打断旧发音
     if (this.voiceTimer) clearTimeout(this.voiceTimer);
@@ -606,6 +622,32 @@ Page({
       if (firstTime) that.showCard(id);
       else if (REPEAT_TOAST) that.showToastTip(id);
     }, 320);
+  },
+  // D115：播一句场景祝福语音。
+  // ⚠️ 必须让位于元素发音——每次配对成功都会朗读该元素（voiceTimer，300ms 后触发），
+  //   那是学习闭环，优先级高于任何鼓励语。若两者同时抢单声部通道，
+  //   玩家听到的是祝福语、**辅音被吃掉** —— 那等于把学习功能静音了。
+  //   所以这里固定延后 1200ms：既避开 300ms 的元素发音（0.3~1.5s），
+  //   又不会和下一对的元素发音撞在一起（连击时每对间隔通常 >1.5s）。
+  //
+  // ⚠️ 判定与播放**必须分开**：sceneVoice.trigger() 会写状态（记冷却时刻），
+  //   若在延时回调里再调一次，第二次必然被自己的冷却判掉 —— 结果是永远不响。
+  //   这是本轮真实写错又改掉的一处，故留注释钉住。
+  playSceneVoice: function (scene, opt) {
+    var that = this;
+    if (!this.sceneVoiceState) this.sceneVoiceState = sceneVoice.createState(Date.now());
+    if (!sceneVoice.shouldPlay(scene, this.sceneVoiceState, Date.now(), opt)) return false;
+    var id = sceneVoice.SCENE_VOICE[scene];
+    if (!audio.hasVoice(id)) return false;   // 没音源就不假装（与 pronounce 同策略）
+    if (this.sceneTimer) clearTimeout(this.sceneTimer);
+    this.sceneTimer = setTimeout(function () {
+      if (!that._alive) return;
+      // 到点才写状态：若在延时期间又触发了别的场景，冷却/连击闸门会重新判定
+      sceneVoice.trigger(scene, that.sceneVoiceState, function (vid) {
+        if (audio.speak(vid)) tracker.track('scene_voice');
+      }, Date.now(), opt);
+    }, sceneVoice.SCENE_YIELD_MS[scene] || 1200);
+    return true;
   },
   // 展示一条赞美（D34）：一次只显示一条，**新的替换旧的**（不排队、不叠加）。
   // 替换时靠 praiseAnt 在 A/B 之间翻转来重启动画——WXSS 里同一个 animation-name 不会重播，
@@ -781,9 +823,26 @@ Page({
     this.hideToast();
     audio.win();
     this.celebrate();
-    this.tashiTimer = setTimeout(function () { audio.tashiDelek(); }, 350);
+    // 通关默认仍播tashi_delek（用户对照表里它标的正是「游戏欢迎、通关」）。
+    // ⚠️ D115 修正：我先前把这里换成 greet_04，是**读错了你的表**——
+    //   你的表里 greet_04 对应「完成挑战」，而 tashi_delek 对应「通关」。
+    //   两者是不同场景：通关是「打完这一关」，完成挑战是「打完好友发来的挑战」
+    //   （代码里 this.challenge，来自 D86 分享链路）。
+    //   若把两者混为一谈，通关就会一直少念扎西德勒 —— 那是把你已有的功能删掉。
+    var self2 = this;
+    this.tashiTimer = setTimeout(function () {
+      // 完成挑战（好友分享进来的那一次通关）→ greet_04（愿幸福与安乐降临）
+      if (self2.challenge && self2.challenge.accepted !== false) {
+        self2.playSceneVoice('clear');
+      } else {
+        audio.tashiDelek();
+      }
+    }, 350);
     setTimeout(function () {
-      // 用户在这 1.2 秒里点了返回/退出：页面已销毁，不能再把他硬推到结算页
+      // D115：语音**念完再跳页**。原来固定 1200ms 后redirectTo，而完成挑战的
+      //   祝福 350+350 才起播、最长 1.6s → 1200ms 跳转会把祝福腰斩成半句。
+      //   半句藏语比不念更糟（听起来像卡住/破音）。所以推迟到语音结束后再走。
+      //   通关（非挑战）走tashi_delek，时长同量级，一并等完。
       if (!that._alive) return;
       // D111：学习线带 lv/stage/steps 走学习结算分支（结算页据此渲染
       //   「L1 · 第 3 课 / 下一课 / 本级证书」，不再把累计序号当老线 level 传）。
@@ -810,7 +869,8 @@ Page({
           //   自己玩自己的关卡时 toUid 为空，结算页不出现任何打赏入口。
           (that.toUid ? ('&to=' + that.toUid) : '')
       });
-    }, 1500);
+    // D115：1500ms → NAV_HOLD_MS(2200ms)。语音要念完才跳页，否则被腰斩成半句藏语。
+    }, sceneVoice.NAV_HOLD_MS);
   },
   // ---- 通关情绪反馈（PRD 4.2）：金色莲花 + 风马旗碎片粒子 + 雪山金光 + 震动 ----
   // 纯 CSS 动画 + wx.vibrateShort，零依赖；粒子由 JS 生成随机参数后交 WXSS 播放
@@ -844,6 +904,9 @@ Page({
   handleMismatch: function (i, j) {
     var that = this;
     audio.mismatch();
+    // D115 温柔鼓励：错配时给一句安慰，而不是只有否定音效。
+    // 注意频次——连错 5 次不能句句安慰，所以冷却在 scene-voice.js 里（15s）。
+    this.playSceneVoice('comfort');
     // D60：错配要给「身体感」——玩家点错时手上应有回馈，而不是只有声音。
     // 用 medium（比选中�� light 重一档），和「选中」区分开：手指能分辨这两种。
     haptic('medium');
@@ -994,6 +1057,9 @@ Page({
     if (this.voiceTimer) clearTimeout(this.voiceTimer);
     if (this.fxTimer) clearTimeout(this.fxTimer);
     if (this.tashiTimer) clearTimeout(this.tashiTimer);
+    // D115：场景语音的延时播放定时器也必须清 —— 页面走了还播祝福
+    // 与 audio.js 的 stopVoice 注释说的是同一个真实缺陷。
+    if (this.sceneTimer) clearTimeout(this.sceneTimer);
     if (this.breakTimer) clearTimeout(this.breakTimer);
     if (this.praiseTimer) clearTimeout(this.praiseTimer);
     this.removeQueue = [];

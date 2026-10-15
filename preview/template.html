@@ -4293,6 +4293,68 @@ function praiseAudioFor(level) { return PRAISE_TIER_SOUND[praiseTierOf(level)] |
 function praiseInitState() {
   return { combo: praiseReset(), prevTier: 0, lastShownAt: null, lastIndex: {}, maxCombo: 0 };
 }
+/* ===== D115 场景祝福语音（utils/scene-voice.js 的镜像，必须与小程序同一契约）=====
+   五场景：连续消除 / 完成挑战 / 稀有奖励 / 目标达成 / 温柔鼓励
+   ⚠️ 这是手写镜像 —— 与 utils/praise.js 的镜像同一模式。
+   改任何一边都必须改另一边，validate §D115 会机检两侧的映射表一致。 */
+const SCENE_VOICE = (typeof DATA !== 'undefined' && DATA.sceneVoice)
+  ? DATA.sceneVoice.map : {
+  combo: 'greet_03',   // 连续消除
+  clear: 'greet_04',   // 完成挑战
+  rare: 'greet_05',    // 稀有奖励
+  goal: 'greet_06',    // 目标达成
+  comfort: 'greet_07'  // 温柔鼓励
+};
+const SCENE_COOLDOWN = {
+  combo: 9000, rare: 20000, comfort: 15000, goal: 0, clear: 0
+};
+// 一次性场景：天然每关只发生一次，但业务层守卫可能被新增调用点绕过
+// （小程序侧行为测试实测：冷却=0 时连续 trigger('clear') 会播两次）
+const ONCE_PER_LEVEL = { goal: 1, clear: 1 };
+// 跳转推迟：语音念完再跳结算页，否则被腰斩成半句藏语
+const NAV_HOLD_MS = 2600;
+const SCENE_COMBO_THRESHOLD = 4;
+// 让位延迟：盘面仍在交互的场景要避开元素发音（300ms）；完成挑战不然后再有元素发音，
+//   且通关 1200ms 后就跳结算页 —— 必须在此之前播完，否则祝福落到结算页上。
+const SCENE_YIELD_MS = {
+  combo: 1200, rare: 1200, goal: 1200, comfort: 1200, clear: 350
+};
+function sceneVoiceState() { return { lastAt: {}, comboPeak: 0, played: {} }; }
+function sceneShouldPlay(scene, st, now, opt) {
+  opt = opt || {};
+  if (!SCENE_VOICE[scene]) return false;
+  if (ONCE_PER_LEVEL[scene] && st.played && st.played[scene]) return false;
+  if (scene === 'combo') {
+    const c = Number(opt.combo) || 0;
+    if (c < SCENE_COMBO_THRESHOLD) return false;
+    if (c <= st.comboPeak) return false;
+  }
+  const cd = SCENE_COOLDOWN[scene] || 0;
+  if (cd > 0 && st.lastAt[scene] && (now - st.lastAt[scene]) < cd) return false;
+  return true;
+}
+function sceneTrigger(scene, st, play, now, opt) {
+  if (!sceneShouldPlay(scene, st, now, opt)) return null;
+  st.lastAt[scene] = now;
+  if (scene === 'combo') st.comboPeak = Number(opt && opt.combo) || 0;
+  if (ONCE_PER_LEVEL[scene]) { if (!st.played) st.played = {}; st.played[scene] = true; }
+  const id = SCENE_VOICE[scene];
+  try { play(id); } catch (e) { /* 播放失败不影响游戏 */ }
+  return id;
+}
+/* 让位于元素发音（与小程序同一策略）：固定延后 1200ms。
+   判定与播放必须分开 —— sceneTrigger 会写状态，延时里再调一次会被自己的冷却判掉。*/
+function playSceneVoice(scene, opt) {
+  if (!state.sceneVoiceState) state.sceneVoiceState = sceneVoiceState();
+  if (!sceneShouldPlay(scene, state.sceneVoiceState, nowMs(), opt)) return false;
+  const id = SCENE_VOICE[scene];
+  if (id && !VOICES[id]) return false;   // 没音源就不假装（与小程序 hasVoice 同策略）
+  if (window.__sceneTimer) clearTimeout(window.__sceneTimer);
+  window.__sceneTimer = setTimeout(function () {
+    sceneTrigger(scene, state.sceneVoiceState, function (vid) { speak(vid); }, nowMs(), opt);
+  }, SCENE_YIELD_MS[scene] || 1200);
+  return true;
+}
 /* 一站式决策：喂一次「成功消除」，返回新状态 + 该不该展示 + 展示什么（与小程序同一契约） */
 function praiseOnMatch(st, now, types, rand) {
   const s = st || praiseInitState();
@@ -4383,6 +4445,8 @@ function startLevel(level) {
   state.maxCombo = 0;
   // D34：本关的连击/档位/抽取历史重新起步
   state.praiseState = praiseInitState();
+  // D115：每关重置场景语音闸门（否则上一关的冷却会把本关该播的压掉）
+  state.sceneVoiceState = sceneVoiceState();
   // D34：文案开关是跨关持久化的偏好（存在 progress.praiseOff），进关时同步 HUD 上的标签
   const praiseOffSaved = getProgress().praiseOff;
   state.praiseOff = praiseOffSaved;
@@ -4479,6 +4543,8 @@ function startLearn(lv, stage) {
   state.combo = 0;
   state.maxCombo = 0;
   state.praiseState = praiseInitState();
+  // D115：每关重置场景语音闸门（否则上一关的冷却会把本关该播的压掉）
+  state.sceneVoiceState = sceneVoiceState();
   const praiseOffSaved = getProgress().praiseOff;
   state.praiseOff = praiseOffSaved;
   const praiseToggleEl = $('praise-toggle');
@@ -4855,6 +4921,8 @@ function onTapTile(idx) {
   if (state.learn) {
     state.stepsLeft = Math.max(0, state.stepsBudget - state.attempts);
     updateHud();
+    // D115 目标达成：只剩最后 3 步时给一句祝福（与通关是不同语义，别混）
+    if (state.stepsLeft > 0 && state.stepsLeft <= 3) playSceneVoice('goal');
     if (state.stepsLeft <= 0) {
       state.locked = true;
       setTimeout(function () { finishLevel(); }, 700);
@@ -5018,6 +5086,8 @@ function handleMatch(i, j) {
   audio.tier(praiseDec.level);
   // D62：连击与视听耦合（对应 pages/game/game.js 的 flashComboAura）
   if (praiseDec.level >= 2) flashComboAura(praiseDec.level);
+  // D115 连续消除：连到门槛才给一句，同一关内只在新高时播一次
+  playSceneVoice('combo', { combo: state.combo });
   if (praiseDec.show && praiseDec.text && !state.praiseOff) showPraise(praiseDec);
   // 中文激励播报（2026-10-08）：档位 ≥2 且未关文案时播放，与文字同门控
   if (praiseDec.show && praiseDec.level >= 2 && !state.praiseOff) speak('praise_' + Math.min(5, praiseDec.level));
@@ -5029,6 +5099,8 @@ function handleMatch(i, j) {
   //   否则收藏进度里会塞进一堆永不显示的 id（cardProgress 不认它们，但数据会脏）。
   const firstTime = !state.learn && !isCardSeen(id);
   if (!state.learn && firstTime) markCardSeen(id);
+  // D115 稀有奖励：首次发现某元素 = 抽到新文化卡，与该浮层出现对齐
+  if (firstTime) playSceneVoice('rare');
 
   // 每次配对成功都朗读该元素发音（学习闭环：看得见 → 听得见）
   // 延后 300ms 让配对音效先响，避免人声与铃声糊在一起
@@ -5083,6 +5155,8 @@ function drainQueue() {
 
 function handleMismatch(i, j) {
   audio.mismatch();
+  // D115 温柔鼓励：错配也给一句安慰；连错不句句安慰（冷却 15s 在 sceneShouldPlay）
+  playSceneVoice('comfort');
   haptic('medium');     // D60：错配比选中重一档，手指能分辨
   // D34：错配把窗口连击链条整条打断（档位同时归零，下一次消除从等级 1 重新起步）
   state.praiseState = praiseOnMiss(state.praiseState);
@@ -5215,17 +5289,25 @@ function finishLevel() {
   if (gm) gm.classList.remove('show');
   audio.win();
   celebrate();
-  setTimeout(function () { speak('tashi_delek'); }, 350);   // 通关藏语：扎西德勒
+  // D115：通关播 tashi_delek（用户对照表里它标的正是「游戏欢迎、通关」）。
+  //   ⚠️ 我先前误把这里换成 greet_04（愿幸福与安乐降临）——那是**读错了对照表**：
+  //   你的表里 greet_04 对应「完成挑战」，与「通关」是两个不同场景。
+  //   **体验版不接挑战**（没有分享挑战链路，无 state.challenge），
+  //   所以「完成挑战」场景在浏览器里客观不会发生 —— 这是已知能力差，不是漏接。
+  //   常量与判定仍与小程序保持一致，将来体验版补上挑战模式即可直接生效。
+  setTimeout(function () { speak('tashi_delek'); }, 350);
   // 最后一对消除后先播庆祝粒子，稍等再切结算页（原来是 finalizeMatch 里的 1200ms）。
   // ⚠️ 用 screenToken 兜底：这 1200ms 里若已经跳到别的页面（证书/护照/权益/首页），
   //    就不能再把画面抢回结算页（否则会覆盖用户刚打开的页面）。
+  // D115：跳转推迟到语音念完（350触发 + 1.6s 最长句 + 收尾余量）。
+  //   原来固定 1200ms，会把最长的那句腰斩成半句藏语 —— 半句比不念更糟。
   const goResult = state.screenToken;
   setTimeout(function () {
     if (state.screenToken !== goResult) return;
     showScreen('result');
     // 舒缓祝福语：画卷展开时读一句（缺失录音静默回退）
     setTimeout(function () { speak('blessing_01'); }, 650);
-  }, 1200);
+  }, NAV_HOLD_MS);
   renderResult();
 }
 
@@ -6469,11 +6551,12 @@ function lightLamp() {
   $('lamp-btn').classList.add('hide');   // 点亮后 CTA 收起（不留死按钮），元素保留仅为守卫测试可点
   // D50/D109：写实火焰三层动画 + 致谢按钮（用户点名文案）+ 播六字真言
   //   ⚠️ D109 修正：原注释写「中文播报」与事实不符 —— mantra.mp3 是**藏文**合成的。
-  //   D109 起改播 mantra_4x（六字真言 **4 遍**，由已验证单遍拼接，遍数可验）。
+  //   D115（用户「六字真言播放一遍便可以」）起改播**单遍** mantra：
+  //   日签弹窗是每天首次打开必过的路径，念4 遍等于强制 9 秒静默仪式。
   $('lamp-flame').classList.add('lit');
   $('lamp-thanks').classList.add('show');
   $('lamp-tip').classList.add('show');
-  speak('mantra_4x');
+  speak('mantra');
   // 点亮之后：出现显著关闭按钮；未点亮态的安静出口（今天先不点灯）让位
   $('lamp-close').classList.add('show');
   $('lamp-skip').classList.add('hide');
@@ -6490,8 +6573,8 @@ function maybeShowLamp() {
   const p = getProgress();
   if (String(p.lampDay || '') === colToday()) return;
   showLampWindow();
-  // D109：与小程序对齐 —— 祈福跳窗打开即用藏文念六字真言 4 遍
-  speak('mantra_4x');
+  // D115：与小程序对齐 —— 祈福跳窗打开即用藏文念六字真言**单遍**
+  speak('mantra');
 }
 $('lamp-btn').addEventListener('click', lightLamp);
 // 三个出口共用同一收尾：右上角 ✕（任何状态可关）/ 点亮后的显著关闭按钮 / 未点亮时的安静文字链
