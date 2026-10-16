@@ -38,7 +38,10 @@ const DATA = {
   elements: require(path.join(ROOT, 'data', 'elements')),
   cards: require(path.join(ROOT, 'data', 'cards')),
   levels: require(path.join(ROOT, 'data', 'levels')),
-  stages: require(path.join(ROOT, 'data', 'stages')),
+  // 学习线录音索引（牌面文本 → learn_NNN）：学习关牌面 id 是合成的，录音只能按文本索引
+  learnAudio: require(path.join(ROOT, 'data', 'learn-audio')),
+  // ⚠️ 这里原先还注入 stages（12 阶段阶梯）—— 2026-10-15（D119）该体系整体撤除，
+  //   数据文件与体验版里的 certList/showCert 一并删除，注入随之取消。
   merchants: require(path.join(ROOT, 'data', 'merchants')),
   // PRD v4 首页：五地剪影 + 悬浮入口内容池（日签 / 盲盒 / 道具铺 / 菩提树 / 冬游）
   regions: require(path.join(ROOT, 'data', 'regions')),
@@ -267,27 +270,15 @@ if (bad) process.exit(1);
   console.log('  学习体系：150 关注入产物三条守恒全部通过（15 级 × 10 课）');
 }
 
-// ---------- 5. 成长阶梯一致性抽查（每阶段 10 关、区间连续、不重叠） ----------
-const stages = DATA.stages;
-let stageBad = 0;
-if (stages.length !== 12) {
-  console.error('✗ 成长阶梯应为 12 个阶段，实际 ' + stages.length);
-  stageBad++;
+// ---------- 5. 成长阶梯（12 阶段）已撤除 ----------
+//   2026-10-15（D119）该体系整体删除：data/stages.js、体验版渲染、结算页预告全部清掉。
+//   这里原先的一致性抽查（12 阶段 / 每阶段 10 关 / 区间连续）随之取消 ——
+//   留着会因 DATA.stages 不存在而直接崩，把整个构建卡死。
+//   判据改为**反向**：数据文件不该再回来。
+if (require('fs').existsSync(path.join(ROOT, 'data', 'stages.js'))) {
+  console.error('✗ data/stages.js 仍在 —— 12 阶段体系已撤除（见 DECISIONS D119）');
+  process.exit(1);
 }
-stages.forEach(function (s, i) {
-  const span = s.to - s.from + 1;
-  if (span !== 10) { console.error('✗ 第 ' + s.stage + ' 阶段跨度应为 10 关，实际 ' + span); stageBad++; }
-  if (i > 0 && s.from !== stages[i - 1].to + 1) {
-    console.error('✗ 第 ' + s.stage + ' 阶段与上一阶段区间不连续（' + s.from + ' ≠ ' + (stages[i - 1].to + 1) + '）');
-    stageBad++;
-  }
-  const levelsInRange = DATA.levels.filter(function (l) { return l.level >= s.from && l.level <= s.to; }).length;
-  if (s.open && levelsInRange !== 10) {
-    console.error('✗ 已开放阶段「' + s.name + '」应有 10 关数据，实际 ' + levelsInRange);
-    stageBad++;
-  }
-});
-if (stageBad) process.exit(1);
 
 // ---------- 6. 权益中心一致性抽查（双轨标签合法 + 城市合法 + 无金额字段） ----------
 const CITY_IDS = require(path.join(ROOT, 'utils', 'benefits')).CITIES.map(function (c) { return c.id; });
@@ -434,9 +425,12 @@ fs.writeFileSync(OUT, html, 'utf8');
 const size = fs.statSync(OUT).size;
 console.log('✓ 已生成 preview/play.html  (' + Math.round(size / 1024) + ' KB)');
 console.log('  数据：' + Object.keys(DATA.elements).length + ' 个元素 / ' +
-  DATA.cards.length + ' 张文化卡 / ' + DATA.levels.length + ' 关');
-console.log('  阶梯：' + stages.length + ' 个阶段（已开放 ' +
-  stages.filter(function (s) { return s.open; }).length + ' 个，每阶段 10 关一张证书）');
+  DATA.cards.length + ' 张文化卡 / ' + DATA.levels.length + ' 关（天梯）');
+// ⚠️ 这里原先是「阶梯：N 个阶段…」—— 12 阶段体系已撤除（D119），
+//   那行会因 stages 未定义而让**构建脚本非零退出**（产物其实写成功了，
+//   但 CI 判红 → 「声称的产物」与「脚本结论」不一致）。改成报告学习线。
+console.log('  学习线：' + DATA.learnStages.length + ' 课（15 级 × 10 课）+ 天梯 ' +
+  DATA.levels.length + ' 课');
 console.log('  资产：4 个 Logo + 4 个背景（全局底图/经幡/布达拉宫/纹样，已内联 base64）');
 console.log('  牌数一致性：10 关全部通过');
 console.log('  应激励文案：' + (praise.tiers || []).reduce(function (n, t) { return n + t.texts.length; }, 0) +

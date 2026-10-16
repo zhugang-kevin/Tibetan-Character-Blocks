@@ -1,4 +1,4 @@
-// pages/cert/cert.js — 藏文成长证书（查看 / 保存 / 分享）
+// pages/cert/cert.js — 藏文拼读证书（学习线 · 查看 / 保存 / 分享）
 //
 // 证书是「学习证明」：写的是这一阶段真的学会了什么，而不是积分奖励。
 // 未获得时展示该阶段的进度与门槛规则（还差几关 / 还差多少正确率）。
@@ -48,37 +48,20 @@ Page({
       tracker.track('cert_view');
       return;
     }
-    var stage = parseInt(query.stage, 10) || 1;
-    // 阶段号非法（越界 / 被手改）时直接回首页，避免渲染空证书
-    if (!certificate.stageByNo(stage)) {
-      wx.redirectTo({ url: '/pages/index/index' });
-      return;
-    }
-    this.setData({ stage: stage });
-    this.refresh();
-    tracker.track('cert_view');
+    // ⚠️ 旧的 `?stage=N`（12 阶段「藏文成长证书」）已于 2026-10-15 撤除（D119：两块证书墙合并成一块）。
+    //   这条分支当时**漏掉了** —— 它仍会渲染一个已经不存在于任何入口的阶梯证书。
+    //   现在没有第二种证书形态，统一回首页。
+    //   （注意：这里**不能再引用 stageByNo / data/stages** —— 那套 API 已删除，
+    //     留着会是一个永远取到 undefined 的孤儿判断。）
+    wx.redirectTo({ url: '/pages/index/index' });
   },
   onShow: function () {
     this.showShare();
     this.refresh();
   },
   refresh: function () {
-    if (this.data.learnMode) { this.refreshLearn(); return; }
-    var stage = this.data.stage;
-    var info = certificate.stageByNo(stage);
-    var cert = storage.findCert(stage);
-    var slots = certificate.list();
-    var slot = null;
-    for (var i = 0; i < slots.length; i++) {
-      if (slots[i].stage === stage) { slot = slots[i]; break; }
-    }
-    this.setData({
-      stageInfo: info,
-      cert: cert,
-      progress: slot ? slot.progress : 0,
-      total: slot ? slot.total : 10,
-      tiers: [certificate.TIERS.gold, certificate.TIERS.silver, certificate.TIERS.bronze]
-    });
+    // 只有一种证书形态了：学习线（旧 12 阶段体系已撤除，见 onLoad）
+    this.refreshLearn();
   },
   // D111 学习体系证书刷新：把学习证书整形成与阶段证书同形的视图模型
   //   （stage = 级号、stageName = 级名），复用同一套渲染与 Canvas 导出。
@@ -184,7 +167,10 @@ Page({
       // 主标题
       ctx.fillStyle = '#2C3E50';
       ctx.font = '700 46px "PingFang SC","Microsoft YaHei",sans-serif';
-      ctx.fillText('藏文成长证书', W / 2, 268);
+      // ⚠️ 这里原本**写死**「藏文成长证书」（12 阶段旧体系的名字）。
+      //   D119 撤除旧体系后，全站只剩学习线一种证书 —— 结果玩家保存下来的图上
+      //   印着一个已经不存在的体系名（页面 WXML 标题改了、图上没改，属于内容自相冲突）。
+      ctx.fillText('藏文拼读证书', W / 2, 268);
       // 分隔线
       ctx.strokeStyle = 'rgba(183, 149, 11, 0.6)';
       ctx.lineWidth = 2;
@@ -302,10 +288,9 @@ Page({
   onShareAppMessage: function () {
     var cert = this.data.cert;
     return {
+      // 全站只剩学习线一种证书（D119），不再有 learnMode 分支
       title: cert
-        ? (this.data.learnMode
-            ? ('我拿到了「L' + cert.stage + ' · ' + cert.stageName + '」' + cert.tierLabel + ' · 藏文拼读证书')
-            : ('我拿到了「' + cert.stageName + '」' + cert.tierLabel + ' · 藏文成长证书'))
+        ? ('我拿到了「L' + cert.stage + ' · ' + cert.stageName + '」' + cert.tierLabel + ' · 藏文拼读证书')
         : '藏字方块，认藏文，从方块开始',
       path: '/pages/index/index',
       imageUrl: this.data.imagePath || undefined

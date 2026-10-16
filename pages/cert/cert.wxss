@@ -1,4 +1,4 @@
-/* pages/cert/cert.wxss — 藏文成长证书 */
+/* pages/cert/cert.wxss — 藏文拼读证书（学习线） */
 .page {
   min-height: 100vh;
   padding: 40rpx 36rpx 80rpx;

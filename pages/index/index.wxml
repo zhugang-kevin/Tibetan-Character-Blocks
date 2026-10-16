@@ -37,10 +37,13 @@
     <view class="ge-arrow">›</view>
   </view>
 
-  <!-- 朝圣天梯地图：山脚（人间）→ 石阶关卡 → 山顶（天堂/净土），五地剪影随进度点亮 -->
-  <view class="stage-head">
-    <text class="stage-name">朝圣天梯 · 第一段</text>
-    <text class="stage-range">第 1-10 课 · 山脚到山腰 · 完成可得证书</text>
+  <!-- 朝圣天梯地图：山脚（人间）→ 石阶关卡 → 山顶（天堂/净土），五地剪影随进度点亮
+       ⚠️ 抬头是**动态**的：老线 10 关全通后必须变成「继续学习第 N / 150 课」的可点入口 ——
+          否则玩家通关第 10 关回到首页，看到的是「已全通 + 没有下一步」，就是死胡同。
+          用户 2026-10-15：「还是仅仅限制在第十关，之后就没有办法进行下去」。 -->
+  <view class="stage-head" bindtap="goContinueLearn">
+    <text class="stage-name">{{stageHeadName}}</text>
+    <text class="stage-range">{{stageHeadRange}}</text>
   </view>
 
   <view class="vine-map {{ladderIn ? 'in' : ''}}">
@@ -104,31 +107,52 @@
     </view>
   </view>
 
-  <!-- 文化护照入口（总档案：12 张藏文成长证书 + 印章 + 收藏） -->
+  <!-- 文化护照入口（总档案：15 张藏文拼读证书 + 印章 + 收藏）
+       D119（2026-10-15）：原先这里是「12 张藏文成长证书」的旧体系阶段进度，
+       随证书墙合并成一块而改报「藏文拼读证书」的级别进度。 -->
   <view class="passport-card" bindtap="openPassport">
     <view class="pc-left">
       <view class="pc-title">我的西藏文化护照</view>
-      <view wx:if="{{stage}}" class="pc-sub">
-        第 {{stage.stage}} 阶段 · {{stage.name}} · 进度 {{stage.progress}}/{{stage.total}} 课
+      <view wx:if="{{learnStage}}" class="pc-sub">
+        L{{learnStage.lv}} · {{learnStage.name}} · 进度 {{learnDone}}/{{learnStage.stages}} 课
       </view>
-      <view wx:elif="{{lastCert}}" class="pc-sub">
-        最近获得：第 {{lastCert.stage}} 阶段 · {{lastCert.tierLabel}}
-      </view>
-      <view wx:else class="pc-sub">完成第 10 课，获得第一张藏文成长证书</view>
+      <view wx:else class="pc-sub">十五级已全部完成 · 已解锁「藏文拼读宗师」</view>
       <!-- D113e 朋友送来的心意：不点开护照也能知道有人想着你。
            未读用红点提示；没有未读但有收到的，只安静地报个数（不反复提醒）。 -->
       <view wx:if="{{inboxUnread}}" class="pc-inbox new">🎁 收到 {{inboxUnread}} 份新祝福</view>
       <view wx:elif="{{inboxTotal}}" class="pc-inbox">🎁 朋友送来的心意 · {{inboxTotal}} 份</view>
     </view>
     <view class="pc-right">
-      <view class="pc-count">{{certCount}}<text class="pc-total">/{{certTotal}}</text></view>
-      <view class="pc-label">成长证书</view>
+      <view class="pc-count">{{certCount}}<text class="pc-total">/{{learnCertTotal}}</text></view>
+      <view class="pc-label">拼读证书</view>
+    </view>
+  </view>
+
+  <!-- 全部课程全景图（150 课）—— 为什么必须放在首页：
+       此前首页只有 10 级天梯 + 页脚「共 10 课」，玩家**根本看不到**学习线那 150 课，
+       于是反复反馈「还是停在 10 关 / 没有看到 150 关」。这里把 150 课一次性铺开，
+       每一课都能直接点进去（锁状态与学习面板走同一口径 learnLocked）。 -->
+  <view class="all-levels">
+    <view class="al-head">
+      <text class="al-title">全部课程 · 150 课</text>
+      <text class="al-prog">已完成 {{learnAll.doneN}} / {{learnAll.total}}</text>
+    </view>
+    <view class="al-grid">
+      <view wx:for="{{learnAll.cells}}" wx:key="gi"
+            class="al-cell {{item.done ? 'done' : (item.cur ? 'cur' : (item.locked ? 'lock' : 'open'))}}"
+            data-lv="{{item.lv}}" data-stage="{{item.stage}}" data-locked="{{item.locked}}"
+            bindtap="onTapAllCell">{{item.gi}}</view>
+    </view>
+    <view class="al-note" wx:if="{{learnAll.next}}">下一课：第 {{learnAll.next}} 课 · 点格子即可上课</view>
+    <view class="al-note" wx:else>150 课全部完成 —— 你已通读整个藏文拼读体系</view>
+    <view class="al-verify" bindtap="toggleLearnVerify">
+      <text>验收开关：{{learnVerify ? '已打开（150 课全开）' : '关闭（逐级解锁）'}}</text>
     </view>
   </view>
 
   <view class="footer">
     <view class="footer-tagline">每个字母，都是一座西藏</view>
-    <view>共 10 课 · 进度自动保存在本机</view>
+    <view>学习线 150 课 + 天梯 10 课 · 进度自动保存在本机</view>
   </view>
 
   <!-- 左侧悬浮入口 -->

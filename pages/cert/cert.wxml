@@ -19,11 +19,13 @@
           <view class="sheet-orn-l">✦</view>
           <view class="sheet-orn-r">✦</view>
 
-          <view class="sheet-tib tibetan">བོད་ཡིག་སློབ་སྦྱོང</view>
-          <view class="sheet-title">藏文成长证书</view>
+          <view class="sheet-tib tibetan">བོད་ཡིག་སློབ་སྦྱོང་</view>
+          <!-- D119：只剩学习线一种证书，标题改为「藏文拼读证书」（原先硬编码旧体系名，玩家会看到错的标题） -->
+          <view class="sheet-title">藏文拼读证书</view>
           <view class="sheet-rule"></view>
 
-          <view class="sheet-stage">{{learnMode ? ('第 ' + cert.stage + ' 级') : ('第 ' + cert.stage + ' 阶段')}}</view>
+          <!-- D119：没有「阶段」这一说了（旧 12 阶段体系已撤除），级别行只按学习线的「级」 -->
+          <view class="sheet-stage">第 {{cert.stage}} 级</view>
           <view class="sheet-name" style="color: {{cert.tierColor}};">{{cert.stageName}}</view>
           <view class="sheet-tier" style="background: {{cert.tierColor}};">{{cert.tierLabel}}</view>
 

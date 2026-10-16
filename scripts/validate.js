@@ -239,13 +239,15 @@ if (!bannedFound) ok('未使用任何禁用 API（登录/支付/订阅/云初始
 
 // ---------- 7. WXML 事件绑定 ----------
 section('7. WXML 事件绑定与 JS 方法对应');
-[['pages/index/index', ['onTapLevel', 'openPassport', 'openBenefits', 'openPanel', 'closePanel', 'doSignIn', 'openBox', 'waterTree']],
+[['pages/index/index', ['onTapLevel', 'openPassport', 'openBenefits', 'openPanel', 'closePanel', 'doSignIn', 'openBox', 'waterTree', 'goContinueLearn', 'onTapAllCell', 'toggleLearnVerify']],
  ['pages/game/game', ['onTapTile', 'dismissCard', 'guideNext', 'speakCard']],
- ['pages/result/result', ['goHome', 'openNameModal', 'closeNameModal', 'onNameInput', 'confirmGenerate', 'saveToAlbum', 'previewShare', 'openCert', 'openPassport', 'goNextLearn', 'openLearnCert', 'goGift']],
+ ['pages/result/result', ['goHome', 'openNameModal', 'closeNameModal', 'onNameInput', 'confirmGenerate', 'saveToAlbum', 'previewShare', 'openPassport', 'goNextLearn', 'goLearnLine', 'openLearnCert', 'goGift']],
  // D113 送祝福礼物页（B 端）：四份心意 / 挑祝福 / 取名 / 署名 / 送出 / 重试
  ['pages/gift/gift', ['pickGift', 'pickBlessing', 'onToNameInput', 'pickGender', 'makeName', 'onFromNameInput', 'submit', 'retry', 'goHome']],
  ['pages/cert/cert', ['openNameModal', 'closeNameModal', 'onNameInput', 'confirmName', 'generate', 'saveToAlbum', 'previewShare', 'goPassport', 'goHome']],
- ['pages/passport/passport', ['openCert', 'openLearnCert', 'goHome']],
+ // D119（2026-10-15）：护照页的 openCert（旧体系 ?stage=N 证书页）已随 12 张证书墙一起移除，
+ //   只保留学习线的 openLearnCert（?learn=N）。
+ ['pages/passport/passport', ['openLearnCert', 'goHome']],
  ['pages/benefits/benefits', ['onSwitchMode', 'onPickCity', 'onClaim', 'goHome']]
 ].forEach(([page, handlers]) => {
   const wxml = read(page + '.wxml');
@@ -501,40 +503,41 @@ else err('体验版未镜像配对朗读逻辑');
 // ---------- 14. 成长阶梯与证书体系 ----------
 section('14. 成长阶梯与证书体系（12 阶段 · 每 10 关一张证书）');
 
-// 14.1 阶梯数据完整性
-var stagesSrc = read('data/stages.js');
-var stagesArr = eval('(' + stagesSrc.replace(/^module\.exports\s*=\s*/, '').replace(/;\s*$/, '') + ')');
-if (stagesArr.length === 12) ok('成长阶梯 12 个阶段');
-else err('成长阶梯应为 12 个阶段，实际 ' + stagesArr.length);
-var stageBad = 0;
-stagesArr.forEach(function (s, i) {
-  if (s.to - s.from + 1 !== 10) { err('第 ' + s.stage + ' 阶段跨度不是 10 关'); stageBad++; }
-  if (i > 0 && s.from !== stagesArr[i - 1].to + 1) { err('第 ' + s.stage + ' 阶段与上一阶段区间不连续'); stageBad++; }
-  if (!s.name || !s.goal) { err('第 ' + s.stage + ' 阶段缺少 name / goal'); stageBad++; }
-});
-if (!stageBad) ok('每阶段 10 关、区间连续不重叠、名称与目标完整');
-if (stagesArr[0].from === 1 && stagesArr[11].to === 120) ok('阶梯覆盖第 1-120 关');
-else err('阶梯应覆盖第 1-120 关（实际 ' + stagesArr[0].from + '-' + stagesArr[11].to + '）');
-var openStages = stagesArr.filter(function (s) { return s.open; });
-if (openStages.length === 1 && openStages[0].stage === 1)
-  ok('MVP 仅开放第一阶段（其余为「敬请期待」占位）');
-else warn('已开放阶段数量 = ' + openStages.length + '（MVP 预期为 1）');
-if (stagesArr[0].certLines && stagesArr[0].certLines.length)
-  ok('第一阶段证书成就行已定义（占位符按真实数据替换）');
-else err('第一阶段缺少 certLines 证书文案');
-openStages.forEach(function (s) {
-  var covered = levels.filter(function (l) { return l.level >= s.from && l.level <= s.to; }).length;
-  if (covered === s.to - s.from + 1) ok('「' + s.name + '」在 data/levels.js 中有对应 ' + covered + ' 关数据');
-  else err('「' + s.name + '」缺少关卡数据（应 10 关，实际 ' + covered + '）');
-});
+// 去注释后再判据：本轮实测教训 —— 判据若直接扫原文，**自己写的解释性注释会把门禁判红**
+//   （例如「已删除 .next-stage」这句注释里就带着 .next-stage 字样）。
+//   凡是「某标识符不该再出现」这类反向判据，一律先过这把尺子。
+var stripComments = function (src) {
+  return String(src)
+    .replace(/<!--[\s\S]*?-->/g, ' ')
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+};
 
-// 14.2 证书模块
+// 14.1 成长阶梯（12 阶段）已于 2026-10-15 撤除（D119：两块证书墙合并成一块）
+//   ⚠️ 这里**反向钉住**：数据与代码都不该再回来。「撤除了但它还在」是最容易复发的缺陷类型 ——
+//   本轮就实测到两处残留：证书页仍能经 ?stage=N 渲染一个不存在的阶梯证书；
+//   结算页的护照按钮仍在数旧体系的证书（会永远显示「0 张证书」）。
+if (!exists('data/stages.js')) ok('旧的 12 阶段阶梯数据 data/stages.js 已撤除');
+else err('data/stages.js 仍在 —— 该体系已撤除（见 DECISIONS D119）');
+var ladderUsers = ['pages/cert/cert.js', 'pages/index/index.js', 'pages/passport/passport.js', 'pages/result/result.js']
+  .filter(function (f) {
+    return exists(f) && /certificate\.(list|stageByNo|nextStage|aggregate|isStageComplete|buildCert|ownedCount)\b/.test(stripComments(read(f)));
+  });
+if (!ladderUsers.length) ok('各页面已不再调用旧阶梯证书 API（无悬空引用）');
+else err('仍有页面调用旧阶梯证书 API：' + ladderUsers.join('、'));
+
+// 14.2 证书模块（D119 起只有学习线一套证书，旧阶梯 API 已删）
 if (exists('utils/certificate.js')) ok('证书模块 utils/certificate.js 存在');
 else err('缺少 utils/certificate.js');
 var certSrc = exists('utils/certificate.js') ? read('utils/certificate.js') : '';
-['onLevelComplete', 'tierOf', 'certNo', 'list', 'stageContent', 'aggregate'].forEach(function (f) {
+['onLevelComplete', 'certNo', 'findLvCert', 'issueLearningCert', 'learningList'].forEach(function (f) {
   if (certSrc.indexOf(f) > -1) ok('certificate.js 提供 ' + f + '()');
   else err('certificate.js 缺少 ' + f + '()');
+});
+// 反向：旧阶梯 API 不该再留下（留着就是死代码，且会在页面里形成悬空引用）
+['isStageComplete', 'nextTierHint', 'stageByNo'].forEach(function (f) {
+  if (stripComments(certSrc).indexOf(f) === -1) ok('certificate.js 已移除旧阶梯 API ' + f + '()');
+  else err('certificate.js 仍留着旧阶梯 API ' + f + '() —— 该体系已撤除（D119）');
 });
 if (certSrc.indexOf("'ZWFK'") > -1) ok('证书编号前缀 ZWFK（藏字方块拼音首字母）');
 else err('证书编号前缀缺失');
@@ -578,8 +581,11 @@ var certPageJs = read('pages/cert/cert.js');
   if (certWxml.indexOf(k) > -1) ok('证书页展示 ' + k);
   else err('证书页缺少 ' + k);
 });
-if (certWxml.indexOf('藏文成长证书') > -1) ok('证书页标题 = 藏文成长证书');
-else err('证书页标题缺失');
+// D119：证书页只剩学习线一种形态（旧「藏文成长证书」已撤除）
+if (certWxml.indexOf('藏文拼读证书') > -1) ok('证书页标题 = 藏文拼读证书');
+else err('证书页标题不是「藏文拼读证书」');
+if (certWxml.indexOf('藏文成长证书') === -1) ok('证书页不再出现旧体系标题（D119）');
+else err('证书页仍写着「藏文成长证书」——该体系已撤除');
 if (certPageJs.indexOf('canvasToTempFilePath') > -1) ok('证书页可导出图片（保存 / 分享）');
 else err('证书页未导出图片，无法保存分享');
 if (certPageJs.indexOf('saveImageToPhotosAlbum') > -1) ok('证书页支持保存到相册');
@@ -594,16 +600,26 @@ var ppWxml = read('pages/passport/passport.wxml');
   if (ppWxml.indexOf(k) > -1) ok('文化护照含「' + k + '」');
   else err('文化护照缺少「' + k + '」');
 });
-if (ppWxml.indexOf('wx:for="{{certs}}"') > -1) ok('护照按 12 个证书位渲染（已得高亮 / 未得灰色）');
-else err('护照未渲染 12 个证书位');
+// D119（2026-10-15）：证书墙从「12 张成长证书」+「15 张拼读证书」两块**合并成一块**。
+//   旧的两块颗粒度完全相同（都是每 10 课一张），且旧墙读的是老 10 关线、只开放阶段 1
+//   —— 12 张里 11 张永远拿不到。所以这里的判据**反过来**：旧墙必须已撤除。
+if (ppWxml.indexOf('wx:for="{{certs}}"') === -1)
+  ok('旧的 12 张「藏文成长证书」墙已撤除（D119 合并成一块）');
+else err('护照仍在渲染旧的 12 张证书墙 —— 与「藏文拼读证书」颗粒度重复，应已撤除');
+if (ppWxml.indexOf('wx:for="{{learnCerts}}"') > -1)
+  ok('护照按 15 个学习证书位渲染（已得高亮 / 未得灰色）');
+else err('护照未渲染 15 个学习证书位');
 if (read('pages/index/index.wxml').indexOf('openPassport') > -1)
   ok('首页提供文化护照入口（含证书数 / 阶段进度）');
 else warn('首页缺少护照入口');
 
 // 14.7 体验版镜像
-if (tpl.indexOf('STAGES') > -1 && tpl.indexOf('certList') > -1 && tpl.indexOf('onLevelComplete') > -1)
-  ok('体验版镜像了成长阶梯与证书体系');
-else err('体验版未镜像证书体系');
+// D119：体验版镜像的是**学习线**证书体系（旧 STAGES/certList 已随体系删除）
+if (tpl.indexOf('onLevelComplete') > -1 && tpl.indexOf('issueLearnCert') > -1 && tpl.indexOf('showLearnCert') > -1)
+  ok('体验版镜像了学习线证书体系（颁发 / 查看）');
+else err('体验版未镜像学习线证书体系');
+if (tpl.indexOf('certList') === -1) ok('体验版已移除旧阶梯渲染 certList（死代码不再留在 2MB 产物里）');
+else err('体验版仍留着 certList（旧阶梯渲染）——该体系已撤除');
 if (tpl.indexOf('screen-passport') > -1 && tpl.indexOf('screen-cert') > -1)
   ok('体验版含文化护照页与证书页');
 else err('体验版缺少护照页 / 证书页');
@@ -1430,120 +1446,35 @@ section('21. 前 60 秒钩子（结算页进度锚 / 印章计数 / 第2关差�
 })();
 
 // ---------- 22. 阶段路线图定位与「下一阶段」预告（D27） ----------
-// 背景：外部报告主张把「拼合消除 / 连锁消除」——即 12 阶段路线图的第 3~9 阶段
-// （元音 / 上加字 / 下加字 / 组词 / 造句）——提前进第 1 关的盘面。
-// 拍板结论：采纳其命名与定位（配对入门 · 拼合进阶 · 成句高阶），不采纳其排期。
-// 这一节把该边界变成机械断言：阶段 1 之外不得开放；结算页只做「预告」不做「开放」；
-// 预告文案一律取自 data/stages.js，页面不得内联阶段名。
-section('22. 阶段路线图定位与「下一阶段」预告（D27）');
+/* ---------- 22. D27「阶段路线图 / 下一阶段预告」随 D119 一并撤除 ----------
+   背景：外部报告曾主张把「拼合消除 / 连锁消除」（即 12 阶段路线图的第 3~9 阶段）
+   提前进第 1 关的盘面；当时拍板「只做预告、不开放机制」。
+   2026-10-15（D119）把 12 阶段旧证书体系整体撤除后，那套预告与它的数据源一并消失 ——
+   本节改为**反向钉住**：数据、UI、文案都不该再回来，避免「撤除了却还留着」复发。 */
+section('22. 阶段路线图「下一阶段」预告（D119 撤除后反向钉住）');
 (() => {
-  const cert = require(path.join(ROOT, 'utils', 'certificate'));
-  const stages = require(path.join(ROOT, 'data', 'stages'));
+  // 22.1 唯一数据源已删除
+  if (!exists('data/stages.js')) ok('旧阶梯数据 data/stages.js 已删除（预告的唯一数据源随之消失）');
+  else err('data/stages.js 仍在 —— 该体系已撤除（D119）');
 
-  // 22.1 路线图数据完整性（预告文案的唯一数据源）
-  if (stages.length === 12) ok('成长阶梯 12 个阶段');
-  else err('成长阶梯应为 12 个阶段，实际 ' + stages.length);
-
-  const seqBad = stages.filter((s, i) => s.stage !== i + 1).map(s => s.stage);
-  if (!seqBad.length) ok('阶段序号与声明顺序一致（1-12）');
-  else err('阶段序号错位：' + seqBad.join(','));
-
-  const spanBad = stages.filter(s => s.to - s.from !== 9).map(s => s.stage);
-  if (!spanBad.length) ok('每阶段 10 关（from..to 闭区间）');
-  else err('阶段关卡跨度不是 10：' + spanBad.join(','));
-
-  const gapBad = stages.filter((s, i) => i > 0 && s.from !== stages[i - 1].to + 1).map(s => s.stage);
-  if (!gapBad.length) ok('阶段区间无缝衔接（无空洞、无重叠）');
-  else err('阶段区间不连续：' + gapBad.join(','));
-
-  const noDesc = stages.filter(s => !s.name || !s.goal).map(s => s.stage);
-  if (!noDesc.length) ok('每个阶段都有 name 与 goal（预告文案数据源完整）');
-  else err('阶段缺少 name/goal：' + noDesc.join(','));
-
-  // 22.2 MVP 边界：阶段 1 之外一律不得开放
-  // 这是 D27 的硬约束——开放阶段 3/5/7 等于把元音/上加/下加做成可消除牌面，
-  // 会同时打破「配对同质判定」「偶数配比」「可解性保证」三条不变式。
-  const openList = stages.filter(s => s.open).map(s => s.stage);
-  if (openList.length === 1 && openList[0] === 1)
-    ok('只有阶段 1 开放（拼合 / 组词机制不得提前进 MVP 盘面 · D27）');
-  else err('已开放阶段应为 [1]，实际 [' + openList.join(',') +
-    '] —— 开放前须先解决 D27 列出的机制风险（同质判定 / 偶数配比 / 可解性 / 藏文审校）');
-
-  // 22.3 nextStage 纯函数真跑
-  const n1 = cert.nextStage(1);
-  if (n1 && n1.stage === 2 && n1.name === stages[1].name && n1.goal === stages[1].goal)
-    ok('nextStage(1) 返回数据里的第 2 阶段（name/goal 来自 data/stages.js）');
-  else err('nextStage(1) 结果不正确：' + JSON.stringify(n1));
-  if (cert.nextStage(12) === null) ok('nextStage(12) 为 null（路线图尽头不再预告）');
-  else err('nextStage(12) 应为 null');
-  if (cert.nextStage(0) === null && cert.nextStage(null) === null &&
-    cert.nextStage(undefined) === null && cert.nextStage('abc') === null)
-    ok('nextStage 对空 / 非法输入安全回落为 null');
-  else err('nextStage 对空 / 非法输入未安全回落');
-  if (cert.nextStage('2') && cert.nextStage('2').stage === 3)
-    ok('nextStage 容忍字符串入参（页面 query 传参场景）');
-  else err('nextStage 未容忍字符串入参');
-
-  const certSrc = read('utils/certificate.js');
-  if (!/wx\.(setStorage|getStorage|request|showToast|navigateTo)|document\.|window\.|https?:\/\//.test(certSrc))
-    ok('certificate.js 仍为纯函数模块（无 wx / DOM / 网络调用）');
-  else err('certificate.js 出现 wx / DOM / 网络调用，不再是纯函数模块');
-
-  // 22.4 文案不写死：结算页不得内联任何阶段名
+  // 22.2 死 UI 已清（WXML 节点 / 样式 / 数据字段三层都不该留）
   const rwxml = read('pages/result/result.wxml');
+  const rwxss = read('pages/result/result.wxss');
   const rjs = read('pages/result/result.js');
-  ['nextStageNo', 'nextStageName', 'nextStageGoal'].forEach(k => {
-    if (rwxml.indexOf(k) > -1) ok('result.wxml 绑定了 ' + k);
-    else err('result.wxml 未绑定 ' + k);
-  });
-  ['nextStageName', 'nextStageGoal', 'certificate.nextStage'].forEach(k => {
-    if (rjs.indexOf(k) > -1) ok('result.js 含 ' + k);
-    else err('result.js 缺少 ' + k);
-  });
-  const hardLocal = stages.filter(s => rwxml.indexOf(s.name) > -1 || rjs.indexOf(s.name) > -1)
-    .map(s => s.name);
-  if (!hardLocal.length) ok('结算页未内联任何阶段名（文案全部取自 data/stages.js）');
-  else err('结算页写死了阶段名：' + hardLocal.join(' / ') + '（内容库扩充后不会自动更新）');
+  if (stripComments(rwxml).indexOf('next-stage') === -1 && stripComments(rwxml).indexOf('下一阶段') === -1)
+    ok('结算页已无「下一阶段」预告节点');
+  else err('结算页仍残留「下一阶段」预告 UI');
+  if (stripComments(rjs).indexOf('nextStageNo') === -1 && stripComments(rjs).indexOf('nextStageName') === -1)
+    ok('结算页数据层已无 nextStage* 字段（不再暗示「阶段」概念还在）');
+  else err('结算页仍留着 nextStage* 数据字段');
+  if (stripComments(rwxss).indexOf('.next-stage') === -1 && stripComments(rwxss).indexOf('.ns-') === -1)
+    ok('结算页样式已随 UI 一起清掉（无死样式）');
+  else err('结算页仍留着 .next-stage / .ns-* 死样式');
 
-  // 22.5 上屏时机：只在阶段完结（有证书）时出现——是「预告」，不是「开放」
-  const cond = rwxml.match(/wx:if="\{\{([^}]*)\}\}"\s+class="next-stage"/);
-  if (cond && cond[1].indexOf('cert') > -1 && cond[1].indexOf('nextStageNo') > -1)
-    ok('「下一阶段」预告仅在阶段完结（cert）时上屏');
-  else err('「下一阶段」预告的上屏条件不正确：' + (cond ? cond[1] : '未匹配到 next-stage 区块'));
-
-  // 22.6 双向镜像：体验版同源同口径
-  const tpl = read('preview/template.html');
-  ['nextStage(', '.next-stage', 'ns-goal', 'ns-note'].forEach(k => {
-    if (tpl.indexOf(k) > -1) ok('体验版已镜像 ' + k);
-    else err('preview/template.html 未镜像 ' + k);
-  });
-  const hardTpl = stages.filter(s => tpl.indexOf(s.name) > -1).map(s => s.name);
-  if (!hardTpl.length) ok('体验版未内联任何阶段名（与小程序同一份数据源）');
-  else err('体验版写死了阶段名：' + hardTpl.join(' / '));
-
-  // 22.7 定位已登记（定位是产品决策，必须有台账可查）
-  const dec = read('docs/DECISIONS.md');
-  if (dec.indexOf('**D27**') > -1 && dec.indexOf('配对入门 · 拼合进阶 · 成句高阶') > -1)
-    ok('D27 定位「配对入门 · 拼合进阶 · 成句高阶」已登记在决策台账');
-  else err('docs/DECISIONS.md 缺少 D27 定位登记');
-
-  // 22.8 全站 WXSS 花括号配平
-  // 背景：本轮发现 5 个样式文件共 20 处「规则被关两次」的游离右花括号
-  // （形如单独一行 `}}`）。项目无 @media，这些是解析器直接丢弃的游离字符，
-  // 不改变渲染，但会掩盖真正的括号错误——配平后把它锁成硬约束。
-  ['app.wxss', 'pages/index/index.wxss', 'pages/game/game.wxss',
-    'pages/result/result.wxss', 'pages/cert/cert.wxss',
-    'pages/passport/passport.wxss', 'pages/benefits/benefits.wxss'].forEach(f => {
-    if (!exists(f)) { err(f + ' 不存在'); return; }
-    const src = read(f);
-    const open = (src.match(/\{/g) || []).length;
-    const close = (src.match(/\}/g) || []).length;
-    if (open === close) ok(f + ' 花括号配平（' + open + ' 对）');
-    else err(f + ' 花括号不配平：{ ' + open + ' 个，} ' + close + ' 个（差 ' + (close - open) + '）');
-  });
+  // 22.3 体验版同构
+  if (stripComments(tpl).indexOf('next-stage') === -1) ok('体验版已无 .next-stage 预告节点');
+  else err('体验版仍渲染 .next-stage 预告');
 })();
-
-// ---------- 23. 「藏文可以组合」拼合预告（仅第 2 关） ----------
 section('23. 拼合预告（第 2 关 · 只讲概念，不提前开放机制）');
 {
   // 23.1 数据文件齐备
@@ -3488,7 +3419,23 @@ section('37. 去游戏化守卫（教育类目 · 文案红线）');
   //   · 后面跟 键/闭/注/怀/于/系/联/税/机/头/卡/切/照/掉/灯/门/节/口 → 合法词（关于/关闭/关键…）
   //   · 出现在「文案 关 / 音乐 关」开关语境 → 合法（不是量词）
   //   · 其余一律判违规（第 N 关 / 每一关 / 还差 N 关 …）
-  const LEGIT_GUAN = /关(键|闭|注|怀|于|系|联|税|机|头|卡|切|照|掉|灯|门|节|口)/;
+  // 豁免表按「关」**后面**的那个字判断：这些搭配都不可能构成「第 N 关 / 每一关」。
+  // ⚠️ 2026-10-15 补 规|心|乎|涉|碍：data/incense.js 里「要按照国家有关规定…」
+  //    被误判成游戏化的「关」（规定 / 关心 / 关乎 / 关涉 / 关碍 都是正常中文词）。
+  // 豁免表：**双向两字窗口**判据。
+  //   ⚠️ 一开始只判「关」后面那一个字，实测不够用：data/incense.js 的
+  //   「主管税务机关**申请代开」「由税务机关在代开时」——关后面分别是 markdown 的 * 与「在」，
+  //   都不在表里，于是把「机关」这个正常词判成了游戏化的「关」。改为前一字/后一字任一侧
+  //   能构成合法词即放过。
+  const LEGIT_GUAN_WORDS = [
+    '机关', '规定', '相关', '无关', '有关', '关闭', '关注', '关于', '关系', '关键',
+    '关税', '关怀', '关头', '关切', '关照', '关节', '关口', '关乎', '关涉', '关碍',
+    '关心', '关联', '开关'
+  ];
+  const guanOk = function (line, idx) {
+    const win = line.slice(Math.max(0, idx - 1), idx + 2);   // 前 1 字 + 关 + 后 1 字
+    return LEGIT_GUAN_WORDS.some(function (w) { return win.indexOf(w) > -1; });
+  };
   function findStrayGuan(text) {
     const lines = text.split('\n');
     for (let li = 0; li < lines.length; li++) {
@@ -3496,7 +3443,7 @@ section('37. 去游戏化守卫（教育类目 · 文案红线）');
       if (/文案 关|音乐 关|文案关|音乐关/.test(l)) continue;   // 开关语境整行豁免
       let idx = -1;
       while ((idx = l.indexOf('关', idx + 1)) !== -1) {
-        if (!LEGIT_GUAN.test(l.slice(idx))) {
+        if (!guanOk(l, idx)) {
           return 'line ' + (li + 1) + ': …' + l.slice(Math.max(0, idx - 16), idx + 16).trim() + '…';
         }
       }
@@ -3832,14 +3779,29 @@ section('38. 生产上线守卫（主包体积 / 隐私授权 / 工程配置）'
       }
     }
     // 体验版语音播放必须走注入表（相对路径在单文件体验版里必然 404）
-    // ⚠️ 断「意图」不断「排版」：D61 给 pronounce 加了 duckBgm 之后，行内多了一句，
-    //    原来那条精确匹配的正则就失配了（代码走注入表，却报「未走注入表」）。
-    //    判据应是「VOICES[id] 是播放的前置条件」，而不是「后面紧跟什么」。
-    const gateId = /if \(VOICES\[id\]\)[\s\S]{0,80}playVoice\(VOICES\[id\]\)/.test(tplV);
-    const gateName = /if \(VOICES\[name\]\)[\s\S]{0,80}playVoice\(VOICES\[name\]\)/.test(tplV);
-    if (gateId && gateName)
-      ok('体验版 pronounce / speak 走 VOICES 注入表（不再依赖相对路径）');
-    else err('体验版语音未走注入表（会 404 静默）');
+    // ⚠️ 判据要断**意图**、不断**排版**。这条门禁已经因此误伤过两次：
+    //    ① D61 给 pronounce 加了 duckBgm，行内多一句 → 精确匹配失配（代码其实没问题）；
+    //    ② 2026-10-15 pronounce 加了「按牌面文本回退查音源」→ 又失配一次。
+    //    两次都是「写法变了、行为没变」被当成红灯。所以改成与写法无关的三条：
+    //      ① playVoice 的实参**不许是字面量路径**（那才会 404）
+    //      ② 必须存在 playVoice(VOICES[...]) 这种「从注入表取」的形态
+    //      ③ pronounce / speak 都按各自的键查注入表（没音源不假装）——
+    //         只断「查了表」，不断「写成 if (VOICES[id]) 还是 if (vid && VOICES[vid])」
+    const litPath = /playVoice\(\s*['"][^'"]+['"]\s*\)/.test(tplV);
+    const fromTable = /playVoice\(VOICES\[[A-Za-z_$][\w$]*\]\)/.test(tplV);
+    const gatesOnTable = /VOICES\[id\]/.test(tplV) && /VOICES\[name\]/.test(tplV);
+    if (!litPath && fromTable && gatesOnTable)
+      ok('体验版语音一律经 VOICES 注入表播放（无字面量路径 → 不会 404）');
+    else err('体验版语音未走注入表：' + [
+      litPath ? '出现 playVoice(字面量路径)' : '',
+      !fromTable ? '没有 playVoice(VOICES[x])' : '',
+      !gatesOnTable ? 'pronounce / speak 未查 VOICES 表' : ''
+    ].filter(Boolean).join('；'));
+    // 反例自测：把字面量路径喂给同一把尺子，必须落网（防止判据空转）
+    if (/playVoice\(\s*['"][^'"]+['"]\s*\)/.test("playVoice('/audio/voice/x.mp3')") &&
+        !/playVoice\(\s*['"][^'"]+['"]\s*\)/.test('playVoice(VOICES[id])'))
+      ok('反例自测：playVoice(字面量路径) 会被判红、playVoice(VOICES[x]) 不会');
+    else err('§语音注入 反例自测失效：尺子量不出字面量路径');
   }
 
   // --- 38.11 TTS 预生成流水线（D45）：脚本在、零依赖、密钥不入库、文本来自单一真相源 ---
@@ -4322,6 +4284,82 @@ section('42. 藏文学习体系与关卡生成（15 级 × 150 关 · 动态格�
     else err('关卡总数应为 150，实际 ' + learning.totalStages());
     if (lv.every(l => l.stages === 10)) ok('每级均为 10 关');
     else err('存在非 10 关的级别：' + lv.map(l => l.lv + ':' + l.stages).join(' '));
+    // 42.1b 关卡 1→150 全链（用户 2026-10-15：「确保我们的关卡是从第一关到150关」）
+    //   判据选**编号链**而不是「数量对」：数量对不等于链路通 ——
+    //   缺号会让后面每一关的「第 N 课」全部错位，重号会让两关指向同一处。
+    //   同时逐关真的调一次 buildStage —— 生成器坏在任何一关，这里就红。
+    {
+      const nums = [];
+      const bad = [];
+      for (let L = 1; L <= 15; L++) {
+        for (let S = 1; S <= 10; S++) {
+          let st = null;
+          try { st = learning.buildStage(L, S); } catch (e) { bad.push('L' + L + '-' + S + ' 抛异常'); continue; }
+          if (!st) { bad.push('L' + L + '-' + S + ' 空'); continue; }
+          nums.push(st.index);
+          if (st.index !== (L - 1) * 10 + S) bad.push('L' + L + '-' + S + ' 序号=' + st.index);
+        }
+      }
+      const uniq = new Set(nums);
+      if (!bad.length && uniq.size === 150 && Math.min.apply(null, nums) === 1 && Math.max.apply(null, nums) === 150)
+        ok('150 关全链可生成，且全局序号恰好覆盖 1..150（L{lv} 第 {st} 关 = 第 (lv-1)*10+st 课）');
+      else err('关卡链路有断点：' + (bad.slice(0, 5).join('；') ||
+        ('序号 ' + uniq.size + ' 个 / min=' + Math.min.apply(null, nums) + ' max=' + Math.max.apply(null, nums))));
+    }
+    // 42.1d 学习线录音索引（data/learn-audio.js）
+    //   学习关的牌面 id 是合成的 lrn_{lv}_{st}_{i}（同一句在不同关里 id 不同），
+    //   所以录音只能按**藏文文本**索引。这份索引必须**覆盖所有没有现成录音的牌面** ——
+    //   漏一条，那一句就永远静默。这里把「覆盖完整性」变成机械判据。
+    {
+      const la = require(path.join(ROOT, 'data', 'learn-audio'));
+      const mp = la.map || {};
+      const keys = Object.keys(mp);
+      const vals = keys.map(k => mp[k]);
+      if (keys.length && vals.every(v => /^learn_\d{3}$/.test(v)) && new Set(vals).size === vals.length)
+        ok('录音索引结构合法（' + keys.length + ' 条 · id 形如 learn_NNN 且唯一）');
+      else err('data/learn-audio.js 结构非法（id 须为 learn_NNN 且唯一）');
+      const noTseg = keys.filter(k => !/[\u0F0B]$/.test(k));
+      if (!noTseg.length) ok('录音索引的藏文条目均以 tsheg 结尾');
+      else err('录音索引有 ' + noTseg.length + ' 条未以 tsheg 结尾：' + noTseg.slice(0, 3).join(' '));
+
+      // 覆盖：学习线全部不重复牌面里，凡 ELEMENTS 里没有现成录音的，都必须在这张索引里
+      const el = require(path.join(ROOT, 'data', 'elements'));
+      const withVoice = new Set();
+      Object.keys(el).forEach(k => { if (el[k].tibetan) withVoice.add(el[k].tibetan); });
+      const tg = t => { if (!t) return t; if (!/[\u0F00-\u0FFF]/.test(t)) return t;
+        if (/[\u0F0B\u0F0C\u0F0D\u0F7F]$/.test(t)) return t; return t + '\u0F0B'; };
+      const need = new Set();
+      for (let L = 1; L <= 15; L++) {
+        for (let S = 1; S <= 10; S++) {
+          (learning.buildStage(L, S).titles || []).forEach(t => {
+            if (withVoice.has(t)) return;
+            need.add(tg(t));
+          });
+        }
+      }
+      const miss = [...need].filter(t => !mp[t]);
+      if (!miss.length) ok('录音索引覆盖全部待录牌面（' + need.size + ' 条，无遗漏）');
+      else err('录音索引漏了 ' + miss.length + ' 条牌面（会永远静默）：' + miss.slice(0, 3).join(' '));
+    }
+
+    // 42.1c 同一级内 10 关的内容不得雷同
+    //   2026-10-15 实测踩到：L12/L13 的句池只有 5 句，而窗口要 6 种 → 每关都取到**整个池**，
+    //   于是**10 关内容一模一样**（18 关是复制品）。修法见 utils/learning.js 的 pickPhrases。
+    //   这条守住「复制品关卡」不再回来。
+    {
+      const dupIn = [];
+      for (let L = 1; L <= 15; L++) {
+        const seen = new Map();
+        for (let S = 1; S <= 10; S++) {
+          const st = learning.buildStage(L, S);
+          const fp = (st.titles || []).slice().sort().join('|');
+          if (seen.has(fp)) dupIn.push('L' + L + '-' + seen.get(fp) + ' ≈ L' + L + '-' + S);
+          else seen.set(fp, S);
+        }
+      }
+      if (!dupIn.length) ok('同一级内 10 关内容互不雷同（没有复制品关卡）');
+      else err('同一级内有内容完全相同的关卡：' + dupIn.slice(0, 5).join('；'));
+    }
     // L1 覆盖 30 个辅音（用户指定：L1 = 三十个辅音）
     const l1 = new Set();
     for (let s = 1; s <= learning.stagesOf(1); s++) learning.buildStage(1, s).titles.forEach(t => l1.add(t));
@@ -7688,7 +7726,6 @@ section('66. D118 变现：不卖空气（付费商品必须有真实交付）')
 {
   const gJs = read('data/goods.js');
   const lvJs = read('data/levels.js');
-  const stJs2 = read('data/stages.js');
   const nmJs = read('data/tibetan-names.js');
 
   // 66.1 每个在售道具的 give 都必须有**真实交付实现**（枚举即白名单，新增必须先补实现）
@@ -7709,11 +7746,11 @@ section('66. D118 变现：不卖空气（付费商品必须有真实交付）')
   const lvCount = (function () {
     try { return require(path.join(ROOT, 'data', 'levels.js')).length; } catch (e) { return 0; }
   })();
+  // ⚠️ D119：判据的「内容宇宙」从旧的 12 阶段（覆盖到第 120 关）换成**学习线 150 课** ——
+  //   data/stages.js 已随体系撤除，不能再拿它算覆盖上限，否则这条闸会直接崩。
   const stageMax = (function () {
     try {
-      return require(path.join(ROOT, 'data', 'stages.js')).reduce(function (m, s) {
-        return Math.max(m, s.to || 0);
-      }, 0);
+      return require(path.join(ROOT, 'utils', 'learning')).totalStages();
     } catch (e) { return 0; }
   })();
   const sellStage = /give:\s*'stage/.test(gJs);

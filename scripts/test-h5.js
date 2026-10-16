@@ -103,6 +103,11 @@ function mockCtx(sink) {
   const win = dom.window;
   const doc = win.document;
   const ev = function (code) { return win.eval(code); };
+  // ⚠️ 这里的 `$` 是 **querySelector**，选择器**必须带 `#` / `.`**。
+  //    而 play.html 内部的 `$` 是 **getElementById**（`$('foo')` 就够了、**不能带 `#`**）。
+  //    两个 `$` 同名不同义 —— 2026-10-15 实测踩坑：在测试里写 `$('home-stage-head')`
+  //    被当成**标签名**查询，恒为 null，于是「首页出口」一项**假红**。
+  //    在测试里读元素一律用 `$('#id')`；要执行页内代码才用 ev('$("id")')。
   const $ = function (sel) { return doc.querySelector(sel); };
   const $$ = function (sel) { return Array.prototype.slice.call(doc.querySelectorAll(sel)); };
   const activeScreen = function () {
@@ -663,6 +668,11 @@ function mockCtx(sink) {
   }));
   check('元素库 38 项（30字母+8图标）', ev('Object.keys(ELEMENTS).length') === 38);
   check('文化卡 38 张', ev('CARDS.length') === 38);
+  // D118：元音符号发音参考已注入（藏文读音补齐，data/vowels.js → build-h5 → DATA.vowels）
+  check('元音发音参考 4 条', ev('DATA.vowels.length') === 4, 'len=' + ev('DATA.vowels.length'));
+  // ⚠️ 必须用 harness 的 doc（jsdom document），不是 Node 作用域里的 document ——
+  //    后者不存在，会让整条测试在这一行中断（不是断言失败，是异常）。
+  check('护照页含元音区块', !!doc.getElementById('pp-vowel-grid'));
   check('藏文排序正确（ཀ ཁ ག ང ཅ ཆ ཇ ཉ）',
     ev('["letter_01","letter_02","letter_03","letter_04","letter_05","letter_06","letter_07","letter_08"].map(function(k){return ELEMENTS[k].tibetan}).join("")')
     === 'ཀཁགངཅཆཇཉ');
@@ -670,25 +680,27 @@ function mockCtx(sink) {
   /* ================================================================
      成长阶梯 · 证书体系
      ================================================================ */
+  /* ================================================================
+     证书体系（D119：只剩学习线一套）
+     ================================================================ */
 
-  /* ---------- 14. 成长阶梯数据 ---------- */
-  section('14. 成长阶梯（12 阶段 × 10 关）');
-  const stages = ev('STAGES');
-  check('成长阶梯共 12 个阶段', stages.length === 12, '实际 ' + stages.length);
-  check('每阶段跨度 10 关', stages.every(function (s) { return s.to - s.from + 1 === 10; }),
-    JSON.stringify(stages.map(function (s) { return s.to - s.from + 1; })));
-  check('阶段区间连续且不重叠',
-    stages.every(function (s, i) { return i === 0 || s.from === stages[i - 1].to + 1; }));
-  check('MVP 仅开放第一阶段', stages.filter(function (s) { return s.open; }).length === 1 && stages[0].open === true);
-  check('第一阶段 = 第 1-10 关 · 简单基字',
-    stages[0].from === 1 && stages[0].to === 10 && stages[0].name === '简单基字');
-  check('阶梯覆盖到第 120 关（12 × 10）', stages[11].to === 120, 'to=' + stages[11].to);
-  check('证书等级门槛齐全（金/银/普通）',
+  /* ---------- 14. 旧 12 阶段体系已撤除（反向钉住） ---------- */
+  section('14. 旧 12 阶段体系撤除（D119 · 反向钉住）');
+  // 用户 2026-10-15：「还是仅仅限制在第十关…」→ 查因发现两块证书墙颗粒度重复，
+  //   旧「藏文成长证书」（12 阶段）整体撤除。这里钉住「它不该再回来」——
+  //   本轮实测到两处残留（证书页 ?stage=N 仍能渲染、结算页护照按钮仍数旧证书），
+  //   都是「撤除了却还留着」的典型，所以反向断言比正向更有价值。
+  check('体验版不再注入旧阶梯数据（DATA.stages 已无）', ev('typeof DATA.stages') === 'undefined',
+    ev('typeof DATA.stages'));
+  check('体验版不再有旧阶梯渲染函数', ev('typeof certList') === 'undefined', ev('typeof certList'));
+  check('体验版不再有旧证书详情页函数', ev('typeof showCert') === 'undefined', ev('typeof showCert'));
+  check('体验版仍保留证书质量门槛（金/银/普通）',
     ev('Object.keys(TIERS).sort().join(",")') === 'bronze,gold,silver');
   check('金质门槛最严（≥95% 且零失误）',
     ev('TIERS.gold.minAccuracy') === 0.95 && ev('TIERS.gold.requireClean') === true);
   check('银质门槛 ≥80%', ev('TIERS.silver.minAccuracy') === 0.80);
-
+  check('旧体系不再颁发证书（老线通关后 certs 为空）', ev('getProgress().certs.length') === 0,
+    'certs=' + ev('getProgress().certs.length'));
   /* ---------- 15. 正确率统计 ---------- */
   section('15. 正确率统计（证书质量门槛的基础）');
   ev('clearProgress(); renderHome();');
@@ -712,8 +724,8 @@ function mockCtx(sink) {
     ev('state.attempts') === 2 && ev('state.misses') === 1,
     'att=' + ev('state.attempts') + ' miss=' + ev('state.misses'));
 
-  /* ---------- 16. 阶段证书的颁发与等级 ---------- */
-  section('16. 证书颁发与等级（普通 → 升级金质）');
+  /* ---------- 16. 证书体系（D119：旧 12 阶段体系已撤除） ---------- */
+  section('16. 证书体系（D119：只保留「藏文拼读证书」）');
 
   // 用可复现的方式依次通关：attempts / misses 可控
   const passLevel = function (n, attempts, misses) {
@@ -726,120 +738,91 @@ function mockCtx(sink) {
       ' finishLevel(); })()');
   };
 
-  // 前半程（1-5 关）用一半正确率通完，此时阶段未结束 → 不发证书
-  for (let n = 1; n <= 5; n++) {
-    passLevel(n, ev('LEVELS[' + (n - 1) + '].cols * LEVELS[' + (n - 1) + '].rows / 2') * 2,
-      ev('LEVELS[' + (n - 1) + '].cols * LEVELS[' + (n - 1) + '].rows / 2'));
-    await sleep(20);
-  }
-  check('阶段未通关时暂不颁发证书', ev('getProgress().certs.length') === 0,
-    'certs=' + ev('getProgress().certs.length'));
-  check('未通关时结算页给出阶段进度提示',
-    $('#res-cert').textContent.indexOf('第 1 阶段') > -1 && $('#res-cert').textContent.indexOf('简单基字') > -1,
-    $('#res-cert').textContent);
-  check('未通关时结算页给出提升建议', $('#res-cert').textContent.indexOf('正确率提升') > -1,
-    $('#res-cert').textContent);
-  check('结算页显示本关正确率', $('#res-acc').textContent.indexOf('正确率') > -1,
-    $('#res-acc').textContent);
-
-  // 通完剩余 5 关（同样一半正确率）→ 阶段完成，按门槛只应得「普通证书」
-  for (let n = 6; n <= 10; n++) {
-    passLevel(n, ev('LEVELS[' + (n - 1) + '].cols * LEVELS[' + (n - 1) + '].rows / 2') * 2,
-      ev('LEVELS[' + (n - 1) + '].cols * LEVELS[' + (n - 1) + '].rows / 2'));
-    await sleep(20);
-  }
-  const cert1 = ev('findCert(1)');
-  check('通关第 10 关颁发第一阶段证书', !!cert1);
-  check('证书阶段名 = 简单基字', cert1 && cert1.stageName === '简单基字', cert1 && cert1.stageName);
-  check('正确率不足时只发普通证书', cert1 && cert1.tier === 'bronze',
-    cert1 && (cert1.tier + ' acc=' + cert1.acc));
-  check('证书编号符合 ZWFK-YYYY-NNNN', cert1 && /^ZWFK-\d{4}-\d{4}$/.test(cert1.no), cert1 && cert1.no);
-  check('首张证书流水号为 0001', cert1 && cert1.no.slice(-4) === '0001', cert1 && cert1.no);
-  check('证书成就行按真实数据生成（30 个藏文字母）',
-    cert1 && cert1.lines.join('|').indexOf('已认识 30 个藏文字母') > -1,
-    cert1 && cert1.lines.join(' | '));
-  check('证书默认持有人', cert1 && cert1.holder === '藏文学习者', cert1 && cert1.holder);
-  check('结算页出现证书横幅', $('#res-cert').textContent.indexOf('获得藏文成长证书') > -1,
-    $('#res-cert').textContent);
-  check('横幅等级徽章 = 普', ($('#res-cert .cert-seal') || {}).textContent === '普',
-    ($('#res-cert .cert-seal') || {}).textContent);
-
-  // 重玩全部 10 关且零失误 → 应升级为金质证书，编号不变
+  ev('clearProgress()');
+  // 老线 1-10 关全通 —— 旧体系（12 阶段）本该在第 10 关发出第一张「成长证书」
   for (let n = 1; n <= 10; n++) {
-    passLevel(n, 0, 0);
-    await sleep(20);
+    passLevel(n, ev('LEVELS[' + (n - 1) + '].cols * LEVELS[' + (n - 1) + '].rows / 2'), 0);
+    await sleep(12);
   }
-  const cert2 = ev('findCert(1)');
-  check('零失误通关后升级为金质证书', cert2 && cert2.tier === 'gold',
-    cert2 && (cert2.tier + ' acc=' + cert2.acc + ' clean=' + cert2.clean));
-  check('升级后正确率 100%', cert2 && cert2.acc === 100, cert2 && cert2.acc);
-  check('升级不新增证书（同一阶段只保留一张）', ev('getProgress().certs.length') === 1,
+  check('老线通关不再颁发旧体系证书（D119 撤除）', ev('getProgress().certs.length') === 0,
     'certs=' + ev('getProgress().certs.length'));
-  check('升级沿用原证书编号', cert2 && cert2.no === cert1.no, cert2 && cert2.no);
-  check('结算页提示「证书升级」', $('#res-cert').textContent.indexOf('证书升级') > -1,
-    $('#res-cert').textContent);
+  check('结算页不再出现旧体系证书横幅', $('#res-cert').textContent.indexOf('成长证书') === -1,
+    JSON.stringify($('#res-cert').textContent));
+  check('结算页也不再给旧体系「阶段进度 / 提升建议」',
+    $('#res-cert').textContent.indexOf('阶段') === -1, JSON.stringify($('#res-cert').textContent));
+  check('但成绩照旧落库（护照页的输入没丢）',
+    ev('Object.keys(getProgress().levelStats || {}).length') >= 10,
+    'levelStats=' + ev('Object.keys(getProgress().levelStats || {}).length'));
 
-  // 之后再出现失误不应降级（只升不降）
-  passLevel(10, ev('LEVELS[9].cols * LEVELS[9].rows / 2') * 2, ev('LEVELS[9].cols * LEVELS[9].rows / 2'));
-  await sleep(30);
-  check('已有更高等级证书不会被降级', ev('findCert(1).tier') === 'gold', ev('findCert(1).tier'));
+  // 学习线证书：颁发函数与存储通道必须在位（整条线的实测由 §37 覆盖，此处不重复跑 10 课）
+  check('学习级证书颁发函数在位', ev('typeof issueLearnCert') === 'function', ev('typeof issueLearnCert'));
+  check('证书共用同一份存储通道（progress.certs）', Array.isArray(ev('getProgress().certs')),
+    typeof ev('getProgress().certs'));
+  check('证书质量门槛仍是 金 > 银 > 普通',
+    ev('TIERS.gold.minAccuracy') > ev('TIERS.silver.minAccuracy') &&
+    ev('TIERS.silver.minAccuracy') > ev('TIERS.bronze.minAccuracy'),
+    ev('[TIERS.gold.minAccuracy, TIERS.silver.minAccuracy, TIERS.bronze.minAccuracy].join("/")'));
 
-  /* ---------- 17. 文化护照（12 张证书的位置） ---------- */
+  /* ---------- 17. 文化护照（D119：证书墙合并成一块） ---------- */
   section('17. 文化护照');
   ev('showPassport()');
   await sleep(50);
   check('切换到文化护照页', activeScreen() === 'screen-passport', activeScreen());
-  const slots = $$('#pp-cert-grid .cert-slot');
-  check('护照列出 12 个证书位置', slots.length === 12, '实际 ' + slots.length);
-  check('已获得的证书高亮', $$('#pp-cert-grid .cert-slot.got').length === 1,
-    'got=' + $$('#pp-cert-grid .cert-slot.got').length);
-  check('未获得的证书为灰色锁定', $$('#pp-cert-grid .cert-slot.locked').length === 11,
-    'locked=' + $$('#pp-cert-grid .cert-slot.locked').length);
-  check('护照显示证书总数 1 / 12', $('#pp-cert-count').textContent === '1 / 12', $('#pp-cert-count').textContent);
-  check('已得位置显示等级徽章', ($('#pp-cert-grid .cert-slot.got .slot-tier') || {}).textContent === '金质证书',
-    ($('#pp-cert-grid .cert-slot.got .slot-tier') || {}).textContent);
-  check('护照含文化收藏册分区', doc.body.textContent.indexOf('文化收藏册') > -1);
-  check('护照含地区印章分区', doc.body.textContent.indexOf('地区印章') > -1);
-  check('护照含现实足迹（二期占位）', doc.body.textContent.indexOf('现实足迹') > -1);
-  check('护照含个人文化图谱', doc.body.textContent.indexOf('个人文化图谱') > -1);
+  // D119：12 张「藏文成长证书」旧墙已撤除，护照里只剩「藏文拼读证书」15 张
+  check('旧的 12 张证书墙已不存在', $$('#pp-cert-grid .cert-slot').length === 0,
+    '实际 ' + $$('#pp-cert-grid .cert-slot').length);
+  check('护照只剩一块证书墙（15 张拼读证书）', $$('#pp-learn-cert-grid .cert-slot').length === 15,
+    '实际 ' + $$('#pp-learn-cert-grid .cert-slot').length);
+  // ⚠️ 判据必须**限定在护照屏内**：play.html 的 <script> 就在 <body> 里，
+  //    body.textContent 会把脚本源码（连同注释）也算进文本 —— 用 body 扫会假红/假绿。
+  const ppText = $('#screen-passport').textContent;
+  check('护照不再出现「藏文成长证书」字样', ppText.indexOf('藏文成长证书') === -1,
+    JSON.stringify(ppText.slice(0, 120)));
+  check('图谱改报「拼读证书」', ppText.indexOf('拼读证书') > -1);
+  check('护照含文化收藏册分区', ppText.indexOf('文化收藏册') > -1);
+  check('护照含地区印章分区', ppText.indexOf('地区印章') > -1);
+  check('护照含现实足迹（二期占位）', ppText.indexOf('现实足迹') > -1);
+  check('护照含个人文化图谱', ppText.indexOf('个人文化图谱') > -1);
 
-  /* ---------- 18. 证书页 ---------- */
+  /* ---------- 18. 证书页（D119 起只走学习线证书） ---------- */
   section('18. 证书页（查看 / 保存 / 分享）');
-  ev('showCert(1)');
-  await sleep(50);
+  // 铸一张 L1 的学习证书（issueLearnCert 是唯一的颁发入口，不要求前置完成）
+  // ⚠️ 这里**不要 clearProgress()**：后面的 §19 要验 levelStats、§20 要验领取链路，
+  //    都依赖 §16 留下的通关进度；清掉会让它们连锁失败。
+  ev('issueLearnCert(1, { acc: 1, clean: true })');
+  await sleep(40);
+  ev('showLearnCert(1)');
+  await sleep(60);
   check('切换到证书页', activeScreen() === 'screen-cert', activeScreen());
-  const sheet = $('#cert-body .cert-sheet');
-  check('渲染证书纸张', !!sheet);
-  check('证书标题 = 藏文成长证书', doc.body.textContent.indexOf('藏文成长证书') > -1);
-  check('证书显示阶段名', doc.body.textContent.indexOf('简单基字') > -1);
-  check('证书显示编号', doc.body.textContent.indexOf(cert2.no) > -1);
+  check('渲染证书纸张', !!$('#cert-body .cert-sheet'));
+  check('证书标题 = 藏文拼读证书', doc.body.textContent.indexOf('藏文拼读证书') > -1);
+  check('证书显示级别名（L1 辅音三十）', doc.body.textContent.indexOf('辅音三十') > -1);
+  const lcertNo = ev('(findLearnCert(1)||{}).no || ""');
+  check('证书显示编号', !!lcertNo && doc.body.textContent.indexOf(lcertNo) > -1, lcertNo);
   check('证书显示颁发日期', doc.body.textContent.indexOf(ev('formatDate()')) > -1);
   check('证书含藏文装饰语（tsheg 连写）', doc.body.textContent.indexOf(ev('CERT_TIB')) > -1);
 
   $('#cert-gen').click();
-  await sleep(120);
+  await sleep(150);
   const certDl = $('#cert-out a.cert-dl');
   check('生成证书图片（PNG 下载链接）', !!certDl, '未生成');
   if (certDl) {
-    check('证书图片文件名含阶段名', certDl.getAttribute('download').indexOf('简单基字') > -1,
-      certDl.getAttribute('download'));
     check('证书图片为 data URL', certDl.getAttribute('href').indexOf('data:image/png') === 0);
   }
 
   // 持有人可在证书页修改（编号不变）
-  ev('setHolderName("小藏"); updateCertHolder("小藏"); showCert(1)');
-  await sleep(40);
+  ev('setHolderName("小藏"); updateCertHolder("小藏"); showLearnCert(1)');
+  await sleep(50);
   check('证书持有人可修改', doc.body.textContent.indexOf('小藏') > -1);
-  check('修改持有人不影响证书编号', ev('findCert(1).no') === cert2.no, ev('findCert(1).no'));
+  check('修改持有人不影响证书编号',
+    ev('(findLearnCert(1)||{}).no || ""') === lcertNo, ev('(findLearnCert(1)||{}).no'));
 
-  // 未开放 / 未获得阶段 → 锁定说明 + 等级规则
-  ev('showCert(3)');
-  await sleep(40);
-  check('未获得阶段显示锁定说明', !!$('#cert-body .locked-box'));
+  // 未获得的级 → 锁定说明 + 等级规则
+  ev('showLearnCert(3)');
+  await sleep(50);
+  check('未获得的级显示锁定说明', !!$('#cert-body .locked-box'));
   check('锁定页列出三级证书门槛', $$('#cert-body .tier-row').length === 3,
     '实际 ' + $$('#cert-body .tier-row').length);
-  check('锁定页给出解锁条件', $('#cert-body .locked-box .r').textContent.indexOf('21-30') > -1,
-    $('#cert-body .locked-box .r').textContent);
 
   /* ---------- 19. 证书数据持久化 ---------- */
   section('19. 证书持久化');
@@ -847,12 +830,11 @@ function mockCtx(sink) {
   check('certs 已写入 localStorage', !!(savedCert && savedCert.certs && savedCert.certs.length === 1),
     JSON.stringify(savedCert && savedCert.certs && savedCert.certs.length));
   check('certSeq 已记录（编号不重复）', savedCert && savedCert.certSeq >= 1, 'certSeq=' + (savedCert && savedCert.certSeq));
-  check('levelStats 已记录各关最佳正确率',
+  check('levelStats 仍在记录（D119 起它仍是护照页的输入）',
     !!(savedCert && savedCert.levelStats && savedCert.levelStats['10'] &&
       savedCert.levelStats['10'].bestAcc === 1),
     JSON.stringify(savedCert && savedCert.levelStats && savedCert.levelStats['10']));
   check('holderName 已持久化', savedCert && savedCert.holderName === '小藏', savedCert && savedCert.holderName);
-
   /* ---------- 20. 藏文权益中心（双轨制） ---------- */
   section('20. 藏文权益中心（双轨制）');
   ev('renderHome()');
@@ -1180,7 +1162,7 @@ function mockCtx(sink) {
   // 无语音时（D57）：按钮在点之前就改成「发音待录入」，点击只抖一下、**不弹窗**。
   // 背景：2026-10-09 用户反馈「《🔊 点击播放藏文读音》根本就没有办法播放」——
   // 一部分元素压根没有音频文件，而按钮一如既往写着「点击播放」，点了当然是死寂。
-  ev('delete VOICES["letter_01"]; state.pronounceCount = 0');
+  ev('window.__savedLetter01 = VOICES["letter_01"]; delete VOICES["letter_01"]; state.pronounceCount = 0');
   $('#card-speak').click();
   await sleep(60);
   // 重新出卡，确认按钮文案随「有没有音」切换
@@ -1196,6 +1178,12 @@ function mockCtx(sink) {
     $('#card-speak').classList.contains('miss') && ev('state.pronounceCount') === 0 &&
     !$('#toast').classList.contains('show'),
     'count=' + ev('state.pronounceCount'));
+  // ⚠️ 反向用例到此为止 —— **必须还原 letter_01**。
+  //   这是一处全局变更；此前不还原会泄漏到后面每一节：
+  //   §37 被迫绕开它改用 letter_02；§39 的「关卡发音闭环」也差点被它误判成失败
+  //   （诊断实证：VOICES["letter_01"] 为 false → 文本索引只剩 29 条）。
+  ev('VOICES["letter_01"] = window.__savedLetter01; delete window.__savedLetter01');
+  check('反向用例已还原 letter_01（不留全局污染）', ev('!!VOICES["letter_01"]') === true);
   $('#card-know').click();
   await sleep(60);
   check('点「知道了」收起文化卡', !$('#card-panel').classList.contains('show'));
@@ -1602,42 +1590,26 @@ function mockCtx(sink) {
   check('反向：第 1 关仍无冰霜（前 60 秒不打扰新手）',
     ev('state.frostTotal') === 0 && $$('#board .frost').length === 0, String(ev('state.frostTotal')));
 
-  /* ---------- 25. D27：阶段完结后的「下一阶段」预告 ---------- */
-  // 12 阶段路线图此前只在证书页可见，而「要不要继续」的决定发生在结算页。
-  section('25. 阶段路线图定位与「下一阶段」预告（D27）');
+  /* ---------- 25. D27 的「下一阶段」预告随 D119 一并撤除 ---------- */
+  section('25. 阶段路线图「下一阶段」预告（D119 撤除后反向钉住）');
 
-  // 25.1 反向：阶段未完结时不应出现预告（是预告，不是提前开放）
-  ev('startLevel(1)'); await sleep(80);
-  ev('state.matchedCount = 12; state.collected = []; state.score = 100;' +
-    ' state.maxCombo = 3; state.misses = 0; finishLevel()');
-  await sleep(80);
-  check('反向：阶段未完结（第 1 关结算）时不出现「下一阶段」预告',
-    $$('#res-cert .next-stage').length === 0,
-    '实际 ' + $$('#res-cert .next-stage').length + ' 个');
-
-  // 25.2 通关阶段 1（第 10 关）后出现，且文案全部来自 STAGES 数据
+  // ⚠️ 本节原先是 D27 的「阶段完结 → 预告下一阶段」。
+  //    2026-10-15（D119）撤除 12 阶段旧证书体系后，结算页不再有那套预告 ——
+  //    所以这里**反过来钉住「它确实不再出现」**，防止有人把旧逻辑又接回来。
   ev('(function () { const p = getProgress();' +
     ' p.completedLevels = [1,2,3,4,5,6,7,8,9]; saveProgress(p); })()');
   ev('startLevel(10)'); await sleep(80);
   ev('state.matchedCount = 24; state.collected = []; state.score = 300;' +
     ' state.maxCombo = 6; state.misses = 0; finishLevel()');
   await sleep(80);
-  const nsEl = $('#res-cert .next-stage');
-  check('阶段 1 通关后，结算页出现「下一阶段」预告', !!nsEl);
-  if (nsEl) {
-    const txt = nsEl.textContent;
-    check('预告阶段名取自 STAGES 数据（非页面写死）',
-      txt.indexOf(ev('STAGES[1].name')) > -1, txt);
-    check('预告学习目标取自 STAGES 数据（非页面写死）',
-      txt.indexOf(ev('STAGES[1].goal')) > -1, txt);
-    check('预告含阶段序号与关卡区间（来自 stage / from / to）',
-      txt.indexOf('第 ' + ev('STAGES[1].stage') + ' 阶段') > -1 &&
-      txt.indexOf(ev('STAGES[1].from') + '-' + ev('STAGES[1].to')) > -1, txt);
-    check('未开放的下一阶段标注为「内容制作中」（不承诺可玩）',
-      txt.indexOf('内容制作中') > -1, txt);
-    check('预告不出现金额 / 权益类字眼（文化内容，不是商品）',
-      !/[¥￥]|元|优惠|券|折扣/.test(txt), txt);
-  }
+  check('阶段 1 通关后也不再出现旧体系的「下一阶段」预告（D119 撤除）',
+    $$('#res-cert .next-stage').length === 0,
+    '实际 ' + $$('#res-cert .next-stage').length + ' 个');
+  // ⚠️ 原先这里读 ev('STAGES[1].name') 做对比，但 D119 后 STAGES 已随体系删除 ——
+  //   判据改为直接扫「阶段」字样：旧体系撤除后，结算页不该再出现任何一种阶段表述。
+  check('结算页不再出现旧体系的「阶段」表述',
+    $('#res-cert').textContent.indexOf('阶段') === -1,
+    JSON.stringify($('#res-cert').textContent.slice(0, 80)));
 
   /* ---------- 26. 「藏文可以组合」拼合预告（仅第 2 关） ---------- */
   // 设计给了「元音拼合」的完整机制，但机制要等阶段 3 才开（D27）；
@@ -2578,6 +2550,45 @@ function mockCtx(sink) {
     check('元素发音仍在场', ev('!!VOICES["letter_02"]') === true,
       'keys=' + ev('Object.keys(VOICES).length') + ' has02=' + ev('Object.keys(VOICES).indexOf("letter_02")'));
 
+    // 37.12 验收用「全部解锁」开关（2026-10-15）
+    //   这个开关的全部价值是「**不改玩法、只解锁验收**」。一旦它悄悄改了默认行为、
+    //   或把状态写进了 progress（会被同步的业务数据），就必须红 —— 所以正反两面都断言。
+    ev('clearProgress()');
+    ev('localStorage.removeItem("zangzi_verify_unlock")');
+    ev('setVerifyUnlock(false)');
+    ev("openPanel('learn')");
+    await sleep(60);
+    check('验收开关默认关闭：L2 仍锁', $('.learn-row[data-lv="2"]').classList.contains('locked'));
+    check('验收开关按钮在场', !!$('#learn-verify-btn'));
+
+    // 打开 → 锁解除，且能直接跳到 L2（跳过前置 10 课）
+    ev('setVerifyUnlock(true)');
+    ev("openPanel('learn')");
+    await sleep(60);
+    check('开启后 L2 不再锁', !$('.learn-row[data-lv="2"]').classList.contains('locked'));
+    check('开启后 L15 也不锁', !$('.learn-row[data-lv="15"]').classList.contains('locked'));
+    $('.learn-row[data-lv="2"]').click();
+    await sleep(140);
+    check('开启后可直接进 L2（跳过前置）',
+      activeScreen() === 'screen-game' && $('#status-mid').textContent === 'L2 · 第 1 课',
+      activeScreen() + ' / ' + $('#status-mid').textContent);
+    check('L2 盘面照常生成（不是空关）', $$('#board .tile').length > 0,
+      '实际 ' + $$('#board .tile').length);
+
+    // 关键：开关**不得**污染业务进度（progress 是会被同步、受字段白名单约束的数据）
+    check('验收开关不写进 progress（learnDone 仍为空）',
+      ev('JSON.stringify(getProgress().learnDone || {})') === '{}',
+      ev('JSON.stringify(getProgress().learnDone || {})'));
+    check('验收开关用独立存储键', ev('localStorage.getItem("zangzi_verify_unlock")') === '1');
+
+    // 关掉 → 恢复锁定（默认行为可逆）
+    ev('localStorage.removeItem("zangzi_verify_unlock")');
+    ev('setVerifyUnlock(false)');
+    ev('renderHome()');
+    ev("openPanel('learn')");
+    await sleep(60);
+    check('关掉后恢复锁定（可逆）', $('.learn-row[data-lv="2"]').classList.contains('locked'));
+
     // 收尾：复位进度，避免污染后续断言
     ev('clearProgress()');
     ev('renderHome()');
@@ -2630,6 +2641,213 @@ function mockCtx(sink) {
     ev("showScreen('home')");
     await sleep(40);
     check('可正常离开礼物页', activeScreen() === 'screen-home', activeScreen());
+  }
+
+  /* ---------- 39. 关卡 1→150 全链 ----------
+     用户 2026-10-15：「我们需要确保我们的关卡是从第一关到150关」。
+     本节把那句话变成三件可机械复核的事：
+       ① **编号链**：L{lv} 第 {st} 关的全局序号必须恰好 = (lv-1)*10+st，合起来正好覆盖 1..150
+          （缺号 = 关卡断了；重号 = 两关指同一处；错位 = 显示的第 N 课与实际不同）
+       ② **每一关进得去**：逐关 startLearn(lv, st) 必须被接受并落到正确的 lv/stage（不是空关）
+       ③ **链路不断**：本级还有没过的 → 下一课指向同级那一关；本级全过 → 转入下一级第 1 关；
+          L15 第 10 关是终点（序号 150）。 */
+  section('39. 关卡 1→150 全链（编号连续 · 每关可进 · 跨级衔接）');
+  {
+    ev('clearProgress()');
+    const nums = [];
+    const dead = [];
+    const wrongNum = [];
+    for (let lv = 1; lv <= 15; lv++) {
+      for (let st = 1; st <= 10; st++) {
+        ev('startLearn(' + lv + ', ' + st + ')');
+        const lvGot = ev('state.learn && state.learn.lv');
+        const stGot = ev('state.learn && state.learn.stage');
+        const num = ev('state.level');
+        const cells = ev('state.cols') * ev('state.rows');
+        nums.push(num);
+        if (lvGot !== lv || stGot !== st) dead.push('L' + lv + '-' + st + ' 进不去(' + lvGot + '-' + stGot + ')');
+        if (num !== (lv - 1) * 10 + st) wrongNum.push('L' + lv + '-' + st + ' 序号=' + num);
+        if (!cells) dead.push('L' + lv + '-' + st + ' 无格数');
+      }
+    }
+    const uniq = {}; nums.forEach(n => { uniq[n] = 1; });
+    check('150 关全部进得去且都落到正确的 lv/stage', dead.length === 0, dead.slice(0, 6).join(' | '));
+    check('每关编号 = (lv-1)*10+st（L{lv} 第 {st} 关 = 第 (lv-1)*10+st 课）',
+      wrongNum.length === 0, wrongNum.slice(0, 5).join(' | '));
+    check('150 关的全局序号恰好覆盖 1..150（无缺号 / 无重号）',
+      nums.length === 150 && Object.keys(uniq).length === 150 &&
+      Math.min.apply(null, nums) === 1 && Math.max.apply(null, nums) === 150,
+      'count=' + nums.length + ' uniq=' + Object.keys(uniq).length +
+      ' min=' + Math.min.apply(null, nums) + ' max=' + Math.max.apply(null, nums));
+
+    // 格子尺寸按级推进（D51 规格）—— 这一条同时是「每级的生成器真的换了挡」的证据
+    const dims = [];
+    for (let lv = 1; lv <= 15; lv++) {
+      ev('startLearn(' + lv + ', 1)');
+      dims.push(ev('state.cols') + 'x' + ev('state.rows'));
+    }
+    check('格子尺寸按级推进（L1-L2 6×6 / L3-L5 5×5 / L6-L10 4×4 / L11-L15 3×3）',
+      dims.slice(0, 2).every(d => d === '6x6') && dims.slice(2, 5).every(d => d === '5x5') &&
+      dims.slice(5, 10).every(d => d === '4x4') && dims.slice(10).every(d => d === '3x3'),
+      dims.join(' '));
+
+    // ③ 链路衔接：本级未完 → 同级下一关；本级全过 → 转入下一级；L15 是终点
+    ev('clearProgress()');
+    ev('(function(){var p=getProgress();p.learnDone=p.learnDone||{};p.learnDone["1-1"]=1;saveProgress(p);})()');
+    check('L1 只过第 1 关 → 下一课指向 L1 第 2 关', ev('learnNextStage(1)') === 2,
+      'next=' + ev('learnNextStage(1)'));
+    ev('(function(){var p=getProgress();for(var s=1;s<=10;s++)p.learnDone["1-"+s]=1;saveProgress(p);})()');
+    check('L1 十关全过 → 本级无下一关（转「进入下一级」）', ev('learnNextStage(1)') === 0,
+      'next=' + ev('learnNextStage(1)'));
+    ev('startLearn(2, 1)');
+    check('跨级衔接：L1 全过后进 L2 第 1 关，序号 = 11', ev('state.level') === 11,
+      'level=' + ev('state.level'));
+    ev('startLearn(15, 10)');
+    check('链路终点：L15 第 10 关序号 = 150', ev('state.level') === 150, 'level=' + ev('state.level'));
+
+    // 盘面抽查：每级的第 1 关与第 10 关都要真的渲染出牌（同步检查看不到 DOM，这里给渲染留一拍）
+    const noBoard = [];
+    for (let lv = 1; lv <= 15; lv++) {
+      for (const st of [1, 10]) {
+        ev('startLearn(' + lv + ', ' + st + ')');
+        await sleep(18);
+        if ($$('#board .tile').length === 0) noBoard.push('L' + lv + '-' + st);
+      }
+    }
+    check('每级首关与末关都渲染出牌面（30 次抽查）', noBoard.length === 0, noBoard.join(' '));
+
+    // ④ 学习关的发音闭环（2026-10-15）
+    //   L1 的牌面就是那 30 个辅音，而它们**都有真人录音**（letter_01…）。
+    //   但牌面 id 是合成的 lrn_*，查不到音源 → 此前整条学习线**一句都不出声**，
+    //   「看得见 → 听得见」的闭环实际是断的。现按牌面文本回退查音源。
+    //   判据用 state.duckLog：H5 里 duckBgm 只被 pronounce 调用，**只有真的播了人声才会压 BGM**，
+    //   所以它是「确实出声」的干净证据（比只看计数强 —— 计数在没音源时也会加）。
+    ev('clearProgress()');
+    ev('startLearn(1, 1)');
+    await sleep(80);
+    // 找一对「牌面文本能查到音源」的牌 —— 不假设具体是哪几个辅音
+    //（盘面是随机的；且不依赖某个特定 id 是否在 VOICES 里）
+    const findAudioPair = function () {
+      return ev('(function(){var cs=state.board.cells;' +
+        'for(var i=0;i<cs.length;i++){var a=cs[i];' +
+        ' if(!a||a.state!=="idle"||!tib2Id(a.tibetan))continue;' +
+        ' for(var j=i+1;j<cs.length;j++){var b=cs[j];' +
+        '  if(b&&b.state==="idle"&&b.id===a.id)return [i,j];}}' +
+        'return null;})()');
+    };
+    const ap = findAudioPair();
+    check('L1 盘面上存在「有真人录音」的辅音牌（牌面文本能查到音源）', !!ap, JSON.stringify(ap));
+    const duck0 = ev('(state.duckLog || []).length') || 0;
+    if (ap) {
+      await clickTile(ap[0]);
+      await clickTile(ap[1]);
+      await sleep(420);
+    }
+    check('L1 配对成功后真的出声（压了 BGM = 播了人声）',
+      (ev('(state.duckLog || []).length') || 0) > duck0,
+      duck0 + ' → ' + (ev('(state.duckLog || []).length') || 0));
+    check('朗读计数照记、语义未变（记的仍是本次消除的元素）',
+      ev('state.pronounceCount') > 0 && !!ev('state.lastPronounced'),
+      'count=' + ev('state.pronounceCount') + ' last=' + ev('state.lastPronounced'));
+
+    // 反例：确实没有录音的关（L3 是「基字+后加字」的合成音节）不能假装出声
+    ev('startLearn(3, 1)');
+    await sleep(80);
+    const duck1 = ev('(state.duckLog || []).length') || 0;
+    let bp = findPair();
+    await clickTile(bp[0]);
+    await clickTile(bp[1]);
+    await sleep(420);
+    check('没有录音的关仍然静默（不拿别的音顶、不假装）',
+      (ev('(state.duckLog || []).length') || 0) === duck1,
+      duck1 + ' → ' + (ev('(state.duckLog || []).length') || 0));
+
+    // ⑤ 第 10 关之后**不能是死胡同**
+    //   用户 2026-10-15 原话：「我发现我们还是仅仅限制在第十关，之后就没有办法进行下去」。
+    //   根因：第 10 关结算页底栏只有「生成我的祝福卡」（祝福区里本来就有同一个按钮），
+    //   返回首页后抬头照旧写着「第 1-10 课」、天梯全亮，没有任何下一步。
+    //   判据直接照抄用户那句话：第 10 关结算页与首页**都必须**给出通往第 11 课的出口。
+    ev('clearProgress()');
+    ev('(function(){var p=getProgress();' +
+       'p.completedLevels=[1,2,3,4,5,6,7,8,9];p.unlockedLevel=10;saveProgress(p);})()');
+    ev('startLevel(10)');
+    await sleep(80);
+    ev('state.matchedCount = 24; state.collected = []; state.score = 300;' +
+       ' state.maxCombo = 6; state.misses = 0; finishLevel()');
+    for (let w = 0; w < 30 && activeScreen() !== 'screen-result'; w++) await sleep(100);
+    check('第 10 关能进结算页', activeScreen() === 'screen-result', activeScreen());
+    const barTxt = ($('#res-actions') || {}).textContent || '';
+    check('第 10 关底栏给出「继续学习」出口（不是死胡同）',
+      barTxt.indexOf('继续学习') > -1, JSON.stringify(barTxt.slice(0, 60)));
+    check('出口写明全局课序号（第 11 / 150 课），玩家知道「第 11 关在哪」',
+      /第 11 \/ 150 课/.test(barTxt), JSON.stringify(barTxt.slice(0, 60)));
+    const goBtn = $('#res-actions .primary-btn');
+    if (goBtn) goBtn.click();
+    await sleep(180);
+    check('点它真的进入学习线第 11 课（L2 第 1 课，不是回到首页）',
+      activeScreen() === 'screen-game' && ev('state.level') === 11,
+      activeScreen() + ' level=' + ev('state.level'));
+    // 玩家也可能点「返回首页」—— 首页同样要给出口
+    // ⚠️ 注意选择器写法：harness 的 `$` 是 querySelector，**必须带 `#`**；
+    //    而 play.html 内部的 `$` 是 getElementById（不带 `#`）。两者同名不同义，
+    //    我第一次就写混了 → `$('home-stage-head')` 被当成**标签名**查询 → 恒为 null → 假红。
+    ev('renderHome()');
+    await sleep(120);
+    const headTxt = ($('#home-stage-head') || {}).textContent || '';
+    check('首页天梯抬头也给出「继续学习」出口（回首页同样不卡死）',
+      headTxt.indexOf('继续学习') > -1, JSON.stringify(headTxt));
+    check('首页抬头写明第几课与总数', /第 11 \/ 150 课/.test(headTxt), JSON.stringify(headTxt));
+    const headEl = $('#home-stage-head');
+    if (headEl) headEl.click();
+    await sleep(180);
+    check('点首页抬头也真的进第 11 课',
+      activeScreen() === 'screen-game' && ev('state.level') === 11,
+      activeScreen() + ' level=' + ev('state.level'));
+
+    // ⑥ 首页必须有「150 关全景图」—— 「没有看到 150 关」是用户的原话
+    //   在此之前的首页：天梯只有 10 个节点、底部还写着「共 10 课」，
+    //   玩家完全看不到学习线那 150 课，所以反复认为「游戏只有 10 关」。
+    ev('clearProgress()');
+    ev('renderHome()');
+    await sleep(120);
+    const cells = $$('#al-grid .al-cell');
+    check('首页铺出 150 个关卡格子', cells.length === 150, '实际 ' + cells.length);
+    const cellNums = cells.map(function (c) { return Number(c.textContent); });
+    check('格子编号连续覆盖 1..150',
+      cellNums[0] === 1 && cellNums[149] === 150 && cellNums.every(function (n, i) { return n === i + 1; }),
+      cellNums[0] + '…' + cellNums[149]);
+    check('首页写明「全部课程 · 150 课」',
+      ($('#home-alllevels') || {}).textContent.indexOf('150 课') > -1,
+      JSON.stringify((($('#home-alllevels') || {}).textContent || '').slice(0, 50)));
+    check('底部不再是「共 10 课」（会直接误导玩家）',
+      $('.footer-sub').textContent.indexOf('共 10 课') === -1, $('.footer-sub').textContent);
+    // 注意：「当前课」那格渲染成 cur（不是 open），所以可点格 = open + cur
+    check('零进度时：L1 十格可点（9 open + 1 cur = 第 1 课高亮）、L2+ 锁住 140 格',
+      $$('#al-grid .al-cell.open').length === 9 && $$('#al-grid .al-cell.cur').length === 1 &&
+      $$('#al-grid .al-cell.lock').length === 140,
+      'open=' + $$('#al-grid .al-cell.open').length + ' cur=' + $$('#al-grid .al-cell.cur').length +
+      ' lock=' + $$('#al-grid .al-cell.lock').length);
+
+    // 桥：老线 10 关全通 → L2 直接开（否则刚走完老线的玩家看到 L2-L15 全锁 = 「还是停在 10 关」）
+    ev('(function(){var p=getProgress();p.completedLevels=[1,2,3,4,5,6,7,8,9,10];saveProgress(p);})()');
+    ev('renderHome()');
+    await sleep(120);
+    check('老线 10 关全通 → L2 的 10 格不再锁（打通两条线，不罚玩家重刷 L1）',
+      ev('learnLevelLocked(2)') === false && ev('learnLevelLocked(3)') === true,
+      'L2locked=' + ev('learnLevelLocked(2)') + ' L3locked=' + ev('learnLevelLocked(3)'));
+    check('此时首页可点格 = 20（L1 十格 + L2 十格）',
+      $$('#al-grid .al-cell.open').length + $$('#al-grid .al-cell.cur').length === 20,
+      'open=' + $$('#al-grid .al-cell.open').length + ' cur=' + $$('#al-grid .al-cell.cur').length);
+    // 点第 11 格（= 第 11 课）必须真的进那一课
+    const cell11 = $$('#al-grid .al-cell')[10];
+    cell11.click();
+    await sleep(180);
+    check('点全景图第 11 格 → 真的进入第 11 课',
+      activeScreen() === 'screen-game' && ev('state.level') === 11,
+      activeScreen() + ' level=' + ev('state.level'));
+
+    ev('clearProgress()');
+    ev('renderHome()');
   }
 
   /* ---------- 汇总 ---------- */

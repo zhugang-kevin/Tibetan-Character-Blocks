@@ -73,11 +73,9 @@ Page({
     ownedCerts: 0,       // 已获得证书总数
     skillHint: '',       // 距更高等级证书还差什么
     // ---- 阶段完结后的「下一步」预告（D27：12 阶段路线图的下一站） ----
-    nextStageNo: 0,      // 下一阶段序号（0 = 没有下一阶段）
-    nextStageName: '',   // 下一阶段名（取自 data/stages.js）
-    nextStageGoal: '',   // 下一阶段学习目标（取自 data/stages.js）
-    nextStageRange: '',  // 下一阶段关卡区间，如 "11-30"
-    nextStageOpen: false,// 是否已开放（false = 内容制作中）
+    // ⚠️ 原先这里有 nextStageNo / Name / Goal / Range / Open 五个字段，喂给 D27 的
+    //   「下一阶段」预告块。D119（12 阶段体系撤除）后该块与数据源都已删除 —— 字段一并清掉，
+    //   免得再有人以为「阶段」这个概念还在。
     // ---- 「藏文可以组合」拼合预告 ----
     // 只在第 2 关的结算页出现：该关通关即认全 ཀ ཁ ག ང，此刻讲拼合最有落点。
     // 纯展示，不参与任何消除判定；文案与关卡号都取自 data/combo.js。
@@ -184,10 +182,10 @@ Page({
     // 此前这份进度只在文化护照页可见，用户要先跳一层才看得到。
     var cp = collect.cardProgress(CARD_ORDER, storage.getSeenCards());
     var openLog = storage.getOpenLog();
-    // D27：本阶段完结（有证书）时，把 12 阶段路线图的下一站摆到同一个决策点上。
-    // 文案全部来自 data/stages.js，页面不写死阶段名——内容库扩充后自动生效。
-    var stageNo = certRes.stage ? certRes.stage.stage : 0;
-    var ns = certificate.nextStage(stageNo);
+    // ⚠️ 原 D27 的「12 阶段路线图 / 下一阶段预告」随 D119（两块证书墙合并成一块）一并撤除：
+    //   certRes.stage 现在恒为 null，`certificate.nextStage()` 也已删除 ——
+    //   留着会是一条永远走不通的死分支。这里固定为 null，WXML 的 wx:if 自然不上屏。
+    var ns = null;
     var collected = ids.map(function (id) {
       var el = elements[id] || {};
       var card = null;
@@ -209,6 +207,31 @@ Page({
       combo: combo,
       collected: collected,
       isFinal: level === 10,
+      // 第 10 关（老线走完）时，底栏要给**通往学习线的路**。
+      // ⚠️ 曾经的死胡同：底栏只有「生成我的祝福卡」（而祝福区里本来就有同一个按钮），
+      //   通关后玩家只能返回首页，而首页天梯 10 级已全通 → 无处可去。
+      //   用户 2026-10-15 原话：「还是仅仅限制在第十关，之后就没有办法进行下去」。
+      learnLineNext: level === 10 ? (function () {
+        // 学习线第一个还没过的关 = 「继续学习」要跳的那一课（老线走完 → 从第 11 课起接上）
+        // ⚠️ 老线与学习线是**两条轨道**：老线 10 关教的正是 L1「辅音三十」的同批辅音。
+        //    直接取「第一个未完成」（= L1 第 1 课）会让按钮写「第 1 / 150 课」——
+        //    玩家刚走完 10 关却被送回第 1 课，「继续学习」就名不副实。
+        //    规则：老线全通且 L1 完全没动过 → 从 L2 第 1 课（全局第 11 课）接上。
+        var found = null;
+        for (var i = 0; i < learningData.LEVELS.length; i++) {
+          var L = learningData.LEVELS[i];
+          if (storage.getLearnLevelDone(L.lv) < L.stages) {
+            found = { lv: L.lv, stage: storage.getLearnNextStage(L.lv) || 1 };
+            break;
+          }
+        }
+        if (!found) return null;   // 150 课全过：确实没有「下一课」了
+        if (found.lv === 1 && found.stage === 1 && !storage.getLearnLevelDone(1)) {
+          found = { lv: 2, stage: 1 };
+        }
+        found.index = learning.cumulativeIndex(found.lv, found.stage);
+        return found;
+      })() : null,
       newStamp: newStamp,
       accuracy: certRes.accuracy,
       clean: miss === 0,
@@ -218,15 +241,14 @@ Page({
       cert: certRes.cert,
       certNew: certRes.isNew,
       certUpgraded: certRes.upgraded,
-      certTitle: certRes.cert
-        ? (certRes.isNew ? '获得藏文成长证书' : (certRes.upgraded ? '证书升级' : '本阶段证书'))
-        : '',
-      ownedCerts: certificate.ownedCount(),
+      // ⚠️ certTitle 原先是「证书横幅」的文案（含旧体系名）。横幅已于 D119 撤除、
+      //   certRes.cert 恒为 null —— 这里固定为空串，不再往页面塞已不存在的证书名。
+      certTitle: '',
+      // ⚠️ 曾经是 certificate.ownedCount()（数 12 阶段旧体系的证书）——D119 后那套不再颁证，
+      //   它会永远显示「文化护照 · 0 张证书」，而玩家明明可能已有学习证书。改数学习线证书。
+      ownedCerts: certificate.learningList().owned,
       skillHint: certRes.skill ? certRes.skill.text : '',
       // D27：下一阶段预告（仅在 cert 存在时上屏，见 result.wxml）
-      nextStageNo: ns ? ns.stage : 0,
-      nextStageName: ns ? ns.name : '',
-      nextStageGoal: ns ? ns.goal : '',
       nextStageRange: ns ? (ns.from + '-' + ns.to) : '',
       nextStageOpen: ns ? !!ns.open : false,
       // 「藏文可以组合」预告：只在第 2 关（关卡号来自数据文件），页面不内联
@@ -389,6 +411,16 @@ Page({
     }
     wx.redirectTo({ url: '/pages/game/game?lv=' + d.learnNextLv + '&stage=' + (d.learnNextStage || 1) });
   },
+  // 老线第 10 关走完 → 接进学习线（把「关卡 11 往哪走」这件事说清楚，别再让玩家撞死胡同）
+  goLearnLine: function () {
+    var n = this.data.learnLineNext;
+    if (!n) {
+      wx.redirectTo({ url: '/pages/index/index' });
+      return;
+    }
+    tracker.track('next_level_click');
+    wx.redirectTo({ url: '/pages/game/game?lv=' + n.lv + '&stage=' + n.stage });
+  },
   // D113：给分享这一课的朋友送一份祝福（入口只在 ?to= 存在时出现）
   //   只带匿名 uid 与成绩，绝不带 openid（openid 只能由服务端用 code 换，不进前端）。
   goGift: function () {
@@ -429,14 +461,10 @@ Page({
   goHome: function () {
     wx.redirectTo({ url: '/pages/index/index' });
   },
-  // 查看本阶段证书（证书页支持保存 / 分享）
-  openCert: function () {
-    var n = (this.data.cert && this.data.cert.stage) || this.data.stageNo;
-    if (!n) return;
-    tracker.track('cert_view');
-    wx.navigateTo({ url: '/pages/cert/cert?stage=' + n });
-  },
-  // 打开文化护照（总档案：12 张证书 + 印章 + 收藏）
+  // ⚠️ 这里原有 openCert()：跳「本阶段证书」（?stage=N）。
+  //   随 D119 撤除旧证书体系后，它既没有 WXML 绑定、目标路由也已失效 —— 一并删除。
+  //   学习线证书走 openLearnCert（?learn=lv），仍在使用。
+  // 打开文化护照（总档案：15 张藏文拼读证书 + 印章 + 收藏）
   openPassport: function () {
     tracker.track('passport_view');
     wx.navigateTo({ url: '/pages/passport/passport' });

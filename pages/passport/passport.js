@@ -174,14 +174,10 @@ Page({
   },
 
   refresh: function () {
-    var list = certificate.list();
+    // ⚠️ 原本这里构造「藏文成长证书」的 12 阶段列表（certificate.list()）。
+    //    2026-10-15（D119）撤除：它与下方「藏文拼读证书」**颗粒度完全相同**（都是每 10 课一张），
+    //    且进度读的是老 10 关线、只有阶段 1 开放 —— 11 张永远拿不到。证书墙已合并成一块。
     var p = storage.getProgress();
-    var owned = 0;
-    var next = null;
-    list.forEach(function (it) {
-      if (it.unlocked) owned++;
-      else if (!next && it.open) next = it;
-    });
     var stamps = p.stamps.map(function (id) {
       return { id: id, name: (STAMPS[id] || {}).name || id, desc: (STAMPS[id] || {}).desc || '' };
     });
@@ -209,8 +205,6 @@ Page({
     // D111 学习体系证书（15 级各一张 + 终极）
     var learnList = certificate.learningList();
     this.setData({
-      certs: list,      owned: owned,
-      nextStage: next,
       learnCerts: learnList.rows,
       learnOwned: learnList.owned,
       learnTotal: learnList.total,
@@ -319,7 +313,8 @@ Page({
 
   onShareAppMessage: function () {
     return {
-      title: '我的西藏文化护照 · 已获得 ' + this.data.owned + ' 张藏文成长证书',
+      // D119 起全站只有学习线一种证书 → 分享文案不能再用旧体系名
+      title: '我的西藏文化护照 · 已获得 ' + this.data.owned + ' 张藏文拼读证书',
       path: '/pages/index/index'
     };
   },

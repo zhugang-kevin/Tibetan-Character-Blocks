@@ -86,7 +86,7 @@ function titlesFor(lv, stage) {
     return pickRotation(pools.word || [], s, kinds);
   }
   if (L.parts.indexOf('phrase') > -1) {
-    return pickRotation(pools.phrase || [], s, kinds);
+    return pickPhrases(pools.phrase || [], s, kinds, L.stages || 10);
   }
 
   // ③a 含 前加/上加/下加 的组合（含 combo / review / L8 的 prefix+base+vowel）：
@@ -124,6 +124,43 @@ function pickRotation(pool, s, n) {
   var out = [];
   for (var i = 0; i < n && i < pool.length; i++) out.push(pool[((s - 1) + i) % pool.length]);
   return out;
+}
+
+// —— 句池专用取法（2026-10-15）——
+// ⚠️ 为什么不能直接用 pickRotation：它是在池上**滑动窗口**（按关号右移一位）。
+//    当窗口 ≥ 池大小时（L12/L13：池只有 5 句、窗口要 kinds = 6），每一关取到的都是**整个池**，
+//    集合完全相同 → **10 关内容一模一样**（实测指纹全同，L12/L13 共 18 关受影响）。
+//    改用**组合取子集**：池 5 句取 3 句共有 C(5,3) = 10 种，正好铺满 10 关 —— 关关不同，
+//    且**一句新藏文都不用造**（沿用仓库里已有出处/已由用户录过的句子）。
+//    池比窗口大时（L10/L11：10 词对窗口 6）仍走滑动窗口，行为一字不变。
+function comb(n, k) {
+  if (k < 0 || k > n) return 0;
+  var r = 1;
+  for (var i = 0; i < k; i++) r = r * (n - i) / (i + 1);
+  return Math.round(r);
+}
+// 字典序第 idx 个（0 基）组合的下标数组
+function comboAt(n, k, idx) {
+  var res = [], start = 0;
+  for (var i = 0; i < k; i++) {
+    for (var v = start; v <= n - (k - i); v++) {
+      var cnt = comb(n - v - 1, k - i - 1);
+      if (idx < cnt) { res.push(v); start = v + 1; break; }
+      idx -= cnt;
+    }
+  }
+  return res;
+}
+function pickPhrases(pool, s, n, stages) {
+  var m = pool.length;
+  if (!m) return [];
+  if (n < m) return pickRotation(pool, s, n);   // 窗口 < 池：沿用滑动窗口（L10/L11 等）
+  var need = Math.max(1, stages || 10);
+  var k = m;                                     // 取「组合数 ≥ 关数」的最大子集大小
+  while (k > 1 && comb(m, k) < need) k--;
+  var total = comb(m, k);
+  var idx = (Math.max(1, Math.floor(s) || 1) - 1) % total;
+  return comboAt(m, k, idx).map(function (i) { return pool[i]; });
 }
 
 // 七位骨架组装（顺序不可换：前加字 → 上加字 → 基字 → 下加字 → 元音 → 后加字 → 再后加字）

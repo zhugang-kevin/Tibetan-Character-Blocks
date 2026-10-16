@@ -606,9 +606,12 @@ Page({
     if (firstTime) this.playSceneVoice('rare');
     // 每次配对成功都朗读该元素发音（学习闭环：看得见 → 听得见）
     // 延后 300ms 让配对音效先响，避免人声与铃声糊在一起；连击时新发音打断旧发音
+    // ⚠️ 带上牌面文本：学习关的 id 是 lrn_* 查不到音源，audio.pronounce 会按文本回退查一次，
+    //    这样 L1 的三十个辅音能用上本来就有的真人录音（此前整条学习线是静默的）。
+    var tibOfMatch = a && a.tibetan;
     if (this.voiceTimer) clearTimeout(this.voiceTimer);
     this.voiceTimer = setTimeout(function () {
-      if (audio.pronounce(id)) tracker.track('first_pronunciation');
+      if (audio.pronounce(id, tibOfMatch)) tracker.track('first_pronunciation');
     }, 300);
     // 下落结算排队（连点不阻塞：玩家可以在下落动画期间继续配对）
     // ⚠️ 入队的是 uid：排队期间盘面会因前面的下落而变化，格号到结算时就过期了

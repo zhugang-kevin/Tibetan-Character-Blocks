@@ -107,40 +107,10 @@
       </view>
     </view>
 
-    <!-- 1. 藏文成长证书（学习线） -->
-    <view class="section">
-      <view class="section-head">
-        <text class="section-title">藏文成长证书</text>
-        <text class="section-count">{{owned}} / {{certTotal}}</text>
-      </view>
-      <view class="section-sub">每 10 课一个阶段，完成即颁发一张证书。集齐 12 张，就是一套完整的藏文入门档案。</view>
-
-      <view class="cert-grid">
-        <view
-          wx:for="{{certs}}"
-          wx:key="stage"
-          class="cert-slot {{item.unlocked ? 'got' : 'locked'}}"
-          data-stage="{{item.stage}}"
-          bindtap="openCert"
-        >
-          <view class="slot-top">第 {{item.stage}} 阶段</view>
-          <view class="slot-name">{{item.name}}</view>
-          <block wx:if="{{item.unlocked}}">
-            <view class="slot-tier" style="background: {{item.tierColor}};">{{item.tierLabel}}</view>
-            <view class="slot-no">{{item.cert.no}}</view>
-          </block>
-          <block wx:else>
-            <view class="slot-lock">🔒</view>
-            <view class="slot-progress">{{item.progress}}/{{item.total}} 课</view>
-          </block>
-        </view>
-      </view>
-
-      <view wx:if="{{nextStage}}" class="next-hint">
-        下一张：第 {{nextStage.stage}} 阶段 · {{nextStage.name}}
-        <text class="next-need">还差 {{nextStage.total - nextStage.progress}} 课</text>
-      </view>
-    </view>
+    <!-- 1. 藏文成长证书（12 阶段旧体系）已于 2026-10-15 撤除（D119）：
+         它与下面 1b 的「藏文拼读证书」**颗粒度完全相同**（都是每 10 课一张），
+         且数据源读的是老 10 关线的进度、只开放阶段 1 —— 11 张永远拿不到。
+         合并成一块后，证书墙只剩「藏文拼读证书」15 张。 -->
 
     <!-- 1b. 藏文拼读证书（D111：学习体系 15 级各一张 + 终极「藏文拼读宗师」） -->
     <view class="section">

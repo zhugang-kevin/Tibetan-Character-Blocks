@@ -60,6 +60,37 @@ VOICE_INDEX.ids.concat(VOICE_INDEX.extras).forEach(function (k) { VOICE_SET[k] =
 function hasVoice(id) {
   return !!VOICE_SET[id];
 }
+// 牌面文本 → 有音源的元素 id（2026-10-15）—— 与体验版 preview/template.html 的 tib2Id 同规则
+// 为什么需要：学习关的牌面 id 是合成的 `lrn_{lv}_{st}_{i}`，查不到音源 ——
+//   「每次配对成功都朗读该元素发音（学习闭环：看得见 → 听得见）」这条链路
+//   在整个学习线里一直是**静默**的。
+//   但 **L1 的牌面就是那 30 个辅音**，而它们**都有真人录音**（letter_01…），只是 id 对不上。
+//   这里按**藏文文本**建反向索引，把本来就有音源的接回来。
+//   仍坚持原原则「没音源就不假装」：查不到就静默，不造假音、不拿别的音顶。
+var ELEMENTS = require('../data/elements.js');
+var tibText = require('./tibetan-text.js');
+var LEARN_AUDIO = require('../data/learn-audio.js');
+var _tib2id = null;
+function tib2Id(tib) {
+  if (!tib) return null;
+  if (_tib2id === null) {
+    _tib2id = {};
+    Object.keys(ELEMENTS).forEach(function (id) {
+      if (!hasVoice(id)) return;                 // 没音源的不进索引
+      var t = ELEMENTS[id] && ELEMENTS[id].tibetan;
+      if (t) _tib2id[tibText.withTseg(t)] = id;
+    });
+    // 学习线录音索引（data/learn-audio.js：牌面文本 → learn_NNN）
+    // 为什么单独一张表：学习关的牌面 id 是合成的 lrn_{lv}_{st}_{i}，**同一句在不同关里 id 不同**，
+    //   所以录音只能按**藏文文本**索引。录一条这里就生效一条；没录的仍然静默 —— 不假装。
+    var lm = (LEARN_AUDIO && LEARN_AUDIO.map) || {};
+    Object.keys(lm).forEach(function (t) {
+      var id = lm[t];
+      if (hasVoice(id)) _tib2id[tibText.withTseg(t)] = id;
+    });
+  }
+  return _tib2id[tibText.withTseg(tib)] || null;
+}
 // D111：语音文件位置。藏地密码十条中文讲解（secret_*，286KB）只在结算页「听讲解」用，
 //   与赞美音频同性质 → 移进 praiseVoice 分包（结算页进页即预热，见 pages/result）。
 //   元素发音 / 情绪语音 / 日签语音留主包：第一秒就要响的不能等分包下载。
@@ -67,9 +98,15 @@ function hasVoice(id) {
 function voiceRootOf(id) {
   return /^secret_/.test(id) ? PRAISE_VOICE_ROOT : '/audio/voice/';
 }
-function pronounce(id) {
+function pronounce(id, tib) {
   // 没有音源就不要假装播了：直接返回 false，让调用方给出诚实的反馈。
   // （过去这里会照常建 ctx 并 return true ——  misses 要等异步 onError 才知道，UI 无从判断。）
+  // 学习关的 lrn_* 没有音源，但**牌面文本**可能对应有录音的元素（L1 的三十个辅音）
+  // → 按文本回退查一次；仍查不到才返回 false（坚持「不假装」）。
+  if (id && !VOICE_SET[id] && tib) {
+    var vid = tib2Id(tib);
+    if (vid) id = vid;
+  }
   if (!id || !VOICE_SET[id]) return false;
   try {
     if (!voiceCtx[id]) {
@@ -210,6 +247,7 @@ module.exports = {
   play: play,
   pronounce: pronounce,
   hasVoice: hasVoice,
+  tib2Id: tib2Id,
   speak: speak,
   speakPraiseBo: speakPraiseBo,
   stopVoice: stopVoice,

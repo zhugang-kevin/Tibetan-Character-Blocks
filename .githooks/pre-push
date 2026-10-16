@@ -1,0 +1,40 @@
+#!/bin/sh
+# .githooks/pre-push — 推送前全量门禁（含体验版端到端 ≈80s）
+#
+# 与 pre-commit 的分工：
+#   pre-commit = 秒级快检（关卡 + 跨内容 + 结构），每次提交都跑
+#   pre-push   = 全量（多跑构建、体验版端到端、音频体检、设备矩阵），推送时跑
+#
+# 安装：sh scripts/install-hooks.sh
+# 设计原则：fail closed —— 找不到解释器就拒绝推送，不静默放行。
+#
+# 直接调 scripts/ci.py（它现在是**真的**全量了：2026-10-16 补齐了此前漏挂的
+# 送礼入账 / 宗教商业化红线 / 场景语音闸门 三个门禁）。
+
+set -e
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
+
+PY_BIN="$(command -v python 2>/dev/null || command -v python3 2>/dev/null || true)"
+if [ -z "$PY_BIN" ]; then
+  for c in \
+    "C:/Users/zhuga/.workbuddy/binaries/python/versions/3.13.12/python.exe" \
+    "/c/Users/zhuga/.workbuddy/binaries/python/versions/3.13.12/python.exe" \
+    "$HOME/.workbuddy/binaries/python/versions/3.13.12/python.exe"; do
+    if [ -x "$c" ]; then PY_BIN="$c"; break; fi
+  done
+fi
+if [ -z "$PY_BIN" ]; then
+  echo "✗ 找不到 python —— 全量门禁无法执行，拒绝推送（fail closed）"
+  exit 1
+fi
+
+echo "── 推送前全量门禁 ──"
+if "$PY_BIN" scripts/ci.py; then
+  echo "✓ 全量门禁通过"
+  exit 0
+fi
+echo ""
+echo "✗ 推送被拦下 —— 全量门禁有红项。"
+echo "  跳过请用 git push --no-verify（**请勿**在有红项时使用）。"
+exit 1

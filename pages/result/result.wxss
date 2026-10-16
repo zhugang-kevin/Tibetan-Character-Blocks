@@ -714,45 +714,9 @@
 .j-unknown { color: #6E6759; font-weight: 400; }
 .j-note { margin-top: 14rpx; font-size: 26rpx; line-height: 1.6; color: #6E6759; }
 
-/* ============ D27：阶段完结后的「下一步」预告 ============ */
-.next-stage {
-  display: flex;
-  flex-direction: column;
-  margin: 14rpx 0 6rpx;
-  padding: 22rpx 28rpx;
-  border-radius: 20rpx;
-  background: rgba(255, 255, 255, 0.88);
-  border: 2rpx dashed rgba(183, 149, 11, 0.75);
-}
-.ns-head {
-  display: flex;
-  align-items: baseline;
-}
-.ns-tag {
-  flex-shrink: 0;
-  margin-right: 12rpx;
-  padding: 2rpx 12rpx;
-  border-radius: 999rpx;
-  font-size: 26rpx;
-  color: #FFFBF0;
-  background: #8A6A12;
-}
-.ns-name {
-  font-size: 26rpx;
-  font-weight: 700;
-  color: #2C3E50;
-}
-.ns-goal {
-  margin-top: 10rpx;
-  font-size: 26rpx;
-  line-height: 1.6;
-  color: #2C3E50;
-}
-.ns-note {
-  margin-top: 8rpx;
-  font-size: 26rpx;
-  color: #6E6759;
-}
+/* ⚠️ D27「阶段完结后的下一步预告」样式（.next-stage / .ns-*）已于 D119 随
+     12 阶段体系撤除 —— 对应 WXML 节点与数据字段都已删除，留着是死样式。
+     下一节是仍在用的「藏文可以组合」拼合预告。 */
 
 /* ============ 「藏文可以组合」拼合预告（仅第 2 关结算页） ============ */
 /* 用「两个完整音节的对比」讲拼合：ཀ → ཀི。

@@ -23,6 +23,33 @@ var giftInbox = require('../../utils/gift-inbox');
 var syncModule = require('../../utils/sync');
 var monasteryData = require('../../data/monasteries');   // D100 西藏寺院导览
 
+/* ---------- 学习线解锁判定：**唯一口径**（学习面板与首页 150 课全景图共用） ----------
+   规则：
+     ① 验收开关打开 → 全开（只为逐级验收 150 课，不改任何进度数据；与体验版 ?all=1 同语义）
+     ② L1 直进
+     ③ 前一级 10 课全过 → 本级开
+     ④ **老线 10 关全通 → L2 直接开**（这条桥不能少）
+        老线那 10 关教的正是 L1「辅音三十」的同一批辅音。若死守「必须先把 L1 的
+        10 课全过」，刚走完老线的玩家会看到 L2–L15 **全是 🔒** —— 体验就是
+        「还是停在 10 关」（用户 2026-10-15 与 10-16 两次撞在这上面）。
+   规则只写在这一处，面板与全景图都调它，避免两处漂移出现「面板说能进、地图说锁着」。 */
+var LEARN_VERIFY_KEY = 'learnVerifyAll';
+function learnVerifyOn() {
+  try { return wx.getStorageSync(LEARN_VERIFY_KEY) === 1; } catch (e) { return false; }
+}
+function learnOldLineDone() {
+  var cs = (storage.getProgress() || {}).completedLevels || [];
+  var n = 0;
+  for (var i = 0; i < cs.length; i++) if (cs[i] >= 1 && cs[i] <= 10) n++;
+  return n >= 10;
+}
+function learnLocked(lv) {
+  if (learnVerifyOn() || lv <= 1) return false;
+  if (storage.getLearnLevelDone(lv - 1) >= 10) return false;
+  if (lv === 2 && learnOldLineDone()) return false;   // ④
+  return true;
+}
+
 // 视口高度：优先用 wx.getWindowInfo（基础库 2.20.1+），旧设备回退 getSystemInfoSync，
 // 两者都取不到时用 667 兜底。getSystemInfoSync 已标记不再维护，不再作为首选路径。
 function viewportHeight() {
@@ -108,6 +135,9 @@ Page({
     thangkaDone: false,
     boxText: '',
     learnLevels: [],
+    // 150 课全景图（首页）：15×10 的格子 + 验收开关状态（见 buildAllCells 注释）
+    learnAll: { cells: [], doneN: 0, total: 150, next: 0 },
+    learnVerify: false,
     pot: 0,
     // 万家灯火祈福跳窗（每次进入首页前展示，每天仅一次；纯本地，无任何网络请求）
     scenePhoto: photoAssets.home || '',   // 首页场景照片（清单驱动，空则不渲染）
@@ -244,12 +274,48 @@ Page({
       return { id: id, name: (STAMPS[id] || {}).name || id };
     });
 
-    var slots = certificate.list();
-    var stage = null;
-    for (var i = 0; i < slots.length; i++) {
-      if (slots[i].open && !slots[i].unlocked) { stage = slots[i]; break; }
+    // D119（2026-10-15）：证书墙合并成一块 —— 首页这张卡也只报「藏文拼读证书」15 张。
+    //   原来读 certificate.list()（12 阶段旧体系），撤除后它会永远停在 0/12，
+    //   且 lastCert.stage 变成 undefined（学习证书没有 stage 字段）。
+    var learn = certificate.learningList();
+    var learnStage = null;
+    var learnDone = 0;
+    for (var li = 0; li < learningData.LEVELS.length; li++) {
+      var LV = learningData.LEVELS[li];
+      if (storage.getLearnLevelDone(LV.lv) < LV.stages) {
+        learnStage = LV;
+        learnDone = storage.getLearnLevelDone(LV.lv);
+        break;
+      }
     }
     var certs = p.certs || [];
+
+    // 天梯抬头（动态）：老线 10 关全通后必须变成「继续学习第 N / 150 课」的可点入口。
+    // ⚠️ 否则玩家通关第 10 关回到首页，看到的是「抬头照旧写第 1-10 课 + 天梯全亮」，
+    //    没有任何下一步 —— 这就是用户说的「还是仅仅限制在第十关，之后就没有办法进行下去」。
+    var done10 = 0;
+    for (var di = 0; di < p.completedLevels.length; di++) {
+      var dn = p.completedLevels[di];
+      if (dn >= 1 && dn <= 10) done10++;
+    }
+    var stageHeadName = '朝圣天梯 · 第一段';
+    var stageHeadRange = '第 1-10 课 · 山脚到山腰';
+    var contLv = 0, contStage = 0;
+    if (done10 >= 10 && learnStage) {
+      // ⚠️ 老线与学习线是**两条轨道**：老线的 10 关教的正是 L1「辅音三十」的同批辅音。
+      //    若直接取「第一个未完成」（= L1 第 1 课），按钮会写「第 1 / 150 课」——
+      //    玩家刚走完 10 关却被送回第 1 课，「继续学习」就名不副实。
+      //    规则：老线全通且 L1 完全没动过 → 从 L2 第 1 课（全局第 11 课）接上。
+      var contLv0 = learnStage.lv;
+      var contSt0 = learnDone + 1;
+      if (contLv0 === 1 && learnDone === 0) { contLv0 = 2; contSt0 = 1; }
+      var gi = (contLv0 - 1) * 10 + contSt0;
+      var lvName = (learningData.byLevel(contLv0) || {}).name || '';
+      stageHeadName = '第一段已全通 · 继续学习第 ' + gi + ' / 150 课 →';
+      stageHeadRange = '点这里接着上 L' + contLv0 + ' · ' + lvName + '（学习线共 150 课）';
+      contLv = contLv0;
+      contStage = contSt0;
+    }
     var signIn = storage.getSignIn();
     var today = todayStr();
     var frags = storage.getFragments();
@@ -268,9 +334,16 @@ Page({
       regions: regions,
       stamps: stamps,
       bestCombo: p.bestCombo,
-      certCount: certs.length,
-      stage: stage,
-      lastCert: certs.length ? certs[certs.length - 1] : null,
+      certCount: learn.owned,
+      learnCertTotal: learn.total,
+      learnStage: learnStage,
+      learnDone: learnDone,
+      stageHeadName: stageHeadName,
+      stageHeadRange: stageHeadRange,
+      continueLearnLv: contLv,
+      continueLearnStage: contStage,
+      learnVerify: learnVerifyOn(),
+      learnAll: this.buildAllCells(),
       oil: (signIn && signIn.oil) || 0,
       points: storage.getPoints(),
       fragCount: frags.length,
@@ -552,7 +625,8 @@ Page({
         done: done,
         total: cfg.stages,
         next: next,
-        locked: cfg.lv > 1 && storage.getLearnLevelDone(cfg.lv - 1) < cfg.stages,
+        // 解锁统一走 learnLocked()（含「老线全通 → L2 直开」那条桥，见函数注释）
+        locked: learnLocked(cfg.lv),
         // D111：本级证书档位（拿到才显示，未拿为空串）—— 学习线的「成就可见性」
         certTier: (function () {
           var c = certificate.findLvCert(cfg.lv);
@@ -578,6 +652,78 @@ Page({
     this.setData({ panelShow: false });
     wx.navigateTo({ url: '/pages/game/game?lv=' + lv + '&stage=' + stage });
   },
+
+  // 天梯抬头点击：老线 10 关全通后接着上学习线。
+  // 没全通时什么都不做（抬头那时只是说明文字，不该被误触带走）。
+  goContinueLearn: function () {
+    var d = this.data;
+    if (!d.continueLearnLv) return;
+    this.gotoLearn(d.continueLearnLv, d.continueLearnStage || 1);
+  },
+
+  /* 150 课全景图的数据（首页）——把整条学习线铺成 15×10 的格子。
+     为什么必须放在首页：此前首页天梯只有 10 个节点、页脚还写着「共 10 课」，
+     玩家**根本看不到**学习线那 150 课，于是反复反馈「还是停在 10 关 / 没有看到 150 关」。
+     锁状态与学习面板同一口径（learnLocked），一处改规则两处同时生效。 */
+  buildAllCells: function () {
+    var done = storage.getLearnDone();
+    var cells = [];
+    var doneN = 0;
+    var curLv = 0, curSt = 0;
+    var Lvs = learningData.LEVELS;
+    for (var i = 0; i < Lvs.length; i++) {
+      if (storage.getLearnLevelDone(Lvs[i].lv) < Lvs[i].stages) {
+        curLv = Lvs[i].lv;
+        curSt = storage.getLearnNextStage(Lvs[i].lv) || 1;
+        break;
+      }
+    }
+    Lvs.forEach(function (L) {
+      var locked = learnLocked(L.lv);
+      for (var st = 1; st <= L.stages; st++) {
+        var isDone = !!done[L.lv + '-' + st];
+        if (isDone) doneN++;
+        cells.push({
+          gi: (L.lv - 1) * 10 + st,
+          lv: L.lv,
+          stage: st,
+          done: isDone,
+          cur: (L.lv === curLv && st === curSt),
+          locked: locked
+        });
+      }
+    });
+    return {
+      cells: cells,
+      doneN: doneN,
+      total: cells.length,
+      next: curLv ? ((curLv - 1) * 10 + curSt) : 0
+    };
+  },
+
+  // 全景图格子：已过的可重练、下一课可直接进、锁住的给出「为什么锁」
+  onTapAllCell: function (e) {
+    var ds = (e.currentTarget && e.currentTarget.dataset) || {};
+    var lv = Number(ds.lv), st = Number(ds.stage);
+    if (ds.locked) {
+      wx.showToast({ title: '先完成 L' + (lv - 1) + ' 的 10 课', icon: 'none' });
+      return;
+    }
+    if (!lv || !st) return;
+    this.gotoLearn(lv, st);
+  },
+
+  // 验收开关：打开后 150 课全开，供逐级验收（不改任何进度数据，与体验版 ?all=1 同语义）
+  toggleLearnVerify: function () {
+    var on = !learnVerifyOn();
+    try { wx.setStorageSync(LEARN_VERIFY_KEY, on ? 1 : 0); } catch (e) {}
+    this.setData({
+      learnVerify: on,
+      learnAll: this.buildAllCells(),
+      learnLevels: this.buildLearn()      // 面板里的锁状态要立刻反映
+    });
+  }
+  ,
 
 
   // 祈福长明灯：签到（跨天判定 + 7 天循环 + 奖励发放）

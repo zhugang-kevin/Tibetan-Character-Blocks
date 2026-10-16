@@ -8,6 +8,9 @@
 
     1. validate.js      结构 / 契约 / 资产 / 门禁自检（最快，失败即停）
     2. test-tibetan.js  藏文排版规则（tsheg 断行 / shad 不居行首）
+    2b. test-all-150.js 150 关全量打通（逐关用真实盘面逻辑打到清空，无死局）
+    2c. test-level-guard.js 关卡护栏（指纹 + 依赖闭集 + 密封沙箱）
+    2d. test-content-consistency.js 跨内容一致性（术语 / 数量 / 悬空引用 / 两端分叉）
     3. build-h5.js      构建（必须先于 test-h5，否则测的是旧产物）
     4. test-h5.js       体验版端到端
     5. check_voice.py   音频体检（时长 / 峰值 / 响度带 / 削波）
@@ -34,8 +37,15 @@ NODE_MODULES = os.environ.get(
 STEPS = [
     ('结构与契约门禁',      ['node', 'scripts/validate.js'], True),
     ('藏文排版规则',        ['node', 'scripts/test-tibetan.js'], True),
+    ('150 关全量打通',      ['node', 'scripts/test-all-150.js'], True),
+    ('关卡护栏（指纹+隔离）', ['node', 'scripts/test-level-guard.js'], True),
+    ('跨内容一致性',         ['node', 'scripts/test-content-consistency.js'], True),
+    ('游戏全程旅程',         ['node', 'scripts/test-game-journey.js'], True),
     ('构建体验版',          ['node', 'scripts/build-h5.js'], True),
     ('体验版端到端',        ['node', 'scripts/test-h5.js'], True),
+    ('送礼入账',            ['node', 'scripts/test-gift-inbox.js'], True),
+    ('宗教商业化红线',      ['node', 'scripts/test-religion-compliance.js'], True),
+    ('场景语音闸门',        ['node', 'scripts/test-scene-voice.js'], True),
     ('音频体检',            ['python', 'scripts/check_voice.py'], True),
     ('设备矩阵审计',        ['python', 'scripts/audit_device.py'], True),
     ('反证 harness',        ['python', 'scripts/falsify.py'], False),

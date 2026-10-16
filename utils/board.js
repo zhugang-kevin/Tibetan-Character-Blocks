@@ -85,7 +85,14 @@ function createLevel(cfg, create, rng) {
   var make = create || function (id, u) { return { id: id, uid: u }; };
   var uid = 1;
   var cells = bag.map(function (id) { return make(id, uid++); });
-  while (cells.length < plan.slots) cells.push(null);
+  // ⚠️ 空位必须补在**顶部**（等价于从底部往上铺）。
+  //   原来补在末尾，空位就落在列的**底部** → 有一张牌悬在空位上方，
+  //   项目自己的「列连续」不变量从第 0 步起就不成立。
+  //   实测触发条件：格数为**奇数**的关卡（如 5×5 = 25 格）—— 牌必须成对，
+  //   25 格最多只能给 24 张，必然留 1 个空位（L3 等 80 关都踩到了）。
+  //   补在顶部后每列仍是「从下往上连续堆」，空位自然成为「这一列少一张」。
+  //   —— 2026-10-16 由 scripts/test-all-150.js 的全量打通验证发现。
+  while (cells.length < plan.slots) cells.unshift(null);
   return {
     cols: cfg.cols,
     rows: cfg.rows,

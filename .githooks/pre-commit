@@ -1,0 +1,78 @@
+#!/bin/sh
+# .githooks/pre-commit — 提交前快检（约 6 秒）
+#
+# 为什么必须有它：
+#   门禁脚本写得再全，**只要没人跑就等于没有** —— 「150 关现在和将来都不被影响」
+#   需要一条**执行链**，不能靠自觉。本仓此前只有 Git 默认的 .sample 钩子（= 没有任何拦截）。
+#
+# 安装（新克隆一次即可）：
+#   sh scripts/install-hooks.sh
+#   —— 等价于 git config core.hooksPath .githooks
+#
+# 设计原则：**fail closed** —— 检测工具缺失时拒绝提交，绝不静默放行。
+#
+# 快检跑这四道（都是秒级，覆盖「关卡 + 跨内容 + 结构」）：
+#   1. test-level-guard.js        关卡指纹 / 依赖闭集 / 密封沙箱
+#   2. test-all-150.js            150 关逐关实战打通
+#   3. test-content-consistency.js 跨内容一致性（术语 / 数量 / 悬空引用 / 两端分叉）
+#   4. validate.js                小程序结构与契约门禁
+# 慢的全部放 pre-push（体验版端到端 ≈80s）。
+
+set -e
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
+
+# ---- 找 node（找不到就拒绝提交，不静默放行）----
+NODE_BIN="$(command -v node 2>/dev/null || true)"
+if [ -z "$NODE_BIN" ]; then
+  for c in \
+    "C:/Users/zhuga/.workbuddy/binaries/node/versions/22.22.2-6/node.exe" \
+    "/c/Users/zhuga/.workbuddy/binaries/node/versions/22.22.2-6/node.exe" \
+    "$HOME/.workbuddy/binaries/node/versions/22.22.2-6/node.exe"; do
+    if [ -x "$c" ]; then NODE_BIN="$c"; break; fi
+  done
+fi
+if [ -z "$NODE_BIN" ]; then
+  echo "✗ 找不到 node —— 门禁无法执行，拒绝提交（fail closed）"
+  echo "  修法：把 node 放进 PATH，或按 .workbuddy/binaries 约定安装。"
+  exit 1
+fi
+
+# jsdom 供 test-h5 用；快检不需要，但设上不影响
+if [ -z "$NODE_PATH" ] && [ -d "C:/Users/zhuga/.workbuddy/binaries/node/workspace/node_modules" ]; then
+  NODE_PATH="C:/Users/zhuga/.workbuddy/binaries/node/workspace/node_modules"
+  export NODE_PATH
+fi
+
+fail=0
+run() {
+  name="$1"; file="$2"
+  if "$NODE_BIN" "$file" > /tmp/gate-$$.log 2>&1; then
+    printf '  ✓ %s\n' "$name"
+  else
+    printf '  ✗ %s\n' "$name"
+    sed 's/^/      /' /tmp/gate-$$.log | tail -14
+    fail=1
+  fi
+}
+
+echo "── 提交前快检（关卡 + 跨内容 + 结构）──"
+run "关卡护栏（指纹/隔离/密封沙箱）" scripts/test-level-guard.js
+run "150 关全量打通"                 scripts/test-all-150.js
+run "跨内容一致性"                   scripts/test-content-consistency.js
+run "结构与契约门禁"                 scripts/validate.js
+rm -f /tmp/gate-$$.log
+
+if [ "$fail" -ne 0 ]; then
+  echo ""
+  echo "✗ 提交被拦下 —— 上面的门禁没全绿。"
+  echo "  若你**有意**改了关卡内容：跑"
+  echo "      node scripts/test-level-guard.js --update --reason=\"为什么改关卡\""
+  echo "  —— 必须给理由（不给会被拒绝），且会追加到 docs/关卡改动日志.md。"
+  echo "     这一步是刻意设计的：关卡是核心资产，任何改动都要**显式留痕**，不许悄悄漂移。"
+  echo "  门禁会精确告诉你**哪一关**变了（逐关哈希），不用大海捞针。"
+  echo "  要跳过本钩子：git commit --no-verify（**请勿**在有红项时使用）。"
+  exit 1
+fi
+echo "✓ 快检通过"
+exit 0
