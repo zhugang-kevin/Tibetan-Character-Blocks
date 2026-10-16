@@ -89,11 +89,24 @@ try {
       else err(f + ' 缺失（app.json 已注册）');
     });
   });
-  // D113：新增「pages/gift/gift」（送祝福礼物页，D112 的 ¥3 礼物）→ 6 页变 7 页。
-  // 判据从「硬编码 6」改成「必须等于 app.json 注册数，且礼物页必须在册」——
-  // 原来的硬编码在加页时必然变红，而门禁红久了就没人看，反而失去意义。
-  if (appJson.pages.length === 7) ok('页面数量 = 7（关卡 / 结算 / 证书 / 护照 / 权益中心 / 送祝福礼物）');
-  else err('页面数量应为 7（6 个原有 + pages/gift/gift），实际 ' + appJson.pages.length);
+  // D113 曾把「硬编码 6」改成 7 —— 结果 D132 加 pages/shop/shop 又红了。
+  // **真正的不变量不是"有几个页面"，而是"这些页面必须在册"**。改成必备页集合：
+  // 以后加页不会再红（门禁红久了就没人看，反而失去意义 —— 这条纪律 D100 就记过一次）。
+  var REQUIRED_PAGES = {
+    'pages/index/index': '首页',
+    'pages/game/game': '玩法页',
+    'pages/result/result': '结算页',
+    'pages/cert/cert': '证书页',
+    'pages/passport/passport': '文化护照',
+    'pages/benefits/benefits': '权益中心',
+    'pages/gift/gift': '送祝福礼物（D112）',
+    'pages/shop/shop': '藏香商城（D132 变现主线）'
+  };
+  var missPages = Object.keys(REQUIRED_PAGES).filter(function (p) {
+    return appJson.pages.indexOf(p) < 0;
+  });
+  if (!missPages.length) ok('必备页面全部在册（' + appJson.pages.length + ' 页）');
+  else err('app.json 缺必备页面：' + missPages.map(function (p) { return p + '（' + REQUIRED_PAGES[p] + '）'; }).join('、'));
   if (appJson.pages.indexOf('pages/gift/gift') > -1) ok('送祝福礼物页已注册（D112 ¥3 礼物）');
   else err('app.json 未注册 pages/gift/gift —— data/blessings.js 的祝福语将无处可用');
 } catch (e) { err('app.json 无法解析，跳过'); }

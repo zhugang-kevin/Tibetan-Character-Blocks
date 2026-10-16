@@ -90,11 +90,12 @@ function stripCompliance(s) {
 console.log('宗教商业化红线门禁（D121–D127 · 国宗发〔2017〕88 号）');
 
 // ---------- 1. 宗教商业化禁词 ----------
-console.log('[1. 禁词扫描（16 词 x 6 文件）]');
+console.log('[1. 禁词扫描（16 词 x 8 文件）]');
 var BANNED = ['开光', '加持', '高僧', '活佛', '功德', '消灾', '辟邪', '头香',
   '供佛', '礼佛', '佛前', '寺出品', '寺院监制', '寺庙监制', '寺院出品', '寺庙出品'];
 var FILES = ['data/goods.js', 'utils/payment.js', 'pages/gift/gift.wxml',
-  'pages/benefits/benefits.js', 'data/merchants.js', 'data/incense.js'];
+  'pages/benefits/benefits.js', 'data/merchants.js', 'data/incense.js',
+  'data/shop-goods.js', 'pages/shop/shop.js'];
 var hits = [];
 FILES.forEach(function (f) {
   var src = strip(stripCompliance(read(f)));
@@ -491,6 +492,64 @@ if (!mon) {
   } else {
     err(MON + ' 的文案示例没标注适用路线 —— 会被机制线照抄（「牛角手工挤香」是手工叙事）');
   }
+}
+
+// ---------- 12. 实物商品事实源（D132）----------
+// data/shop-goods.js 是实物商品的唯一事实源。这一节守三件事：
+//   ① 出处与规格必填（不许凭空造商品 —— 是 §66「不卖空气」在实物线上的延伸）
+//   ② 售价必须高于成本（卖一单亏一单的商品不许上架；cost 只用于内部核算）
+//   ③ 商品文案不得出现路线禁用语（非遗 / 手工 / 古法）+ 禁词 + 功效（由 §1/§3 已扫全文件，
+//      这里再按条扫 highlights 与 spec，防止只改一处）
+console.log('[12. 实物商品事实源（D132）]');
+var SHOP = 'data/shop-goods.js';
+if (!exists(SHOP)) {
+  err('缺 ' + SHOP + ' —— 实物商品必须有唯一事实源（价格不许散落在页面里）');
+} else {
+  var sg = null;
+  try {
+    sg = eval('(' + read(SHOP).replace(/^[\s\S]*?module\.exports\s*=\s*/, '').replace(/;\s*$/, '') + ')');
+  } catch (e) { sg = null; }
+  if (!sg || !sg.items || !sg.items.length) {
+    err(SHOP + ' 解析不出来或没有商品');
+  } else {
+    var bad2 = [];
+    sg.items.forEach(function (g) {
+      ['id', 'name', 'spec', 'origin', 'standard', 'source'].forEach(function (k) {
+        if (!String(g[k] || '').trim()) bad2.push(g.id + ' 缺 ' + k);
+      });
+      if (!(g.price > 0)) bad2.push(g.id + ' 售价不合法：' + g.price);
+      if (!(g.cost > 0)) bad2.push(g.id + ' 成本不合法：' + g.cost);
+      else if (g.price <= g.cost) bad2.push(g.id + ' 售价 ¥' + g.price + ' ≤ 成本 ¥' + g.cost + '（卖一单亏一单）');
+      var all = [g.name, g.spec, g.form, g.origin, g.standard, g.category, g.sellerNote]
+        .concat(g.highlights || []).join(' ');
+      var ctS = sg.craftType || (inc && inc.selling && inc.selling.craftType);
+      var hb = routeHits(all, ctS);
+      if (hb.length) bad2.push(g.id + ' 文案含当前路线禁用语：' + hb.join('、'));
+    });
+    if (!bad2.length) ok('实物商品事实源合规（' + sg.items.length + ' 件：出处/规格/标准号齐全、售价高于成本、无禁用语）');
+    else err(SHOP + '：' + bad2.join('；'));
+  }
+  // 页面不得写死价格（价格唯一事实源纪律）
+  //   js 侧：price/cost 直接赋数字；
+  //   wxml 侧：¥ 后紧跟数字、或出现两位小数的金额字面量。
+  //   ⚠️ 只扫 js 是不够的 —— 实测变异：把 ¥15 写进 shop.wxml，只扫 js 的门禁**全绿放行**。
+  var shopPageSrc = read('pages/shop/shop.js');
+  if (!shopPageSrc) err('缺 pages/shop/shop.js');
+  else if (/\b(price|cost)\s*[:=]\s*\d/.test(shopPageSrc.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '')))
+    err('pages/shop/shop.js 里写死了价格数字 —— 价格只准读 data/shop-goods.js');
+  else ok('商城页脚本没有写死价格（只读唯一事实源）');
+  var shopWxmlSrc = read('pages/shop/shop.wxml');
+  if (!shopWxmlSrc) err('缺 pages/shop/shop.wxml');
+  else {
+    var hardPrice = [];
+    if (/¥\s*\d/.test(shopWxmlSrc)) hardPrice.push('¥ 后直接跟数字');
+    if (/\d+\.\d{2}/.test(shopWxmlSrc)) hardPrice.push('出现两位小数的金额字面量');
+    if (hardPrice.length) err('pages/shop/shop.wxml 里写死了价格（' + hardPrice.join('、') + '）—— 价格只准读 data/shop-goods.js');
+    else ok('商城页模板没有写死价格（¥ 只接 {{item.price}}）');
+  }
+  // 成本不得下发页面渲染
+  if (shopWxmlSrc && shopWxmlSrc.indexOf('cost') > -1) err('商城页模板渲染了 cost（成本）字段 —— 成本只用于内部核算');
+  else ok('商城页未下发成本字段（cost 只走 incense-pricing.js 内部核算）');
 }
 
 console.log('');

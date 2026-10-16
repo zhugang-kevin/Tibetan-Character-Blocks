@@ -76,7 +76,8 @@ var PANEL_TITLES = {
   rank: '我的成绩',
   tree: '菩提树',
   winter: '西藏寺院导览',
-  market: '八廓街集市'
+  market: '八廓街集市',
+  shop: '藏香'
 };
 
 // 藤蔓节点位置：由下往上蜿蜒（第 1 关在底、第 10 关在顶）
@@ -594,6 +595,11 @@ Page({
   // ---------- 悬浮入口面板 ----------
   openPanel: function (e) {
     var key = e.currentTarget.dataset.panel;
+    if (key === 'shop') {
+      // D132 藏香商城：独立页面（不是塞进面板），入口只负责跳过去
+      this.setData({ panel: key, panelTitle: PANEL_TITLES[key] || '藏香', panelShow: true });
+      return;
+    }
     if (key === 'market') {
       // 八廓街集市 = 藏文权益中心（已有页面，合规到店权益）
       this.setData({ panel: key, panelTitle: PANEL_TITLES[key], panelShow: true });
@@ -917,6 +923,11 @@ Page({
   // 打开权益中心（双轨制到店权益，凭课程进度领取）
   openBenefits: function () {
     wx.navigateTo({ url: '/pages/benefits/benefits' });
+  },
+
+  // D132 打开藏香商城（变现主线；价格与规格只从 data/shop-goods.js 读）
+  openShop: function () {
+    wx.navigateTo({ url: '/pages/shop/shop' });
   },
 
   // D113：给分享这张卡的朋友送一份祝福（入口只在 ?to= 存在时出现）。

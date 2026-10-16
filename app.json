@@ -6,7 +6,8 @@
     "pages/cert/cert",
     "pages/passport/passport",
     "pages/benefits/benefits",
-    "pages/gift/gift"
+    "pages/gift/gift",
+    "pages/shop/shop"
   ],
   "window": {
     "navigationBarTitleText": "藏字方块",

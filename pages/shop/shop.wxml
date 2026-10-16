@@ -1,0 +1,60 @@
+<view class="page">
+
+  <!-- 背景层：纯 CSS（渐变 + 暗纹 + 纸颗粒）。
+       ⚠️ 变现页刻意**不引用任何实景图 / 寺院剪影** —— 88 号文 第 2 条：
+       禁止以佛教道教名义进行商业宣传。商品页出现宗教实景 = 观感风险。
+       由 scripts/test-photo-provenance.js §3 机械检查。 -->
+  <view class="scenery" aria-hidden="true">
+    <view class="sp-pattern"></view>
+    <view class="sp-grain"></view>
+    <view class="sp-night"></view>
+  </view>
+
+  <view class="content">
+
+    <view class="sp-hero">
+      <view class="sp-title">藏香</view>
+      <view class="sp-sub">家居香品 · 产自西藏</view>
+    </view>
+
+    <view wx:for="{{items}}" wx:key="id" class="sp-card">
+
+      <view class="sp-card-head">
+        <view class="sp-name">{{item.name}}</view>
+        <view class="sp-price">¥{{item.price}}<text class="sp-unit"> / {{item.unit}}</text></view>
+      </view>
+
+      <view class="sp-spec">{{item.spec}} · {{item.form}}</view>
+
+      <view class="sp-rows">
+        <view class="sp-row">
+          <text class="sp-k">标准</text>
+          <text class="sp-v">{{item.standard}}</text>
+        </view>
+        <view class="sp-row">
+          <text class="sp-k">产地</text>
+          <text class="sp-v">{{item.origin}}</text>
+        </view>
+        <view class="sp-row">
+          <text class="sp-k">品类</text>
+          <text class="sp-v">{{item.category}}</text>
+        </view>
+        <view class="sp-row">
+          <text class="sp-k">销售</text>
+          <text class="sp-v">{{item.sellerNote}}</text>
+        </view>
+      </view>
+
+      <view class="sp-tags">
+        <text wx:for="{{item.highlights}}" wx:for-item="h" wx:key="*this" class="sp-tag">{{h}}</text>
+      </view>
+
+      <view class="sp-stock">库存 {{item.stock}} {{item.unit}} · {{shippingNote}}</view>
+
+      <view class="sp-buy {{canBuy ? '' : 'off'}}" bindtap="onBuy">{{buyText}}</view>
+    </view>
+
+    <view class="sp-foot">{{pageNote}}</view>
+
+  </view>
+</view>
