@@ -45,6 +45,7 @@ STEPS = [
     ('体验版端到端',        ['node', 'scripts/test-h5.js'], True),
     ('送礼入账',            ['node', 'scripts/test-gift-inbox.js'], True),
     ('宗教商业化红线',      ['node', 'scripts/test-religion-compliance.js'], True),
+    ('场景图出处（版权）',   ['node', 'scripts/test-photo-provenance.js'], True),
     ('场景语音闸门',        ['node', 'scripts/test-scene-voice.js'], True),
     ('音频体检',            ['python', 'scripts/check_voice.py'], True),
     ('设备矩阵审计',        ['python', 'scripts/audit_device.py'], True),

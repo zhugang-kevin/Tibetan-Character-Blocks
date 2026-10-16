@@ -1,44 +1,102 @@
 {
-  "_note": "藏字方块 · 实景照授权台账。逐项由用户本人核对授权与出处后，才将 verified 改为 true。AI 不替用户签确（防假绿）。许可证仅允许 CC-BY / CC-BY-SA / CC0；禁用 NC（商业产品含米大师虚拟支付）与 ND（prepare-assets.py --scene 会降饱和/压暗/裁剪，构成演绎）。",
+  "_note": "藏字方块 · 场景图**出处台账**（2026-10-17 由 D129 审计重写）。\n旧版按「从素材站下载的图」设计（只要 sourceUrl / author / license），与事实不符 —— 实测这四张**全部是我方 ImageGen 生成**，没有第三方版权，所以许可证字段根本不适用。\n改按 `kind` 分三类判定：ai_generated（看生成证据与生成工具）/ stock（看许可证，禁 NC、ND）/ user_photo（看拍摄者与授权）。\n`verified` 只在**证据写进本文件**之后置 true —— AI 不替用户签确（防假绿）。\n\n⚠️ 两种「绿」要分清：provenanceEstablished = 出处已查证（scripts/test-photo-provenance.js 判定）；verified = 用户本人签确商用权（scripts/validate.js §62 判定，AI 不代签）。",
+  "_audit": {
+    "date": "2026-10-17",
+    "by": "D129 内容/设计/变现 三块复核",
+    "conclusion": "① 的真实风险被重新定性：不是「素材图没买授权」，而是「台账设计错了 + 生成工具没登记」。四张图均为我方生成，无第三方版权。",
+    "evidence": [
+      ".workbuddy/memory/2026-10-07.md：『D47 收尾：两张场景照片正式上线（用户授权直接生成）。ImageGen 生成（布达拉宫晨景 / 经幡山谷暮色，1024×1536）→ 裁掉工具右下角水印（-150px，原件留 assets-src/scene/_raw/，已 gitignore）』",
+      "docs/DECISIONS.md D100：菩提树改用『图像生成』（带 AI 水印 → PIL 自主去水印）；寺院导览顶图同样为生成图（暗调、按 3.1:1 裁切）",
+      "提交 22ef8eb：『首页/游戏页真实场景照片上线（ImageGen 生成 + 管线加工，D47 收尾）』",
+      "提交 f04f02e：bodhi.jpg / monastery.jpg 入库"
+    ],
+    "correction": "⚠️ 更正我审计中的一处误判：`git ls-files assets-src/scene/` 为空，不是「证据没入库、随时会丢」，而是 `_raw` 与源图**被刻意 gitignore**（避免原材料体积进仓库，见 §38.2 体积门禁）。原始件仍在本地磁盘；被 git 跟踪的出处记录就是本文件。",
+    "residualRisk": [
+      "商用权取决于生成工具条款 —— 工具已登记为 ImageGen，但**最终商用授权须由账号持有人（用户）确认**。",
+      "寺院实景**不得**用于商城/商品页（88 号文 第 2 条）—— 已写入 usageRules 并由门禁机械检查。"
+    ]
+  },
   "slots": {
     "home": {
       "file": "images/scene/home.jpg",
-      "sourceUrl": "",
-      "author": "",
-      "license": "",
-      "licenseUrl": "",
-      "downloaded": true,
-      "verified": false
+      "kind": "ai_generated",
+      "generator": "ImageGen（WorkBuddy 内置生图，1024×1536）",
+      "prompt": "写实摄影作品·拉萨清晨·从高处远眺布达拉宫与藏式建筑群的金色",
+      "generatedAt": "2026-10-08T04:11:48",
+      "rawFile": "assets-src/scene/_raw/写实摄影作品_拉萨清晨_从高处远眺布达拉宫与藏式建筑群的金色_2026-10-08T04-11-48.png",
+      "commit": "22ef8eb",
+      "watermark": "已裁（右下角 -150px，PIL 处理）",
+      "enabled": true,
+      "verified": false,
+      "provenanceEstablished": true,
+      "provenanceBy": "D129 审计 2026-10-17",
+      "verifiedNote": "出处已查证为 AI 生成（见 provenanceEstablished）。verified 保留 false —— 商用权须由账号持有人本人确认，脚本不代签。"
     },
     "game": {
       "file": "images/scene/game.jpg",
-      "sourceUrl": "",
-      "author": "",
-      "license": "",
-      "licenseUrl": "",
-      "downloaded": true,
-      "verified": false
+      "kind": "ai_generated",
+      "generator": "ImageGen（WorkBuddy 内置生图，1024×1536）",
+      "prompt": "写实摄影作品·西藏高原暮色·雪山连峰与经幡山谷远眺·蓝调时刻",
+      "generatedAt": "2026-10-08T04:12:24",
+      "rawFile": "assets-src/scene/_raw/写实摄影作品_西藏高原暮色_雪山连峰与经幡山谷远眺_蓝调时刻_2026-10-08T04-12-24.png",
+      "commit": "22ef8eb",
+      "watermark": "已裁（右下角 -150px，PIL 处理）",
+      "enabled": true,
+      "verified": false,
+      "provenanceEstablished": true,
+      "provenanceBy": "D129 审计 2026-10-17",
+      "verifiedNote": "出处已查证为 AI 生成（见 provenanceEstablished）。verified 保留 false —— 商用权须由账号持有人本人确认，脚本不代签。"
     },
     "bodhi": {
       "file": "images/scene/bodhi.jpg",
-      "sourceUrl": "",
-      "author": "",
-      "license": "",
-      "licenseUrl": "",
-      "downloaded": true,
-      "verified": false
+      "kind": "ai_generated",
+      "generator": "ImageGen（D100 记载：生图带 AI 水印 → PIL 自主去水印）",
+      "prompt": "菩提迦耶菩提树实景（暗调）",
+      "generatedAt": "2026-10-12",
+      "rawFile": "",
+      "rawNote": "无 _raw 原始件留档（D100 未保留），以 DECISIONS.md D100 + 提交 f04f02e 作为出处证据。",
+      "commit": "f04f02e",
+      "watermark": "已去（PIL 邻近暗部镜像补齐 + 12px 羽化）",
+      "enabled": true,
+      "verified": false,
+      "provenanceEstablished": true,
+      "provenanceBy": "D129 审计 2026-10-17",
+      "verifiedNote": "出处已查证为 AI 生成（见 provenanceEstablished）。verified 保留 false —— 商用权须由账号持有人本人确认，脚本不代签。"
     },
     "monastery": {
       "file": "images/scene/monastery.jpg",
-      "sourceUrl": "",
-      "author": "",
-      "license": "",
-      "licenseUrl": "",
-      "downloaded": true,
-      "verified": false
+      "kind": "ai_generated",
+      "generator": "ImageGen（D100 记载：寺院群实景，暗调，按显示比例裁 3:2 → 3.1:1）",
+      "prompt": "西藏寺院群实景（暗调）",
+      "generatedAt": "2026-10-12",
+      "rawFile": "",
+      "rawNote": "无 _raw 原始件留档，以 DECISIONS.md D100 + 提交 f04f02e 作为出处证据。",
+      "commit": "f04f02e",
+      "watermark": "已去",
+      "enabled": true,
+      "verified": false,
+      "usageWarn": "⚠️ 宗教实景：可作文化/学习页装饰，**不得**用于商城页、商品页或带货视觉（88 号文 第 2 条）。",
+      "provenanceEstablished": true,
+      "provenanceBy": "D129 审计 2026-10-17",
+      "verifiedNote": "出处已查证为 AI 生成（见 provenanceEstablished）。verified 保留 false —— 商用权须由账号持有人本人确认，脚本不代签。"
     }
   },
+  "usageRules": [
+    {
+      "rule": "寺院 / 佛像 / 经幡等宗教实景，**不得**出现在商城页、商品页或任何带货文案的视觉里。",
+      "why": "国宗发〔2017〕88 号 第 2 条：禁止以佛教道教名义进行商业宣传。藏香一旦开卖，宗教实景 + 商品同屏即构成「以佛教名义商业宣传」的观感风险。",
+      "scope": "pages/shop 及后续所有变现页",
+      "enforcedBy": "scripts/test-photo-provenance.js §3"
+    },
+    {
+      "rule": "出处不可证（kind = unknown）的图一律不启用 —— 置空即可，页面有设计好的回退（bodhi → 🌳）。",
+      "why": "商业产品含米大师虚拟支付；带着出处不明的图上线的风险，远大于少一张背景图。",
+      "scope": "data/photo-assets.js",
+      "enforcedBy": "scripts/test-photo-provenance.js §2"
+    }
+  ],
   "licensePolicy": {
+    "appliesTo": "仅 kind = stock（第三方素材）时生效；ai_generated 与 user_photo 不适用（本仓库当前四张全部为 ai_generated）。",
     "allowed": [
       "CC-BY-2.0",
       "CC-BY-2.5",
@@ -58,6 +116,6 @@
       "All Rights Reserved"
     ],
     "reasonNC": "小程序含米大师虚拟支付，属商业使用；NC（非商业）许可证不可用于商业产品。",
-    "reasonND": "prepare-assets.py --scene 会对照片降饱和/压暗/裁剪，构成演绎；ND（禁止演绎）许可证不可用。"
+    "reasonND": "prepare-assets.py --scene 会降饱和/压暗/裁剪，构成演绎；ND（禁止演绎）许可证不可用。"
   }
 }
