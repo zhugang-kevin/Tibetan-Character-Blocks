@@ -124,7 +124,8 @@ if (exists('data/incense.js')) {
     [['origin', inc.origin], ['craft', inc.craft], ['people', inc.people],
       ['compliance', inc.compliance],
       ['standards', inc.standards], ['selling', inc.selling],
-      ['brand', inc.brand], ['workshop', inc.workshop], ['factory', inc.factory]].forEach(function (n) {
+      ['brand', inc.brand], ['workshop', inc.workshop],
+      ['factory', inc.factory], ['route', inc.route]].forEach(function (n) {
       if (!(n[1] && n[1].source)) noSrc.push(n[0]);
     });
     ['honors', 'lineages', 'producers'].forEach(function (k) {
@@ -144,6 +145,7 @@ if (exists('data/incense.js')) {
     chk('brand', inc.brand && inc.brand.source);
     chk('workshop', inc.workshop && inc.workshop.source);
     chk('factory', inc.factory && inc.factory.source);
+    chk('route', inc.route && inc.route.source);
     ['honors', 'lineages', 'producers'].forEach(function (k) {
       (inc[k] || []).forEach(function (h, i) { chk(k + '[' + i + ']', h.source); });
     });
@@ -292,6 +294,13 @@ if (!inc) {
   else err('机制香引用了 ich2008（非遗制作技艺）—— 需同时满足 factoryIchQualified=true '
     + '且 craftType 为 handmade/mixed；否则就是拿技艺叙事给量产货背书');
 
+  // 「找有资质的厂家」必须能落到**可逐条问出口的条目**，否则只是一句空话
+  var vr = (inc.selling && inc.selling.vendorRequirements) || [];
+  if (pt !== 'factory') ok('非工厂路线，跳过厂家验收口径检查');
+  else if (vr.length >= 6) ok('厂家准入验收项已登记 ' + vr.length + ' 条（照着问，答得上来就能合作）');
+  else err('缺厂家准入验收项：selling.vendorRequirements 至少 6 条 —— '
+    + '「找有资质的厂家」必须可问可核');
+
   // 工厂路线的取舍必须留档（优势 + 风险 + 不能宣称 + 怎么把非遗拿回来）
   var f = inc.factory || {};
   if ((inc.selling && inc.selling.producerType) !== 'factory') {
@@ -342,6 +351,9 @@ else err('缺 docs/incense-sourcing-checklist.md —— 有渠道之后，结构
 //   导致用户理解为「要求所有产品都有认证」。这份文档就是补上那段路 —— 留档不许再丢。
 if (exists('docs/incense-handmade-compliance.md')) ok('手工香合规路径已留档（docs/incense-handmade-compliance.md：四步 + 成本 + 供方优先级）');
 else err('缺 docs/incense-handmade-compliance.md —— 「手工香怎么合规」必须可查，否则会被误读成「要求认证」');
+// D127：路线最终定为「有资质的厂家」→ 厂家准入验收表必须留档，让"找厂家"变成可执行的六问
+if (exists('docs/incense-factory-vendor-checklist.md')) ok('厂家准入验收表已留档（docs/incense-factory-vendor-checklist.md）');
+else err('缺 docs/incense-factory-vendor-checklist.md —— 「找有资质的厂家」必须落成可逐条核对的验收表');
 
 console.log('');
 console.log('通过: ' + pass + ' | 失败: ' + fail);
