@@ -338,6 +338,10 @@ if (exists('docs/incense-monetization.md')) ok('藏香变现方案已留档（do
 else err('缺 docs/incense-monetization.md —— 卖点/价格锚点/合规边界必须可查');
 if (exists('docs/incense-sourcing-checklist.md')) ok('采购与上架清单已留档（docs/incense-sourcing-checklist.md）');
 else err('缺 docs/incense-sourcing-checklist.md —— 有渠道之后，结构/资质/类目/命名必须可查');
+// D126：我曾把「包装标识 / 检测 / 发票」三件事说成硬要求，却没给出**手工香如何满足它们**的路径，
+//   导致用户理解为「要求所有产品都有认证」。这份文档就是补上那段路 —— 留档不许再丢。
+if (exists('docs/incense-handmade-compliance.md')) ok('手工香合规路径已留档（docs/incense-handmade-compliance.md：四步 + 成本 + 供方优先级）');
+else err('缺 docs/incense-handmade-compliance.md —— 「手工香怎么合规」必须可查，否则会被误读成「要求认证」');
 
 console.log('');
 console.log('通过: ' + pass + ' | 失败: ' + fail);
