@@ -1,4 +1,4 @@
-// scripts/test-religion-compliance.js — 宗教商业化红线门禁（D121/D122/D123/D124/D125 · 藏香变现）
+// scripts/test-religion-compliance.js — 宗教商业化红线门禁（D121–D127 · 藏香变现）
 //
 // ## 为什么单独成一个脚本，而不是塞进 scripts/validate.js
 //   validate.js 是多人并发改动的共享门禁文件；本门禁是**变现专用**的一条线，
@@ -15,6 +15,17 @@
 //       属于正当商事行为的依据（买断/代销 ✅，代场所销售并分成 ❌）
 //   我们是**商业主体 + 非宗教主体设立的互联网平台** → 「寺庙出品 / 寺院监制 / 开光加持」
 //   一律不可用。第 6 条「场所内可以经销」是**给宗教活动场所的许可，不是给商家的**。
+//
+// ## D127 新增 §9「路线口径一致性」+ §11「文档与路线一致」
+//   §9 守"路线只有一个真相"：route.final 必须等于 selling.producerType，
+//     历史末条必须落在最终路线上，最新决策必须登记进 DECISIONS.md。
+//   §11 守"文档不许教违规写法" —— 实测抓到三个真缺陷：
+//     · docs/incense-sourcing-checklist.md §8 的"可直接用"示例文案写的还是
+//       「藏香 · 非遗制作技艺」+ Ⅷ-141，而路线早已是工厂机制香 →
+//       门禁守住了 data/incense.js，却守不住**文档**，而文档更会被照抄。
+//     · 同一文档 §9 标题写「5 件事」，实际有 6 条。
+//     · docs/incense-monetization.md §3「四层官方背书」整张表是手工/尼木线的，
+//       机制线照抄即违规。
 //
 // ## D125 新增 §7「制程宣称真实性」
 //   用户（2026-10-16）最终改定：**工厂藏香（机制），不考虑作坊、不考虑手工**。
@@ -76,7 +87,7 @@ function stripCompliance(s) {
   return s;
 }
 
-console.log('宗教商业化红线门禁（D121/D122/D123/D124/D125 · 国宗发〔2017〕88 号）');
+console.log('宗教商业化红线门禁（D121–D127 · 国宗发〔2017〕88 号）');
 
 // ---------- 1. 宗教商业化禁词 ----------
 console.log('[1. 禁词扫描（16 词 x 6 文件）]');
@@ -263,6 +274,15 @@ if (!inc) {
 console.log('[7. 制程宣称真实性]');
 var CRAFT_TYPES = { machine: '机制量产', handmade: '手工制作', mixed: '部分工序手工' };
 var HAND_WORDS = ['手工', '手作', '纯手工', '古法手工', '匠人手工', '古法手作'];
+// 机制线的路线禁用语扫描器：§11 用它扫**文档里的示例文案**（§7 用的同一批禁用词，一把尺子量两处）
+function routeHits(text, craftType) {
+  var h = [];
+  if (craftType === 'machine') {
+    HAND_WORDS.forEach(function (w) { if (text.indexOf(w) > -1) h.push(w); });
+    ['非遗', 'Ⅷ-141', '地理标志'].forEach(function (w) { if (text.indexOf(w) > -1) h.push(w); });
+  }
+  return h;
+}
 if (!inc) {
   err('制程宣称无法校验：data/incense.js 读不出来');
 } else {
@@ -341,8 +361,36 @@ mech.forEach(function (c) {
 if (!mechHit.length) ok('守卫自测：机制香的合规宣称不被误判（标准号 + 客观产地必须写得出来）');
 else err('反例自测失效：合规的机制香表述被误判（命中 ' + mechHit.join('、') + '）');
 
-// ---------- 9. 方案留档 ----------
-console.log('[9. 方案留档]');
+// ---------- 9. 路线口径一致性 ----------
+// D127：四次转向后发现一类真缺陷 —— **换了路线，文档和注释没跟着换**（曾出现
+//   「本仓库货源改为民间家庭作坊」的文案残留在已经是工厂路线的事实源里）。
+//   这一节把「路线只有一个真相」钉死：改了一处忘了另一处，门禁直接红。
+console.log('[9. 路线口径一致性]');
+if (!inc) {
+  err('路线口径无法校验：data/incense.js 读不出来');
+} else {
+  var rf = inc.route && inc.route.final;
+  var pt2 = inc.selling && inc.selling.producerType;
+  // ① 决策记录与实际货源字段必须一致（两处真相，一个都不许单独改）
+  if (rf && rf === pt2) ok('路线口径一致：route.final = ' + rf + ' = selling.producerType');
+  else err('路线口径不一致：route.final=' + (rf || '未填写')
+    + ' 但 selling.producerType=' + (pt2 || '未填写') + ' —— 换路线必须两处一起改');
+  // ② 转向历史的最后一条必须落在最终路线上
+  var hist = (inc.route && inc.route.history) || [];
+  var last = hist[hist.length - 1];
+  if (last && last.route === rf) ok('转向历史最后一条与最终路线一致（' + (last.d || '?') + ' → ' + last.route + '）');
+  else err('转向历史最后一条（' + (last ? last.route : '空')
+    + '）与最终路线（' + (rf || '未填写') + '）不一致 —— 历史留痕要能读得懂');
+  // ③ 最新一条决策必须落进 DECISIONS.md（不许只在代码里改、文档不写）
+  var dec = strip(read('docs/DECISIONS.md'));
+  var lastD = last && last.d;
+  if (lastD && dec.indexOf('**' + lastD + '**') > -1)
+    ok('最新决策 ' + lastD + ' 已登记进 docs/DECISIONS.md');
+  else err('最新决策 ' + (lastD || '?') + ' 未登记进 docs/DECISIONS.md —— 文档是唯一事实源，不许只在代码里改');
+}
+
+// ---------- 10. 方案留档 ----------
+console.log('[10. 方案留档]');
 if (exists('docs/incense-monetization.md')) ok('藏香变现方案已留档（docs/incense-monetization.md）');
 else err('缺 docs/incense-monetization.md —— 卖点/价格锚点/合规边界必须可查');
 if (exists('docs/incense-sourcing-checklist.md')) ok('采购与上架清单已留档（docs/incense-sourcing-checklist.md）');
@@ -354,6 +402,96 @@ else err('缺 docs/incense-handmade-compliance.md —— 「手工香怎么合�
 // D127：路线最终定为「有资质的厂家」→ 厂家准入验收表必须留档，让"找厂家"变成可执行的六问
 if (exists('docs/incense-factory-vendor-checklist.md')) ok('厂家准入验收表已留档（docs/incense-factory-vendor-checklist.md）');
 else err('缺 docs/incense-factory-vendor-checklist.md —— 「找有资质的厂家」必须落成可逐条核对的验收表');
+
+// ---------- 11. 文档与路线一致（防"只改一半"）----------
+// D127 教训的延伸：门禁守住了 data/incense.js，却守不住**文档**。
+//   实测缺陷（本轮抓到并修掉的真缺陷）：
+//     · docs/incense-sourcing-checklist.md §8 的"可直接用"示例文案，写的还是
+//       「藏香 · 非遗制作技艺」+ Ⅷ-141 —— 而路线早已是工厂机制香 →
+//       **文档在教人写违规文案**，而且写法比数据文件更"权威"（用户会照抄）。
+//     · §9 标题写「需要你拍板的 5 件事」，实际有 6 条（D127 加了"工厂七问"）。
+//     · docs/incense-monetization.md §3 的"四层官方背书"表整张是手工/尼木线的，
+//       机制线照抄就违规。
+//   这一节把「文档必须与路线同口径」也变成机械判定。
+console.log('[11. 文档与路线一致（防"只改一半"）]');
+var CK = 'docs/incense-sourcing-checklist.md';
+var MON = 'docs/incense-monetization.md';
+var ck = read(CK);
+if (!ck) {
+  err('读不到 ' + CK + ' —— 文档与路线一致性无法校验');
+} else {
+  // ① §9 标题声明的条数必须等于实际条目数（加删条目忘改标题 = 文档自相矛盾）
+  var m9 = ck.match(/## 9\.\s*需要你拍板的\s*(\d+)\s*件事([\s\S]*?)\n---/);
+  if (!m9) {
+    err(CK + ' §9 标题格式变了（门禁 §11① 依赖「## 9. 需要你拍板的 N 件事」这一格式，改了请同步改门禁）');
+  } else {
+    var declared = parseInt(m9[1], 10);
+    var actual = (m9[2].match(/^\d+\.\s/gm) || []).length;
+    if (declared === actual) ok('§9 标题声明「' + declared + ' 件事」与实际条目数一致');
+    else err('§9 标题写「' + declared + ' 件事」，实际有 ' + actual + ' 条 —— 加删条目必须同步改标题');
+  }
+  // ② 默认示例文案（§8.1）必须与当前路线同口径
+  var m81 = ck.match(/### 8\.1[\s\S]*?(?=### 8\.2)/);
+  if (!m81) {
+    err('§8.1 默认示例文案不见了（门禁 §11② 依赖「### 8.1 … ### 8.2」小标题结构）');
+  } else {
+    var fence = m81[0].match(/```([\s\S]*?)```/);
+    if (!fence) {
+      err('§8.1 里找不到代码块示例文案（示例必须以 ``` 围栏写出，门禁才能提取）');
+    } else {
+      var sample = fence[1];
+      var ctDoc = inc && inc.selling && inc.selling.craftType;
+      var bad = routeHits(sample, ctDoc);
+      if (bad.length) {
+        err('§8.1 默认示例文案含当前路线（' + (CRAFT_TYPES[ctDoc] || ctDoc || '?') + '）的禁用语：'
+          + bad.join('、') + ' —— 文档在教违规写法（比数据文件更危险，用户会照抄）');
+      } else {
+        ok('§8.1 默认示例文案与当前路线（' + (CRAFT_TYPES[ctDoc] || ctDoc || '?') + '）同口径，未含非遗/手工类宣称');
+      }
+      if (sample.indexOf('GB/T 43430-2023') > -1) {
+        ok('§8.1 示例文案写出了 GB/T 43430-2023（机制线的定性依据）');
+      } else {
+        err('§8.1 示例文案没写 GB/T 43430-2023 —— 商品页缺标准号就丢了"家居香品"的定性依据');
+      }
+    }
+  }
+  // ③ §8.2 的非遗句式必须带前置条件闸门，否则会被当成"随便能用"的模板
+  var m82 = ck.match(/### 8\.2[\s\S]*?(?=\n---)/);
+  if (!m82) {
+    err('§8.2 非遗句式小节不见了（门禁 §11③ 依赖该小标题）');
+  } else if (m82[0].indexOf('factoryIchQualified') > -1) {
+    ok('§8.2 非遗句式带前置条件闸门（引用 factoryIchQualified，与门禁 §7 同源）');
+  } else {
+    err('§8.2 非遗句式没有前置条件闸门 —— 会被当成"随便能用"的模板，机制线照抄即虚假宣传');
+  }
+  // ④ 反向自测：带闸门的非遗变体（§8.2）里合法出现"非遗"字样，**不应**被 §11② 的扫描波及。
+  //    反过来说：§8.2 必须能被扫描器命中 —— 这才证明 §11② 的"只扫 §8.1"是**刻意限定作用域**，
+  //    而不是漏扫（假红才是门禁的死因，而漏扫会让门禁变成装饰）。
+  var f82 = m82 && m82[0].match(/```([\s\S]*?)```/);
+  var ctRev = inc && inc.selling && inc.selling.craftType;
+  if (f82 && routeHits(f82[1], ctRev).length) {
+    ok('反向自测：§8.2 非遗变体确实会被扫描器命中 —— 证明 §11② 是按闸门限定作用域，不是漏扫');
+  } else {
+    err('反向自测失效：§8.2 非遗变体没被扫描器命中（样本没了或扫描器坏了）'
+      + ' —— 无法证明 §11② 的作用域是有意限定的');
+  }
+}
+// ④ 市场文档的背书表必须按路线分列（否则机制线照抄手工线的非遗/手工背书）
+var mon = read(MON);
+if (!mon) {
+  err('读不到 ' + MON);
+} else {
+  if (mon.indexOf('机制线（当前路线）') > -1) {
+    ok('市场文档 §3 背书表已按路线分列（含「机制线（当前路线）」判定列）');
+  } else {
+    err(MON + ' §3 背书表没有机制线判定列 —— 机制线会照抄手工线的非遗/手工背书');
+  }
+  if (mon.indexOf('仅供手工') > -1) {
+    ok('市场文档的文案示例已显式限定为手工/尼木线（机制线指向清单 §8.1）');
+  } else {
+    err(MON + ' 的文案示例没标注适用路线 —— 会被机制线照抄（「牛角手工挤香」是手工叙事）');
+  }
+}
 
 console.log('');
 console.log('通过: ' + pass + ' | 失败: ' + fail);
