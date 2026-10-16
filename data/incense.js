@@ -277,6 +277,31 @@ module.exports = {
       'Ⅷ-141 敏珠林寺藏香制作技艺（那是敏珠林体系的项目）',
       '尼木藏香地理标志产品与专用标志图案（合法使用人是经公告核准的生产者）'
     ],
+    // D130：首轮询价答复（用户 2026-10-17 从厂家处取得，原话记录，未加工）
+    vendorAnswers: {
+      askedAt: '2026-10-17',
+      canIssueSpecialVatInvoice: true,       // ① 能开增值税专用发票
+      hasTestReport: false,                  // ② 没有 CMA/CNAS 检测报告 → 需我方自送检
+      isIchProtectionUnit: true,             // ③ 自称/确为非遗项目保护单位
+      moq: 100,                              // ④ 起订量 100（盒）
+      dropship: false,                       // ⑤ 不支持一件代发 → 必须自囤自发
+      taxIncludedExFactoryPrice: null,       // ⑥ 含税出厂价 —— **用户尚未给出，我不替你编**
+      pending: [
+        '含税出厂价（元/盒）—— 还没给，谈价靶子用 scripts/incense-pricing.js --reverse 反算',
+        '整批发到内地的运费总额 —— 影响运费摊薄',
+        '单件快递实价（西藏直发 vs 内地中转仓）—— 用户已指出西藏一件代发/邮费很贵',
+        '所采批次是纯机制还是含手工工序 —— **这一条决定能不能写"非遗"**',
+        '非遗保护单位的可查公告/证明 —— 没有它就不能置 factoryIchQualified=true（否则是假绿）'
+      ],
+      whyIchStillBlocked: '厂家是保护单位**只满足第一个条件**。门禁 §7 要求双条件：'
+        + 'factoryIchQualified=true **且** craftType 为 mixed/handmade。'
+        + '若所采批次是纯机制量产，写"非遗制作技艺"仍属引人误解（《反不正当竞争法》第 8 条）——'
+        + '因为非遗保护的是**传统制作技艺**，机制线不是那个技艺。必须先答"这批货是机制还是含手工"。',
+      logisticsNote: '用户指出「西藏的一件代发成本很高，邮费很贵」。'
+        + '且厂家不支持一件代发 → 正确解法是**整批发到内地中转仓再从内地发快递**，'
+        + '而不是从西藏一件件直发。实测：单件快递 12 元 → 6 元，零售 39.9 的出厂价天花板'
+        + '可从约 ¥9 抬到约 ¥15（MOQ 500 + 送检摊薄后）。'
+    },
     howToGetIchBack: '若仍想要非遗叙事，只有两条正路：'
       + 'a) 选**确为非遗项目保护单位 / 生产性保护示范基地 / 传承载体**的厂，'
       + '然后把 selling.factoryIchQualified 置 true 并把 craftType 改为 mixed 或 handmade；'

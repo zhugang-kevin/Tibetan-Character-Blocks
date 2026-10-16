@@ -11,12 +11,18 @@
 //   反算（给零售价 → 出实际毛利率）：
 //     node scripts/incense-pricing.js --cost=8.5 --moq=300 --freight=280 --pack=1.2 --price=29.9
 //
+//   反算天花板（**谈价用**：给定零售价 → 倒推最高可接受出厂价）：
+//     node scripts/incense-pricing.js --reverse --price=29.9 --moq=100 --freight=? --pack=1.2 --ship=? --margin=0.5
+//     （西藏发货邮费贵、且不支持一件代发 → --ship 必须填真实单件快递费，否则算出来的毛利是假的）
+//
 //   参数（元）：
-//     --cost     含税出厂价（元/盒）          必填
+//     --cost     含税出厂价（元/盒）          必填（--reverse 时由脚本算出）
 //     --moq      起订量（盒）                  必填
 //     --freight  运费总额（元，整批）          默认 0
 //     --pack     包装/贴标（元/盒）            默认 0
-//     --ship     一件代发费（元/单，0 = 不自发货）默认 0
+//     --ship     单件快递费（元/单）             默认 0（西藏直发内地通常很贵，必须填真实值）
+//     --onetime  一次性投入总额（元）：送检 + 拍摄 + 详情页等，自动摊薄到 MOQ
+//                默认 0 ⚠️ **MOQ 小的时候这一项杀伤力极大**：送检 1000 元 ÷ 100 盒 = 10 元/盒
 //     --margin   目标毛利率（0-1）             默认 0.5
 //     --price    给定零售价（元/盒）           给了这个就反算毛利率
 //     --fee1     平台技术服务费率              默认 0.01（微信小店新商家前 100 万口径，**以后台为准**）
@@ -29,8 +35,10 @@
 
 var args = {};
 process.argv.slice(2).forEach(function (a) {
-  var m = /^--([a-z0-9]+)=(.*)$/.exec(a);
-  if (m) args[m[1]] = m[2];
+  var m = /^--([a-z0-9-]+)=(.*)$/.exec(a);   // --key=value
+  if (m) { args[m[1]] = m[2]; return; }
+  var f = /^--([a-z0-9-]+)$/.exec(a);        // --flag（不带值的开关）
+  if (f) args[f[1]] = '1';
 });
 
 function num(k, d) {
@@ -39,8 +47,48 @@ function num(k, d) {
 }
 function yuan(n) { return '¥' + n.toFixed(2); }
 
+var reverse = Object.prototype.hasOwnProperty.call(args, 'reverse');
 var cost = num('cost', NaN);
 var moq = num('moq', NaN);
+if (reverse) {
+  // —— 反算天花板：给定零售价与目标毛利率，倒推"最高可接受含税出厂价" ——
+  var p0 = num('price', NaN);
+  var pk0 = num('pack', 0), fr0 = num('freight', 0), sh0 = num('ship', 0), ot0 = num('onetime', 0);
+  var mq0 = num('moq', NaN), mg0 = num('margin', 0.5);
+  var r1 = num('fee1', 0.01), r2 = num('fee2', 0.006);
+  var otUnit0 = mq0 > 0 ? ot0 / mq0 : 0;
+  if (isNaN(p0) || isNaN(mq0)) {
+    console.log('反算天花板需要：--price（零售价）与 --moq（起订量）');
+    console.log('例：node scripts/incense-pricing.js --reverse --price=29.9 --moq=100 --freight=300 --pack=1.2 --ship=12 --margin=0.5');
+    process.exit(1);
+  }
+  var rate0 = r1 + r2;
+  var maxUnit = p0 * (1 - rate0 - mg0);           // 单盒完全成本的上限
+  var maxCost = maxUnit - pk0 - (mq0 > 0 ? fr0 / mq0 : 0) - sh0 - otUnit0;
+  console.log('藏香 · 出厂价天花板反算（D130 · 谈价靶子）');
+  console.log('');
+  console.log('【给定】零售价 ' + yuan(p0) + ' · 目标毛利率 ' + (mg0 * 100).toFixed(0)
+    + '% · MOQ ' + mq0 + ' · 包装 ' + yuan(pk0) + '/盒 · 运费整批 ' + yuan(fr0)
+    + ' · 单件快递 ' + yuan(sh0) + ' · 一次性投入 ' + yuan(ot0));
+  console.log('');
+  console.log('  单盒完全成本上限   ' + yuan(maxUnit));
+  console.log('    其中 包装        -' + yuan(pk0));
+  console.log('        运费摊薄     -' + yuan(mq0 > 0 ? fr0 / mq0 : 0));
+  console.log('        单件快递     -' + yuan(sh0));
+  console.log('        一次性摊薄   -' + yuan(otUnit0) + '（' + yuan(ot0) + ' ÷ ' + mq0 + ' 盒）');
+  console.log('  ─────────────────────────');
+  console.log('  🔴 **最高可接受含税出厂价 = ' + yuan(maxCost) + '/盒**');
+  console.log('');
+  if (maxCost < 0) {
+    console.log('  ⚠️ 算出来是负数：在「零售价 ' + yuan(p0) + ' + 单件快递 ' + yuan(sh0)
+      + ' + 目标毛利 ' + (mg0 * 100).toFixed(0) + '%」这组条件下**这门生意不成立**。');
+    console.log('     西藏到内地快递贵是硬成本 —— 要么提价、要么降低目标毛利率、要么找更便宜的物流。');
+  } else {
+    console.log('  拿这个数去谈价：高于它就别进，低于它才有得赚。');
+    console.log('  ⚠️ 未计入：送检费 / 拍摄与详情页 / 退货损耗（建议另留 3%-8%）/ 仓储与发货人力。');
+  }
+  process.exit(0);
+}
 if (isNaN(cost) || isNaN(moq)) {
   console.log('藏香定价/毛利计算器（D129）');
   console.log('');
