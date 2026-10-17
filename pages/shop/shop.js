@@ -16,36 +16,63 @@ Page({
     shippingNote: '',
     canBuy: false,
     buyText: '',
-    pageNote: ''
+    pageNote: '',
+    pageSub: '',
+    pendingCount: 0
   },
 
   onLoad: function () {
+    // ## 只有定稿内容才上屏（D133）
+    //   claims 里 status 为 pending / missing 的字段，**一律不渲染**：
+    //   未核实的话（产地、执行标准号）不许出现在消费者能看到的页面上。
+    //   你确认之后把 status 改成 verified/user，内容自动出现，**不需要改页面代码**。
+    var withheld = [];
     var items = (goods.items || []).map(function (g) {
-      // 显式白名单下发：cost 不在其中（成本不下发页面）
-      return {
+      var claims = g.claims || {};
+      function isOpen(k) {
+        var c = claims[k];
+        return !!c && (c.status === 'pending' || c.status === 'missing');
+      }
+      var item = {
         id: g.id,
-        name: g.name,
+        // 形态没定稿就不在标题里写「线香」—— 只留品牌名
+        name: isOpen('form') ? (g.baseName || g.name) : (g.baseName || '') + ' · ' + g.form,
         spec: g.spec,
-        form: g.form,
-        origin: g.origin,
-        standard: g.standard,
-        category: g.category,
+        form: isOpen('form') ? '' : g.form,
+        origin: isOpen('origin') ? '' : g.origin,
+        standard: isOpen('standard') ? '' : g.standard,
+        // 「家居香品」这个定性本身来自"按国标进销"，标准号没核实前不写
+        category: isOpen('standard') ? '' : g.category,
         sellerNote: g.sellerNote,
         price: g.price,
         unit: g.unit,
         stock: g.stock,
-        highlights: g.highlights || []
+      // 亮点：依赖项未定稿的直接不展示
+      highlights: (g.highlights || []).filter(function (h) {
+          if (!h.claim) return true;
+          if (isOpen(h.claim)) {
+            if (withheld.indexOf(h.claim) < 0) withheld.push(h.claim);
+            return false;
+          }
+          return true;
+        }).map(function (h) { return { text: h.text }; })
       };
+      return item;
     });
     var canBuy = !!goods.purchaseUrl;
+    var c0 = ((goods.items && goods.items[0] && goods.items[0].claims) || {});
+    function openAt(k) { var c = c0[k]; return !!c && (c.status === 'pending' || c.status === 'missing'); }
+    var coreOpen = openAt('origin') || openAt('standard');
     this.setData({
       items: items,
       shippingNote: goods.shippingNote || '',
       canBuy: canBuy,
       buyText: canBuy ? '立即购买' : '待配置微信小店链接',
+      pendingCount: withheld.length,
+      pageSub: coreOpen ? '商品信息核对中' : '家居香品 · 产自西藏',
       pageNote: canBuy
         ? '价格与规格以 data/shop-goods.js 为唯一来源'
-        : '微信小店开通后填入 purchaseUrl 即可下单 —— 未开通前不开放购买（不卖空气）'
+        : '商品信息核对中 —— 核实完成前不开放购买（不卖没核对清楚的东西）'
     });
   },
 

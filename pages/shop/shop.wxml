@@ -14,7 +14,8 @@
 
     <view class="sp-hero">
       <view class="sp-title">藏香</view>
-      <view class="sp-sub">家居香品 · 产自西藏</view>
+      <!-- 副标题不写死「产自西藏」：产地核实前不出现任何产地宣称（D133） -->
+      <view class="sp-sub">{{pageSub}}</view>
     </view>
 
     <view wx:for="{{items}}" wx:key="id" class="sp-card">
@@ -24,29 +25,29 @@
         <view class="sp-price">¥{{item.price}}<text class="sp-unit"> / {{item.unit}}</text></view>
       </view>
 
-      <view class="sp-spec">{{item.spec}} · {{item.form}}</view>
+      <view class="sp-spec">{{item.spec}}<text wx:if="{{item.form}}"> · {{item.form}}</text></view>
 
       <view class="sp-rows">
-        <view class="sp-row">
+        <view class="sp-row" wx:if="{{item.standard}}">
           <text class="sp-k">标准</text>
           <text class="sp-v">{{item.standard}}</text>
         </view>
-        <view class="sp-row">
+        <view class="sp-row" wx:if="{{item.origin}}">
           <text class="sp-k">产地</text>
           <text class="sp-v">{{item.origin}}</text>
         </view>
-        <view class="sp-row">
+        <view class="sp-row" wx:if="{{item.category}}">
           <text class="sp-k">品类</text>
           <text class="sp-v">{{item.category}}</text>
         </view>
-        <view class="sp-row">
+        <view class="sp-row" wx:if="{{item.sellerNote}}">
           <text class="sp-k">销售</text>
           <text class="sp-v">{{item.sellerNote}}</text>
         </view>
       </view>
 
       <view class="sp-tags">
-        <text wx:for="{{item.highlights}}" wx:for-item="h" wx:key="*this" class="sp-tag">{{h}}</text>
+        <text wx:for="{{item.highlights}}" wx:for-item="h" wx:key="text" class="sp-tag">{{h.text}}</text>
       </view>
 
       <view class="sp-stock">库存 {{item.stock}} {{item.unit}} · {{shippingNote}}</view>

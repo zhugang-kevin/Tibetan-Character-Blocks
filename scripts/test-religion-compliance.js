@@ -520,8 +520,13 @@ if (!exists(SHOP)) {
       if (!(g.price > 0)) bad2.push(g.id + ' 售价不合法：' + g.price);
       if (!(g.cost > 0)) bad2.push(g.id + ' 成本不合法：' + g.cost);
       else if (g.price <= g.cost) bad2.push(g.id + ' 售价 ¥' + g.price + ' ≤ 成本 ¥' + g.cost + '（卖一单亏一单）');
+      // ⚠️ highlights 现在是「对象 + claim」结构（D133）。必须取 .text 再拼，
+      //   否则对象会被拼成 "[object Object]" → 禁用语扫描静默变成假绿。
+      var hlText = (g.highlights || []).map(function (h) {
+        return typeof h === 'string' ? h : String(h && h.text || '');
+      });
       var all = [g.name, g.spec, g.form, g.origin, g.standard, g.category, g.sellerNote]
-        .concat(g.highlights || []).join(' ');
+        .concat(hlText).join(' ');
       var ctS = sg.craftType || (inc && inc.selling && inc.selling.craftType);
       var hb = routeHits(all, ctS);
       if (hb.length) bad2.push(g.id + ' 文案含当前路线禁用语：' + hb.join('、'));
@@ -550,6 +555,59 @@ if (!exists(SHOP)) {
   // 成本不得下发页面渲染
   if (shopWxmlSrc && shopWxmlSrc.indexOf('cost') > -1) err('商城页模板渲染了 cost（成本）字段 —— 成本只用于内部核算');
   else ok('商城页未下发成本字段（cost 只走 incense-pricing.js 内部核算）');
+
+  // ---------- 13. 内容定稿台账（D133）----------
+  //   用户 2026-10-17：「需要把所有的内容都确定好，确保没有任何的问题，确保没有错误」。
+  //   光写文档拦不住"我下次说都核实过了" —— 所以把每个字段的**核实状态**放进数据源，
+  //   由门禁逐条查。四态：verified（必须有出处+日期）/ user（必须有日期）/
+  //   pending / missing（必须写明缺什么）。
+  //   🔴 最硬的一条：**只要还有 pending/missing，purchaseUrl 必须留空** ——
+  //      不许带着未核实的内容开通收银台（那是把风险直接推给消费者）。
+  var CLAIM_STATES = { verified: 1, user: 1, pending: 1, missing: 1 };
+  var openClaims = [], badClaims = [];
+  sg.items.forEach(function (g) {
+    var cl = g.claims;
+    if (!cl || !Object.keys(cl).length) {
+      badClaims.push(g.id + ' 没有内容定稿台账（claims）—— 页面上的每句话都必须有核实状态');
+      return;
+    }
+    Object.keys(cl).forEach(function (k) {
+      var c = cl[k] || {};
+      var st = c.status;
+      if (!CLAIM_STATES[st]) {
+        badClaims.push(g.id + '.' + k + ' 的 status 不合法：' + (st || '空')
+          + '（只能是 verified / user / pending / missing）');
+        return;
+      }
+      if (st === 'verified') {
+        if (!String(c.source || '').trim()) badClaims.push(g.id + '.' + k + ' 标了 verified 却没有 source（出处）—— 不许口头核实');
+        if (!String(c.verifiedAt || '').trim()) badClaims.push(g.id + '.' + k + ' 标了 verified 却没有 verifiedAt（核实日期）');
+      } else if (st === 'user') {
+        if (!String(c.decidedAt || '').trim()) badClaims.push(g.id + '.' + k + ' 标了 user 却没有 decidedAt（谁/哪天给的）');
+      } else {
+        if (!String(c.need || '').trim()) badClaims.push(g.id + '.' + k + ' 是 ' + st + ' 却没写 need（缺什么才能核实）');
+        openClaims.push(g.id + '.' + k);
+      }
+    });
+    // 亮点里引用的 claim key 必须真实存在（写错了 → 页面永远隐藏，且没人知道为什么）
+    (g.highlights || []).forEach(function (h, i) {
+      if (typeof h === 'string' || !h.claim) return;
+      if (!cl[h.claim]) badClaims.push(g.id + '.highlights[' + i + '] 引用了不存在的 claim：' + h.claim);
+    });
+  });
+  if (badClaims.length) err('内容定稿台账有问题：' + badClaims.join('；'));
+  else ok('内容定稿台账格式合规（每句都带核实状态；verified 必有出处+日期）');
+
+  if (openClaims.length) {
+    if (String(sg.purchaseUrl || '').trim()) {
+      err('还有 ' + openClaims.length + ' 项内容未定稿（' + openClaims.join('、') + '）'
+        + '，但 purchaseUrl 已填 —— 带着未核实的内容开通收银台 = 把风险直接推给消费者');
+    } else {
+      ok('未定稿项 ' + openClaims.length + ' 个（' + openClaims.join('、') + '）→ purchaseUrl 保持留空，与之一致 ✓');
+    }
+  } else {
+    ok('内容全部定稿（0 个未定稿项）');
+  }
 }
 
 console.log('');
