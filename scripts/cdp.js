@@ -1,0 +1,123 @@
+#!/usr/bin/env node
+// scripts/cdp.js — 直连 Chrome DevTools Protocol 的小工具（D156）
+//
+// ## 为什么需要它
+//   agent-browser 的 daemon 会随 shell 退出被回收，还得手动 close，
+//   于是出现"浏览器每次都自动关闭"。这里改成**每次调用只开一条 WebSocket，
+//   执行完就退**，不依赖任何常驻进程；浏览器由独立进程托管，不受 shell 生命周期影响。
+//
+// ## 用法（CHROME 需先用 --remote-debugging-port 启动）
+//   node scripts/cdp.js targets              列出页面目标
+//   node scripts/cdp.js nav <url>            导航（等 load）
+//   node scripts/cdp.js text                 取 body.innerText
+//   node scripts/cdp.js eval "<js>"          执行表达式并返回结果（JSON）
+//   node scripts/cdp.js click <selector>     点击（用 JS 找元素，不依赖 ref）
+//   node scripts/cdp.js link <substr>        打印 href 含 <substr> 的链接
+//   node scripts/cdp.js shot <path>          截图
+//
+// 端口默认 9333，可用 CDP_PORT 覆盖。
+
+'use strict';
+const fs = require('fs');
+
+const PORT = process.env.CDP_PORT || '9333';
+const BASE = `http://127.0.0.1:${PORT}`;
+
+async function listTargets() {
+  const r = await fetch(`${BASE}/json/list`);
+  return r.json();
+}
+
+async function pageWs() {
+  const list = await listTargets();
+  const page = list.find(t => t.type === 'page' && !/devtools/.test(t.url))
+    || list.find(t => t.type === 'page');
+  if (!page) throw new Error('没有可用的页面目标');
+  return page.webSocketDebuggerUrl;
+}
+
+function connect(wsUrl) {
+  return new Promise((resolve, reject) => {
+    const ws = new WebSocket(wsUrl);
+    const pending = new Map();
+    let id = 0;
+    ws.onopen = () => resolve({
+      ws,
+      send(method, params) {
+        return new Promise((res, rej) => {
+          const mid = ++id;
+          pending.set(mid, { res, rej });
+          ws.send(JSON.stringify({ id: mid, method, params: params || {} }));
+        });
+      }
+    });
+    ws.onerror = e => reject(new Error('WS 连接失败: ' + (e.message || e.type)));
+    ws.onmessage = ev => {
+      let msg;
+      try { msg = JSON.parse(ev.data); } catch (_) { return; }
+      if (msg.id && pending.has(msg.id)) {
+        const { res, rej } = pending.get(msg.id);
+        pending.delete(msg.id);
+        if (msg.error) rej(new Error(JSON.stringify(msg.error)));
+        else res(msg.result);
+      }
+    };
+  });
+}
+
+async function evaluate(cdp, expression) {
+  const r = await cdp.send('Runtime.evaluate', {
+    expression,
+    returnByValue: true,
+    awaitPromise: true,
+    userGesture: true
+  });
+  if (r.exceptionDetails) {
+    throw new Error('JS 异常: ' + (r.exceptionDetails.text || '') + ' ' +
+      (r.exceptionDetails.exception && r.exceptionDetails.exception.description || ''));
+  }
+  return r.result && r.result.value;
+}
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+(async () => {
+  const [cmd, ...rest] = process.argv.slice(2);
+  const cdp = await connect(await pageWs());
+
+  try {
+    if (cmd === 'targets') {
+      console.log(JSON.stringify((await listTargets()).map(t => ({ t: t.type, title: t.title, url: t.url })), null, 2));
+    } else if (cmd === 'nav') {
+      const url = rest[0];
+      await cdp.send('Page.enable');
+      await cdp.send('Page.navigate', { url });
+      await sleep(3500);
+      console.log('OK ' + (await evaluate(cdp, 'location.href')));
+    } else if (cmd === 'text') {
+      console.log(await evaluate(cdp, 'document.body.innerText'));
+    } else if (cmd === 'eval') {
+      console.log(JSON.stringify(await evaluate(cdp, rest.join(' '))));
+    } else if (cmd === 'click') {
+      const sel = rest[0];
+      const out = await evaluate(cdp,
+        `(() => { const el = document.querySelector(${JSON.stringify(sel)});
+          if (!el) return 'NOT_FOUND';
+          el.scrollIntoView({block:'center'}); el.click(); return 'CLICKED'; })()`);
+      console.log(out);
+    } else if (cmd === 'link') {
+      const sub = rest[0];
+      console.log(await evaluate(cdp,
+        `Array.from(document.querySelectorAll('a')).map(a => a.getAttribute('href')||'')
+          .filter(h => h.includes(${JSON.stringify(sub)}))[0] || ''`));
+    } else if (cmd === 'shot') {
+      const r = await cdp.send('Page.captureScreenshot', { format: 'png' });
+      fs.writeFileSync(rest[0], Buffer.from(r.data, 'base64'));
+      console.log('saved ' + rest[0]);
+    } else {
+      console.log('用法: targets|nav <url>|text|eval <js>|click <sel>|link <substr>|shot <path>');
+    }
+  } finally {
+    try { cdp.ws.close(); } catch (_) {}
+  }
+})().catch(e => { console.error('ERR ' + e.message); process.exit(1); });
