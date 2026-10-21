@@ -56,13 +56,14 @@ run() {
   fi
 }
 
-echo "── 提交前快检（关卡 + 跨内容 + 结构 + 图片出处 + 支付配置）──"
+echo "── 提交前快检（关卡 + 跨内容 + 结构 + 图片出处 + 支付/广告配置）──"
 run "关卡护栏（指纹/隔离/密封沙箱）" scripts/test-level-guard.js
 run "150 关全量打通"                 scripts/test-all-150.js
 run "跨内容一致性"                   scripts/test-content-consistency.js
 run "结构与契约门禁"                 scripts/validate.js
 run "场景图出处（版权）"             scripts/test-photo-provenance.js
 run "虚拟支付配置（密钥/域名/道具）" scripts/check-pay-config.js
+run "广告位配置（ID/类型/复用）"     scripts/check-ads-config.js
 rm -f /tmp/gate-$$.log
 
 if [ "$fail" -ne 0 ]; then
