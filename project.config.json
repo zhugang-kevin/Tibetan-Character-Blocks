@@ -51,6 +51,10 @@
         "value": "server"
       },
       {
+        "type": "folder",
+        "value": "brand"
+      },
+      {
         "type": "file",
         "value": "package.json"
       },
@@ -61,6 +65,10 @@
       {
         "type": "folder",
         "value": "miniprogram_npm"
+      },
+      {
+        "type": "folder",
+        "value": "brand"
       }
     ],
     "include": []
