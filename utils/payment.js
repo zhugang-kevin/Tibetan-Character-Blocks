@@ -20,16 +20,27 @@
 //   未注入 offerId 时，`isReady()` 返回 false，`pay()` 直接返回 `{ ok:false, reason:'unconfigured' }`。
 //   **不会崩、不会发请求、不会误导用户**。UI 侧应据此隐藏或禁用打赏入口。
 //   （与 app.js 里字体占位地址的处理同源：没配就显式跳过，而不是发无效请求。）
+// ## 配置从哪来（D136）
+//   ① 首选：`config/pay.js`（仓库里的**无密钥模板**，你开通后只改这一个文件）
+//   ② 兜底：`app.injectPaymentConfig({...})` 运行时注入（云开发/远程配置时用）
+//   两种情况都没有 → isReady() === false，UI 隐藏入口，不发请求。
+//   ⚠️ AppKey 永远不进前端、不进本文件 —— 它只在服务端环境变量里。
+var LOCAL = {};
+try {
+  // 文件缺失/语法错都不能影响启动：支付模块异常绝不该让整个小程序打不开。
+  LOCAL = require('../config/pay.js') || {};
+} catch (e) { LOCAL = {}; }
+
 var CONFIG = {
   // 支付应用 ID（mp 后台「虚拟支付 → 基本配置」）。**不要写死在代码里**，
-  // 由 app.js 启动时注入（app.injectPaymentConfig）。
-  offerId: '',
+  // 来源：config/pay.js 或 app.injectPaymentConfig。
+  offerId: LOCAL.offerId || '',
   // 0 = 正式环境，1 = 沙箱环境。官方：现网版本 env 只能是 0（错误码 -15011）
-  env: 0,
+  env: (LOCAL.env === 1 ? 1 : 0),
   // 服务端下单接口地址（**必须 HTTPS**）。签名在哪算，这里就指向哪。
-  orderApi: '',
+  orderApi: LOCAL.orderApi || '',
   // 是否已在 mp 后台发布道具（未发布时下单会报 -15010 / -15014）
-  goodsPublished: false
+  goodsPublished: LOCAL.goodsPublished === true
 };
 // 礼物道具表：productId 与价格来自 data/goods.js **唯一事实源**。
 // ⚠️ 不要在前端另抄一份价格 —— 前端价与服务端价一旦不一致，
