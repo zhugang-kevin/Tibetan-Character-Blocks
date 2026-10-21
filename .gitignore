@@ -15,3 +15,14 @@ generated-images/
 .workbuddy/icon-src/
 .workbuddy/tmp/
 __pycache__/
+
+# 服务端运行时数据（D137）
+#   pay.db 曾误入库：每次跑服务都产生变更 → 提交噪音；且订单表里可能有 openid/订单号，
+#   属于**用户数据**，不该跟着代码走。目录保留（.gitkeep），库文件不入库。
+server/data/*.db
+server/data/*.db-shm
+server/data/*.db-wal
+server/data/*.jsonl
+
+# 服务端环境变量（含 AppKey/AppSecret，绝不入库；模板见 server/.env.example）
+server/.env

@@ -143,7 +143,15 @@ orderApi 是否踩了官方五条红线 · env 是否合法 · 道具价格是�
 
 ## 四、服务端环境变量（部署时填）
 
-服务端全部走环境变量，**不进代码库**（validate §64 会扫描禁止硬编码密钥）：
+服务端全部走环境变量，**不进代码库**（validate §64 会扫描禁止硬编码密钥）。
+
+**模板已给：`server/.env.example`**（已提交，里面全是空值）。复制成 `server/.env`（已被 .gitignore 拦）再填：
+
+```bash
+cp server/.env.example server/.env
+# 填完用 Node 自带的 --env-file 启动（本项目零依赖，没装 dotenv）
+node --env-file=server/.env server/index.js
+```
 
 | 变量 | 含义 |
 |---|---|
@@ -155,8 +163,20 @@ orderApi 是否踩了官方五条红线 · env 是否合法 · 道具价格是�
 | `WX_ENV` | `0` 正式 / `1` 沙箱（**现网只能是 0**，否则 -15011） |
 | `PORT` | 监听端口，默认 8787 |
 
+**起完先自检（不花钱、不用真支付）**：
+
+```bash
+curl https://你的域名/health          # 期望 {"ok":true,"status":"up","configured":true}
+```
+
+`configured:false` = OfferID 或 AppKey 没读到，此时下单必失败（服务端启动日志也会打
+「⚠️ 未配置 AppKey，下单会失败」）。**这一步过了再往下走**，能省掉一大半排查时间。
+
 回调地址填在后台「消息推送回调地址」，**必须公网可访问的 HTTPS** —— 不可达则不会自动发货
 （本项目有查单兜底：前端轮询 `queryOrder`，官方也建议服务端每 5 分钟主动查一次）。
+
+> 运行时数据（`server/data/*.db`、`*.jsonl`、`server/.env`）**已在 .gitignore 里**：
+> 订单表含 openid / 订单号，属于用户数据，不跟着代码走。
 
 ---
 
