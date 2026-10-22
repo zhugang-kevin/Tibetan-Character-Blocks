@@ -43,15 +43,18 @@
         <view class="sv-card-title">唐卡</view>
         <view class="sv-card-note">{{thangkaNote}}</view>
       </view>
-      <view wx:for="{{thangkas}}" wx:key="id" class="sv-card sv-goods">
-        <view class="sv-goods-name">{{item.name}}</view>
-        <view class="sv-goods-meta">{{item.size}} · {{item.craft}}</view>
-        <view class="sv-goods-row">
-          <view class="sv-price">¥{{item.price}}</view>
-          <button class="sv-btn sv-btn-sm" open-type="contact" session-from="thangka-{{item.id}}"
-                  aria-label="咨询这件唐卡">咨询/购买</button>
+      <block wx:for="{{thangkas}}" wx:key="id">
+        <view wx:if="{{index === 0 || thangkas[index - 1].tier !== item.tier}}" class="sv-tier">{{item.tier}}</view>
+        <view class="sv-card sv-goods">
+          <view class="sv-goods-name">{{item.name}}</view>
+          <view class="sv-goods-meta">{{item.spec}}</view>
+          <view class="sv-goods-row">
+            <view class="sv-price">¥{{item.price}}</view>
+            <button class="sv-btn sv-btn-sm" open-type="contact" session-from="goods-{{item.id}}"
+                    aria-label="咨询这件商品">咨询/购买</button>
+          </view>
         </view>
-      </view>
+      </block>
       <view class="sv-card">
         <view class="sv-card-note">看不清细节想要大图、或者想指定题材与尺寸，点这里跟客服说。</view>
         <button class="sv-btn" open-type="contact" session-from="thangka-custom"
