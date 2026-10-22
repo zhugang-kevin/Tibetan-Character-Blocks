@@ -86,6 +86,7 @@
     }
   },
   "compileType": "miniprogram",
+  "miniprogramRoot": "./",
   "libVersion": "2.33.0",
   "appid": "wx3378038122ee9d54",
   "projectname": "zangzi-fangkuai",

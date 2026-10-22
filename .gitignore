@@ -26,3 +26,6 @@ server/data/*.jsonl
 
 # 服务端环境变量（含 AppKey/AppSecret，绝不入库；模板见 server/.env.example）
 server/.env
+
+# 上传密钥（后台生成，等同密码，绝不入库）
+private.*.key

@@ -114,6 +114,79 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
       const r = await cdp.send('Page.captureScreenshot', { format: 'png' });
       fs.writeFileSync(rest[0], Buffer.from(r.data, 'base64'));
       console.log('saved ' + rest[0]);
+    } else if (cmd === 'set') {
+      // set <selector> <text> —— 用原生 setter + input 事件，Vue/React 才认
+      const [sel, ...txt] = rest;
+      const val = txt.join(' ');
+      console.log(await evaluate(cdp, `(() => {
+        const el = document.querySelector(${JSON.stringify(sel)});
+        if (!el) return 'NOT_FOUND';
+        const proto = el.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+        const setter = Object.getOwnPropertyDescriptor(proto, 'value').set;
+        setter.call(el, ${JSON.stringify(val)});
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+        return 'SET:' + el.value;
+      })()`));
+    } else if (cmd === 'file') {
+      // file <path> [selector] —— 真正给 <input type=file> 塞文件（CDP 才能做到）
+      const filePath = rest[0];
+      const sel = rest[1] || 'input[type=file]';
+      const r = await cdp.send('Runtime.evaluate', {
+        expression: `document.querySelector(${JSON.stringify(sel)})`
+      });
+      if (!r.result || !r.result.objectId) { console.log('NOT_FOUND'); }
+      else {
+        await cdp.send('DOM.setFileInputFiles', { files: [filePath], objectId: r.result.objectId });
+        console.log('FILE_SET ' + filePath);
+      }
+    } else if (cmd === 'upload') {
+      // upload <path> [selector] —— 用 DataTransfer 造 File 塞进 input（比 setFileInputFiles 稳）
+      const p0 = rest[0];
+      const sel0 = rest[1] || 'input[type=file]';
+      const b64 = fs.readFileSync(p0).toString('base64');
+      const mime = /\.png$/i.test(p0) ? 'image/png' : 'image/jpeg';
+      const expr = `(async () => {
+        const r = await fetch('data:${mime};base64,${b64}');
+        const blob = await r.blob();
+        const file = new File([blob], 'avatar.${mime === 'image/png' ? 'png' : 'jpg'}', { type: '${mime}' });
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        const el = document.querySelector(${JSON.stringify(sel0)});
+        if (!el) return 'NOT_FOUND';
+        el.files = dt.files;
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+        return 'UPLOADED:' + el.files.length;
+      })()`;
+      console.log(await evaluate(cdp, expr));
+    } else if (cmd === 'tap') {
+      // tap <文本> [第几个] —— 用 Input.dispatchMouseEvent 产生**可信点击**
+      // （微信后台会忽略 el.click()，因为 event.isTrusted === false）
+      const target = rest[0];
+      const nth = Number(rest[1] || 0);
+      const box = await evaluate(cdp, `(() => {
+        const els = [...document.querySelectorAll('a,button,span,div')]
+          .filter(e => e.children.length === 0 && e.textContent.trim() === ${JSON.stringify(target)});
+        const el = els[${nth}];
+        if (!el) return null;
+        el.scrollIntoView({ block: 'center' });
+        const b = el.getBoundingClientRect();
+        return { x: b.x + b.width / 2, y: b.y + b.height / 2, n: els.length };
+      })()`);
+      if (!box) {
+        console.log('NOT_FOUND');
+      } else {
+        await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: box.x, y: box.y });
+        await cdp.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: box.x, y: box.y, button: 'left', clickCount: 1 });
+        await cdp.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: box.x, y: box.y, button: 'left', clickCount: 1 });
+        console.log('TAPPED@' + Math.round(box.x) + ',' + Math.round(box.y) + ' of ' + box.n);
+      }
+    } else if (cmd === 'find') {
+      const t = rest[0];
+      console.log(JSON.stringify(await evaluate(cdp,
+        `[...document.querySelectorAll('a,button,span,div,li')]
+           .filter(e => e.children.length === 0 && e.textContent.trim() === ${JSON.stringify(t)})
+           .map(e => ({ tag: e.tagName, cls: e.className, parent: e.parentElement && e.parentElement.tagName }))`), null, 1));
     } else {
       console.log('用法: targets|nav <url>|text|eval <js>|click <sel>|link <substr>|shot <path>');
     }
