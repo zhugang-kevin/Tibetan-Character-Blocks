@@ -57,5 +57,11 @@
 
     <view class="sp-foot">{{pageNote}}</view>
 
+    <!-- 帮助与客服入口（D167）：反馈问题 / 唐卡 / 高端定制，都在分包页里 -->
+    <navigator class="sp-svc" url="/package-service/pages/service/service" hover-class="none">
+      <text class="sp-svc-t">帮助与客服</text>
+      <text class="sp-svc-s">反馈问题 · 唐卡 · 高端定制</text>
+    </navigator>
+
   </view>
 </view>

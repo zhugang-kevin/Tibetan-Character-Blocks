@@ -55,6 +55,14 @@
         "value": "brand"
       },
       {
+        "type": "folder",
+        "value": "images/brand"
+      },
+      {
+        "type": "file",
+        "value": "images/logo-200.png"
+      },
+      {
         "type": "file",
         "value": "package.json"
       },

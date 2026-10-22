@@ -19,5 +19,8 @@
   "style": "v2",
   "sitemapLocation": "sitemap.json",
   "lazyCodeLoading": "requiredComponents",
-  "subpackages": [{"root": "package-praise", "name": "praiseVoice", "pages": ["pages/voice-gallery/voice-gallery"]}]
+  "subpackages": [
+    {"root": "package-praise", "name": "praiseVoice", "pages": ["pages/voice-gallery/voice-gallery"]},
+    {"root": "package-service", "name": "service", "pages": ["pages/service/service"]}
+  ]
 }

@@ -159,3 +159,12 @@
   line-height: 1.6;
   color: #9A8578;
 }
+
+/* 帮助与客服入口（D167） */
+.sp-svc {
+  display: block; margin-top: 24rpx; padding: 26rpx 28rpx;
+  background: rgba(246, 220, 160, .12); border: 1rpx solid rgba(246, 220, 160, .38);
+  border-radius: 16rpx;
+}
+.sp-svc-t { display: block; font-size: 28rpx; font-weight: 700; color: #F6DCA0; }
+.sp-svc-s { display: block; margin-top: 6rpx; font-size: 26rpx; color: #E7B98A; }
