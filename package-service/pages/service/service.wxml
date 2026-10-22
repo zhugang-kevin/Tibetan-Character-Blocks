@@ -37,48 +37,41 @@
       </view>
     </block>
 
-    <!-- ② 唐卡商品 -->
-    <block wx:if="{{active === 'thangka'}}">
+    <!-- ② 虚拟礼物（D177：走虚拟支付，不挂实物） -->
+    <block wx:if="{{active === 'gift'}}">
       <view class="sv-card">
-        <view class="sv-card-title">唐卡</view>
-        <view class="sv-card-note">{{thangkaNote}}</view>
+        <view class="sv-card-title">虚拟礼物</view>
+        <view class="sv-card-note">{{giftNote}}</view>
       </view>
-      <block wx:for="{{thangkas}}" wx:key="id">
-        <view wx:if="{{index === 0 || thangkas[index - 1].tier !== item.tier}}" class="sv-tier">{{item.tier}}</view>
-        <view class="sv-card sv-goods">
-          <view class="sv-goods-name">{{item.name}}</view>
-          <view class="sv-goods-meta">{{item.spec}}</view>
-          <view class="sv-goods-row">
-            <view class="sv-price">¥{{item.price}}</view>
-            <button class="sv-btn sv-btn-sm" open-type="contact" session-from="goods-{{item.id}}"
-                    aria-label="咨询这件商品">咨询/购买</button>
-          </view>
+      <view wx:for="{{gifts}}" wx:key="id" class="sv-card sv-goods">
+        <view class="sv-goods-name">{{item.name}}</view>
+        <view class="sv-goods-meta">{{item.note}}</view>
+        <view class="sv-goods-row">
+          <view class="sv-price">¥{{item.price}}</view>
+          <button class="sv-btn sv-btn-sm" bindtap="onGoGift" aria-label="去送{{item.name}}">去送</button>
         </view>
-      </block>
+      </view>
       <view class="sv-card">
-        <view class="sv-card-note">看不清细节想要大图、或者想指定题材与尺寸，点这里跟客服说。</view>
-        <button class="sv-btn" open-type="contact" session-from="thangka-custom"
-                aria-label="咨询唐卡定制">告诉客服我想要什么</button>
+        <button class="sv-btn" bindtap="onGoGift" aria-label="打开收礼页">打开收礼页</button>
+        <view class="sv-card-note" style="margin-top:16rpx">{{giftTip}}</view>
       </view>
     </block>
 
-    <!-- ③ 高端定制留言 -->
-    <block wx:if="{{active === 'bespoke'}}">
+    <!-- ③ 联系我们 -->
+    <block wx:if="{{active === 'contact'}}">
       <view class="sv-card">
-        <view class="sv-card-title">想要更好的</view>
-        <view class="sv-card-note">{{bespokeNote}}</view>
-        <button class="sv-btn" open-type="contact" session-from="bespoke"
-                aria-label="留言咨询高端定制">留言给客服</button>
+        <view class="sv-card-title">找我们</view>
+        <view class="sv-card-note">{{contactNote}}</view>
+        <button class="sv-btn" open-type="contact" session-from="contact"
+                aria-label="联系客服">进入客服会话</button>
       </view>
       <view class="sv-card">
-        <view class="sv-card-title">留言请带上这几点</view>
+        <view class="sv-card-title">回复时间</view>
         <view class="sv-list">
-          <view class="sv-li">· 题材（例如绿度母、白度母、药师佛）</view>
-          <view class="sv-li">· 尺寸（例如 60×90cm，或按墙面尺寸）</view>
-          <view class="sv-li">· 预算区间</view>
-          <view class="sv-li">· 期望到手时间</view>
+          <view class="sv-li">· 工作日 9:00–21:00，一般 2 小时内回</view>
+          <view class="sv-li">· 夜间留言次日上午回</view>
+          <view class="sv-li">· 只说问题的机型与关卡编号，能最快定位</view>
         </view>
-        <view class="sv-card-note">带齐这四点，客服能一次给你准信，不用来回问。</view>
       </view>
     </block>
 

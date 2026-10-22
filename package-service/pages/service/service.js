@@ -1,18 +1,21 @@
-// package-service/pages/service/service.js — 帮助与客服（D167）
+// package-service/pages/service/service.js — 帮助与客服（D177，虚拟支付路线）
 //
-// 三件事都走**微信客服会话**（open-type="contact"），不接自建服务器：
-//   · 反馈问题  session-from=feedback
-//   · 唐卡咨询  session-from=thangka-<id> / thangka-custom
-//   · 高端定制  session-from=bespoke
+// ## 为什么砍掉实物橱窗
+//   用户定调：**走虚拟支付**。官方原文明确「虚拟商品 + 实物商品混合 → 整体认定为虚拟支付」，
+//   且「仅含虚拟类目时平台会关闭安卓端普通微信支付」。
+//   所以**不能同时挂实物橱窗**，否则两头都不成立。
+//   实物配饰的选品与定价保留在 docs/decor-selection-and-pricing.md，等执照增项后再开。
 //
-// 为什么不在页面里做表单提交：客服会在微信客服工作台里直接回复，
-// 用户不用留手机号、我们也不用先建一套工单系统 —— 先能用，再谈完善。
+// ## 这个页面现在只做三件事
+//   ① 反馈问题（微信客服会话）
+//   ② 虚拟礼物（跳收礼页，1 / 3 / 6 / 9.9）
+//   ③ 联系我们（另一个客服来源标记）
 //
-// 合规口径（与本仓 test-religion-compliance 一致）：
-//   · 唐卡只按「工艺画 / 装饰画」描述题材与尺寸，不写开光、加持、供奉、保佑
-//   · 商品话术不承诺灵验，只描述画面与工艺
+// ## 合规口径
+//   只写"祝福、纪念、收藏"，不写任何功效、灵验、宗教服务。
 
 var GAME = '藏趣方块';
+var GIFT_PAGE = '/pages/gift/gift';
 
 Page({
   data: {
@@ -20,36 +23,42 @@ Page({
     active: 'feedback',
     tabs: [
       { key: 'feedback', name: '反馈问题' },
-      { key: 'thangka', name: '配饰与画' },
-      { key: 'bespoke', name: '高端定制' }
+      { key: 'gift', name: '虚拟礼物' },
+      { key: 'contact', name: '联系我们' }
     ],
+
     faq: [
       { q: '配对没反应 / 点不动', a: '先退出重进一次。还不行就在客服里说机型（例如 iPhone 14 / 小米 13），我们按机型查。' },
       { q: '音频没声音', a: '检查手机是否静音、微信是否允许媒体音量。仍然没声音请把机型发客服。' },
       { q: '进度丢了', a: '进度存在本机。换手机或清理微信缓存会丢，建议先截图留档再反馈。' },
       { q: '想换绑微信', a: '目前进度跟本机绑定，暂不支持换绑；有需求请在客服留言，我们会统计。' }
     ],
-    thangkaNote: '全部是能直接戴、直接送的成品（含绳，不是需要自己拼的配件）。49–70 元区间。看中哪件、想看细节大图，点「咨询/购买」直接问客服。',
-    thangkas: [
-      { id: 'g1', tier: '入门 · 49–55 元', name: '迷你唐卡擦擦吊坠 · 绿度母', spec: '成品 · 2×2cm · 含编绳', price: '49' },
-      { id: 'g2', tier: '入门 · 49–55 元', name: '迷你唐卡擦擦吊坠 · 白度母', spec: '成品 · 2×2cm · 含编绳', price: '52' },
-      { id: 'g3', tier: '入门 · 49–55 元', name: '迷你唐卡擦擦吊坠 · 药师佛', spec: '成品 · 2×2cm · 含编绳', price: '55' },
 
-      { id: 'g4', tier: '主推 · 59–65 元', name: '唐卡吊坠 · 双面彩绘', spec: '成品 · 3×3cm · 含编绳', price: '59' },
-      { id: 'g5', tier: '主推 · 59–65 元', name: '唐卡吊坠 · 双面彩绘（加大）', spec: '成品 · 3.5×3.5cm · 含编绳', price: '62' },
-      { id: 'g6', tier: '主推 · 59–65 元', name: '唐卡车挂 · 迷你成品', spec: '成品 · 5×7cm · 含挂绳', price: '65' },
-
-      { id: 'g7', tier: '精选 · 68–70 元', name: '唐卡吊坠礼盒 · 坠+绳+绒袋', spec: '成品 · 3×3cm · 礼盒装', price: '68' },
-      { id: 'g8', tier: '精选 · 68–70 元', name: '唐卡双坠组合 · 两枚一套', spec: '成品 · 2×2cm ×2 · 绒袋', price: '70' },
-      { id: 'g9', tier: '精选 · 68–70 元', name: '唐卡小挂 · 加厚装裱款', spec: '成品 · 4×6cm · 含挂绳', price: '70' }
+    gifts: [
+      { id: 'lamp', name: '酥油灯', price: '1', note: '点一盏，留个念想' },
+      { id: 'khata', name: '哈达', price: '3', note: '最直接的祝福' },
+      { id: 'card', name: '祝福卡', price: '6', note: '写一句话送给 TA' },
+      { id: 'name', name: '藏族名字', price: '9.9', note: '按你的名字取一个' }
     ],
-    bespokeNote: '嘎乌盒、装裱好的大幅装饰画、以及真正手绘的唐卡，成本决定了它们不可能做到 70 元以内（嘎乌盒保本就要 60 起），所以放在这里按需求报价：题材、尺寸、预算、到手时间四项说清，我们从西藏渠道给你准信。',
-    disclaimer: '本品为藏文化配饰与装饰艺术品，按材质、工艺与尺寸销售；不含任何宗教服务、仪式或功效承诺。贴身类配饰因卫生原因拆封后不支持退换，定制类开工后不支持退换。'
+
+    giftNote: '这些都是小程序内的虚拟礼物，送出后对方在收礼页看到，不产生任何实物寄送。价格单位是元。',
+    giftTip: '虚拟礼物一经送出不支持退款——送出前请确认心意。',
+    contactNote: '游戏问题、礼物问题、合作与内容建议，都可以直接找我们。工作时间内会逐条回。',
+    disclaimer: '本小程序不销售实物商品；礼物为虚拟内容，不涉及物流与寄送。'
   },
 
   onTab: function (e) {
     var key = e.currentTarget.dataset.key;
     if (key && key !== this.data.active) this.setData({ active: key });
+  },
+
+  onGoGift: function () {
+    wx.navigateTo({
+      url: GIFT_PAGE,
+      fail: function () {
+        wx.showToast({ title: '收礼页暂时打不开', icon: 'none' });
+      }
+    });
   },
 
   onShareAppMessage: function () {
