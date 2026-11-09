@@ -68,6 +68,15 @@ TOL = 1.0              # 横向溢出容差 px
 PROBE = r"""
 (function () {
   try {
+    // ⚠️ 关键：先**禁用动画/过渡**再测量。
+    //   headless 的虚拟时间下 CSS 动画会停在 0% 关键帧（天梯 nodeRise 0% = scale(.66)），
+    //   于是 68x48 的节点被量成 44x31 → 误报「点击区过小」。
+    //   审计要看的是**静止态**（动画结束后用户真正点的那块），不是动画首帧。
+    try {
+      var _st = document.createElement('style');
+      _st.textContent = '*,*::before,*::after{animation:none!important;transition:none!important}';
+      (document.head || document.documentElement).appendChild(_st);
+    } catch (e) {}
     var de = document.documentElement;
     var over = Math.max(de.scrollWidth, document.body.scrollWidth) - window.innerWidth;
     var all = document.querySelectorAll('body *');

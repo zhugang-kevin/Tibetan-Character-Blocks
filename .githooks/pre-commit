@@ -11,11 +11,12 @@
 #
 # 设计原则：**fail closed** —— 检测工具缺失时拒绝提交，绝不静默放行。
 #
-# 快检跑这四道（都是秒级，覆盖「关卡 + 跨内容 + 结构」）：
+# 快检跑这几道（都是秒级，覆盖「关卡 + 跨内容 + 结构 + 编译前结构」）：
 #   1. test-level-guard.js        关卡指纹 / 依赖闭集 / 密封沙箱
 #   2. test-all-150.js            150 关逐关实战打通
 #   3. test-content-consistency.js 跨内容一致性（术语 / 数量 / 悬空引用 / 两端分叉）
 #   4. validate.js                小程序结构与契约门禁
+#   5. test-wxml-lint.js          WXML/WXSS 结构（标签闭合 / wx:else 相邻 / 绑定方法 / 花括号）
 # 慢的全部放 pre-push（体验版端到端 ≈80s）。
 
 set -e
@@ -56,14 +57,19 @@ run() {
   fi
 }
 
-echo "── 提交前快检（关卡 + 跨内容 + 结构 + 图片出处 + 支付/广告配置）──"
+echo "── 提交前快检（关卡 + 跨内容 + 结构 + 图片出处 + 支付/广告配置与运行链路）──"
 run "关卡护栏（指纹/隔离/密封沙箱）" scripts/test-level-guard.js
 run "150 关全量打通"                 scripts/test-all-150.js
 run "跨内容一致性"                   scripts/test-content-consistency.js
 run "结构与契约门禁"                 scripts/validate.js
+run "WXML/WXSS 结构（编译前拦截）"   scripts/test-wxml-lint.js
 run "场景图出处（版权）"             scripts/test-photo-provenance.js
 run "虚拟支付配置（密钥/域名/道具）" scripts/check-pay-config.js
 run "广告位配置（ID/类型/复用）"     scripts/check-ads-config.js
+run "广告运行链路（D156）"          scripts/test-ad-runtime.js
+# 2026-11-08：门禁自己也要被验 —— 31 项变异必须全红（约 12s）。
+# 不挂进来，「把判据改松」这件事就没有任何拦截点。
+run "广告门禁变异（防判据被改松）" scripts/test-ad-runtime-mutation.js
 rm -f /tmp/gate-$$.log
 
 if [ "$fail" -ne 0 ]; then

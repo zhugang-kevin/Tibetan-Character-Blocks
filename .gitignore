@@ -29,3 +29,26 @@ server/.env
 
 # 上传密钥（后台生成，等同密码，绝不入库）
 private.*.key
+
+# ─── 密钥与证书（2026-10-23 新增）───
+# 真实密钥文件绝不入库；仓库里只保留 docs/deploy/env.example 模板
+*.env
+api.env
+!*.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+# 身份证/执照等备案材料
+docs/备案材料/
+*-身份证*.jpg
+*-营业执照*.jpg
+
+# ─── 生成物（2026-11-09）───
+# 截图 / 通关报告 / 抓图缓存 / 质量队列都是**跑出来的**，不是源码。
+# 合计约 68MB，进库只会让 clone 变慢、diff 变噪音；需要时由脚本重新生成。
+docs/screenshots/
+docs/play-150/
+.workbuddy/data/
+.workbuddy/quality/
+

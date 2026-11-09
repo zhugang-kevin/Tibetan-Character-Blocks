@@ -145,7 +145,9 @@ chk(!tight.length, '150/150 关的步数预算都够打完', tight.slice(0, 3).m
 const margins = results.filter(function (x) { return x.r.ok; }).map(function (x) {
   return { id: 'L' + x.lv + '-' + x.st, need: x.r.steps, budget: x.r.budget, m: x.r.budget / x.r.steps };
 }).sort(function (a, b) { return a.m - b.m; });
-chk(margins.length === 150 && margins[0].m >= 2, '最紧的一关也有 ≥2 倍步数余量',
+// D151：步数预算 2.5× → 1.8×（实玩挑战感过低）。这里守的是「不出现打不过的关」，
+//   下限取 1.5× —— 1.8× 是设计值，ceil 取整后最紧的一关可能略高于 1.8。
+chk(margins.length === 150 && margins[0].m >= 1.5, '最紧的一关也有 ≥1.5 倍步数余量',
   margins.slice(0, 3).map(function (x) { return x.id + '（余量 ' + x.m.toFixed(2) + ' 倍）'; }).join('、'));
 
 /* ================= ⑥ 解锁链推演 ================= */

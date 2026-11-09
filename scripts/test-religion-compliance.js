@@ -94,8 +94,7 @@ console.log('[1. 禁词扫描（16 词 x 8 文件）]');
 var BANNED = ['开光', '加持', '高僧', '活佛', '功德', '消灾', '辟邪', '头香',
   '供佛', '礼佛', '佛前', '寺出品', '寺院监制', '寺庙监制', '寺院出品', '寺庙出品'];
 var FILES = ['data/goods.js', 'utils/payment.js', 'pages/gift/gift.wxml',
-  'pages/benefits/benefits.js', 'data/merchants.js', 'data/incense.js',
-  'data/shop-goods.js', 'pages/shop/shop.js'];
+  'pages/benefits/benefits.js', 'data/merchants.js', 'data/incense.js'];
 var hits = [];
 FILES.forEach(function (f) {
   var src = strip(stripCompliance(read(f)));
@@ -494,121 +493,30 @@ if (!mon) {
   }
 }
 
-// ---------- 12. 实物商品事实源（D132）----------
-// data/shop-goods.js 是实物商品的唯一事实源。这一节守三件事：
-//   ① 出处与规格必填（不许凭空造商品 —— 是 §66「不卖空气」在实物线上的延伸）
-//   ② 售价必须高于成本（卖一单亏一单的商品不许上架；cost 只用于内部核算）
-//   ③ 商品文案不得出现路线禁用语（非遗 / 手工 / 古法）+ 禁词 + 功效（由 §1/§3 已扫全文件，
-//      这里再按条扫 highlights 与 spec，防止只改一处）
-console.log('[12. 实物商品事实源（D132）]');
-var SHOP = 'data/shop-goods.js';
-if (!exists(SHOP)) {
-  err('缺 ' + SHOP + ' —— 实物商品必须有唯一事实源（价格不许散落在页面里）');
-} else {
-  var sg = null;
-  try {
-    sg = eval('(' + read(SHOP).replace(/^[\s\S]*?module\.exports\s*=\s*/, '').replace(/;\s*$/, '') + ')');
-  } catch (e) { sg = null; }
-  if (!sg || !sg.items || !sg.items.length) {
-    err(SHOP + ' 解析不出来或没有商品');
-  } else {
-    var bad2 = [];
-    sg.items.forEach(function (g) {
-      ['id', 'name', 'spec', 'origin', 'standard', 'source'].forEach(function (k) {
-        if (!String(g[k] || '').trim()) bad2.push(g.id + ' 缺 ' + k);
-      });
-      if (!(g.price > 0)) bad2.push(g.id + ' 售价不合法：' + g.price);
-      if (!(g.cost > 0)) bad2.push(g.id + ' 成本不合法：' + g.cost);
-      else if (g.price <= g.cost) bad2.push(g.id + ' 售价 ¥' + g.price + ' ≤ 成本 ¥' + g.cost + '（卖一单亏一单）');
-      // ⚠️ highlights 现在是「对象 + claim」结构（D133）。必须取 .text 再拼，
-      //   否则对象会被拼成 "[object Object]" → 禁用语扫描静默变成假绿。
-      var hlText = (g.highlights || []).map(function (h) {
-        return typeof h === 'string' ? h : String(h && h.text || '');
-      });
-      var all = [g.name, g.spec, g.form, g.origin, g.standard, g.category, g.sellerNote]
-        .concat(hlText).join(' ');
-      var ctS = sg.craftType || (inc && inc.selling && inc.selling.craftType);
-      var hb = routeHits(all, ctS);
-      if (hb.length) bad2.push(g.id + ' 文案含当前路线禁用语：' + hb.join('、'));
-    });
-    if (!bad2.length) ok('实物商品事实源合规（' + sg.items.length + ' 件：出处/规格/标准号齐全、售价高于成本、无禁用语）');
-    else err(SHOP + '：' + bad2.join('；'));
-  }
-  // 页面不得写死价格（价格唯一事实源纪律）
-  //   js 侧：price/cost 直接赋数字；
-  //   wxml 侧：¥ 后紧跟数字、或出现两位小数的金额字面量。
-  //   ⚠️ 只扫 js 是不够的 —— 实测变异：把 ¥15 写进 shop.wxml，只扫 js 的门禁**全绿放行**。
-  var shopPageSrc = read('pages/shop/shop.js');
-  if (!shopPageSrc) err('缺 pages/shop/shop.js');
-  else if (/\b(price|cost)\s*[:=]\s*\d/.test(shopPageSrc.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '')))
-    err('pages/shop/shop.js 里写死了价格数字 —— 价格只准读 data/shop-goods.js');
-  else ok('商城页脚本没有写死价格（只读唯一事实源）');
-  var shopWxmlSrc = read('pages/shop/shop.wxml');
-  if (!shopWxmlSrc) err('缺 pages/shop/shop.wxml');
-  else {
-    var hardPrice = [];
-    if (/¥\s*\d/.test(shopWxmlSrc)) hardPrice.push('¥ 后直接跟数字');
-    if (/\d+\.\d{2}/.test(shopWxmlSrc)) hardPrice.push('出现两位小数的金额字面量');
-    if (hardPrice.length) err('pages/shop/shop.wxml 里写死了价格（' + hardPrice.join('、') + '）—— 价格只准读 data/shop-goods.js');
-    else ok('商城页模板没有写死价格（¥ 只接 {{item.price}}）');
-  }
-  // 成本不得下发页面渲染
-  if (shopWxmlSrc && shopWxmlSrc.indexOf('cost') > -1) err('商城页模板渲染了 cost（成本）字段 —— 成本只用于内部核算');
-  else ok('商城页未下发成本字段（cost 只走 incense-pricing.js 内部核算）');
+// ---------- 12. 实物销售已放弃（D147，2026-10-23）----------
+// 用户 2026-10-23：「我们已经放弃实物销售」。
+//   本节从「守商品事实源」改为**反向守**：实物商城与商品事实源不得再出现。
+//   反向门禁比删节更可靠：将来「顺手把商城加回来」会立刻翻红，而不是没人拦。
+console.log('[12. 实物销售已放弃（D147）]');
+var shopArtifacts = ['pages/shop/shop.js', 'pages/shop/shop.wxml', 'pages/shop/shop.wxss',
+  'pages/shop/shop.json', 'data/shop-goods.js'];
+var stillThere = shopArtifacts.filter(exists);
+if (!stillThere.length) ok('实物商城已彻底移除（' + shopArtifacts.length + ' 个文件均不存在）');
+else err('实物销售已放弃，但仍在仓库里：' + stillThere.join('、') + ' —— 请删除，避免被重新接入');
 
-  // ---------- 13. 内容定稿台账（D133）----------
-  //   用户 2026-10-17：「需要把所有的内容都确定好，确保没有任何的问题，确保没有错误」。
-  //   光写文档拦不住"我下次说都核实过了" —— 所以把每个字段的**核实状态**放进数据源，
-  //   由门禁逐条查。四态：verified（必须有出处+日期）/ user（必须有日期）/
-  //   pending / missing（必须写明缺什么）。
-  //   🔴 最硬的一条：**只要还有 pending/missing，purchaseUrl 必须留空** ——
-  //      不许带着未核实的内容开通收银台（那是把风险直接推给消费者）。
-  var CLAIM_STATES = { verified: 1, user: 1, pending: 1, missing: 1 };
-  var openClaims = [], badClaims = [];
-  sg.items.forEach(function (g) {
-    var cl = g.claims;
-    if (!cl || !Object.keys(cl).length) {
-      badClaims.push(g.id + ' 没有内容定稿台账（claims）—— 页面上的每句话都必须有核实状态');
-      return;
-    }
-    Object.keys(cl).forEach(function (k) {
-      var c = cl[k] || {};
-      var st = c.status;
-      if (!CLAIM_STATES[st]) {
-        badClaims.push(g.id + '.' + k + ' 的 status 不合法：' + (st || '空')
-          + '（只能是 verified / user / pending / missing）');
-        return;
-      }
-      if (st === 'verified') {
-        if (!String(c.source || '').trim()) badClaims.push(g.id + '.' + k + ' 标了 verified 却没有 source（出处）—— 不许口头核实');
-        if (!String(c.verifiedAt || '').trim()) badClaims.push(g.id + '.' + k + ' 标了 verified 却没有 verifiedAt（核实日期）');
-      } else if (st === 'user') {
-        if (!String(c.decidedAt || '').trim()) badClaims.push(g.id + '.' + k + ' 标了 user 却没有 decidedAt（谁/哪天给的）');
-      } else {
-        if (!String(c.need || '').trim()) badClaims.push(g.id + '.' + k + ' 是 ' + st + ' 却没写 need（缺什么才能核实）');
-        openClaims.push(g.id + '.' + k);
-      }
-    });
-    // 亮点里引用的 claim key 必须真实存在（写错了 → 页面永远隐藏，且没人知道为什么）
-    (g.highlights || []).forEach(function (h, i) {
-      if (typeof h === 'string' || !h.claim) return;
-      if (!cl[h.claim]) badClaims.push(g.id + '.highlights[' + i + '] 引用了不存在的 claim：' + h.claim);
-    });
-  });
-  if (badClaims.length) err('内容定稿台账有问题：' + badClaims.join('；'));
-  else ok('内容定稿台账格式合规（每句都带核实状态；verified 必有出处+日期）');
+var idxWxml2 = read('pages/index/index.wxml');
+var idxJs2 = read('pages/index/index.js');
+var shopRefs = [];
+if (idxWxml2.indexOf('openShop') > -1) shopRefs.push('index.wxml:openShop');
+if (idxWxml2.indexOf("panel === 'shop'") > -1) shopRefs.push('index.wxml:panel shop');
+if (idxWxml2.indexOf('data-panel="shop"') > -1) shopRefs.push('index.wxml:data-panel shop');
+if (idxJs2.indexOf('openShop') > -1) shopRefs.push('index.js:openShop');
+if (idxJs2.indexOf('/pages/shop/shop') > -1) shopRefs.push('index.js:/pages/shop/shop');
+if (!shopRefs.length) ok('首页已无实物商城入口');
+else err('首页仍有实物商城入口：' + shopRefs.join('、'));
 
-  if (openClaims.length) {
-    if (String(sg.purchaseUrl || '').trim()) {
-      err('还有 ' + openClaims.length + ' 项内容未定稿（' + openClaims.join('、') + '）'
-        + '，但 purchaseUrl 已填 —— 带着未核实的内容开通收银台 = 把风险直接推给消费者');
-    } else {
-      ok('未定稿项 ' + openClaims.length + ' 个（' + openClaims.join('、') + '）→ purchaseUrl 保持留空，与之一致 ✓');
-    }
-  } else {
-    ok('内容全部定稿（0 个未定稿项）');
-  }
-}
+if (read('app.json').indexOf('pages/shop/shop') === -1) ok('app.json 未注册实物商城页');
+else err('app.json 仍注册 pages/shop/shop —— 实物销售已放弃，请移除');
 
 console.log('');
 console.log('通过: ' + pass + ' | 失败: ' + fail);

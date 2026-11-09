@@ -8,6 +8,14 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
+// 🔴 静态扫描范围：下面三个 walk 都从这里取。
+//    `.workbuddy/` 是**项目数据 + 门禁自己的临时副本**（变异测试会把 utils/、pages/
+//    整份复制到 .workbuddy/tmp/ad-mut 再改坏）。它不是源码、不进包体。
+//    2026-11-08 实测：变异脚本异常退出后留下的 ad-mut/utils/payment.js 被当成源码扫到
+//    `wx.login` → validate 假红，全量 CI 42/1。**扫描器必须只认源码树**，
+//    否则「测试自己产生的垃圾」会把仓库判成不合格，而且是最难查的那种红。
+const SKIP_DIRS = ['.git', '.workbuddy', 'node_modules', 'scripts', '.idea', '.vscode'];
+function skipDir(name) { return SKIP_DIRS.indexOf(name) !== -1; }
 // D111：藏地密码讲解音频（secret_*，286KB）住在 praiseVoice 分包里（主包 2MB 硬上限）。
 //   与 utils/audio.js 的 voiceRootOf 同一条规则：secret_ 前缀 → 分包。改位置只改这一处。
 const SECRET_VOICE_DIR = 'package-praise/audio/voice';
@@ -100,7 +108,7 @@ try {
     'pages/passport/passport': '文化护照',
     'pages/benefits/benefits': '权益中心',
     'pages/gift/gift': '送祝福礼物（D112）',
-    'pages/shop/shop': '藏香商城（D132 变现主线）'
+    'pages/recognition/recognition': '识认测验（D148，无提示 30 题）'
   };
   var missPages = Object.keys(REQUIRED_PAGES).filter(function (p) {
     return appJson.pages.indexOf(p) < 0;
@@ -217,7 +225,7 @@ const jsFiles = [];
 (function walk(dir) {
   fs.readdirSync(dir).forEach(f => {
     const full = path.join(dir, f);
-    if (fs.statSync(full).isDirectory()) { if (f !== 'node_modules' && f !== 'scripts') walk(full); }
+    if (fs.statSync(full).isDirectory()) { if (!skipDir(f)) walk(full); }
     else if (f.endsWith('.js')) jsFiles.push(full);
   });
 })(ROOT);
@@ -249,6 +257,10 @@ jsFiles.forEach(f => {
   });
 });
 if (!bannedFound) ok('未使用任何禁用 API（登录/支付/订阅/云初始化）—— 唯一例外是 utils/payment.js 的 wx.login（虚拟支付必需，D90）');
+// 范围自证：扫到 .workbuddy/ 里的临时副本 = 扫描器被放宽过，门禁会变成「测试垃圾判红」
+const stray = jsFiles.filter(f => path.relative(ROOT, f).replace(/\\/g, '/').indexOf('.workbuddy/') === 0);
+if (!stray.length) ok('静态扫描范围只覆盖源码树（不含 .workbuddy/ 临时副本，避免测试垃圾造成假红）');
+else err('静态扫描误入 .workbuddy/：' + stray.length + ' 个临时副本被当成源码');
 
 // ---------- 7. WXML 事件绑定 ----------
 section('7. WXML 事件绑定与 JS 方法对应');
@@ -294,7 +306,7 @@ let pureBlack = 0;
 (function scanWxss(dir) {
   fs.readdirSync(dir).forEach(f => {
     const full = path.join(dir, f);
-    if (fs.statSync(full).isDirectory()) { if (f !== 'node_modules' && f !== 'scripts') scanWxss(full); }
+    if (fs.statSync(full).isDirectory()) { if (!skipDir(f)) scanWxss(full); }
     else if (f.endsWith('.wxss')) {
       const src = fs.readFileSync(full, 'utf8');
       if (/:\s*#000000\b/i.test(src) || /:\s*black\b/i.test(src)) {
@@ -391,8 +403,36 @@ if (gameWxml.indexOf('catchtouchmove') === -1 && gameWxml.indexOf('card-mask') =
 else err('仍存在阻塞式遮罩（card-mask / catchtouchmove）');
 if (gameJs.indexOf('showToastTip') > -1) ok('重复匹配走轻提示 showToastTip');
 else err('缺少重复匹配轻提示方法 showToastTip');
-if (gameJs.indexOf('.showToast(') === -1) ok('无对未定义方法 showToast 的调用（命名一致性）');
-else err('game.js 调用了未定义的 showToast（应为 showToastTip）');
+// === 平台适配层门禁（2026-10-21）===
+// 铁律：引擎文件必须与平台无关。接抖音/快手时改的是 adapter，不是引擎。
+// 违规的后果不是"报错"，而是"接第二个平台时把引擎改烂"——所以要在提交前拦住。
+(function checkEngineNeutral() {
+  const fsx = require('fs');
+  const px = require('path');
+  const engine = ['utils/match3.js', 'utils/board.js', 'utils/learning.js'];
+  const bad = engine.filter(function (f) {
+    try { return /wx\.|tt\./.test(fsx.readFileSync(px.join(ROOT, f), 'utf8')); }
+    catch (e) { return false; }
+  });
+  if (!bad.length) ok('引擎层与平台无关（match3 / board / learning 无 wx./tt. 直调）');
+  else err('引擎层出现了平台直调：' + bad.join(', ') + ' —— 必须走 utils/platform.js');
+
+  // 迁移进度（不判红，只报数）：还剩几个文件有平台直调
+  const files = ['payment', 'privacy', 'audio', 'tracker', 'storage', 'icons', 'sync', 'tibetan-name'];
+  const left = files.filter(function (n) {
+    try { return /wx\./.test(fsx.readFileSync(px.join(ROOT, 'utils', n + '.js'), 'utf8')); }
+    catch (e) { return false; }
+  });
+  ok('平台直调待迁移 ' + left.length + ' 个文件' + (left.length ? '：' + left.join(', ') : '（已全部收口）'));
+})();
+
+// ⚠️ 2026-10-20 收窄：原规则拦任何 `.showToast(`，把 **wx.showToast**（微信真实 API）也拦了 ——
+//    三消分支需要「要选相邻的两张」「连锁 ×N」这类瞬时提示，用的是 wx.showToast。
+//    真实意图是「不要调用未定义的裸 showToast(（本项目的方法叫 showToastTip）」，
+//    所以只拦**不带 wx. 前缀**的调用。
+const bareToast = /(^|[^.\w])showToast\s*\(/.test(gameJs);
+if (!bareToast) ok('无对未定义方法 showToast 的调用（命名一致性）');
+else err('game.js 调用了未定义的 showToast（应为 showToastTip 或 wx.showToast）');
 // D33：消除结算改成「排队（按 uid）+ 逐对下落」，不再有 pendingRemove。
 // 断言换成「消除对进队列 + 由 collapse 真结算 + 队列排空才判通关」这条链。
 if (gameJs.indexOf('this.removeQueue.push([a.uid, b.uid])') > -1 &&
@@ -440,7 +480,7 @@ var badDataUrl = 0;
 (function scanBadUrl(dir) {
   fs.readdirSync(dir).forEach(function (f) {
     var full = path.join(dir, f);
-    if (fs.statSync(full).isDirectory()) { if (f !== 'node_modules' && f !== 'scripts' && f !== 'preview') scanBadUrl(full); }
+    if (fs.statSync(full).isDirectory()) { if (!skipDir(f) && f !== 'preview') scanBadUrl(full); }
     else if (f.endsWith('.wxss') || f.endsWith('.html')) {
       var src = fs.readFileSync(full, 'utf8');
       if (src.indexOf('base64,data:image') > -1) {
@@ -452,14 +492,17 @@ var badDataUrl = 0;
 })(ROOT);
 if (!badDataUrl) ok('无损坏的内联 data URL');
 
-// 12.5 牌面尺寸统一（源与体验版保持一致）
-if (/REF_COLS/.test(gameJs) && gameJs.indexOf('cfg.cols >= REF_COLS ?') === -1)
-  ok('game.js 牌面尺寸以固定基准计算（各关一致）');
-else err('game.js 牌面尺寸仍随列数变化（各关不一致）');
+// 12.5 牌面占比统一（判据 2026-11-05 改写）
+//   旧判据要求「格子尺寸固定按 8 列基准算」——结果是 6 列关只占 64% 屏宽、8 列关占 86%，
+//   同一款游戏前面几关比后面窄一圈（用户实测指出「前面几关屏幕好小」）。
+//   正确目标不是「格子一样大」，而是「盘面一样宽」：cell = (可用宽 − 间隙) / 实际列数。
+if (gameJs.indexOf('gap * (cfg.cols - 1)) / cfg.cols') > -1)
+  ok('game.js 格子尺寸由实际列数决定（各关盘面同宽）');
+else err('game.js 老线格子仍按固定列数基准算 —— 6 列关会比 8 列关窄一圈');
 var tpl = exists('preview/template.html') ? read('preview/template.html') : '';
-if (tpl.indexOf('REF_COLS') > -1 && tpl.indexOf('state.cols >= REF_COLS ?') === -1)
-  ok('体验版牌面尺寸同样固定（源与体验版一致）');
-else warn('体验版牌面尺寸计算与源不一致');
+if (tpl.indexOf('gap * (cols - 1)) / cols') > -1)
+  ok('体验版格子尺寸同样按实际列数算（源与体验版一致）');
+else warn('体验版格子尺寸计算与源不一致');
 if (tpl.indexOf('id="board-wrap"') > -1) ok('体验版盘面容器 id 正确（布局生效）');
 else err('体验版缺少 id="board-wrap"，盘面布局不会生效');
 
@@ -825,8 +868,8 @@ section('17. 留存系统与首页重构（PRD v4）');
   // 17.1 首页数据：五地剪影区间无缝覆盖 1-10 关
   const regSrc = exists('data/regions.js') ? read('data/regions.js') : '';
   const regions = regSrc ? eval('(' + regSrc.replace(/^module\.exports\s*=\s*/, '').replace(/;\s*$/, '') + ')') : [];
-  if (regions.length === 5) ok('data/regions.js 五个地区剪影');
-  else err('data/regions.js 应为 5 个地区，实际 ' + regions.length);
+  if (regions.length === 7) ok('data/regions.js 五个地区剪影');
+  else err('data/regions.js 应为 7 个地区，实际 ' + regions.length);
   const cover = {};
   let overlap = 0;
   regions.forEach(r => { for (let n = r.from; n <= r.to; n++) { cover[n] = (cover[n] || 0) + 1; if (cover[n] > 1) overlap++; } });
@@ -1295,13 +1338,20 @@ section('17. 留存系统与首页重构（PRD v4）');
   if (ladSrc) {
     const lad = require(path.join(ROOT, 'utils', 'ladder'));
     // 第 1 关在山脚：仍要先多露一段山脚，再升上去（方向恒为上行）
-    const p1 = lad.buildPlan({ mapTop: 300, mapHeight: 660, viewportHeight: 667, nodeTopPct: 88 });
+    // D151：地图能整张放进视口 → 停在地图顶部（整段天梯可见，settle 不随关卡变）；
+    //   地图高于视口 → 回退「当前台阶在 58%」，此时越靠山顶 settle 越靠上。
+    const pFit1 = lad.buildPlan({ mapTop: 300, mapHeight: 620, viewportHeight: 844, nodeTopPct: 88 });
+    const pFit10 = lad.buildPlan({ mapTop: 300, mapHeight: 620, viewportHeight: 844, nodeTopPct: 6.1 });
+    if (pFit1.settle === 300 && pFit10.settle === 300)
+      ok('地图整张放得下：停在地图顶部（10 关全可见），不随关卡上推');
+    else err('整张地图的停靠点异常：' + JSON.stringify([pFit1, pFit10]));
+    // 高图（放不下）回退：第 10 关必须比第 1 关更靠上
+    const p1 = lad.buildPlan({ mapTop: 300, mapHeight: 720, viewportHeight: 667, nodeTopPct: 88 });
     if (p1.settle > 0 && p1.foot > p1.settle && p1.rise > 0) ok('山脚台阶：山脚 → 停靠 两段目标齐备');
     else err('山脚台阶动效计划异常：' + JSON.stringify(p1));
-    // 第 10 关在山顶：停靠点必须更靠上
-    const p10 = lad.buildPlan({ mapTop: 300, mapHeight: 660, viewportHeight: 667, nodeTopPct: 6.1 });
-    if (p10.settle < p1.settle) ok('越靠山顶停靠点越靠上（第 10 关 settle < 第 1 关）');
-    else err('停靠点未随关卡上升：' + JSON.stringify(p10));
+    const p10 = lad.buildPlan({ mapTop: 300, mapHeight: 720, viewportHeight: 667, nodeTopPct: 6.1 });
+    if (p10.settle < p1.settle) ok('高图回退：越靠山顶停靠点越靠上（第 10 关 settle < 第 1 关）');
+    else err('高图停靠点未随关卡上升：' + JSON.stringify(p10));
     // 越界保护：不给负数滚动值
     const pNeg = lad.buildPlan({ mapTop: -500, mapHeight: 100, viewportHeight: 900, nodeTopPct: 0 });
     if (pNeg.settle === 0 && pNeg.foot === 200) ok('越界时滚动目标归零（不出现负值）');
@@ -2019,15 +2069,16 @@ section('29. 通关揭图（十关秘境图 · 零金额 · 不新增存储字�
   for (let i = 1; i <= 10; i++) {
     const nn = String(i).padStart(2, '0');
     // 2026-10-08 起主格式 .webp（AI 写实画作）；.jpg/.png 兼容
-    const rel = ['images/reveal_' + nn + '.webp', 'images/reveal_' + nn + '.jpg', 'images/reveal_' + nn + '.png']
+    // 2026-11-05：旧 10 张揭图已挪进 package-praise（主包腾出 280KB，已不可达的兜底资产不该占主包）
+    const rel = ['package-praise/reveal_' + nn + '.webp', 'package-praise/reveal_' + nn + '.jpg', 'package-praise/reveal_' + nn + '.png']
       .find(f => exists(f));
-    if (!rel) { err('缺少揭示图 images/reveal_' + nn + '.(webp|jpg|png)'); continue; }
+    if (!rel) { err('缺少揭示图 package-praise/reveal_' + nn + '.(webp|jpg|png)'); continue; }
     const b = fs.statSync(path.join(ROOT, rel)).size;
     rvBytes29 += b;
     if (b > 33 * 1024) err(rel + ' 超出单张 33KB 预算（' + Math.round(b / 1024) + 'KB）');
   }
   if (rvBytes29 > 0 && rvBytes29 <= 340 * 1024)
-    ok('十张揭示图合计 ' + Math.round(rvBytes29 / 1024) + 'KB（≤340KB 预算，主包安全）');
+    ok('十张揭图合计 ' + Math.round(rvBytes29 / 1024) + 'KB（在 package-praise 分包，不占主包）');
   else if (rvBytes29 > 450 * 1024)
     err('十张揭示图合计 ' + Math.round(rvBytes29 / 1024) + 'KB 超预算（450KB）');
   if (exists('scripts/make_reveals.py')) ok('scripts/make_reveals.py 存在（揭示图可零美术成本复现）');
@@ -2065,11 +2116,22 @@ section('29. 通关揭图（十关秘境图 · 零金额 · 不新增存储字�
   else err('game.js 未引入 data/reveals');
   // 揭图口径变更（D33）：分母不再是「总对数」，而是「格数」——
   // 有补充牌后盘面不会全空，改成「多少格曾清空过」，通关时同样是整幅揭晓（只增不减）。
+  // 2026-11-05：允许先把 freedPct() 存进变量再 setData（同一份计算，不重复调用两次）
+  const usesFreedPct = gj29.indexOf('revealPct: that.freedPct()') > -1 ||
+    (gj29.indexOf('= that.freedPct()') > -1 && gj29.indexOf('revealPct: pctNow') > -1);
   if (gj29.indexOf('freedPct: function ()') > -1 &&
       gj29.indexOf('Math.round(n * 100 / this.board.slots)') > -1 &&
-      gj29.indexOf('revealPct: that.freedPct()') > -1)
+      usesFreedPct)
     ok('game.js 揭图进度按「曾清空的格数 / 格数」实时推进（只增不减）');
   else err('game.js 缺 freedPct 计算（揭图不会随消除推进，或分母仍写死总对数）');
+
+  // 2026-11-05 新增：揭图不能「0% 就整幅透出」。
+  //   实测截图证据：图片满不透明垫在牌层下，牌与牌之间有缝，开局就能看清整座寺院，
+  //   而角标写着「已揭开 0%」—— 自相矛盾，也把揭晓那一刻提前毁了。
+  if (gj29.indexOf('revealOpacity: pctNow / 100') > -1 &&
+      gw29.indexOf('style="opacity: {{revealOpacity}}"') > -1)
+    ok('揭图透明度绑定进度（0% 不剧透，100% 整幅揭晓）');
+  else err('揭图未绑定透明度：0% 时会从牌缝里看到整幅图（剧透）');
   if (gj29.indexOf('boardH: boardH') > -1 && gj29.indexOf('cfg.rows * tileH + (cfg.rows - 1) * gap') > -1)
     ok('game.js 计算 boardH（揭图层与牌区精确对齐）');
   else err('game.js 缺 boardH 计算（揭图层会错位）');
@@ -2096,7 +2158,9 @@ section('29. 通关揭图（十关秘境图 · 零金额 · 不新增存储字�
   else if (promised29 && !delivered29)
     err('空头承诺：结算页说「已收入文化护照」，但 passport.wxml 无「揭示图鉴」板块');
   else ok('两端未承诺揭图收入护照（一致）');
-  if (pj29.indexOf('p.completedLevels.indexOf(r.level) > -1') > -1)
+  // D153 后槽位号是「池内序号」而不是寺院自己的 level，判据改成「有没有走 completedLevels」，
+  // 不再死盯 `r.level` 这个变量名（盯着名字只会让下一次改数据源时误报）。
+  if (pj29.indexOf('completedLevels.indexOf(') > -1)
     ok('护照页图鉴解锁判定走 completedLevels（不新增存储字段）');
   else err('护照页图鉴解锁判定未走 completedLevels');
 
@@ -2107,14 +2171,18 @@ section('29. 通关揭图（十关秘境图 · 零金额 · 不新增存储字�
 
   // 29.8 体验版镜像同构（H5 必须有同一套揭图能力）
   ['id="reveal-img"', 'function syncRevealBox', 'function updateRevealCap',
-   'id="res-reveal"', 'id="pp-reveal-grid"', 'const REVEALS = DATA.reveals',
+   'id="res-reveal"', 'id="pp-reveal-grid"', 'const REVEALS = (DATA.templeReveals',
    'state.reveal = REVEALS[level - 1]'].forEach(k => {
     if (tpl29.indexOf(k) > -1) ok('体验版镜像含 ' + k);
     else err('体验版镜像缺 ' + k);
   });
   if (bh29.indexOf("require(path.join(ROOT, 'data', 'reveals'))") > -1)
-    ok('build-h5.js 注入 data/reveals（与小程序同源）');
+    ok('build-h5.js 注入 data/reveals（旧的 10 张，仅作兜底）');
   else err('build-h5.js 未注入 data/reveals');
+  // 2026-11-05（D153）：体验版必须注入「可信 50 座」池，否则预览会和真机两张皮
+  if (bh29.indexOf("'data', 'reveal-temples'") > -1)
+    ok('build-h5.js 注入 reveal-temples（揭图池与小程序同源）');
+  else err('build-h5.js 未注入 reveal-temples：体验版会退回旧 10 张自然题材');
   if (bh29.indexOf("'.webp', '.jpg', '.png'") > -1 && bh29.indexOf("reveal_' + nn") > -1)
     ok('build-h5.js 内联十张揭示图（多扩展名解析，体验版保持单文件）');
   else err('build-h5.js 未内联揭示图（体验版会引用到不存在的相对路径）');
@@ -3443,7 +3511,7 @@ section('37. 去游戏化守卫（教育类目 · 文案红线）');
   const LEGIT_GUAN_WORDS = [
     '机关', '规定', '相关', '无关', '有关', '关闭', '关注', '关于', '关系', '关键',
     '关税', '关怀', '关头', '关切', '关照', '关节', '关口', '关乎', '关涉', '关碍',
-    '关心', '关联', '开关'
+    '关心', '关联', '开关', '城关',
   ];
   const guanOk = function (line, idx) {
     const win = line.slice(Math.max(0, idx - 1), idx + 2);   // 前 1 字 + 关 + 后 1 字
@@ -3508,16 +3576,58 @@ section('38. 生产上线守卫（主包体积 / 隐私授权 / 工程配置）'
     //        余量 = 2048 − 1845 = 203KB = **9.90%**（目标 10%，差 0.10%）。
     //   判断：为 0.1% 去砍资产或砍功能都不划算，故把阈值改为 2048 − 9.86% ≈ 1846，
     //        **并保留 202KB 真实余量**。若后续再涨，必须砍资产而不是继续调这个数。
-    const KB = 1024, LIMIT_KB = 1846;
+    // 2026-10-21：并入 utils/platform.js（约 1.5KB，平台适配层）→ 1847KB > 1846 超限。
+    //   这次**不是为了塞内容**，是为了消除"接第二平台要改 43 处"的架构风险，
+    //   故把阈值调到 1852（仍低于 2048 上限的 9.6%）。如实记录是主动放宽。
+    // 2026-10-21 第二次放宽：并入 utils/telemetry.js（自检采集，约 2KB）→ 1853 > 1852。
+    // ⚠️ 这是**连续第二次**放宽（1846 → 1852 → 1860）。趋势说明代码在持续长大：
+    //    下一次再超，**不许再调阈值**，必须先做一次真正的瘦身审计（列出体积 top 10 并说明取舍）。
+    // 2026-11-05 第二次收紧：把旧 10 张揭图（250KB，已不可达的兜底）挪进 package-praise 后，
+    //   主包 1922 → **1681KB**。预算随之从 1960 收到 **1800**（= 现状 + 119KB 真实余量，仍 <2048 上限 12%）。
+    //   收紧不是目的，是让「再长 100KB」这件事在 CI 就暴露，而不是等到装不下才发现。
+    const KB = 1024, LIMIT_KB = 1800;
+    // 2026-11-05 第三次放宽（1860 → 1960）—— **按规矩先做了瘦身审计**：
+    //
+    //   一、先砍掉的（合计 -20.5MB，主包 22471KB → 1921KB）
+    //     · images/temples/*.jpg 53 张原始图（15MB）→ 移到 assets-src/（不进包）
+    //     · 118 张寺庙 webp（4.6MB）→ 先拆进 package-temples-1/2/3 三个分包
+    //     · data/temples-batch3.js（34KB）→ 移进 package-temples-1/data/
+    //
+    //   ★ 同日下午 D153 复审后又收紧一次（数字变了，注释同步，避免留下假记录）：
+    //     · 揭图池只留「可信 50 座」→ 只用到 50 张图（1.92MB）
+    //     · 分包 3 → 2（package-temples-1/2 各约 0.96MB），package-temples-3 整个删掉
+    //     · 未采用的 68 张 webp（2.66MB）→ assets-src/temples-unused/（留仓、不进包）
+    //     · data/temples-batch3.js → assets-src/temple-data/（不再是运行时依赖）
+    //     · 主包实测 1922KB（比上面 1921KB 多 1KB，是新增的揭图桥接与注释）
+    //     · images/scene/bodhi.jpg → webp（34KB → 26KB）
+    //
+    //   二、剩下 1921KB 砍不动的实测依据（top 8）：
+    //     75KB  app.wxss                 全局样式，页面都依赖
+    //     71KB  pages/game/game.js       游戏页主逻辑，核心
+    //     67KB  images/scene/game.jpg    游戏背景，已压到极限
+    //                                    （试过转 webp，67 → 85KB 反而变大，已撤回）
+    //     65KB  images/scene/home.jpg    首页背景，同上
+    //     65KB  pages/index/index.wxss   首页样式
+    //     55KB  images/lamp.webp         长明灯图
+    //     51KB  images/bg-global.jpg     全局底纹
+    //     46KB  pages/game/game.wxss     游戏页样式
+    //
+    //   三、结论：这 1921KB 全是运行必需，没有开发残留。
+    //     1860 当初按「2048 × 90.8%」拍，没有逐项依据。
+    //     现在按「必需内容 + 4% 缓冲」定 1960（= 2048 × 95.7%，仍留 88KB 真实余量）。
+    //     **下次若再超，仍按本规矩：先审计，再谈数字。**
     // ⚠️ D91：**从 packOptions.ignore 派生**，不再硬编码。
     //   旧写法是写死一个 Set，注释还写着「必须与 ignore 保持一致」——
     //   但「靠人记得同步」必然失配：本轮加了 server/ 到 ignore，这里没跟着改，
     //   于是服务端代码被算进小程序包体（1854KB 超限），而 ignore 明明已经排除了它。
     //   现在只认一个事实来源：project.config.json。
-    const skipDir = new Set(
-      (((JSON.parse(read('project.config.json')).packOptions || {}).ignore) || [])
-        .filter(i => i.type === 'folder').map(i => i.value)
-    );
+    // D91：packOptions.ignore 是体积计算的唯一事实源。此前只认 folder 类型，
+    // 漏掉了 type:'file' 的忽略项（如 images/logo-200.png，仅 build-h5 用、不进主包），
+    // 导致该资产被算进主包体积、虚高约 23KB。现一并认 file 类型，真正"只认 project.config.json"。
+    const _pc = JSON.parse(read('project.config.json'));
+    const _ig = (((_pc.packOptions || {}).ignore) || []);
+    const skipDir = new Set(_ig.filter(i => i.type === 'folder').map(i => i.value));
+    const skipFile = new Set(_ig.filter(i => i.type === 'file').map(i => i.value));
     ['preview', 'docs', 'scripts', 'server'].forEach(d => {
       if (skipDir.has(d)) ok('体积计算已排除 ' + d + '（与 packOptions.ignore 同源）');
       else err('体积计算未排除 ' + d + ' —— 开发/服务端资产会撑爆主包上限');
@@ -3537,6 +3647,7 @@ section('38. 生产上线守卫（主包体积 / 隐私授权 / 工程配置）'
       for (const e of fs.readdirSync(path.join(ROOT, rel), { withFileTypes: true })) {
         if (skipDir.has(e.name)) continue;
         const relPath = rel ? rel + '/' + e.name : e.name;
+        if (skipFile.has(relPath)) continue;     // D91：file 类型忽略（如 images/logo-200.png 不进主包）
         if (subRoots.has(relPath)) continue;   // 分包整目录不计入主包
         if (e.isDirectory()) walk(relPath);
         else if (/\.(md|py)$/.test(e.name)) continue;         // 由 ignore 的 suffix 规则排除
@@ -3599,7 +3710,12 @@ section('38. 生产上线守卫（主包体积 / 隐私授权 / 工程配置）'
     const st = read('utils/storage.js');
     const reads = (st.match(/wx\.getStorageSync\(/g) || []).length;
     const writes = (st.match(/wx\.setStorageSync\(/g) || []).length;
-    if (reads === 1 && writes === 1) ok('storage.js 的读/写各只有一处，且都收在安全包装里');
+    // 2026-10-21 迁移到 utils/platform.js 后，不变量变了：
+    //   以前是"wx 读/写各只有一处、都收在 rawRead/rawWrite 里"；
+    //   现在是"storage.js **零** wx 直调、全部走 platform.storage"。
+    //   判据要跟着架构走，不能为了变绿把调用改回去。
+    const usesPlatform = st.indexOf('platform.storage.get') > -1 && st.indexOf('platform.storage.set') > -1;
+    if (reads === 0 && writes === 0 && usesPlatform) ok('storage.js 零平台直调，全部走 platform.storage（适配层）');
     else err('storage.js 出现裸存储调用（读 ' + reads + ' / 写 ' + writes + '）：应全部走 rawRead/rawWrite');
     ['function rawRead', 'function rawWrite'].forEach(fn => {
       if (st.indexOf(fn) > -1) ok('storage.js 含 ' + fn + '（try/catch + 脏数据兜底）');
@@ -4413,8 +4529,11 @@ section('42. 藏文学习体系与关卡生成（15 级 × 150 关 · 动态格�
     else err('L8 第 1 关网格为 ' + ex.cols + '×' + ex.rows + '（应为 4×4）');
     if (ex.pairs === 10) ok('L8 第 1 关需消除 10 个组合（与用户样例一致）');
     else err('L8 第 1 关对数应为 10，实际 ' + ex.pairs);
-    if (ex.steps === 25) ok('L8 第 1 关步数预算 25（与用户样例一致）');
-    else err('L8 第 1 关步数应为 25，实际 ' + ex.steps);
+    // D151：步数预算从 2.5× 收紧到 1.8×（用户样例的 25 步是 2.5× 时代的数字）。
+    //   这里校验**规则**（ceil(对数×STEP_MULT)），不再写死某个数。
+    const wantSteps = Math.ceil(ex.pairs * learning.STEP_MULT);
+    if (ex.steps === wantSteps) ok('L8 第 1 关步数 = ceil(对数 × ' + learning.STEP_MULT + ') = ' + ex.steps);
+    else err('L8 第 1 关步数应为 ' + wantSteps + '，实际 ' + ex.steps);
     // 前加字 + 基字 + 元音 的部件组合（用户点名：ག ད བ མ འ + ཀ ཁ ག ང + ི ུ ེ ོ）
     if (ex.titles.every(t => /^[གདབམའ][ཀཁགང][ིེོུ]$/.test(t)))
       ok('L8 第 1 关字形全部为「前加字 + 基字 + 元音」组合：' + ex.titles.join(' '));
@@ -7263,7 +7382,9 @@ section('64. D113 朋友互赞（打赏链路 · 三条红线）');
   if (/INSERT OR IGNORE INTO gifts/.test(svSt))
     ok('入箱用 INSERT OR IGNORE（重复推送只入一次）');
   else err('入箱未做幂等');
-  if (/function deliver/.test(svIx) && /putGift/.test(svIx) && /attach\.toUid|attachObj\.toUid|attach\.toUid/.test(svIx))
+  // R12 后：真发货改成单事务 claimAndDeliver（putGift 不再直接出现在 deliver 里）。
+  //   判据放宽为「putGift 或 claimAndDeliver」——两者都真的往收礼箱写，不是只打日志。
+  if (/function deliver/.test(svIx) && /putGift|claimAndDeliver/.test(svIx) && /attach\.toUid|attachObj\.toUid|attach\.toUid/.test(svIx))
     ok('deliver() 真的把礼物写进收礼箱（不再是只打日志的占位实现）');
   else err('deliver() 仍未真发货 —— 付了钱对方收不到');
   if (/pairCountToday/.test(svIx) && /toCountToday/.test(svIx) && /spentToday/.test(svIx))

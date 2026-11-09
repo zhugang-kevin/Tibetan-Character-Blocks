@@ -115,6 +115,26 @@ chk(mentions150('pages/index/index.wxml') && mentions150('pages/index/index.js')
   '小程序首页能说出 150 课（150 课全景图）');
 chk(mentions150('preview/template.html'), '体验版首页能说出 150 课');
 
+/* ================= E. 去游戏化（服务类目走「工具类」的前提） =================
+ * 为什么单列一条：本项目以「工具 - 效率/学习」类目申报，而审核最常用来驳「类目与内容不符」的
+ * 依据就是**玩家可见文案里的游戏用语**。这不是措辞洁癖，是提审能否通过的直接因素。
+ * 判据：玩家可见串里不得出现 游戏 / 消除 / 闯关 / 挑战 / 掉落 / 竞技 / 排行 / PK。
+ * 允许出现在**注释**里（记录历史），所以先过 stripComments()。 */
+const GAMEY_WORDS = ['游戏', '消除', '闯关', '挑战', '掉落', '竞技', '排行', 'PK'];
+let gamey = [];
+PLAYER_FACING.forEach(function (rel) {
+  if (!exists(rel)) return;
+  const clean = stripComments(read(rel));
+  GAMEY_WORDS.forEach(function (w) {
+    if (clean.indexOf(w) > -1) {
+      const m = clean.match(new RegExp('.{0,12}' + w + '.{0,12}'));
+      gamey.push(rel + '：「' + (m ? m[0].replace(/\s+/g, ' ') : w) + '」');
+    }
+  });
+});
+chk(!gamey.length, '玩家可见文案已去游戏化（无 游戏/消除/闯关/挑战/掉落/竞技/排行/PK）',
+  gamey.slice(0, 6).join(' ｜ '));
+
 /* ================= C. 悬空引用：调用的 API 必须真的存在 ================= */
 const certMod = require(path.join(ROOT, 'utils', 'certificate'));
 const certExports = Object.keys(certMod);

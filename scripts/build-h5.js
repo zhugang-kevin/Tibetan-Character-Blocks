@@ -55,6 +55,8 @@ const DATA = {
   goods: require(path.join(ROOT, 'data', 'goods')),
   // 藏文学习体系（D51）：15 级 × 10 课 = 150 课的课程与格子尺寸表
   learning: require(path.join(ROOT, 'data', 'learning')),
+  // D118：元音符号发音参考（藏文读音补齐）—— 与小程序护照页同源注入，体验版不另写一份
+  vowels: require(path.join(ROOT, 'data', 'vowels')),
   // D111：150 关的**盘面生成结果**由小程序同一份生成器（utils/learning.js）在构建期算好注入。
   //   为什么注入产物而不是把生成器镜像进模板：生成器 250 行、依赖 data/affixes.js 的合法组合表，
   //   镜像一次就多一份会漂移的真相源；而它的输出是纯数据、确定性（同 lv/stage 永远同一张盘），
@@ -104,9 +106,10 @@ const IMAGES = {
 for (let i = 1; i <= 10; i++) {
   const nn = String(i).padStart(2, '0');
   // 扩展名解析：.webp（2026-10-08 起主格式）> .jpg > .png（兼容旧版）
-  const ext = ['.webp', '.jpg', '.png'].find(function (e) { return fs.existsSync(path.join(ROOT, 'images', 'reveal_' + nn + e)); });
-  if (!ext) { console.error('✗ 缺少揭示图 images/reveal_' + nn + '.(webp|jpg|png)'); process.exit(1); }
-  IMAGES['reveal' + nn] = dataUrl('images/reveal_' + nn + ext);
+  // 2026-11-05：旧 10 张揭图已挪到 package-praise（主包腾出 280KB）；H5 仍内联它们做兜底
+  const ext = ['.webp', '.jpg', '.png'].find(function (e) { return fs.existsSync(path.join(ROOT, 'package-praise', 'reveal_' + nn + e)); });
+  if (!ext) { console.error('✗ 缺少揭示图 package-praise/reveal_' + nn + '.(webp|jpg|png)'); process.exit(1); }
+  IMAGES['reveal' + nn] = dataUrl('package-praise/reveal_' + nn + ext);
 }
 // 把揭图路径换成内联 data URL（data/reveals.js 里的 /images/... 是小程序路径）
 (DATA.reveals || []).forEach(function (r, i) {
@@ -114,6 +117,25 @@ for (let i = 1; i <= 10; i++) {
   if (!IMAGES[key]) { console.error('✗ 缺少揭示图 images/reveal_' + String(i + 1).padStart(2, '0')); process.exit(1); }
   r.img = IMAGES[key];
 });
+
+// 2026-11-05（D153）：小程序揭图已换成「可信 50 座寺庙」，H5 必须同源。
+// 之前 H5 用 data/reveals.js 的 10 张自然题材，而真机显示寺庙照片 ——
+// 预览和产品是两张皮，测试还在断言「第 1 关是雪山」，等于守一段已经不在产品里的行为。
+// 这里直接读同一份池子（data/reveal-temples.js），把分包里的图也内联进来
+// （H5 是单文件预览，没有「分包」这个概念）。
+const revealTemples = require(path.join(ROOT, 'data', 'reveal-temples'));
+DATA.templeReveals = revealTemples.displayable().map(function (t, i) {
+  return {
+    level: i + 1,                       // 第 N 关首次出现（护照解锁判定要用）
+    img: dataUrl(String(t.img).replace(/^\//, '')),
+    name: t.name,
+    tibetan: t.tibetan || '',
+    roman: '',
+    desc: [t.county, t.sect, t.founded].filter(Boolean).join(' · ') || '（文献信息待补）',
+    credit: t.imgCredit || ''
+  };
+});
+console.log('  揭图池：' + DATA.templeReveals.length + ' 座寺庙（与小程序同源）');
 
 let html = fs.readFileSync(TEMPLATE, 'utf8');
 
@@ -123,6 +145,55 @@ if (html.indexOf('/*__DATA__*/') === -1 || html.indexOf('/*__IMAGES__*/') === -1
   console.error('✗ 模板缺少 /*__DATA__*/ / /*__IMAGES__*/ / /*__VOICES__*/ / /*__ICON_ART__*/ / /*__PHOTO__*/ 占位符');
   process.exit(1);
 }
+
+// === 三消引擎注入（2026-10-21）===
+// 原则：**H5 不手抄第二份三消逻辑**。把 utils/match3.js 原样包成 module shim 注入，
+// 这样体验版与小程跑的是**同一份实现**，改一处两端同时变。
+// 为什么用 module shim：源文件用的是 `module.exports = {...}` 的 CommonJS 写法，
+// 直接内联会在浏览器里报 module is not defined。
+const MATCH3_SRC = fs.readFileSync(path.join(ROOT, 'utils', 'match3.js'), 'utf8');
+// 2026-10-22 R02：H5 原来只注入 match3.js，而 `createLevelMatch3` 在 board.js 里，
+//   导致产物里 `createLevelMatch3` 出现 0 次 —— 根本建不出三消盘面。
+const BOARD_SRC  = fs.readFileSync(path.join(ROOT, 'utils', 'board.js'), 'utf8');
+const NL = String.fromCharCode(10);
+const MATCH3_SHIM = '(function(){ var module = { exports: {} }; var exports = module.exports;' + NL +
+  MATCH3_SRC + NL + 'return module.exports; })()';
+if (html.indexOf('/*__MATCH3__*/') === -1) {
+  console.error('✗ 模板缺少 /*__MATCH3__*/');
+  process.exit(1);
+}
+// 守卫：占位符缺失时必须显式失败，不能静默产出带 /*__X__*/ 的产物
+if (html.indexOf('/*__BOARD__*/') === -1) {
+  console.error('✗ 模板缺少 /*__BOARD__*/');
+  process.exit(1);
+}
+html = html.replace('/*__MATCH3__*/', 'var MATCH3 = ' + MATCH3_SHIM + ';');
+const BOARD_SHIM = '(function(){ var module = { exports: {} }; var exports = module.exports;' + NL +
+  BOARD_SRC + NL + 'return module.exports; })()';
+html = html.replace('/*__BOARD__*/', 'var BOARD = ' + BOARD_SHIM + ';');
+
+// === Q5 存档契约注入（2026-10-23）===
+// 与 match3/board 同一原则：**两端共用一份** utils/resume.js，不手抄。
+//   否则小程序的校验放宽了、H5 还按旧规则读 → 同一份存档一端能开、一端报坏。
+const RESUME_SRC = fs.readFileSync(path.join(ROOT, 'utils', 'resume.js'), 'utf8');
+if (html.indexOf('/*__RESUME__*/') === -1) {
+  console.error('✗ 模板缺少 /*__RESUME__*/');
+  process.exit(1);
+}
+const RESUME_SHIM = '(function(){ var module = { exports: {} }; var exports = module.exports;' + NL +
+  RESUME_SRC + NL + 'return module.exports; })()';
+html = html.replace('/*__RESUME__*/', 'var RESUME = ' + RESUME_SHIM + ';');
+
+// === Q4 课型/复习规则注入（2026-10-23）===
+// 与 RESUME 同一原则：玩家端与门禁共用 utils/plan.js，不手抄。
+const PLAN_SRC = fs.readFileSync(path.join(ROOT, 'utils', 'plan.js'), 'utf8');
+if (html.indexOf('/*__PLAN__*/') === -1) {
+  console.error('✗ 模板缺少 /*__PLAN__*/');
+  process.exit(1);
+}
+const PLAN_SHIM = '(function(){ var module = { exports: {} }; var exports = module.exports;' + NL +
+  PLAN_SRC + NL + 'return module.exports; })()';
+html = html.replace('/*__PLAN__*/', 'var PLAN = ' + PLAN_SHIM + ';');
 
 html = html.replace('/*__DATA__*/', JSON.stringify(DATA));
 html = html.replace('/*__IMAGES__*/', JSON.stringify(IMAGES));
@@ -309,11 +380,18 @@ if (merchantBad) process.exit(1);
 
 // ---------- 7. 首页内容池一致性抽查（五地剪影 / 日签 / 盲盒 / 道具铺） ----------
 let homeBad = 0;
-if (!DATA.regions || DATA.regions.length !== 5) { console.error('✗ data/regions.js 应为 5 个地区剪影'); homeBad++; }
+if (!DATA.regions || DATA.regions.length < 5) { console.error('✗ data/regions.js 应为 5 个地区剪影'); homeBad++; }
 (DATA.regions || []).forEach(function (r) {
   if (!r.id || !r.name || !r.shape) { console.error('✗ 地区缺少 id/name/shape：' + JSON.stringify(r)); homeBad++; }
-  if (!(r.from >= 1 && r.to <= DATA.levels.length && r.from <= r.to)) {
-    console.error('✗ 地区 ' + r.id + ' 关卡区间非法：' + r.from + '-' + r.to); homeBad++;
+  // 2026-10-21：地区模型分化成两套 ——
+  //   老线剪影：from/to（关卡区间）
+  //   学习线：  learnFrom（起始课次）+ desc
+  // 校验必须两种都接受，否则 chamdo/nagqu 会被判非法、整个 H5 构建中断。
+  const okOld = (r.from >= 1 && r.to <= DATA.levels.length && r.from <= r.to);
+  const okNew = (r.learnFrom >= 1 && r.learnFrom <= DATA.levels.length);
+  if (!okOld && !okNew) {
+    console.error('✗ 地区 ' + r.id + ' 既无合法 from/to，也无合法 learnFrom：' +
+      JSON.stringify({ from: r.from, to: r.to, learnFrom: r.learnFrom })); homeBad++;
   }
 });
 // 五地必须完整覆盖 1-10 关，不能有断档
@@ -364,12 +442,17 @@ if (homeBad) process.exit(1);
 // ---------- 7. 万家灯火数据抽查（纯静态展示数据 + 文化红线） ----------
 const lampSrc = read('data/lamp.js');
 let lampBad = 0;
-if (!(DATA.lamp.total > 0)) { console.error('✗ 万家灯火缺少总数 total'); lampBad++; }
+// 2026-10-21：total 允许 0（表示暂无真实数据），否则假数字是唯一能过门禁的写法
+if (!(DATA.lamp.total >= 0)) { console.error('✗ 万家灯火缺少总数 total'); lampBad++; }
 if (!DATA.lamp.provinces || DATA.lamp.provinces.length !== 5) {
   console.error('✗ 万家灯火应为 5 个地区灯火，实际 ' + ((DATA.lamp.provinces || []).length)); lampBad++;
 }
 (DATA.lamp.provinces || []).forEach(function (p) {
-  if (!p.name || !(p.count > 0)) { console.error('✗ 地区灯火数据非法：' + JSON.stringify(p)); lampBad++; }
+  // 2026-10-21：原来要求 count > 0 —— 这条把「暂无数据」判成非法，
+  //   结果假数据成了唯一能过门禁的写法（数据里原本写着 128456 等编造值）。
+  //   放宽到 >= 0：允许 0 表示「暂无真实数据」。
+  //   代价是下面必须补一条约束：总数为 0 时页面不得出现「共点亮 XX 盏」。
+  if (!p.name || !(p.count >= 0)) { console.error('✗ 地区灯火数据非法：' + JSON.stringify(p)); lampBad++; }
 });
 if (!DATA.lamp.home || !DATA.lamp.home.name) { console.error('✗ 万家灯火缺少家乡行'); lampBad++; }
 if (!(DATA.lamp.lotus && DATA.lamp.lotus.gold > 0 && DATA.lamp.lotus.pink > 0)) {

@@ -53,19 +53,25 @@ function section(t) { console.log('\n[' + t + ']'); }
 /* sink：可选，用来记录 fillText 文本，便于断言「海报上真的画了什么」 */
 function mockCtx(sink) {
   const noop = function () {};
-  return {
+  // 无头环境只做逻辑验证、不校验像素：所有未显式实现的 canvas 2D 方法一律 noop。
+  // 此前只列了部分方法，导致 drawAshtamangala 等用到 ellipse/rect/roundRect/clip 时抛错——
+  // 那是 jsdom 桩缺失，不是业务 bug。用 Proxy 兜底：任何未列出的方法都当无操作。
+  const base = {
     font: '', fillStyle: '', strokeStyle: '', lineWidth: 1, lineCap: '', lineJoin: '',
     textAlign: '', textBaseline: '', globalAlpha: 1,
-    beginPath: noop, moveTo: noop, lineTo: noop, arcTo: noop, arc: noop, closePath: noop,
-    stroke: noop, fill: noop, fillRect: noop, strokeRect: noop, clearRect: noop,
     fillText: function (t, x, y) { if (sink) sink.push({ t: String(t), x: x, y: y }); },
-    strokeText: noop, save: noop, restore: noop, translate: noop,
-    rotate: noop, scale: noop, quadraticCurveTo: noop, bezierCurveTo: noop,
-    setLineDash: noop, drawImage: noop, putImageData: noop,
+    strokeText: noop,
     measureText: function (s) { return { width: String(s).length * 10 }; },
     createLinearGradient: function () { return { addColorStop: noop }; },
+    createRadialGradient: function () { return { addColorStop: noop }; },
     getImageData: function (x, y, w, h) { return { data: new Uint8ClampedArray(w * h * 4) }; }
   };
+  return new Proxy(base, {
+    get: function (target, prop) {
+      if (prop in target) return target[prop];
+      return noop; // 任意未列出的 canvas 2D 方法 → 无操作（逻辑验证足够）
+    }
+  });
 }
 
 (async function main() {
@@ -169,7 +175,9 @@ function mockCtx(sink) {
   btns[0].click();
   await sleep(90);
   check('切到游戏页', activeScreen() === 'screen-game', activeScreen());
-  check('第 1 关 6×4 = 24 张牌', $$('#board .tile').length === 24, '实际 ' + $$('#board .tile').length);
+  const L1CFG = ev('LEVELS[0]');
+  check('第 1 关 ' + L1CFG.cols + '×' + L1CFG.rows + ' = ' + (L1CFG.cols * L1CFG.rows) + ' 张牌',
+    $$('#board .tile').length === L1CFG.cols * L1CFG.rows, '实际 ' + $$('#board .tile').length);
   check('新手引导首次弹出', $('#guide-mask').classList.contains('show'));
   for (let i = 0; i < 3; i++) { $('#guide-next').click(); await sleep(30); }
   check('引导完成后关闭', !$('#guide-mask').classList.contains('show'));
@@ -283,7 +291,10 @@ function mockCtx(sink) {
   check('文化卡有渐变头图', ($('#card-hero').style.background || '').indexOf('linear-gradient') > -1);
   check('文化卡有徽章元素', !!$('#card-medal'));
   check('文化卡有倒计时进度条', !!$('#card-bar'));
-  check('文化卡有说明式提示语（不打断游戏）', cardText.indexOf('游戏不会暂停') > -1);
+  // 2026-11-06：文案已改为与小程序一致（原「学习不会中断」名不副实 —— 卡片会盖住盘面下半）。
+  //   断言改为检查**语义**：说清「不会暂停」+ 给出收起方式，不再锁死整句。
+  check('文化卡说明「不会暂停」且给出收起方式',
+    cardText.indexOf('不会暂停') > -1 && cardText.indexOf('知道了') > -1, cardText.slice(0, 40));
   check('文化卡提供关闭按钮', !!$('#card-x'));
 
   $('#card-x').click();
@@ -423,9 +434,18 @@ function mockCtx(sink) {
 
   /* ---------- 5. 配对失败：无惩罚 ---------- */
   section('5. 配对失败不扣分');
+  // 2026-11-06：随机盘面走到这里时可能**只剩一种牌**（另一种已被消光），
+  //   findMismatch() 会返回 null，随后 mm[0] 抛错 → CI 偶发红（实测一次）。
+  //   先确保能找到一对不同的牌，再取基线；找不到就重发牌。
+  let mm = findMismatch();
+  if (!mm) {
+    ev('startLevel(state.level)');
+    await sleep(500);
+    mm = findMismatch();
+  }
+  check('存在一对不同的牌（用于测错误配对）', !!mm);
   const scoreBefore = ev('state.score');
   const pronBefore = ev('state.pronounceCount');
-  const mm = findMismatch();
   await clickTile(mm[0]);
   await clickTile(mm[1]);
   check('错误配对触发 shake', tiles()[mm[0]].state === 'shake' && tiles()[mm[1]].state === 'shake');
@@ -508,7 +528,7 @@ function mockCtx(sink) {
   ev('startLevel(3)'); await sleep(70);
   const tileL3 = ev('state.tileW');
   const colsL3 = ev('state.cols');
-  check('第 3 关为 8 列', colsL3 === 8, 'cols=' + colsL3);
+  check('第 3 关列数取自关卡配置（' + ev('LEVELS[2].cols') + ' 列）', colsL3 === ev('LEVELS[2].cols'), 'cols=' + colsL3);
   check('6 列与 8 列的牌宽完全一致', tileL3 === tileL1, 'L1=' + tileL1 + ' vs L3=' + tileL3);
   check('盘面宽度随列数变化（居中自适应）', ev('state.cols * state.tileW + (state.cols - 1) * state.gap') > 0);
 
@@ -524,7 +544,8 @@ function mockCtx(sink) {
   section('9. 通关与结算（D33：消完 15 对、盘面清空、揭图 100%）');
   const pronOnEnter = ev('state.pronounceCount');
   const needPairs = ev('totalPairs()');
-  check('第 1 关总对数 = 15（30 张 = 24 格 + 6 池）', needPairs === 15, 'pairs=' + needPairs);
+  const totalTiles = ev('state.board.total');
+  check('第 1 关总对数 = 总牌数/2（' + totalTiles + ' 张 = ' + needPairs + ' 对）', needPairs === totalTiles / 2, 'pairs=' + needPairs);
   let guard = 0;
   let posMoved = 0;   // 仅供诊断输出（贪心玩法不会产生位移，见下方注释）
   const posNow = function () {
@@ -547,7 +568,7 @@ function mockCtx(sink) {
     });
   }
   const fin = st();
-  check('全部 15 对已消除', ev('state.matchedCount') === 15, 'matched=' + ev('state.matchedCount'));
+  check('全部 ' + needPairs + ' 对已消除', ev('state.matchedCount') === needPairs, 'matched=' + ev('state.matchedCount'));
   check('盘面已清空（在场 0 张）', fin.live === 0, 'live=' + fin.live);
   check('补充池已用尽', fin.poolLeft === 0, 'pool=' + fin.poolLeft);
   check('总量守恒到头：已消张数 = 关卡总数', fin.spent === fin.total, fin.spent + ' vs ' + fin.total);
@@ -557,7 +578,7 @@ function mockCtx(sink) {
   check('DOM 与盘面同步收缩到 0（节点随牌一起消失）', $$('#board .tile').length === fin.live,
     $$('#board .tile').length + ' vs ' + fin.live);
   check('揭图进度 100%（全格曾清空）', ev('state.revealPct') === 100, 'pct=' + ev('state.revealPct'));
-  check('本关 15 次配对 = 15 次朗读', ev('state.pronounceCount') - pronOnEnter === 15,
+  check('本关 ' + needPairs + ' 次配对 = ' + needPairs + ' 次朗读', ev('state.pronounceCount') - pronOnEnter === needPairs,
     '增加 ' + (ev('state.pronounceCount') - pronOnEnter) + ' 次');
   check('通关瞬间不再弹出重复提示', !$('#toast').classList.contains('show'));
 
@@ -1232,22 +1253,28 @@ function mockCtx(sink) {
     $('#res-oil').textContent + '|' + $('#res-points').textContent + '|' + $('#res-frag').textContent);
 
   // 万家灯火 · 祈福跳窗（每天首次打开一次；纯静态：数字全部写死，不发任何网络请求）
-  check('首次进入首页出现祈福跳窗', $('#lamp-mask').classList.contains('show'));
-  check('总灯数为写死的 128,456', $('#lamp-sub').textContent.indexOf('128,456') > -1, $('#lamp-sub').textContent);
+  // 2026-10-21 行为变更：开屏不再弹任何窗（ONBOARD_DEFERRED）。
+  // 实测：原来打开就是「祈福之光 → 问性别 → 取名」三道弹窗，玩家看不到棋盘。
+  // 断言跟着产品决策走 —— 但**不能改成"不检查"**，否则以后有人把弹窗加回来就没人发现。
+  check('首次进入首页**不**弹祈福窗（开屏直接给首页）', !$('#lamp-mask').classList.contains('show'));
+  // 2026-10-22：原断言守的是编造的 128,456。产品已改为「无服务端就不编造」，
+  //   这里要断言的是真实行为：总数为 0，且页面不再谎称全国点亮数。
+  check('总灯数为 0（无服务端，不编造全国数字）',
+    $('#lamp-total').textContent === '0盏', $('#lamp-total').textContent);
   check('五地灯火列表齐备', $$('#lamp-list .lamp-item').length === 5,
     '实际 ' + $$('#lamp-list .lamp-item').length);
 
   // 万/亿口径：主数字短、好读；精确千分位仍留在副行（两者并存，互不替代）
-  check('主数字走万/亿口径（128,456 → 12.85万盏）', $('#lamp-total').textContent === '12.85万盏',
+  check('主数字为 0 盏（无真实数据）', $('#lamp-total').textContent === '0盏',
     $('#lamp-total').textContent);
-  check('副行保留精确千分位（不因口径切换丢失精度）',
-    $('#lamp-sub').textContent.indexOf('128,456') > -1, $('#lamp-sub').textContent);
+  // 千分位口径只在有真实数据时有意义；当前为 0，改断言「不谎称有全国数字」。
+  check('副行不谎称全国点亮数',
+    $('#lamp-sub').textContent.indexOf('128,456') === -1, $('#lamp-sub').textContent);
   const lampRowCounts = $$('#lamp-list .lamp-c').map(function (e) { return e.textContent; });
-  check('地区行同样走万/亿口径', lampRowCounts.join(',') === '8.92万,7.65万,5.43万,3.21万,2.18万',
-    lampRowCounts.join(','));
-  check('反向：小数字不加万/亿单位（12,000 这种量级不写成 1.2万）',
-    $('#lamp-home').textContent.indexOf('1.2万') === -1 && $('#lamp-home').textContent.indexOf('12,000') > -1,
-    $('#lamp-home').textContent);
+  check('地区行全部为 0（无真实数据）',
+    $('#lamp-list').textContent.indexOf('128') === -1 && $('#lamp-list').textContent.indexOf('万') === -1,
+    $('#lamp-list').textContent);
+  check('无万/亿单位残留（当前是 0 盏）', $('#lamp-total').textContent.indexOf('万') === -1, $('#lamp-total').textContent);
 
   // 辉光：等级 1..4 按行号循环取，刻意不按数量 → 序列既非递增也非递减，无法当成排行
   const lampGlowSeq = $$('#lamp-list .lamp-gl').map(function (e) {
@@ -1265,9 +1292,7 @@ function mockCtx(sink) {
   const lampDelays = $$('#lamp-list .lamp-gl').map(function (e) { return e.style.animationDelay; });
   check('辉光相位逐个错开（像远近不同的灯各自呼吸）',
     lampDelays.length === 5 && new Set(lampDelays).size === 5, lampDelays.join(','));
-  check('家乡行为写死数据（浙江 12,000）',
-    $('#lamp-home').textContent.indexOf('浙江') > -1 && $('#lamp-home').textContent.indexOf('12,000') > -1,
-    $('#lamp-home').textContent);
+  check('家乡行不编码编造数字（当前 0 盏）', $('#lamp-home').textContent.indexOf('12,000') === -1, $('#lamp-home').textContent);
   check('两色莲花数字写死', $('#lamp-lotus-gold').textContent === '32,000' && $('#lamp-lotus-pink').textContent === '45,000',
     $('#lamp-lotus-gold').textContent + '|' + $('#lamp-lotus-pink').textContent);
   check('反向：未点亮前不显示祝福语', !$('#lamp-tip').classList.contains('show'));
@@ -1278,20 +1303,19 @@ function mockCtx(sink) {
   check('未点亮时保留安静出口（今天先不点灯）', $('.lamp-actions #lamp-skip').textContent.indexOf('不点灯') > -1);
   $('#lamp-btn').click();
   await sleep(60);
-  check('点亮后总灯数 +1（128,456 → 128,457）', $('#lamp-sub').textContent.indexOf('128,457') > -1,
-    $('#lamp-sub').textContent);
+  check('点亮后本地灯数 +1（0 → 1）', $('#lamp-sub').textContent.indexOf('1') > -1, $('#lamp-sub').textContent);
   check('点亮瞬间主数字与副行同时挂上跳动类', $('#lamp-total').classList.contains('pop') &&
     $('#lamp-sub').classList.contains('pop'));
-  check('万/亿口径在 +1 后不变（12.85万 → 12.85万），故跳动必须同时挂在精确副行上',
-    $('#lamp-total').textContent === '12.85万盏', $('#lamp-total').textContent);
+  check('点亮后主数字为 1 盏', $('#lamp-total').textContent === '1盏', $('#lamp-total').textContent);
   check('点亮后出现祝福语', $('#lamp-tip').classList.contains('show') && $('#lamp-tip').textContent.indexOf('感恩') > -1,
     $('#lamp-tip').textContent);
   check('点亮后生成 12 向金粉粒子', $$('#lamp-sparks .spark').length === 12,
     '实际 ' + $$('#lamp-sparks .spark').length);
   $('#lamp-btn').click();
   await sleep(40);
-  check('反向：重复点击不再继续加数', $('#lamp-sub').textContent.indexOf('128,457') > -1 &&
-    $('#lamp-sub').textContent.indexOf('128,458') === -1, $('#lamp-sub').textContent);
+  check('反向：重复点击不再继续加数',
+    $('#lamp-sub').textContent.indexOf('1') > -1 && $('#lamp-sub').textContent.indexOf('2') === -1,
+    $('#lamp-sub').textContent);
   check('点亮后记录当天日期（供「每天一次」判断）',
     String((JSON.parse(win.localStorage.getItem('zangzi_progress')) || {}).lampDay || '').length === 10,
     String((JSON.parse(win.localStorage.getItem('zangzi_progress')) || {}).lampDay));
@@ -1448,10 +1472,15 @@ function mockCtx(sink) {
   section('23. 朝圣天梯动效');
 
   // 纯几何（与 utils/ladder.js 同规则）：foot 恒 ≥ settle，入场方向永远是「上行」
-  const plan1 = ev('ladderPlan({mapTop:300,mapHeight:660,viewportHeight:667,nodeTopPct:88})');
-  check('山脚台阶有「山脚 → 停靠」两个滚动目标', plan1.settle > 0 && plan1.foot > plan1.settle, JSON.stringify(plan1));
-  const plan10 = ev('ladderPlan({mapTop:300,mapHeight:660,viewportHeight:667,nodeTopPct:6.1})');
-  check('越靠山顶停靠点越靠上（第 10 关 settle < 第 1 关）', plan10.settle < plan1.settle, JSON.stringify(plan10));
+  // D151：地图能整张放下 → 停在地图顶部（两关相同，整段天梯可见）；高图才回退「越靠山顶越靠上」
+  const plan1 = ev('ladderPlan({mapTop:300,mapHeight:620,viewportHeight:844,nodeTopPct:88})');
+  const plan10 = ev('ladderPlan({mapTop:300,mapHeight:620,viewportHeight:844,nodeTopPct:6.1})');
+  check('地图整张放得下：停在地图顶部（10 关全可见）',
+    plan1.settle === 300 && plan10.settle === 300, JSON.stringify([plan1, plan10]));
+  const tall1 = ev('ladderPlan({mapTop:300,mapHeight:720,viewportHeight:667,nodeTopPct:88})');
+  check('山脚台阶有「山脚 → 停靠」两个滚动目标', tall1.settle > 0 && tall1.foot > tall1.settle, JSON.stringify(tall1));
+  const tall10 = ev('ladderPlan({mapTop:300,mapHeight:720,viewportHeight:667,nodeTopPct:6.1})');
+  check('高图回退：越靠山顶停靠点越靠上（第 10 关 settle < 第 1 关）', tall10.settle < tall1.settle, JSON.stringify(tall10));
   const planBad = ev('ladderPlan({})');
   check('异常输入安全归零（不抛错）', planBad.settle === 0 && planBad.foot === 200, JSON.stringify(planBad));
   check('反向：入场不会出现反向滚动（rise 恒 ≥ 0）', plan1.rise > 0 && plan10.rise > 0, plan1.rise + '|' + plan10.rise);
@@ -1790,10 +1819,10 @@ function mockCtx(sink) {
     const cn = ev('pickDaily(DAILY.greetings, colDayNumber(colToday())).cn');
     return (win.__texts || []).slice(textsBefore).some(function (t) { return t.t === cn; });
   })());
-  check('画布上画了品牌句「玩方块，认藏文」',
+  check('画布上画了品牌句「认藏文，从方块开始」',
     (win.__texts || []).slice(textsBefore).some(function (t) { return t.t === '认藏文，从方块开始'; }));
-  check('画布上画了小程序码占位（品牌出口，非二维码内容）',
-    (win.__texts || []).slice(textsBefore).some(function (t) { return t.t === '小程序码'; }));
+  check('画布上画了品牌出口「藏字方块」（矢量文字，非二维码占位）',
+    (win.__texts || []).slice(textsBefore).some(function (t) { return t.t === '藏字方块'; }));
 
   // 合规底线：卡片文案无金额（动态验证；静态红线由 validate §27 兜底）
   check('卡片区块文案无货币符号 / 让利数字', (function () {
@@ -1809,7 +1838,7 @@ function mockCtx(sink) {
     ev('setOnboardDone(); startLevel(1)');
 
     // 30.1 盘面垫层：进第 1 关即挂上图，且为内联 data URL
-    check('第 1 关揭图为雪山（与 data/reveals.js 同源）', ev('state.reveal && state.reveal.name') === '雪山');
+    check('第 1 关揭图为大昭寺（与小程序 data/reveal-temples.js 同源）', ev('state.reveal && state.reveal.name') === '大昭寺');
     check('揭图层已注入且为内联 data URL', (function () {
       const i = $('#reveal-img');
       // D50：揭图主格式 .webp（此前 dataUrl 误标 image/png，靠浏览器嗅探兜底；已修正）
@@ -1820,14 +1849,16 @@ function mockCtx(sink) {
       return s.left !== '' && s.top !== '' && s.width !== '' && s.height !== '';
     })());
     check('揭图进度初始 0%（不剧透名字）', $('#reveal-cap').textContent.indexOf('已揭开 0%') > -1
-      && $('#reveal-cap').textContent.indexOf('雪山') === -1);
+      && $('#reveal-cap').textContent.indexOf('大昭寺') === -1);
 
     // 30.2 揭图进度口径（D33 改）：分母是**格数**，报的是「多少格曾清空过」。
     //      有补充牌后盘面不会全空，所以不能再按「已消对数 / 总对数」算（会永远差一截）。
     ev('(function(){for(var k=0;k<10;k++)state.freed[k]=true;' +
       'state.matchedCount=5; renderBoard({phase:"settle"}); updateRevealCap();})()');
-    check('揭露进度按「曾清空的格 / 格数」推进（10/24 = 42%）',
-      $('#reveal-cap').textContent.indexOf('已揭开 42%') > -1, $('#reveal-cap').textContent);
+    const slotsNow = ev('state.board.slots');
+    const wantPct = Math.round(10 / slotsNow * 100);
+    check('揭露进度按「曾清空的格 / 格数」推进（10/' + slotsNow + ' = ' + wantPct + '%）',
+      $('#reveal-cap').textContent.indexOf('已揭开 ' + wantPct + '%') > -1, $('#reveal-cap').textContent);
     // 只增不减：把 freed 清掉也不该回退（freedPct 只读 freed，不做减法）
     ev('(function(){for(var k=0;k<10;k++)state.freed[k]=false; updateRevealCap();})()');
     check('揭图进度可随 freed 收回（口径纯函数化，无隐藏累加）',
@@ -1844,37 +1875,46 @@ function mockCtx(sink) {
     check('REVEALS 无缝覆盖 1-10 关且图不重复', ev(
       '(function(){for(var i=1;i<=10;i++){if(!REVEALS[i-1]||REVEALS[i-1].level!==i)return false;}' +
       'var s={};for(var j=0;j<10;j++){if(s[REVEALS[j].img])return false;s[REVEALS[j].img]=1;}return true;})()') === true);
-    check('每条揭图都有 藏文/拉丁/中文名/释义',
-      ev('REVEALS.every(function(r){return r.tibetan&&r.roman&&r.name&&r.desc;})') === true);
+    // D153：揭图池换成真实寺院后，硬标准改为「中文名 + 释义必须有；藏文名按已核验情况出现」。
+    // 不要求拉丁转写 —— 我们手里没有可信的转写数据，编一个出来比缺更糟。
+    check('每条揭图都有 中文名 + 释义',
+      ev('REVEALS.every(function(r){return !!(r.name && r.desc);})') === true);
+    check('藏文名覆盖 ≥ 20 座（有则显示，没有的留空不编）',
+      ev('REVEALS.filter(function(r){return !!r.tibetan;}).length') >= 20);
     // 新书写规范（2026-10-08 用户拍板）：完整词尾必须带 ་；禁止行首 ་ / 连续 ་
-    check('揭图藏文名符合书写规范（词尾带 ་；无行首/连续 ་）',
-      ev('REVEALS.every(function(r){return /[་།]$/.test(r.tibetan) && !/^་|་་/.test(r.tibetan);})') === true);
+    check('有藏文名的揭图都符合书写规范（词尾带 ་；无行首/连续 ་）',
+      ev('REVEALS.filter(function(r){return !!r.tibetan;}).every(function(r){return /[་།]$/.test(r.tibetan) && !/^་|་་/.test(r.tibetan);})') === true);
     check('揭图数据层未出现 D25 红线符号', ev(
       '(function(){var s=JSON.stringify(REVEALS);' +
       'return s.indexOf("莲花")===-1&&s.indexOf("经幡")===-1&&s.indexOf("佛塔")===-1&&s.indexOf("酥油灯")===-1;})()') === true);
 
     // 30.4 结算页揭晓（通关即整幅揭晓 + 承诺收入护照）
     ev('finishLevel()');
-    check('结算页揭晓本关秘境图', $('#res-reveal .reveal-name') && $('#res-reveal .reveal-name').textContent === '雪山');
+    check('结算页揭晓本关秘境图', $('#res-reveal .reveal-name') && $('#res-reveal .reveal-name').textContent === '大昭寺');
     check('揭晓卡图为内联 data URL', String(($('#res-reveal .reveal-art') || {}).src !== undefined
       ? $('#res-reveal .reveal-art').getAttribute('src') : '').indexOf('data:image/webp;base64,') === 0);
-    check('藏文名 + 拉丁转写上屏', $('#res-reveal .rt-t').textContent === 'གངས་རི་'
-      && $('#res-reveal .rt-roman').textContent === 'gangs ri');
-    check('揭晓卡承诺「已收入文化护照」且报图鉴进度 1 / 10',
+    check('藏文名上屏（大昭寺 ཇོ་ཁང་）', $('#res-reveal .rt-t').textContent === 'ཇོ་ཁང་');
+    check('无拉丁转写时不渲染空行（不留空白占位）',
+      !$('#res-reveal .rt-roman') || $('#res-reveal .rt-roman').textContent === '');
+    check('揭晓卡显示 CC 署名（授权要求，不能省）',
+      ($('#res-reveal .reveal-credit') || {}).textContent
+      && $('#res-reveal .reveal-credit').textContent.indexOf('CC') > -1);
+    check('揭晓卡承诺「已收入文化护照」且报图鉴进度 1 / ' + ev('REVEALS.length'),
       $('#res-reveal .reveal-note').textContent.indexOf('已收入文化护照') > -1
-      && $('#res-reveal .reveal-note').textContent.indexOf('1 / 10') > -1);
+      && $('#res-reveal .reveal-note').textContent.indexOf('1 / ' + ev('REVEALS.length')) > -1);
     check('揭晓卡文案无货币符号 / 让利数字', !/[¥￥]|元(?!音|素)/.test($('#res-reveal').textContent));
 
     // 30.5 护照页「揭示图鉴」：解锁与否 = 是否通关（不剧透未解锁的名字）
     ev('showPassport()');
-    check('护照页出现揭示图鉴（10 格）', doc.querySelectorAll('#pp-reveal-grid .rv-slot').length === 10);
+    check('护照页出现揭示图鉴（' + ev('REVEALS.length') + ' 格）',
+      doc.querySelectorAll('#pp-reveal-grid .rv-slot').length === ev('REVEALS.length'));
     check('图鉴解锁数 = 通关关卡数（第 1 关通关 → 1）',
       doc.querySelectorAll('#pp-reveal-grid .rv-slot.got').length === 1
-      && $('#pp-reveal-count').textContent === '1 / 10');
+      && $('#pp-reveal-count').textContent === '1 / ' + ev('REVEALS.length'));
     check('已解锁格显示图与名字', !!doc.querySelector('#pp-reveal-grid .rv-slot.got .rv-img')
-      && doc.querySelector('#pp-reveal-grid .rv-slot.got .rv-name').textContent === '雪山');
-    check('未解锁格不剧透名字（只显示关号）',
-      doc.querySelector('#pp-reveal-grid .rv-slot.locked .rv-name').textContent.indexOf('第') === 0);
+      && doc.querySelector('#pp-reveal-grid .rv-slot.got .rv-name').textContent === '大昭寺');
+    check('未解锁格不剧透名字（只写「未收录」，不给寺名，也不给课号）',
+      doc.querySelector('#pp-reveal-grid .rv-slot.locked .rv-name').textContent === '未收录');
 
     // 30.6 单一真相源：揭图状态不落库（派生自 completedLevels）
     check('不新增存储字段（reveals 派生自 completedLevels）', ev('getProgress().reveals') === undefined);
@@ -2559,7 +2599,8 @@ function mockCtx(sink) {
     ev("openPanel('learn')");
     await sleep(60);
     check('验收开关默认关闭：L2 仍锁', $('.learn-row[data-lv="2"]').classList.contains('locked'));
-    check('验收开关按钮在场', !!$('#learn-verify-btn'));
+    // D151：验收工具只在 ?all=1 / ?verify=1 时渲染；玩家界面不该出现
+    check('玩家界面不出现验收开关（需 ?all=1）', !$('#learn-verify-btn'));
 
     // 打开 → 锁解除，且能直接跳到 L2（跳过前置 10 课）
     ev('setVerifyUnlock(true)');
@@ -2849,6 +2890,16 @@ function mockCtx(sink) {
     ev('clearProgress()');
     ev('renderHome()');
   }
+
+  /* ---------- 24. 双轨配色（D152） ---------- */
+  section('24. 双轨配色');
+  ev('startLearn(1,1)');
+  const cL = ev('JSON.stringify(Array.from(new Set((state.tiles||[]).filter(Boolean).map(function(t){return t.color;}))))');
+  check('学习线牌色统一（颜色不编码字母）', JSON.parse(cL).length === 1, cL);
+  ev('startLevel(1)');
+  const cG = ev('JSON.stringify(Array.from(new Set((state.tiles||[]).filter(Boolean).map(function(t){return t.color;}))))');
+  check('纯游戏线保留彩色牌（≥2 种）', JSON.parse(cG).length >= 2, cG);
+  ev('showScreen("screen-home")');
 
   /* ---------- 汇总 ---------- */
   check('全程无脚本运行时错误', errors.length === 0, errors[0]);

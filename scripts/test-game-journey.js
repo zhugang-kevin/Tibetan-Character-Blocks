@@ -116,8 +116,12 @@ function mockCtx(sink) {
   check('① 首页天梯有 10 节', rungs.length === 10, '实际 ' + rungs.length);
   const cells150 = $$('#al-grid .al-cell');
   check('① 首页 150 课全景图有 150 格', cells150.length === 150, '实际 ' + cells150.length);
-  check('① 首页写明「全部课程 · 150 课」',
+  check('① 首页写明「学藏文 · 150 课」',
     ($('#home-alllevels') || {}).textContent.indexOf('150 课') > -1);
+  check('① 首页双入口：练习模式 · 10 课',
+    /练习模式/.test(($('#mode-game') || {}).textContent || ''));
+  check('① 首页双入口：学藏文 · 150 课',
+    /学藏文 · 150 课/.test(($('#mode-learn') || {}).textContent || ''));
   check('① 首页有进关卡的入口（点天梯第 1 节能进）', !!rungs[0], '第 1 节节点缺失');
 
   /* ---------- ② 老线 10 关：逐关「进得去、回得来」 ---------- */

@@ -108,6 +108,28 @@ function levelSpec() {
       });
     }
   }
+  // 2026-11-05：**老线 10 关也必须进指纹**。
+  //   之前只覆盖学习线 150 课 —— 结果「把 10 关的几何和牌数整体改一遍」可以不留痕迹
+  //   （本轮真的发生了：6x4/8x4/8x5 混排改成统一 6 列，闸门一声不响）。
+  const classic = require(path.join(ROOT, 'data', 'levels'));
+  (Array.isArray(classic) ? classic : (classic.list || [])).forEach(function (lvCfg) {
+    const cfg = { cols: lvCfg.cols, rows: lvCfg.rows, elements: lvCfg.elements };
+    const plan = board.planCounts(cfg);
+    out.push({
+      classic: true,
+      lv: 'C',                       // 与学习线 1..15 区分 → 逐关哈希键 LC-1…LC-10
+      st: lvCfg.level,
+      cols: lvCfg.cols,
+      rows: lvCfg.rows,
+      pairs: plan.total / 2,
+      elements: lvCfg.elements.map(function (e) { return [e[0], e[1]]; }),
+      obstacles: lvCfg.obstacles || {},
+      planSlots: plan.slots,
+      planTotal: plan.total,
+      planGive: sortedObj(plan.give),
+      planPool: sortedObj(plan.pool)
+    });
+  });
   return out;
 }
 
@@ -176,7 +198,8 @@ if (process.argv.indexOf('--update') > -1) {
   process.exit(0);
 }
 
-chk(spec.length === 150, '指纹覆盖 150 关（15 级 × 10 课）', '实际 ' + spec.length);
+// 2026-11-05：指纹范围扩到「学习线 150 课 + 老线 10 关」= 160
+chk(spec.length === 160, '指纹覆盖 160 关（学习线 150 课 + 老线 10 关）', '实际 ' + spec.length);
 
 let base = null;
 try { base = JSON.parse(fs.readFileSync(BASELINE, 'utf8')); } catch (e) { base = null; }
