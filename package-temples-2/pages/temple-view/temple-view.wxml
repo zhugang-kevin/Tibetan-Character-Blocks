@@ -1,0 +1,7 @@
+<view class="tv-wrap">
+  <image wx:if="{{img}}" class="tv-img" src="{{img}}" mode="aspectFill"></image>
+  <view class="tv-info">
+    <text class="tv-name">{{name}}</text>
+    <text wx:if="{{sub}}" class="tv-sub">{{sub}}</text>
+  </view>
+</view>

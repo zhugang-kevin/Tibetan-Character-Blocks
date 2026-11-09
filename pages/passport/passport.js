@@ -1,14 +1,17 @@
 // pages/passport/passport.js — 我的西藏文化护照（总档案）
 //
 // 护照是「总档案」，证书是护照里的「签证页」：
-//   藏文成长证书（学习线） × 12 张 + 文化收藏册 + 地区印章 + 现实足迹 + 个人文化图谱
+//   藏文拼读证书（学习线 15 级） + 文化收藏册 + 地区印章 + 现实足迹 + 个人文化图谱
 var certificate = require('../../utils/certificate');
 var storage = require('../../utils/storage');
 var syncModule = require('../../utils/sync');   // D94 进度云同步（走自有服务端）
 var collect = require('../../utils/collect');
 var cardsData = require('../../data/cards');
-var revealsData = require('../../data/reveals');
+var vowelsData = require('../../data/vowels');   // D118：元音符号发音参考（藏文读音补齐）
+var audio = require('../../utils/audio');        // hasVoice / pronounce（含诚实的「待录入」回退）
+var revealTemples = require('../../data/reveal-temples');
 var secretsData = require('../../data/secrets');
+var regionsData = require('../../data/regions');   // 七地市（现实足迹与地区印章的同一份地点源）
 var tracker = require('../../utils/tracker');
 // D54 性别 + 藏族名字：三档取值与选名算法（与 utils/storage.js 同一份）
 var tibetanName = require('../../utils/tibetan-name.js');
@@ -40,6 +43,8 @@ Page({
     stampTotal: STAMP_TOTAL,
     cardsSeen: 0,
     cardsTotal: 0,
+    // D118：元音符号发音参考（藏文读音补齐）
+    vowels: [],
     bestCombo: 0,
     holder: '',
     // D94 进度云同步
@@ -173,25 +178,85 @@ Page({
     };
   },
 
+  // 现实足迹：点一下打卡 / 再点一下取消（可撤销，与只增不减的印章不同）
+  onTapFootprint: function (e) {
+    var id = e.currentTarget.dataset.id;
+    if (!id) return;
+    var on = storage.toggleFootprint(id);
+    tracker.track(on ? 'footprint_checkin' : 'footprint_undo');
+    this.refresh();
+    wx.showToast({ title: on ? '已记下这次足迹' : '已取消打卡', icon: 'none', duration: 1200 });
+  },
+
   refresh: function () {
     // ⚠️ 原本这里构造「藏文成长证书」的 12 阶段列表（certificate.list()）。
     //    2026-10-15（D119）撤除：它与下方「藏文拼读证书」**颗粒度完全相同**（都是每 10 课一张），
     //    且进度读的是老 10 关线、只有阶段 1 开放 —— 11 张永远拿不到。证书墙已合并成一块。
     var p = storage.getProgress();
-    var stamps = p.stamps.map(function (id) {
-      return { id: id, name: (STAMPS[id] || {}).name || id, desc: (STAMPS[id] || {}).desc || '' };
+    // —— 地区印章（2026-10-17 补全：原来 STAMPS 里只有拉萨一个，6 个是规划）——
+    // 改成**派生**，不再依赖逐次 grantStamp，三个来源取并集：
+    //   ① 旧存档里已有的 p.stamps（不动它 → 向后兼容，历史章不会丢）
+    //   ② 老线：该区的 from..to 全部通关
+    //   ③ 学习线：该区的 learnFrom 级已学完（昌都 L5 / 那曲 L10 —— 老线 10 关已排满，塞不进新的两个区）
+    // 为什么派生而不是补迁移脚本：迁移脚本要跑一次、失败了难排查；派生是**每次读时算**，
+    // 规则改了立刻生效，且天然兼容老存档。
+    var stampIds = {};
+    (p.stamps || []).forEach(function (id) { stampIds[id] = 1; });
+    regionsData.forEach(function (r) {
+      var ok = false;
+      if (r.from && r.to) {
+        ok = true;
+        for (var n = r.from; n <= r.to; n++) {
+          if (p.completedLevels.indexOf(n) === -1) { ok = false; break; }
+        }
+      }
+      if (!ok && r.learnFrom) ok = storage.getLearnLevelDone(r.learnFrom) >= 10;
+      if (ok) stampIds[r.id] = 1;
     });
+    var stamps = Object.keys(stampIds).map(function (id) {
+      var r = null;
+      for (var i = 0; i < regionsData.length; i++) {
+        if (regionsData[i].id === id) { r = regionsData[i]; break; }
+      }
+      return {
+        id: id,
+        name: (r && r.name) || (STAMPS[id] || {}).name || id,
+        desc: (r && r.spot) ? (r.spot + ' · ' + r.name + ' 印章') : ((STAMPS[id] || {}).desc || '')
+      };
+    });
+
+    // —— 现实足迹（2026-10-17）——
+    // 七个地点全部列出、都可打卡：足迹记的是「**我去过哪里**」，与游戏进度无关。
+    //   为什么不按解锁状态过滤：没解锁的地区也可能真的去过（比如先去了昌都）；
+    //   用进度去限制「记录自己走过的路」是本末倒置。
+    var fpIds = p.footprints || [];
+    var footprints = regionsData.map(function (r) {
+      return {
+        id: r.id,
+        name: r.name,
+        spot: r.spot,
+        desc: r.desc || '',
+        checked: fpIds.indexOf(r.id) > -1
+      };
+    });
+    var fpCount = footprints.filter(function (f) { return f.checked; }).length;
 
     // 唐卡收藏：九宫格视图模型走与首页同一个纯函数（两端/两页同源）
     var tk = collect.thangkaGrid(p.fragments);
 
-    // 揭示图鉴（D31）：完成即揭晓，图与名都来自 data/reveals.js
-    var revealSlots = revealsData.map(function (r) {
+    // 揭示图鉴（D31 / D153）：完成即揭晓。
+    // 🔴 2026-11-05：改读 reveal-temples —— 与牌面揭图、结算揭晓卡**同一个数据源**。
+    //    之前这里读 data/reveals.js（10 张自然题材），而牌面已经是寺庙照片，
+    //    同一张图在两个页面叫两个名字 —— 这正是「只改一半」的典型事故。
+    var rvPool = revealTemples.displayable();
+    var revealSlots = rvPool.map(function (t, i) {
+      var lv = i + 1;                       // 第 N 关首次出现（与 revealFor 的取模一致）
       return {
-        level: r.level,
-        name: r.name,
-        img: r.img,
-        unlocked: p.completedLevels.indexOf(r.level) > -1
+        level: lv,
+        name: t.name,
+        img: t.img,
+        credit: t.imgCredit || '',
+        unlocked: p.completedLevels.indexOf(lv) > -1
       };
     });
 
@@ -211,8 +276,22 @@ Page({
       learnUltimate: learnList.ultimate,
       stamps: stamps,
       stampOwned: stamps.length,
+      footprints: footprints,
+      footprintCount: fpCount,
+      footprintTotal: footprints.length,
       cardsSeen: p.seenCards.length,
       cardsTotal: cardsData.length,
+      // D118：元音符号发音参考（藏文读音补齐）。hasAudio 走与卡片喇叭同一把尺子，
+      //   未生成音频时为 false → 按钮显示「待录入」、点了也不假装能播。
+      vowels: vowelsData.map(function (v) {
+        return {
+          id: v.id,
+          sign: v.sign,
+          subtitle: v.subtitle,
+          demo: v.demo,
+          hasAudio: audio.hasVoice(v.id)
+        };
+      }),
       bestCombo: p.bestCombo,
       holder: p.holderName,
       levelsDone: p.completedLevels.length,
@@ -221,7 +300,7 @@ Page({
       thangkaDone: !!(p.thangkaDone && tk.done),
       revealSlots: revealSlots,
       revealGot: revealSlots.filter(function (s) { return s.unlocked; }).length,
-      revealTotal: revealsData.length,
+      revealTotal: rvPool.length,
       secretSlots: secP.slots,
       secretGot: secP.got,
       secretTotal: secP.total,
@@ -253,6 +332,18 @@ Page({
   },
 
   // 清除 = 个人信息可撤回：性别回到未选择，名字一并撤掉（下次进首页会重新引导）
+  // 2026-10-23：跳转到客服页（package-service 分包）
+  //   此前该分包全项目无入口，客服按钮点不到。
+  goService: function () {
+    wx.navigateTo({
+      url: '/package-service/pages/service/service',
+      fail: function (err) {
+        console.warn('[passport] 打开客服页失败', err);
+        wx.showToast({ title: '客服页加载失败', icon: 'none' });
+      }
+    });
+  },
+
   clearGender: function () {
     storage.setGender('');
     this.setData({ profileEdit: false });
@@ -271,15 +362,20 @@ Page({
     tracker.track('cert_view');
     wx.navigateTo({ url: '/pages/cert/cert?learn=' + lv });
   },
-  openCert: function (e) {
-    var stage = parseInt(e.currentTarget.dataset.stage, 10);
-    if (!stage) return;
-    tracker.track('cert_view');
-    wx.navigateTo({ url: '/pages/cert/cert?stage=' + stage });
-  },
+  // ⚠️ 这里原有 openCert（跳 ?stage=N 的旧体系证书页），随 D119 证书墙合并一并移除 ——
+  //    WXML 里已不再有绑定它的节点，留着会被门禁判为「未绑定」的悬空处理器。
+  //    学习线证书走上面的 openLearnCert（?learn=N）。
 
   goHome: function () {
     wx.redirectTo({ url: '/pages/index/index' });
+  },
+
+  // D118：元音符号发音播放。与卡片喇叭同口径——没有音频就什么都不做，
+  //   UI 已经把按钮置灰成「待录入」，不会让用户对着黑洞点。
+  playVowel: function (e) {
+    var ds = e.currentTarget.dataset;
+    if (!ds.hasAudio) return;
+    audio.pronounce(ds.id);
   },
 
 

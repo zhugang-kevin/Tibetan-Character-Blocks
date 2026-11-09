@@ -96,6 +96,13 @@
         <view class="pa-btn" bindtap="toggleProfileEdit">{{profileEdit ? '收起' : '修改性别'}}</view>
         <view wx:if="{{gender}}" class="pa-btn ghost" bindtap="clearGender">清除</view>
       </view>
+
+      <!-- 2026-10-23：客服入口。此前 package-service/pages/service 全项目无人跳转，
+           页面写好但玩家点不到。按用户决定放在「我的」页，不挤首页侧边栏。 -->
+      <view class="profile-row" bindtap="goService">
+        <text class="profile-k">联系客服</text>
+        <text class="profile-v empty">反馈问题 · 咨询 →</text>
+      </view>
       <view wx:if="{{profileEdit}}" class="gender-pick">
         <view
           wx:for="{{genderOptions}}"
@@ -153,8 +160,27 @@
         <text class="section-title">文化收藏册</text>
         <text class="section-count">{{cardsSeen}} / {{cardsTotal}}</text>
       </view>
-      <view class="section-sub">每第一次消除一种藏文字母或文化元素，就会收藏一张文化卡。</view>
+      <view class="section-sub">每第一次拼对一种藏文字母或文化元素，就会收藏一张文化卡。</view>
       <view class="bar"><view class="bar-in" style="width: {{cardsTotal ? (cardsSeen * 100 / cardsTotal) : 0}}%;"></view></view>
+    </view>
+
+    <!-- 2.1 元音符号（藏文读音补齐：四个元音符号的独立发音参考） -->
+    <view class="section">
+      <view class="section-head">
+        <text class="section-title">元音符号</text>
+        <text class="section-count">{{vowels.length}} / 4</text>
+      </view>
+      <view class="section-sub">藏文元音不能单独成字，必须依附基字。下方给出四个元音符号、读音与示范音节（基字 ཀ + 元音）。</view>
+      <view class="vowel-grid">
+        <view wx:for="{{vowels}}" wx:key="id" class="vowel-row">
+          <view class="vowel-sign">{{item.sign}}</view>
+          <view class="vowel-main">
+            <view class="vowel-sub">{{item.subtitle}}</view>
+            <view class="vowel-demo">示范：{{item.demo}}</view>
+          </view>
+          <button class="vowel-play" size="mini" data-id="{{item.id}}" data-has-audio="{{item.hasAudio}}" bindtap="playVowel" disabled="{{!item.hasAudio}}">{{item.hasAudio ? '🔊 播放' : '🎙 待录入'}}</button>
+        </view>
+      </view>
     </view>
 
     <!-- 2.5 唐卡收藏：首页承诺「完整图收入文化护照」，本节兑现它（2026-10-05） -->
@@ -163,7 +189,7 @@
         <text class="section-title">唐卡收藏</text>
         <text class="section-count">{{fragCount}} / 9</text>
       </view>
-      <view class="section-sub">每完成一课掉落一片唐卡碎片；集齐 9 片回首页「唐卡拼图」面板点「合成唐卡」。</view>
+      <view class="section-sub">每完成一课可获得一片唐卡碎片；集齐 9 片回首页「唐卡拼图」面板点「合成唐卡」。</view>
       <view class="tk-grid {{thangkaDone ? 'done' : ''}}">
         <view wx:for="{{thangkaCells}}" wx:key="i" class="tk-cell {{item.on ? 'on' : ''}}">
           <text wx:if="{{item.on}}" class="tk-mark">✦</text>
@@ -180,16 +206,19 @@
         <text class="section-title">揭示图鉴</text>
         <text class="section-count">{{revealGot}} / {{revealTotal}}</text>
       </view>
-      <view class="section-sub">每一课的棋盘下都垫着一张秘境图，消除越多透出越多，完成后整幅揭晓。</view>
+      <view class="section-sub">秘境图垫在棋盘之下，配对越多透出越多，完成后整幅揭晓。</view>
       <view class="rv-grid">
         <view wx:for="{{revealSlots}}" wx:key="level" class="rv-slot {{item.unlocked ? 'got' : 'locked'}}">
           <view class="rv-frame">
             <image wx:if="{{item.unlocked}}" class="rv-img" src="{{item.img}}" mode="aspectFill" />
             <text wx:else class="rv-lock-mark">🔒</text>
           </view>
-          <view class="rv-name">{{item.unlocked ? item.name : ('第 ' + item.level + ' 课')}}</view>
+          <view class="rv-name">{{item.unlocked ? item.name : '未收录'}}</view>
         </view>
       </view>
+      <!-- 2026-11-05：CC BY / CC BY-SA 的署名义务。
+           逐张署名太长会挤爆 50 格，这里给统一出处，逐张作者/协议在通关揭晓卡上。 -->
+      <view style="font-size:22rpx;color:#8A8272;line-height:1.6;margin-top:12rpx">图片来自 Wikimedia Commons，均为 CC 授权；每张的作者与协议见该课完成后的揭晓卡。</view>
     </view>
 
     <!-- 2.7 藏地密码（PRD 5.2）：十则藏地小知识，完成即解锁收入。
@@ -223,13 +252,31 @@
       </view>
     </view>
 
-    <!-- 4. 现实足迹 -->
+    <!-- 4. 现实足迹（2026-10-17 实装）
+         设计取舍：**手动打卡，不做定位**。本项目是纯本地（不调网络、不用云函数），
+         定位打卡要服务端校验才可信；与其做一个随手能改的假定位，不如让玩家自己记录
+         走过的路 —— 诚实、离线可用、不收集位置隐私。打卡**可撤销**（与只增不减的印章不同）。 -->
     <view class="section">
       <view class="section-head">
         <text class="section-title">现实足迹</text>
-        <text class="section-count">敬请期待</text>
+        <text class="section-count">{{footprintCount}} / {{footprintTotal}}</text>
       </view>
-      <view class="section-sub">记录你在现实中去过的藏文化地点。完成打卡后会在这里留下一枚足迹。</view>
+      <view class="section-sub">去过的藏文化地点，点一下就能记下来。这里记的是你自己的路，与学习进度无关。</view>
+      <view class="fp-grid">
+        <view wx:for="{{footprints}}"
+              wx:key="id"
+              class="fp-item {{item.checked ? 'fp-on' : ''}}"
+              data-id="{{item.id}}"
+              bindtap="onTapFootprint">
+          <view class="fp-mark">{{item.checked ? '✓' : '＋'}}</view>
+          <view class="fp-body">
+            <view class="fp-spot">{{item.spot}}</view>
+            <view class="fp-name">{{item.name}}</view>
+          </view>
+        </view>
+      </view>
+      <view wx:if="{{footprintCount === 0}}" class="fp-hint">还没有记录 —— 去过八廓街、冈仁波齐，或你家乡的寺院？点一下就行。</view>
+      <view wx:else class="fp-hint">已记下 {{footprintCount}} 处 · 再点一下可以取消</view>
     </view>
 
     <!-- 5. 个人文化图谱 -->

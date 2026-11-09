@@ -219,7 +219,7 @@
 }
 
 .cert-slot.got {
-  border-color: #B7950B;
+  border-color: #8A6A12;
   background: linear-gradient(180deg, #FFFDF3 0%, #FBF1D8 100%);
   box-shadow: 0 6rpx 16rpx rgba(183, 149, 11, 0.22);
 }
@@ -301,7 +301,7 @@
 .bar-in {
   height: 100%;
   border-radius: 8rpx;
-  background: linear-gradient(90deg, #C0392B 0%, #B7950B 100%);
+  background: linear-gradient(90deg, #C0392B 0%, #8A6A12 100%);
 }
 
 /* ============ 印章 ============ */
@@ -396,7 +396,7 @@
   justify-content: center;
 }
 .rv-slot.got .rv-frame {
-  border-color: #B7950B;
+  border-color: #8A6A12;
   box-shadow: 0 4rpx 12rpx rgba(183, 149, 11, 0.24);
 }
 .rv-slot.locked .rv-frame {
@@ -506,7 +506,7 @@ page { max-width: 560px; margin-left: auto; margin-right: auto; }
   border: 2rpx solid rgba(183, 149, 11, 0.32);
 }
 .gift-row.new {
-  border-color: #B7950B;
+  border-color: #8A6A12;
   background: linear-gradient(160deg, #FFF6D8, #F7EBCB);
 }
 .gift-ico { font-size: 40rpx; line-height: 1.3; flex-shrink: 0; }
@@ -514,7 +514,7 @@ page { max-width: 560px; margin-left: auto; margin-right: auto; }
 .gift-name { font-size: 29rpx; font-weight: 700; color: #6E2B22; }
 .gift-from { margin-top: 6rpx; font-size: 26rpx; color: #6E6759; }
 /* 浅卡底（#FDF6E3 系）上的金字必须是**深金 #8A6A12**：
-   浅金 #B7950B 在浅底上只有 2.87:1（门禁实测），达不到 4.5:1 —— 与元素库同尺。 */
+   浅金 #8A6A12 在浅底上只有 2.87:1（门禁实测），达不到 4.5:1 —— 与元素库同尺。 */
 .gift-new { color: #8A6A12; font-weight: 700; }
 .gift-bo { margin-top: 10rpx; font-size: 36rpx; color: #6E2B22; line-height: 1.5; }
 .gift-zh { margin-top: 6rpx; font-size: 26rpx; color: #8A6A12; }
@@ -548,3 +548,67 @@ page { max-width: 560px; margin-left: auto; margin-right: auto; }
   clip-path: polygon(0 0, 0 100%, 78% 100%);
   background: linear-gradient(180deg, #FFFFFF 0%, #E9EDF1 100%);
 }
+
+/* ============ 元音符号（D118 藏文读音补齐） ============ */
+.vowel-grid { margin-top: 18rpx; display: flex; flex-direction: column; gap: 14rpx; }
+.vowel-row {
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  padding: 16rpx 18rpx;
+  border-radius: 14rpx;
+  background: #FBF6E8;
+  border: 2rpx solid #DDD5C2;
+}
+.vowel-sign {
+  flex: 0 0 auto;
+  width: 72rpx;
+  text-align: center;
+  font-size: 52rpx;
+  font-weight: 700;
+  color: #6E2B22;
+  line-height: 1;
+}
+.vowel-main { flex: 1; min-width: 0; }
+.vowel-sub { font-size: 26rpx; font-weight: 700; color: #2C3E50; }
+.vowel-demo { margin-top: 6rpx; font-size: 30rpx; color: #8A6A12; }
+.vowel-play {
+  flex-shrink: 0;
+  margin: 0;
+  font-size: 26rpx;
+  color: #FFF6DC;
+  background: linear-gradient(160deg, #C0392B, #A93226);
+  border-radius: 999rpx;
+  padding: 0 20rpx;
+  line-height: 2.2;
+}
+.vowel-play[disabled] {
+  opacity: .55;
+  color: #8A8172;
+  background: rgba(214, 202, 176, .4);
+}
+
+/* ============ 现实足迹（2026-10-17） ============ */
+.fp-grid { margin-top: 16rpx; display: flex; flex-direction: column; gap: 12rpx; }
+.fp-item {
+  display: flex; align-items: center; gap: 16rpx;
+  padding: 18rpx 20rpx; border-radius: 16rpx;
+  background: rgba(255, 255, 255, .72);
+  border: 1.5rpx solid rgba(183, 149, 11, .22);
+  transition: background .15s, border-color .15s;
+}
+.fp-item.fp-on {
+  background: rgba(183, 149, 11, .10);
+  border-color: rgba(183, 149, 11, .55);
+}
+.fp-mark {
+  width: 44rpx; height: 44rpx; flex: 0 0 44rpx;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; font-size: 26rpx; font-weight: 700;
+  color: #8A6A12; background: rgba(183, 149, 11, .12);
+}
+.fp-item.fp-on .fp-mark { color: #fff; background: #8A6A12; }
+.fp-body { flex: 1; min-width: 0; }
+.fp-spot { font-size: 26rpx; color: #2C3E50; font-weight: 600; }
+.fp-name { font-size: 26rpx; color: #6E6759; margin-top: 2rpx; }
+.fp-hint { margin-top: 12rpx; font-size: 26rpx; color: #6E6759; }

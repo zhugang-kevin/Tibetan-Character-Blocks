@@ -1,0 +1,5 @@
+.tv-wrap { display: flex; flex-direction: column; align-items: center; padding: 40rpx; }
+.tv-img { width: 100%; height: 520rpx; border-radius: 16rpx; background: #1B2A3D; }
+.tv-info { margin-top: 24rpx; text-align: center; }
+.tv-name { font-size: 36rpx; font-weight: 700; color: #1B2A3D; display: block; }
+.tv-sub { font-size: 26rpx; color: #6E6759; margin-top: 8rpx; display: block; }
