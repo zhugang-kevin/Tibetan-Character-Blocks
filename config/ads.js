@@ -22,10 +22,16 @@
 //   封面广告（cover）**无需创建 ID**，在后台开关即可，所以这里没有它。
 
 module.exports = {
-  banner: '',        // 页面内横幅
-  rewarded: '',      // 激励视频（用户主动点击才播）
-  interstitial: '',  // 插屏（有频率限制，见 utils/ads.js）
-  video: '',
-  videoPatch: '',
-  template: ''
+  // ── ✅ 已接线（页面真的在用）────────────────────────────────────────
+  banner: '',        // 结算页：video 没配时的退路
+  video: '',         // 结算页：<ad ad-type="video">
+  rewarded: '',      // 游戏页：看视频得一次提示（必须用户点击才播）
+
+  // ── ⬜ 未接线（运行时没有任何消费者）────────────────────────────────
+  //   填了不会报错、不会渲染、**也不会有收入** —— check-ads-config.js 会直接判红。
+  //   要用必须先接运行时（见 `utils/ads.js` 的 WIRED 表与 D156），
+  //   不要以为填个 ID 就自动生效。
+  interstitial: '',  // 插屏：官方限制「不能一进小程序就弹、不能用在首页」，暂不接
+  videoPatch: '',    // 视频前贴
+  template: ''       // 原生模板（<ad-custom>）
 };

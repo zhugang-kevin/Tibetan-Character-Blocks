@@ -19,7 +19,11 @@
 const path = require('path');
 const fs = require('fs');
 
-const ROOT = path.join(__dirname, '..');
+// ADS_TEST_ROOT：变异测试用（在临时目录里改坏配置，验证本门禁真的会红）。
+// 与 scripts/test-ad-runtime.js 同一约定。
+const ROOT = process.env.ADS_TEST_ROOT
+  ? path.resolve(process.env.ADS_TEST_ROOT)
+  : path.join(__dirname, '..');
 const CFG = path.join(ROOT, 'config', 'ads.js');
 const TYPES = ['banner', 'rewarded', 'interstitial', 'video', 'videoPatch', 'template'];
 const LABEL = {
@@ -51,6 +55,25 @@ try { ads = require(CFG) || {}; } catch (e) {
 }
 
 const filled = TYPES.filter(t => String(ads[t] || '').trim());
+
+// 1.5 接线状态：**配置里有键 ≠ 运行时有人消费**。
+//     填了未接线的类型 = 不渲染、不报错、也不会有收入 —— 最难发现的一种失败。
+//     WIRED 表放在 utils/ads.js 里当唯一事实源，这里只读、不复制。
+let WIRED = null;
+try {
+  WIRED = require(path.join(ROOT, 'utils', 'ads.js')).WIRED || null;
+} catch (e) {
+  err('读不到 utils/ads.js 的 WIRED 表：' + e.message);
+}
+if (WIRED) {
+  const missing = TYPES.filter(t => typeof WIRED[t] !== 'boolean');
+  if (!missing.length) ok('WIRED 表覆盖全部 ' + TYPES.length + ' 类（新增类型必须显式声明接没接）');
+  else err('WIRED 表缺类型：' + missing.join('、') + ' —— 新增广告位必须同时声明接线状态');
+  const orphan = filled.filter(t => WIRED[t] === false);
+  if (!orphan.length) ok('已填 ID 的广告位都有运行时消费者');
+  else orphan.forEach(t => err(LABEL[t] + ' 已填 ID，但运行时没有消费者 —— 不会渲染、不会报错、也不会有收入。'
+    + '要么清空，要么先接运行时（utils/ads.js 的 WIRED 表 + D156）'));
+}
 
 if (!filled.length) {
   ok('未配置状态（6 个广告位全空）—— 不会创建任何广告实例，也不会报错');
