@@ -83,7 +83,20 @@ db.exec(`
 //   多开一张表反而要维护一致性；直接在 progress 上加一列最省，也最少出错。
 //   ⚠️ 老的库文件没有这一列 → 用 ALTER 补（已存在时 SQLite 会报错，吞掉即可）。
 try { db.exec('ALTER TABLE progress ADD COLUMN uid TEXT'); } catch (e) { /* 已有该列 */ }
-db.exec('CREATE INDEX IF NOT EXISTS idx_progress_uid ON progress(uid)');
+// R11：uid 必须**全局唯一**（一个收礼地址只属于一个人）。原先是普通索引 ——
+//   两个 openid 能写同一个 uid，`openidOfUid` 只会随机返回一个 → 能越权读到别人的礼物。
+//   迁移：历史重复的 uid 只保留最早一条（其余置 NULL；NULL 不参与 UNIQUE），再建**部分唯一索引**。
+try {
+  db.exec(`UPDATE progress SET uid = NULL
+    WHERE uid IS NOT NULL AND uid <> '' AND rowid NOT IN (
+      SELECT MIN(rowid) FROM progress WHERE uid IS NOT NULL AND uid <> '' GROUP BY uid
+    )`);
+  db.exec('DROP INDEX IF EXISTS idx_progress_uid');
+  db.exec("CREATE UNIQUE INDEX IF NOT EXISTS uq_progress_uid ON progress(uid) WHERE uid IS NOT NULL AND uid <> ''");
+} catch (e) {
+  // 迁移失败不阻塞启动，但必须显式记录 —— 否则唯一约束没生效却无人知道
+  console.error('[store] uid 唯一索引迁移失败：', e && e.message);
+}
 
 // D113 收礼箱：谁给谁送了什么。
 //   out_trade_no 做主键 = **发货幂等**落到数据库层（回调重推不会重复入账，
@@ -132,6 +145,12 @@ const stmt = {
   insertGift: db.prepare(`INSERT OR IGNORE INTO gifts
     (out_trade_no, from_openid, to_uid, product_id, amount, payload, created_at)
     VALUES (?, ?, ?, ?, ?, ?, ?)`),
+  // R12：事务内必须用**严格 INSERT** —— `INSERT OR IGNORE` 会把 NOT NULL 等约束违反
+  //   一并忽略（changes=0 但不抛），结果「订单标了已发、礼物没写进去」，正是要防的丢失。
+  //   严格 INSERT 失败会抛 → 外层 ROLLBACK → 连 claim 一起回滚，重推可再补。
+  insertGiftStrict: db.prepare(`INSERT INTO gifts
+    (out_trade_no, from_openid, to_uid, product_id, amount, payload, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)`),
   inboxOf: db.prepare(`SELECT out_trade_no, product_id, amount, payload, created_at
     FROM gifts WHERE to_uid = ? ORDER BY created_at DESC LIMIT ?`),
   // 防御：**同一对 B→A 每天 3 次**（防刷单 / 自送自收）
@@ -165,6 +184,25 @@ function claimDelivery(outTradeNo) {
   return stmt.markDelivered.run(Date.now(), outTradeNo).changes > 0;
 }
 
+// R12：发货原子性 ——「标已发」+「写礼物」必须在**同一个事务**里。
+//   原实现先 claimDelivery 再 putGift：两步之间崩溃 → 订单已标已发、礼物没写进去 → 永久丢失，
+//   而且因为 delivered=1，重推也不会补发。
+//   @returns {{claimed:boolean, delivered:boolean}}
+function claimAndDeliver(outTradeNo, gift) {
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    const claimed = stmt.markDelivered.run(Date.now(), outTradeNo).changes > 0;
+    if (!claimed) { db.exec('COMMIT'); return { claimed: false, delivered: false }; }
+    const delivered = stmt.insertGiftStrict.run(gift.outTradeNo, gift.fromOpenid, gift.toUid,
+      gift.productId, gift.amount, gift.payload || '', Date.now()).changes > 0;
+    db.exec('COMMIT');
+    return { claimed: true, delivered: delivered };
+  } catch (e) {
+    try { db.exec('ROLLBACK'); } catch (e2) { /* ignore */ }
+    throw e;
+  }
+}
+
 function saveSession(openid, sessionKey) {
   stmt.upsertSession.run(openid, sessionKey, Date.now());
 }
@@ -179,9 +217,23 @@ function listPendingDelivery(limit) { return stmt.pendingDelivery.all(limit || 5
 //   uid 为空时**不覆盖**已有的 —— 否则一次没带 uid 的同步会把收礼地址清空。
 function saveProgress(openid, d) {
   if (!openid) throw new Error('saveProgress: openid 必填');
-  const uid = d.uid || getProgress(openid) && getProgress(openid).uid || '';
-  stmt.upsertProgress.run(openid, d.doneStages || '', d.lamps | 0, d.cards | 0,
-    d.ownerName || '', uid, Date.now());
+  const cur = getProgress(openid);
+  let uid = d.uid || ((cur && cur.uid) || '');
+  // R11：uid 已被**别的 openid** 占用 → 不覆盖（保留原主），否则等于把别人的收礼地址抢走
+  if (uid) {
+    const owner = openidOfUid(uid);
+    if (owner && owner !== openid) uid = (cur && cur.uid) || '';
+  }
+  try {
+    stmt.upsertProgress.run(openid, d.doneStages || '', d.lamps | 0, d.cards | 0,
+      d.ownerName || '', uid, Date.now());
+  } catch (e) {
+    // 并发抢占同一 uid：唯一索引会抛 → 退回「不写 uid」，绝不覆盖别人
+    if (/UNIQUE/i.test(String(e && e.message))) {
+      stmt.upsertProgress.run(openid, d.doneStages || '', d.lamps | 0, d.cards | 0,
+        d.ownerName || '', (cur && cur.uid) || '', Date.now());
+    } else { throw e; }
+  }
   return getProgress(openid);
 }
 function getProgress(openid) {
@@ -227,6 +279,7 @@ module.exports = {
   getOrder,
   markPaid,
   claimDelivery,
+  claimAndDeliver,
   saveSession,
   getSession,
   listPendingDelivery,

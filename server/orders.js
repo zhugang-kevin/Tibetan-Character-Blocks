@@ -159,6 +159,9 @@ const listStock = db => Object.keys(PRODUCTS).map(id => ({
 }));
 
 module.exports = {
+  // 2026-11-06：把实际生效的库路径暴露出来 —— 部署时「数据到底落在哪个文件」
+  //   靠猜是不可接受的（曾出现「以为在 /var/lib，其实在代码目录」的排查盲区）。
+  DB_PATH,
   PRODUCTS, NEXT, open,
   createOrder, getOrder, listByOpenid, listStock,
   markPaid, markShipped, markDone, requestRefund, markRefunded, cancelOrder

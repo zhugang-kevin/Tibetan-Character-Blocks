@@ -1,0 +1,46 @@
+[Unit]
+Description=Zangqu API (藏趣方块)
+Documentation=file:///opt/zangqu/docs/deploy/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/zangqu/server
+
+# ⚠️ 必须 Node >= 22.5：server/store.js 用了内置 node:sqlite
+#    低版本会报 "Cannot find module 'node:sqlite'"
+ExecStart=/usr/bin/node index.js
+
+Environment=NODE_ENV=production
+Environment=PORT=3000
+
+# ⚠️ 密钥**不能**写在 Environment= 里 —— systemctl cat 会明文显示，journalctl 也可能带出。
+#    改用 EnvironmentFile（权限 600，属主 root，服务以 www-data 读取）。
+#    文件模板见 docs/deploy/env.example
+EnvironmentFile=-/etc/zangqu/api.env
+
+Restart=always
+RestartSec=5
+# 防止疯狂重启：5 分钟内最多 5 次
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+# 日志走 journald
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=zangqu-api
+
+# ─── 安全加固（不影响功能的最小集合）───
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+# 只允许写这两个目录（SQLite 数据库 + 日志）
+ReadWritePaths=/opt/zangqu/server
+ReadWritePaths=/var/log/zangqu
+
+[Install]
+WantedBy=multi-user.target

@@ -23,7 +23,8 @@ const https = require('https');
 const url = require('url');
 const crypto = require('crypto');
 const sign = require('./sign');
-const store = require('./store');   // D92：订单落 SQLite（旧版是内存 Map → 重启即丢）
+const store = require('./store');
+const challenge = require('./store-challenge');   // S01/S02：同盘挑战   // D92：订单落 SQLite（旧版是内存 Map → 重启即丢）
 
 // ---------- 配置（全部走环境变量，**绝不进代码库**）----------
 const CFG = {
@@ -33,7 +34,12 @@ const CFG = {
   appKeyProd: process.env.WX_APPKEY_PROD || '',   // env=0 用
   appKeySandbox: process.env.WX_APPKEY_SANDBOX || '', // env=1 用
   env: Number(process.env.WX_ENV || 0),           // 0 正式 / 1 沙箱
-  port: Number(process.env.PORT || 8787)
+  port: Number(process.env.PORT || 8787),
+  telemetryToken: process.env.TELEMETRY_TOKEN || '',       // R10：读取自检日志的令牌
+  maxBody: Number(process.env.MAX_BODY_BYTES || 262144),   // R09：请求体上限 256KB
+  // R13：遥测写入口限流 + 文件上限（公开部署后防止被刷满磁盘）
+  telemetryMaxPerMin: Number(process.env.TELEMETRY_MAX_PER_MIN || 60),
+  telemetryMaxBytes: Number(process.env.TELEMETRY_MAX_BYTES || 5 * 1024 * 1024)
 };
 
 // 道具表：productId 与价格来自 ../data/goods.js **唯一事实源**（前后端同一份）。
@@ -52,14 +58,22 @@ require('../data/goods.js').list.forEach(function (g) {
 function appKey() { return CFG.env === 1 ? CFG.appKeySandbox : CFG.appKeyProd; }
 
 // ---------- 微信服务端 API（用内置 https，避免装 axios）----------
+// 2026-11-06：对外请求必须有超时。
+//   实测：这台机器访问 api.weixin.qq.com 会挂住（不报错、也不返回），
+//   没有超时的话 `/sync/*`、`/pay/*` 会永久占用连接，进程看起来还活着但请求全卡死。
+//   8s 是官方接口的正常上限（官方建议 5s + 重试），超时直接 reject 让调用方回 504/500。
+const WX_TIMEOUT_MS = Number(process.env.WX_HTTP_TIMEOUT_MS) || 8000;
+
 function wxGet(pathname, query) {
   return new Promise((resolve, reject) => {
     const qs = Object.keys(query).map(k => k + '=' + encodeURIComponent(query[k])).join('&');
-    https.get('https://api.weixin.qq.com' + pathname + '?' + qs, res => {
+    const req = https.get('https://api.weixin.qq.com' + pathname + '?' + qs, res => {
       let buf = '';
       res.on('data', d => (buf += d));
       res.on('end', () => { try { resolve(JSON.parse(buf)); } catch (e) { reject(e); } });
-    }).on('error', reject);
+    });
+    req.on('error', reject);
+    req.setTimeout(WX_TIMEOUT_MS, () => req.destroy(new Error('微信接口超时（' + WX_TIMEOUT_MS + 'ms）')));
   });
 }
 function wxPost(pathname, body) {
@@ -73,6 +87,7 @@ function wxPost(pathname, body) {
       res.on('data', d => (buf += d));
       res.on('end', () => { try { resolve(JSON.parse(buf)); } catch (e) { reject(e); } });
     });
+    req.setTimeout(WX_TIMEOUT_MS, () => req.destroy(new Error('微信接口超时（' + WX_TIMEOUT_MS + 'ms）')));
     req.on('error', reject); req.write(data); req.end();
   });
 }
@@ -164,12 +179,11 @@ function handleNotify(req, res, body, raw) {
 
   store.markPaid(outTradeNo);
 
-  // **幂等靠数据库**：只有 delivered=0 才会被本次更新到（受影响行数=1）。
-  // 微信会重推，若这里返回 false 说明之前已发过 —— 直接回成功，**绝不能再发一次**。
-  if (!store.claimDelivery(outTradeNo)) {
+  // **幂等靠数据库**，且 R12：claim + 写礼物在**同一个事务**里（store.claimAndDeliver）。
+  // 返回 false = 之前已发过（微信重推）→ 直接回成功，**绝不能再发一次**。
+  if (!deliver(order)) {
     return ok(res, { errcode: 0, errmsg: 'ok', duplicated: true });
   }
-  deliver(order);                       // 发奖：灯火 +1 / 祝福卡 +1 …
   return ok(res, { errcode: 0, errmsg: 'ok' });
 }
 
@@ -181,17 +195,20 @@ function handleNotify(req, res, body, raw) {
 //   ② 收礼人靠 **attach 里的匿名 uid**，不靠 openid —— 小程序没有关系链，
 //      B 拿不到 A 的 openid，只能拿到分享卡片上那个 uid。
 //   ③ A 什么时候看到：A 端主动拉 /gift/inbox（不做推送，省掉订阅消息这条合规重路）。
+// R12：返回「本次是否由我发货」。有收礼人时 claim+入账走**一个事务**；
+//   没有收礼人（自己买给自己）也必须 claim，避免重推时反复处理。
 function deliver(order) {
   const give = (GIFTS[order.product_id] || {}).give || 'unknown';
   let attach = {};
   try { attach = JSON.parse(order.attach || '{}'); } catch (e) { attach = {}; }
   const toUid = String(attach.toUid || '');
-  // 没有收礼人（比如自己给自己买）：不进收礼箱，但订单仍算已发货，绝不重试补发。
   if (!toUid) {
-    console.log('[发货] 无收礼人 uid（不进收礼箱）', order.out_trade_no, '礼物', give);
-    return;
+    const claimed = store.claimDelivery(order.out_trade_no);
+    console.log('[发货] 无收礼人 uid（不进收礼箱）', order.out_trade_no, '礼物', give,
+      claimed ? '' : '（已发过，重推）');
+    return claimed;
   }
-  const put = store.putGift({
+  const r = store.claimAndDeliver(order.out_trade_no, {
     outTradeNo: order.out_trade_no,
     fromOpenid: order.openid,
     toUid: toUid,
@@ -200,7 +217,8 @@ function deliver(order) {
     payload: JSON.stringify(attach.extra || {})
   });
   console.log('[发货]', order.out_trade_no, '→ 收礼箱', toUid, '礼物', give,
-    put ? '' : '（已入过，本次为重推）');
+    !r.claimed ? '（订单已发过）' : (r.delivered ? '' : '（已入过，本次为重推）'));
+  return r.claimed;
 }
 
 // ---------- ④b 收礼箱（D113）----------
@@ -228,7 +246,11 @@ async function handleGiftInbox(req, res, body) {
 
 // ---------- ③ 主动查单（回调丢失时的兜底）----------
 async function handleQuery(req, res, body) {
-  const outTradeNo = body.outTradeNo;
+  // 2026-11-06：缺参必须先拦。原来直接把 undefined 丢给 SQLite，
+  //   `stmt.get(undefined)` 会抛 "Provided value cannot be bound to SQLite parameter 1"
+  //   → 整个请求 500。客户端漏字段不该让服务端崩，应回 400 让前端看得懂。
+  const outTradeNo = String((body && body.outTradeNo) || '');
+  if (!outTradeNo) return fail(res, 400, '缺少 outTradeNo');
   const order = store.getOrder(outTradeNo);
   if (!order) return fail(res, 404, '订单不存在');
 
@@ -245,8 +267,7 @@ async function handleQuery(req, res, body) {
     // 查到「已支付但未发货」→ 补发（这正是兜底的意义）
     if (r && (r.errcode === 0) && r.order && r.order.status === 'PAID') {
       store.markPaid(outTradeNo);
-      if (store.claimDelivery(outTradeNo)) {   // 同样靠 DB 保证只发一次
-        deliver(order);
+      if (deliver(order)) {   // R12：单事务内 claim+入账，同样只发一次
         return ok(res, { outTradeNo, status: 'PAID', delivered: true, repaired: true });
       }
     }
@@ -285,7 +306,95 @@ async function handleSyncLoad(req, res, body) {
 function ok(res, data) { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(Object.assign({ ok: true }, data))); }
 function fail(res, code, msg) { res.writeHead(code, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: false, msg })); }
 
+// === 自检数据接收（2026-10-21）===
+// 用户原话：「上线没有办法检测问题就是一个大问题」。
+// 这里只做一件事：把客户端缓冲的自检行**追加落盘**，出问题时 grep/tail 就能看到。
+//
+// 安全（R10，已实现）：`GET /telemetry` 必须鉴权。
+//   配了 TELEMETRY_TOKEN → 校验 token（query 或 x-telemetry-token）；
+//   未配且 WX_ENV=0（生产）→ 直接 403；仅 WX_ENV=1（沙箱/开发）放行，方便联调。
+//   生产上线前必须在环境变量里配置 TELEMETRY_TOKEN，否则读接口是 fail-closed（读不到，但安全）。
+function telemetryFile() {
+  return require('path').join(__dirname, 'data', 'telemetry.jsonl');
+}
+// R13：写入口限流（默认 60 次/分钟/IP）。纯内存、无依赖；进程重启即清零。
+var telemetryHits = Object.create(null);
+function telemetryAllowed(ip, now) {
+  var t = now || Date.now();
+  var key = String(ip || 'unknown');
+  var arr = (telemetryHits[key] || []).filter(function (x) { return t - x < 60000; });
+  if (arr.length >= CFG.telemetryMaxPerMin) { telemetryHits[key] = arr; return false; }
+  arr.push(t); telemetryHits[key] = arr;
+  return true;
+}
+function handleTelemetry(req, res, body) {
+  try {
+    var ip = (req.socket && req.socket.remoteAddress) || 'unknown';
+    if (!telemetryAllowed(ip)) return fail(res, 429, 'too many telemetry requests');
+    var fs = require('fs');
+    var file = telemetryFile();
+    var dir = require('path').dirname(file);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    // 文件上限：超过 5MB 只留最后 2000 行（避免无限增长）
+    if (fs.existsSync(file) && fs.statSync(file).size > CFG.telemetryMaxBytes) {
+      var lines = fs.readFileSync(file, 'utf8').trim().split(String.fromCharCode(10));
+      fs.writeFileSync(file, lines.slice(-2000).join(String.fromCharCode(10)) + String.fromCharCode(10));
+    }
+    var line = JSON.stringify({
+      at: new Date().toISOString(),
+      ver: body.ver || '', sess: body.sess || '',
+      rows: Array.isArray(body.rows) ? body.rows.slice(-30) : []
+    });
+    fs.appendFileSync(file, line + String.fromCharCode(10));
+  } catch (e) { /* 自检失败绝不影响主服务 */ }
+  return ok(res, { ok: true });
+}
+function handleTelemetryRead(req, res) {
+  // R10：读取日志必须鉴权。配了 TELEMETRY_TOKEN 就校验；没配时生产（WX_ENV=0）直接 403，
+  //   仅沙箱/开发（WX_ENV=1）放行方便联调 —— 不会再出现「任何人都能拉全量日志」。
+  var q = url.parse(req.url, true).query || {};
+  var token = String(CFG.telemetryToken || '');
+  if (token) {
+    var got = String(q.token || (req.headers && req.headers['x-telemetry-token']) || '');
+    if (got !== token) return fail(res, 401, 'unauthorized');
+  } else if (CFG.env === 0) {
+    return fail(res, 403, 'telemetry read disabled: TELEMETRY_TOKEN not configured');
+  }
+  try {
+    var n = Math.min(Number(q.limit) || 20, 200);
+    var txt = require('fs').readFileSync(telemetryFile(), 'utf8').trim();
+    var lines = txt ? txt.split(String.fromCharCode(10)).slice(-n) : [];
+    var rows = lines.map(function (l) { try { return JSON.parse(l); } catch (e) { return null; } }).filter(Boolean);
+    return ok(res, { rows: rows, note: token ? 'token' : 'sandbox(dev, no token)' });
+  } catch (e) { return ok(res, { rows: [], note: 'empty' }); }
+}
+
+// === 同盘挑战（S01/S02，2026-10-21）===
+// ⚠️ 诚实标注：成绩由**客户端自报**。本地改一个数就能刷榜 —— 防作弊（服务端复算）未实现。
+//    这里的 dup 只是"同一人对同一挑战重复上报"的去重，不是防作弊。
+function handleChallengePlay(req, res, body) {
+  if (body.cid == null || body.uid == null) return fail(res, 400, 'missing cid/uid');
+  var r = challenge.recordPlay({
+    cid: body.cid, uid: body.uid, level: body.level, seed: body.seed,
+    score: body.score, steps: body.steps, won: body.won
+  });
+  return ok(res, { ok: r.ok, dup: !!r.dup, verified: false });
+}
+
+function handleChallengeBoard(req, res) {
+  var q = url.parse(req.url, true).query || {};
+  if (!q.cid) return fail(res, 400, 'missing cid');
+  return ok(res, {
+    cid: String(q.cid),
+    count: challenge.countByCid(q.cid),
+    rows: challenge.listByCid(q.cid, q.limit),
+    verified: false            // 同上：未做防作弊，别把这个字段当保证
+  });
+}
+
 const ROUTES = {
+  '/challenge/play': handleChallengePlay, '/challenge': handleChallengeBoard,
+  '/telemetry': handleTelemetry, '/telemetry/read': handleTelemetryRead,
   '/pay/order': handleOrder, '/pay/notify': handleNotify, '/pay/query': handleQuery,
   '/sync/save': handleSyncSave, '/sync/load': handleSyncLoad,
   '/gift/inbox': handleGiftInbox     // D113：A 端拉「别人送我的」
@@ -298,12 +407,31 @@ const server = http.createServer((req, res) => {
   }
   const handler = ROUTES[p];
   if (!handler) return fail(res, 404, 'not found');
-  let raw = '';
-  req.on('data', d => (raw += d));
+  // R09：方法白名单（405）+ 体积上限（413）+ **只解析一次**（坏 JSON → 400）。
+  //   原实现把 JSON.parse 调了两次，第二次在 try 之外：坏 JSON 会同步抛出，
+  //   请求既不 400 也不 500，直接吊死/被吞（实测「坏 JSON 未 catch」）。
+  const isGet = req.method === 'GET';
+  const GET_OK = { '/telemetry/read': 1, '/challenge': 1 };
+  if (isGet) {
+    if (!GET_OK[p]) return fail(res, 405, 'method not allowed');
+  } else if (req.method !== 'POST') {
+    return fail(res, 405, 'method not allowed');
+  }
+  let raw = '', tooBig = false;
+  req.on('data', d => {
+    if (tooBig) return;
+    raw += d;
+    if (raw.length > CFG.maxBody) {
+      tooBig = true; raw = '';
+      fail(res, 413, 'payload too large');
+    }
+  });
   req.on('end', () => {
-    let body = {};
-    try { body = JSON.parse(raw || '{}'); } catch (e) { body = {}; }
-    Promise.resolve(handler(req, res, body, raw, JSON.parse(raw || '{}')))
+    if (tooBig) return;
+    let body;
+    try { body = JSON.parse(raw || '{}'); }
+    catch (e) { return fail(res, 400, 'invalid json'); }
+    Promise.resolve(handler(req, res, body, raw))
       .catch(e => fail(res, 500, String(e && e.message || e)));
   });
 });
@@ -316,4 +444,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { GIFTS, store, makeOutTradeNo, deliver, server };
+module.exports = { GIFTS, store, makeOutTradeNo, deliver, server, telemetryAllowed };

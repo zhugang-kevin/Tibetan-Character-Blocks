@@ -16,11 +16,16 @@
 
 var GAME = '藏趣方块';
 var GIFT_PAGE = '/pages/gift/gift';
+// Q18：客服开关。未绑定客服人员时，页面必须显式写"未开通"，不能给假按钮。
+var serviceCfg = require('../../../config/service');
 
 Page({
   data: {
     game: GAME,
     active: 'feedback',
+    // Q18：未开通时按钮不渲染，改显示 serviceNote（见 wxml）
+    serviceEnabled: !!serviceCfg.enabled,
+    serviceNote: serviceCfg.note,
     tabs: [
       { key: 'feedback', name: '反馈问题' },
       { key: 'gift', name: '虚拟礼物' },

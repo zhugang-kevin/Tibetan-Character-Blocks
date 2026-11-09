@@ -48,8 +48,10 @@ PORT=8787
 
 1. **用官方示例值验证签名**：把官方文档给的 `uri/postBody/appKey` 跑一遍，
    确认 `sign.js` 输出与官方示例**完全一致**，再往下接业务。不一致就是算法或编码问题。
-2. **换持久化存储**：`index.js` 里的 `ORDERS`/`SESSIONS` 是 `Map`，**重启即丢**。
-   生产必须换数据库 —— 否则重启后回调重放会**重复发货**。
+2. **持久化存储已落地（D92，别再按旧说法写"Map 重启即丢"）**：
+   订单 / 会话 / 进度 / 收礼箱全部在 `server/store.js`（SQLite，Node 内置 `node:sqlite`），
+   重启不丢；发货幂等靠 `orders.delivered` 与主键约束（R12 后改为 `claimAndDeliver` 单事务）。
+   ⚠️ 部署环境需 Node ≥ 22.5（否则换 `better-sqlite3`）；仍需确认 `DB_PATH` 落在持久卷上并配置备份。
 3. **打开 HTTPS**：虚拟支付回调必须是 HTTPS。
 
 ## 三个官方点名过的坑（已在本实现中处理）

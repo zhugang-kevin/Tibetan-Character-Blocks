@@ -25,8 +25,12 @@
       <view class="sv-card">
         <view class="sv-card-title">遇到问题了？</view>
         <view class="sv-card-note">点下面的按钮直接进客服会话，把截图或描述发过来。我们会回。</view>
-        <button class="sv-btn" open-type="contact" session-from="feedback"
-                aria-label="联系客服反馈问题">联系客服 · 反馈问题</button>
+        <block wx:if="{{serviceEnabled}}">
+          <button class="sv-btn" open-type="contact" session-from="feedback"
+                  aria-label="联系客服反馈问题">联系客服 · 反馈问题</button>
+        </block>
+        <!-- Q18：未开通就明说，不给点了没反应的假按钮 -->
+        <view wx:else class="sv-card-note">{{serviceNote}}</view>
       </view>
       <view class="sv-card">
         <view class="sv-card-title">常见问题</view>
@@ -62,8 +66,12 @@
       <view class="sv-card">
         <view class="sv-card-title">找我们</view>
         <view class="sv-card-note">{{contactNote}}</view>
-        <button class="sv-btn" open-type="contact" session-from="contact"
-                aria-label="联系客服">进入客服会话</button>
+        <block wx:if="{{serviceEnabled}}">
+          <button class="sv-btn" open-type="contact" session-from="contact"
+                  aria-label="联系客服">进入客服会话</button>
+        </block>
+        <!-- Q18：同上，未开通时只显示说明 -->
+        <view wx:else class="sv-card-note">{{serviceNote}}</view>
       </view>
       <view class="sv-card">
         <view class="sv-card-title">回复时间</view>
