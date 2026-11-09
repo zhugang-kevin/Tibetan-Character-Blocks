@@ -24,18 +24,18 @@
 //   第 1 关保持 2 种元素零障碍不变（D26 前 60 秒原则）；图标从 L4 起穿插出现。
 module.exports = [
   // 第1关：6×4 网格（24 格 / 30 张牌），2 种元素，快速上手
-  { level: 1, cols: 6, rows: 4, elements: [['letter_01', 16], ['letter_02', 14]] },
+  { level: 1, cols: 6, rows: 6, elements: [['letter_01', 24], ['letter_02', 22]] },
   // 第2关：6×5 网格（30 格 / 38 张牌），**认全第一个字母组 ཀ ཁ ག ང**，并**首次出现冰霜**
   //   —— 第 1 关（2 种元素、无机制）与第 2 关之间必须有「新东西」，
   //   否则新手会认为「跟上一关一模一样」。2 块冰霜占 30 格的 6.7%，远低于 D23 的 25% 上限。
   //   字母配比 10/10/10/8：新出现的 ང 给最少，玩家不需要在一个新字母上烧太多注意力。
-  { level: 2, cols: 6, rows: 5, elements: [['letter_01', 10], ['letter_02', 10], ['letter_03', 10], ['letter_04', 8]], obstacles: { frost: 2 } },
+  { level: 2, cols: 6, rows: 6, elements: [['letter_01', 12], ['letter_02', 12], ['letter_03', 12], ['letter_04', 10]], obstacles: { frost: 2 } },
   // 第3关：8×4 网格（32 格 / 40 张牌），引入 ཅ ཆ，冰霜增至 3 块
-  { level: 3, cols: 8, rows: 4, elements: [['letter_01', 8], ['letter_02', 8], ['letter_03', 6], ['letter_04', 6], ['letter_05', 6], ['letter_06', 6]], obstacles: { frost: 3 } },
+  { level: 3, cols: 6, rows: 6, elements: [['letter_01', 8], ['letter_02', 8], ['letter_03', 8], ['letter_04', 8], ['letter_05', 8], ['letter_06', 6]], obstacles: { frost: 3 } },
   // 第4关：8×4 网格（32 格 / 40 张牌），引入 ཇ ཉ 与吉祥结图标（icon_01）
-  { level: 4, cols: 8, rows: 4, elements: [['letter_02', 6], ['letter_03', 6], ['letter_05', 6], ['letter_06', 4], ['letter_07', 6], ['letter_08', 6], ['icon_01', 6]] },
+  { level: 4, cols: 6, rows: 6, elements: [['letter_02', 8], ['letter_03', 6], ['letter_05', 8], ['letter_06', 6], ['letter_07', 6], ['letter_08', 6], ['icon_01', 6]] },
   // 第5关：8×5 网格（40 格 / 50 张牌），引入舌尖音组 ཏ ཐ ད，冰霜增多
-  { level: 5, cols: 8, rows: 5, elements: [['letter_03', 8], ['letter_04', 6], ['letter_07', 8], ['letter_08', 6], ['letter_09', 6], ['letter_10', 8], ['letter_11', 8]], obstacles: { frost: 5 } },
+  { level: 5, cols: 6, rows: 7, elements: [['letter_03', 8], ['letter_04', 8], ['letter_07', 8], ['letter_08', 8], ['letter_09', 8], ['letter_10', 8], ['letter_11', 6]], obstacles: { frost: 5 } },
   // 第6关：6×8 网格（48 格 / 60 张牌），引入 ན པ ཕ，首次出现藏式木箱
   { level: 6, cols: 6, rows: 8, elements: [['letter_07', 8], ['letter_08', 8], ['letter_09', 6], ['letter_10', 6], ['letter_11', 6], ['letter_12', 10], ['letter_13', 8], ['letter_14', 8]], obstacles: { frost: 4, crate: 2, crateHp: 1 } },
   // 第7关：6×8 网格（48 格 / 60 张牌），引入 བ མ ཙ 与青稞图标（icon_02）

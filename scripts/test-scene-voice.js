@@ -40,6 +40,14 @@ section('1. 五个场景的映射与 id');
   });
   const ids = Object.keys(sv.SCENE_VOICE).map(function (k) { return sv.SCENE_VOICE[k]; });
   check('五条互不相同（映射未退化）', new Set(ids).size === 5, ids.join(','));
+  // 覆盖门禁：映射对了还不够，文件必须真的存在（覆盖≠听感；听感仍需真机）
+  const fs = require('fs'), path = require('path');
+  const voiceDir = path.join(__dirname, '..', 'audio', 'voice');
+  const files = fs.existsSync(voiceDir) ? fs.readdirSync(voiceDir) : [];
+  const missing = ids.filter(function (id) {
+    return files.indexOf(id + '.mp3') < 0 && files.indexOf(id + '.wav') < 0;
+  });
+  check('五条场景语音文件齐全（mp3/wav）', missing.length === 0, missing.join(','));
   check('未知场景不播（防传错场景名）',
     sv.shouldPlay('not_a_scene', sv.createState(0), 0, {}) === false);
 }

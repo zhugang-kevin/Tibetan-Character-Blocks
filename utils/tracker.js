@@ -1,4 +1,5 @@
 // utils/tracker.js — 15分钟核心体验埋点（Gate 1 测试用，仅本地存储）
+var platform = require('./platform');   // 平台适配层
 //
 // 节点表对应《4.1 方案》15分钟体验表：
 //   first_letter_seen      0:20 第一次看到藏文字母
@@ -20,13 +21,13 @@ function load() {
   // 埋点是诊断用的，绝不能因为它抛异常影响游戏主流程。
   var d = null;
   try {
-    var v = wx.getStorageSync(KEY);
+    var v = platform.storage.get(KEY);
     d = (v && typeof v === 'object' && !Array.isArray(v)) ? v : null;
   } catch (e) { d = null; }
   return (d && d.startedAt && d.events) ? d : { startedAt: 0, events: {} };
 }
 function save(d) {
-  try { wx.setStorageSync(KEY, d); } catch (e) { /* 存储满不影响游戏 */ }
+  try { platform.storage.set(KEY, d); } catch (e) { /* 存储满不影响游戏 */ }
 }
 /**
  * 记录里程碑（幂等：同一 id 只记录第一次到达的秒数）
@@ -34,7 +35,9 @@ function save(d) {
 function track(id) {
   var d = load();
   if (!d.startedAt) d.startedAt = Date.now();
-  if (!d.events[id]) {
+  // R03：必须用 hasOwnProperty 判「记过没有」。事件若发生在第 0 秒，值就是 0，
+  //   而 0 是 falsy → 原写法会把它当成「没记过」，下次又覆盖成更大的秒数（首步事件失真）。
+  if (!Object.prototype.hasOwnProperty.call(d.events, id)) {
     d.events[id] = Math.round((Date.now() - d.startedAt) / 1000);
     save(d);
   }
@@ -45,7 +48,7 @@ function report() {
 }
 /** 测试结束重置（下一轮 Gate 1 测试用） */
 function reset() {
-  try { wx.removeStorageSync(KEY); } catch (e) {}
+  try { platform.storage.remove(KEY); } catch (e) {}
 }
 module.exports = {
   track: track,

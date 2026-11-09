@@ -1,0 +1,51 @@
+/* pages/recognition/recognition.wxss — Q1 识认测验（暖纸底 + 墨色字，不引入任何颜色提示） */
+.rc-page {
+  min-height: 100vh;
+  padding: 48rpx 32rpx;
+  box-sizing: border-box;
+  background: #FAF6EA;
+}
+.rc-card {
+  background: #FFFDF7;
+  border: 1rpx solid #E0D8C4;
+  border-radius: 24rpx;
+  padding: 40rpx 32rpx;
+}
+.rc-title { font-size: 40rpx; font-weight: 800; color: #2C3E50; text-align: center; }
+.rc-sub { margin-top: 12rpx; font-size: 26rpx; color: #6E6759; text-align: center; }
+.rc-rule { margin-top: 28rpx; font-size: 26rpx; line-height: 1.7; color: #2C3E50; }
+.rc-note { margin-top: 20rpx; font-size: 26rpx; line-height: 1.7; color: #6E6759; }
+.rc-btn {
+  margin-top: 32rpx;
+  background: #8A6A12;
+  color: #FFF6DC;
+  border-radius: 999rpx;
+  font-size: 30rpx;
+  font-weight: 700;
+}
+.rc-btn-ghost { background: transparent; color: #8A6A12; border: 1rpx solid #8A6A12; }
+.rc-progress { font-size: 26rpx; color: #6E6759; text-align: center; }
+.rc-letter {
+  margin: 64rpx 0 48rpx;
+  font-size: 160rpx;
+  line-height: 1.1;
+  text-align: center;
+  color: #2C3E50;
+  font-family: 'Noto Serif Tibetan', serif;
+}
+.rc-options { display: flex; flex-wrap: wrap; }
+.rc-opt {
+  width: calc(50% - 10rpx);
+  margin: 10rpx;
+  padding: 24rpx 0;
+  background: #FFFDF7;
+  border: 1rpx solid #D8CFB8;
+  border-radius: 16rpx;
+  font-size: 30rpx;
+  color: #2C3E50;
+}
+.rc-hint { margin-top: 28rpx; font-size: 26rpx; color: #6E6759; text-align: center; }
+.rc-score { margin-top: 28rpx; font-size: 72rpx; font-weight: 800; color: #8A6A12; text-align: center; }
+.rc-rate { margin-top: 8rpx; font-size: 28rpx; color: #2C3E50; text-align: center; }
+.rc-pass { margin-top: 20rpx; font-size: 30rpx; font-weight: 800; color: #176B3C; text-align: center; }
+.rc-fail { margin-top: 20rpx; font-size: 30rpx; font-weight: 800; color: #8B241C; text-align: center; }

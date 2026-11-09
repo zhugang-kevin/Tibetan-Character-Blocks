@@ -5,6 +5,7 @@
 // - stamps（文化护照印记）/ bestCombo / levelStats / certs 等为展示与成就型数据，
 //   客户端主导；未来涉及权益/付费的数据一律迁移到服务器权威（见 plan-4.1-review.md）
 var KEY = 'progress';
+var platform = require('./platform');   // 平台适配层：storage 不再直调 wx
 var MAX_LEVEL = 10;
 
 // 连击口径标记（D34）。D34 之前 bestCombo 记的是「本局内连续成功消除的次数」——
@@ -38,7 +39,7 @@ var MIGRATIONS = {
 
 function rawRead() {
   try {
-    var v = wx.getStorageSync(KEY);
+    var v = platform.storage.get(KEY);
     // 脏数据（字符串 / 数组 / 别的版本写的东西）一律按「没有进度」处理，
     // 否则后面 p.completedLevels.indexOf 这类调用会直接抛 TypeError。
     if (!v || typeof v !== 'object' || Array.isArray(v)) return null;
@@ -58,7 +59,7 @@ function rawRead() {
 function rawWrite(p) {
   try {
     if (p && typeof p === 'object') p.schema = SCHEMA;   // D101：落盘时打版本号
-    wx.setStorageSync(KEY, p);
+    platform.storage.set(KEY, p);
     return true;
   } catch (e) { return false; }
 }
@@ -70,6 +71,11 @@ function getProgress() {
     unlockedLevel: (p && p.unlockedLevel) || 1,
     completedLevels: (p && p.completedLevels) || [],
     stamps: (p && p.stamps) || [],
+    // 现实足迹（2026-10-17）：玩家**手动打卡**去过的藏文化地点 id 列表。
+    //   为什么手动而不是定位：本项目是「纯本地」红线（不调网络、不用云函数），
+    //   定位打卡要服务端校验才可信；与其做一个能被随手篡改的假定位，
+    //   不如做成「自己记录自己去过哪里」——诚实、离线可用、不收集位置隐私。
+    footprints: (p && p.footprints) || [],
     bestCombo: comboCurrent ? ((p && p.bestCombo) || 0) : 0,
     comboModel: COMBO_MODEL,
     // 即时应激励的文案开关（D34）：只关赞美文案，不关元素发音
@@ -133,7 +139,9 @@ function getProgress() {
     khatas: (p && p.khatas) || 0,
     receivedGifts: (p && p.receivedGifts) || [],
     // D113b：藏族名字的**藏文写法**（与 tibetanName 一起落库、一起钉死）
-    tibetanNameBo: (p && p.tibetanNameBo) || ''
+    tibetanNameBo: (p && p.tibetanNameBo) || '',
+    // R04：奖励幂等指纹集合（⚠️ 必须进白名单，否则 save(p) 静默写丢导致幂等失效）
+    creditedResults: (p && Array.isArray(p.creditedResults)) ? p.creditedResults : []
   };
 }
 
@@ -201,6 +209,45 @@ function grantStamp(id) {
   p.stamps.push(id);
   save(p);
   return true;
+}
+
+// 查询是否已授予印记（结算页重复进入时判断展示用，不重复授予）
+function hasStamp(id) {
+  return getProgress().stamps.indexOf(id) > -1;
+}
+
+// R04：奖励幂等 —— 同一局结算只发一次达标奖励（防重复开页重发）。
+//   resultId 为本局指纹；首次返回 true 并记录，之后返回 false。集合上限 CREDIT_CAP 防无限增长。
+var CREDIT_CAP = 64;
+function tryCreditResult(resultId) {
+  if (!resultId) return false;
+  var p = getProgress();
+  if (!p.creditedResults) p.creditedResults = [];
+  if (p.creditedResults.indexOf(resultId) > -1) return false;
+  p.creditedResults.push(resultId);
+  if (p.creditedResults.length > CREDIT_CAP) {
+    p.creditedResults = p.creditedResults.slice(-CREDIT_CAP);
+  }
+  save(p);
+  return true;
+}
+
+// —— 现实足迹（2026-10-17）——
+// 打卡是**可撤销**的：去过的可以取消（搬走/记错了），不像印章那样只增不减。
+// 印章代表「进度成就」，足迹代表「个人记录」——两者语义不同，不能共用一套规则。
+function getFootprints() {
+  return getProgress().footprints.slice();
+}
+function isFootprinted(id) {
+  return getProgress().footprints.indexOf(id) > -1;
+}
+function toggleFootprint(id) {
+  var p = getProgress();
+  var i = p.footprints.indexOf(id);
+  if (i === -1) p.footprints.push(id);
+  else p.footprints.splice(i, 1);
+  save(p);
+  return p.footprints.indexOf(id) > -1;   // 返回「现在是否已打卡」
 }
 
 // 文化卡是否已展示过完整版（首次消除弹出，之后只出轻提示）
@@ -547,6 +594,24 @@ function markLampDay(day) {
   return p.lampDay;
 }
 
+// ---------- Q5：三消中途存档 ----------
+// 为什么独立 key：progress 是「学习进度」的权威对象（带 SCHEMA 迁移、会被 /sync 上报），
+//   把盘面塞进去会让每次同步都带上几十张牌；而且盘面是**本机临时态**，不该跨设备同步。
+// 存失败静默（存储满不影响本局）；读失败当没有存档（开新局），绝不硬读坏档。
+var RESUME_KEY = require('./resume').KEY;
+function saveResume(obj) {
+  try { platform.storage.set(RESUME_KEY, obj); } catch (e) { /* 存储满：本局照常 */ }
+}
+function loadResume() {
+  try {
+    var v = platform.storage.get(RESUME_KEY);
+    return (v && typeof v === 'object') ? v : null;
+  } catch (e) { return null; }
+}
+function clearResume() {
+  try { platform.storage.remove(RESUME_KEY); } catch (e) { /* 忽略 */ }
+}
+
 // ---------- 每日打开记录（本地留存粗指标） ----------
 // 跨天判定由 utils/collect.js 的纯函数算，这里只做持久化。不上传、不请求网络。
 function getOpenLog() { return getProgress().openLog; }
@@ -784,7 +849,18 @@ module.exports = {
   recordCombo: recordCombo,
   getPraiseOff: getPraiseOff,
   setPraiseOff: setPraiseOff,
+  // ⚠️ 2026-10-21 补：这两个函数早就定义了（191/195 行），但**从未导出** ——
+  //    而 pages/game/game.js:347 的 onLoad 直接调用 storage.getBgmOff()，
+  //    真机上页面加载即抛 TypeError。行为测试第一次跑就抓到了它。
+  getBgmOff: getBgmOff,
+  setBgmOff: setBgmOff,
   grantStamp: grantStamp,
+  hasStamp: hasStamp,
+  tryCreditResult: tryCreditResult,
+  // 现实足迹（2026-10-17）
+  getFootprints: getFootprints,
+  isFootprinted: isFootprinted,
+  toggleFootprint: toggleFootprint,
   isCardSeen: isCardSeen,
   markCardSeen: markCardSeen,
   getSeenCards: getSeenCards,
@@ -834,5 +910,9 @@ module.exports = {
   getPot: getPot,
   // 万家灯火祈福跳窗（每天首次打开展示一次）
   getLampDay: getLampDay,
-  markLampDay: markLampDay
+  markLampDay: markLampDay,
+  // Q5：三消中途存档（独立 key，不塞进 progress 大对象，避免污染进度迁移）
+  saveResume: saveResume,
+  loadResume: loadResume,
+  clearResume: clearResume
 };

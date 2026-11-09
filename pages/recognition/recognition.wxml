@@ -1,0 +1,40 @@
+<!-- pages/recognition/recognition.wxml — Q1 无提示识认测验（D148）
+     设计约束：不显示颜色、不播发音、没有提示入口。 -->
+<view class="rc-page">
+
+  <block wx:if="{{phase === 'intro'}}">
+    <view class="rc-card">
+      <view class="rc-title">识认测验</view>
+      <view class="rc-sub">30 个藏文辅音 · 四选一</view>
+      <view class="rc-rule">{{rule}}</view>
+      <view class="rc-note">{{note}}</view>
+      <button class="rc-btn" bindtap="onStart" aria-label="开始识认测验">开始测验</button>
+      <button class="rc-btn rc-btn-ghost" bindtap="onBack" aria-label="返回">返回</button>
+    </view>
+  </block>
+
+  <block wx:elif="{{phase === 'quiz'}}">
+    <view class="rc-progress">第 {{idx + 1}} / {{total}} 题</view>
+    <view class="rc-letter" aria-label="藏文字母">{{letter}}</view>
+    <view class="rc-options">
+      <button wx:for="{{options}}" wx:key="*this" class="rc-opt"
+              data-index="{{index}}" bindtap="onPick"
+              aria-label="选项 {{item}}">{{item}}</button>
+    </view>
+    <view class="rc-hint">不提示 · 不发音 · 凭记忆选</view>
+  </block>
+
+  <block wx:else>
+    <view class="rc-card">
+      <view class="rc-title">测验结果</view>
+      <view class="rc-score">{{result.correct}} / {{result.items}}</view>
+      <view class="rc-rate">正确率 {{result.ratePct}}%</view>
+      <view class="rc-pass" wx:if="{{result.pass}}">达标（≥ 80%）</view>
+      <view class="rc-fail" wx:else>未达标（低于 80%）</view>
+      <view class="rc-note">个人结果只代表这一次；平台达标率要累计 30 人以上才报。</view>
+      <button class="rc-btn" bindtap="onRestart" aria-label="再测一次">再测一次</button>
+      <button class="rc-btn rc-btn-ghost" bindtap="onBack" aria-label="返回">返回</button>
+    </view>
+  </block>
+
+</view>

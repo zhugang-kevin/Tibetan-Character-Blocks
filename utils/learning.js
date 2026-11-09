@@ -29,7 +29,11 @@ var FULL_POOLS = {
   sub: data.SUBS, vowel: data.VOWELS, suffix: data.SUFFIXES, second: data.SECOND_SUFFIX
 };
 
-var STEP_MULT = 2.5;      // 步数预算倍数（10 对 → 25 步，与用户样例一致）
+// 步数预算倍数。原 2.5×（10 对 → 25 步）在实玩中几乎不可能失败：
+//   150 关自动对局 0 失败，L1-1 23 对给 58 步（多出 100% 余量）→ 没有挑战感。
+// 2026-10-23 收到 1.8×（23 对 → 42 步，仍留 18 步容错）。
+//   这是一次**显式**的关卡数据变更：指纹已按理由更新（见 docs/关卡改动日志.md）。
+var STEP_MULT = 1.8;
 
 function num(v, d) {
   var n = typeof v === 'number' ? v : parseFloat(v);
@@ -254,20 +258,42 @@ function distribute(titles, total) {
   return counts;
 }
 
+// 三消配比（2026-10-20）：每种元素 ≥3 且**总量为 3 的倍数**。
+// 为什么不能沿用 distribute()：那是给「配对消」用的，每种元素必须是偶数（保证有对可配）。
+// 三消的下限是「三连」，所以基数从 2 变 3、步长从 2 变 3。
+// ⚠️ 余数（1~2 张）无法凑成三连，直接丢弃 —— 总量因此可能比 geo.total 略少。
+function distribute3(titles, total) {
+  var n = titles.length;
+  var counts = [];
+  var i;
+  for (i = 0; i < n; i++) counts.push(3);
+  var left = total - 3 * n;
+  if (left < 0) left = 0;
+  var i2 = 0;
+  while (left >= 3) {
+    counts[i2 % n] += 3;
+    left -= 3;
+    i2++;
+  }
+  return counts;
+}
+
 // ---------------------------------------------------------------- 对外：生成一关
-function buildStage(lv, stage) {
+function buildStage(lv, stage, opts) {
   var L = data.byLevel(lv);
   if (!L) return null;
   var s = Math.max(1, Math.min(L.stages, Math.floor(num(stage, 1))));
   var geo = poolAndTotal(L.cols, L.rows);
   var titles = titlesFor(lv, s);
-  var counts = distribute(titles, geo.total);
+  // mode === 'match3' → 走三消配比（3 的倍数）；默认仍是配对消（偶数），向后兼容。
+  var match3 = !!(opts && opts.mode === 'match3');
+  var counts = match3 ? distribute3(titles, geo.total) : distribute(titles, geo.total);
   var total = counts.reduce(function (a, b) { return a + b; }, 0);
   // id：`lrn_{lv}_{stage}_{序号}` —— 不含藏文，便于日志 / 存储；显示字串在 tiles 里带上
   var elements = titles.map(function (t, i) { return ['lrn_' + lv + '_' + s + '_' + i, counts[i]]; });
   var tiles = {};
   titles.forEach(function (t, i) { tiles[elements[i][0]] = { type: 'letter', tibetan: t, color: colorOf(i), char: '' }; });
-  var pairs = total / 2;
+  var pairs = match3 ? 0 : total / 2;
   return {
     lv: lv,
     stage: s,

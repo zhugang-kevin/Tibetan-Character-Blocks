@@ -1,4 +1,5 @@
 // utils/audio.js — 音效管理
+var platform = require('./platform');   // 平台适配层
 // 7个音效均为程序合成（sine 波 + 包络），免费可商用，无版权风险。
 //
 // D52 体积腾挪（2026-10-08）：藏地密码讲解改为「播整段正文」后十条 mp3 +83KB，
@@ -14,7 +15,7 @@ var SFX_MP3 = { match: 1, mismatch: 1, win: 1, drum: 1, horn: 1, cheer: 1 };
 var cache = {};
 function get(name) {
   if (!cache[name]) {
-    var ctx = wx.createInnerAudioContext();
+    var ctx = platform.audio.create();
     ctx.src = '/audio/' + name + (SFX_MP3[name] ? '.mp3' : '.wav');
     ctx.obeyMuteSwitch = true;
     ctx.__triedWav = false;
@@ -110,7 +111,7 @@ function pronounce(id, tib) {
   if (!id || !VOICE_SET[id]) return false;
   try {
     if (!voiceCtx[id]) {
-      var c = wx.createInnerAudioContext();
+      var c = platform.audio.create();
       var vroot = voiceRootOf(id);
       // 双扩展名（2026-10-08）：mp3 为主（中文播报与压缩后的元素音），
       // 失败自动回退 .wav（天翼 TTS 原始产物）；两个都没有时静默，不影响游戏。
@@ -149,9 +150,9 @@ function speakPraiseBo(level, idx) {
   var lv = Number(level) || 0, ix = Number(idx) || 0;
   if (lv < 1 || lv > 5 || ix < 0 || ix > 4) return false;
   var id = 'praise_bo_' + lv + '_' + ix, p = PRAISE_VOICE_ROOT + id;
-  try { wx.getFileSystemManager().accessSync(p + '.mp3'); } catch (e) { return false; }
+  return platform.audio.fileExists(p);
   try {
-    var c = praiseVoiceCtx[id] || (praiseVoiceCtx[id] = wx.createInnerAudioContext());
+    var c = praiseVoiceCtx[id] || (praiseVoiceCtx[id] = platform.audio.create());
     if (!c.__ok) {
       c.src = p + '.mp3'; c.obeyMuteSwitch = true; c.__ok = 1;
       c.onError(function () { try { c.src = p + '.wav'; c.play(); } catch (e) {} });
@@ -213,7 +214,7 @@ function duckBgm(ms) {
 var bgmCtx = null;
 function bgmContext() {
   if (!bgmCtx) {
-    bgmCtx = wx.createInnerAudioContext();
+    bgmCtx = platform.audio.create();
     bgmCtx.src = '/audio/bgm.mp3';   // D83：WAV(105KB)→MP3(26KB)，省 78KB 用于内嵌字体
     bgmCtx.loop = true;
     bgmCtx.volume = BGM_VOLUME;

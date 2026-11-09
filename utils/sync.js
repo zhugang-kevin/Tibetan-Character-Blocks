@@ -1,4 +1,5 @@
 // utils/sync.js — 进度云同步（D94，走**我们自己的服务端**）
+var platform = require('./platform');   // 平台适配层
 //
 // 为什么不用云 SDK：SDK 小程序产物 **507KB**，主包只剩 6KB 余量 → 硬塞会超微信 2048KB 硬上限，
 //   上传必失败（docs/cloud-sync-blocker.md）。而微信云开发是**假免费**（官方原文：发布后 15 天到期）、
@@ -19,7 +20,7 @@ function isReady() { return !!CONFIG.api; }
 function request(path, data) {
   return new Promise(function (resolve) {
     if (!isReady()) return resolve({ ok: false, reason: 'unconfigured' });
-    wx.request({
+    platform.network.request({
       url: CONFIG.api.replace(/\/$/, '') + path,
       method: 'POST',
       data: data,
@@ -35,7 +36,7 @@ function request(path, data) {
 // 取一次性 code（服务端据此换 openid；openid 不出现在前端）
 function getCode() {
   return new Promise(function (resolve) {
-    wx.login({
+    platform.login({
       success: function (r) { resolve(r && r.code ? r.code : ''); },
       fail: function () { resolve(''); }
     });

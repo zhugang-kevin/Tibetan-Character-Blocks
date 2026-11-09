@@ -105,6 +105,74 @@ function createLevel(cfg, create, rng) {
     plan: plan
   };
 }
+// 三消开局盘面（2026-10-20）：与 createLevel 的差别有两处 ——
+//   ① **不保证成对**（配对消的偶数不变量在这里不适用）；
+//   ② 必须**开局无三连**，否则一上来就白送消除，玩家还没动就先炸一片。
+// 做法：从最底行往上、逐格填，每格优先挑「不会立刻凑成三连」的元素。
+//   判断只看**已经填过的方向**：同行的左边两格 + 同列的下方两格（因为是从下往上填）。
+//   找不到安全选择时退回「余量最多的」（概率极低；scripts/test-match3-150.js 会盯住）。
+function createLevelMatch3(cfg, create, rng) {
+  var rand = rng || Math.random;
+  var cols = cfg.cols, rows = cfg.rows;
+  var ids = cfg.elements.map(function (e) { return e[0]; });
+  var left0 = {};
+  var total = 0;
+  cfg.elements.forEach(function (e) { left0[e[0]] = e[1]; total += e[1]; });
+  var make = create || function (id, u) { return { id: id, uid: u }; };
+  var at = function (cells, r, c) { return cells[r * cols + c]; };
+  var sameAs = function (cells, r, c, id) { var t = at(cells, r, c); return !!t && t.id === id; };
+  var makesLine = function (cells, r, c, id) {
+    if (c >= 2 && sameAs(cells, r, c - 1, id) && sameAs(cells, r, c - 2, id)) return true;   // 左边两个
+    if (r + 2 < rows && sameAs(cells, r + 1, c, id) && sameAs(cells, r + 2, c, id)) return true; // 下方两个
+    return false;
+  };
+  // 生成后自检：真正的三连扫描（含右侧/上方，不只填表方向）
+  var hasAnyLine = function (cells) {
+    for (var r = 0; r < rows; r++) {
+      for (var c = 0; c < cols; c++) {
+        var t = cells[r * cols + c];
+        if (!t) continue;
+        if (c + 2 < cols && sameAs(cells, r, c + 1, t.id) && sameAs(cells, r, c + 2, t.id)) return true;
+        if (r + 2 < rows && sameAs(cells, r + 1, c, t.id) && sameAs(cells, r + 2, c, t.id)) return true;
+      }
+    }
+    return false;
+  };
+  var cells = null, left = null, uid = 1, i;
+  // 末段「无安全可选」会退回强制挑选、可能凑出三连 → **整盘重来**，最多 40 次。
+  //   原实现只在无安全选择时硬塞，1 关因此开局自带三连（白送），由 test-match3-150 盯出。
+  for (var attempt = 0; attempt < 40; attempt++) {
+    left = {};
+    for (var kk in left0) if (Object.prototype.hasOwnProperty.call(left0, kk)) left[kk] = left0[kk];
+    cells = [];
+    for (i = 0; i < cols * rows; i++) cells.push(null);
+    uid = 1;
+    for (var r = rows - 1; r >= 0; r--) {
+      for (var c = 0; c < cols; c++) {
+        var remain = 0;
+        ids.forEach(function (id) { remain += left[id]; });
+        if (remain <= 0) break;
+        var safe = ids.filter(function (id) { return left[id] > 0 && !makesLine(cells, r, c, id); });
+        if (!safe.length) safe = ids.filter(function (id) { return left[id] > 0; });
+        var pick = safe[Math.floor(rand() * safe.length)];
+        cells[r * cols + c] = make(pick, uid++);
+        left[pick] -= 1;
+      }
+    }
+    if (!hasAnyLine(cells)) break;
+  }
+  return {
+    cols: cols, rows: rows,
+    total: total,
+    slots: cols * rows,
+    pool: left,
+    cells: cells,
+    nextUid: uid,
+    spent: 0,
+    mode: 'match3'
+  };
+}
+
 function poolLeft(pool) {
   return sum(pool || {});
 }
@@ -326,6 +394,7 @@ module.exports = {
   poolSize: poolSize,
   planCounts: planCounts,
   createLevel: createLevel,
+  createLevelMatch3: createLevelMatch3,
   collapse: collapse,
   poolLeft: poolLeft,
   poolIds: poolIds,

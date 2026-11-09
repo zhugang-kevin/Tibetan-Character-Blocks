@@ -128,7 +128,10 @@ var META = [
   { lv: 12, name: '简单造句', goal: '读短句' },
   { lv: 13, name: '复杂造句', goal: '读完整句子' },
   { lv: 14, name: '综合拼读', goal: '全部件综合复习' },
-  { lv: 15, name: '大师挑战', goal: '藏文拼读通级挑战' }
+  // 🔴 2026-11-05：原为「大师挑战 / 藏文拼读通级挑战」——「挑战」是教育类目禁用词，
+  //    而这两句会经 index.wxml 的 {{item.name}} / {{item.goal}} 直接显示给玩家。
+  //    现有门禁只扫 wxml/json，扫不到数据层字符串，所以一直没红（已补 test-visible-strings.js）。
+  { lv: 15, name: '大师级', goal: '拼读综合运用' }
 ];
 
 function sizeOf(lv) {
