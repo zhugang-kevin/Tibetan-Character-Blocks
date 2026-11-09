@@ -15,17 +15,39 @@
   <view class="roller roller-top" aria-hidden="true"></view>
 
   <view class="result-hero">
-    <view class="result-check">✓</view>
-    <!-- D111 学习线：标题走「L{级} · 第{课}课」；老 10 关线不变 -->
-    <view class="result-title">{{learnMode ? ('L' + learnLv + ' · 第 ' + learnStage + ' 课完成！') : ('第 ' + level + ' 课完成！')}}</view>
-    <view class="result-sub">{{learnMode ? (learnName + ' · 第 ' + learnIndex + ' / ' + learnTotal + ' 课 · 学习得分 ' + score) : ('共消除 ' + pairs + ' 对 · 学习得分 ' + score + ' · 连续正确 ×' + combo)}}</view>
+    <view class="result-check" style="{{won ? '' : 'background:#8A3324;'}}">{{won ? '✓' : '✕'}}</view>
+    <!-- D111 学习线：标题走「L{级} · 第{课}课」；老 10 关线按胜负区分 -->
+    <view class="result-title">{{learnMode ? ('L' + learnLv + ' · 第 ' + learnStage + ' 课完成！') : (won ? ('第 ' + level + ' 课完成！') : ('第 ' + level + ' 课差一点'))}}</view>
+    <view class="result-sub">{{learnMode ? (learnName + ' · 第 ' + learnIndex + ' / ' + learnTotal + ' 课 · 学习得分 ' + score) : (won ? ('共完成配对 ' + pairs + ' 对 · 学习得分 ' + score + ' · 连续正确 ×' + combo) : ('目标未达成或步数用尽 · 学习得分暂未入账'))}}</view>
     <view class="result-acc {{clean ? 'ok' : ''}}">
       本课正确率 {{learnMode ? learnAcc : accuracy}}% {{clean ? '· 全程无失误 ✦' : ''}}<text wx:if="{{learnMode && learnStepsBudget}}"> · 用了 {{learnStepsUsed}} / {{learnStepsBudget}} 步</text>
     </view>
     <!-- PRD v4：本关星级评价（只增不减；学习线为当场展示，不落库） -->
-    <view class="result-stars">
+    <view class="result-stars" wx:if="{{won}}">
       <text class="rs-star {{item}}" wx:for="{{starList}}" wx:key="*this">★</text>
       <text class="rs-tip">{{starsImproved ? '刷新了本课最佳评价' : '本课评价'}}</text>
+    </view>
+    <!-- R04：失败分支给出明确、温和的再试引导，不展示任何成功奖励 -->
+    <view wx:if="{{!won && !learnMode}}" style="margin-top:16rpx;font-size:26rpx;color:#E0C9A6;background:rgba(138,51,36,0.18);border:1rpx solid rgba(138,51,36,0.5);border-radius:16rpx;padding:18rpx 22rpx;line-height:1.5;">这一课还没过：目标没达成，或步数用完了。奖励会在达成目标后发放 —— 回去再拼一次？</view>
+  </view>
+
+  <!-- D156 视频广告位：只有在 config/ads.js 填了对应 ID 才渲染；两者皆空时整块消失。
+       ⚠️ 两种条件**不能混用**：
+         · 「这个位要不要存在」用 wx:if（没配 ID 就根本不创建组件，零开销）
+         · 「加载失败要不要藏」用 hidden 隐藏父容器 —— 绝不能移除 <ad>
+           官方《ad 组件》Bug&Tip 第 4 条：「不要移除广告组件，否则将无法收到 bind:load 的回调」，
+           移除后广告永远回不来，等于把这条路焊死。
+       banner 是 video 的**运行时退路**：video 没配、或配了但加载失败，才轮到它。
+       📐 位置是量出来的，不是拍的：放在内容末尾时，四档机型都要下滑 668~1108px 才能看到
+          （y≈1500~1576，首屏才 568~932），等于没有广告；放在成绩区之后 y≈299，
+          四档机型首屏全部可见（banner 399、video 499，均 < 568）。见 D156 ⑭。 -->
+  <view wx:if="{{adVideo || adBanner}}" class="ad-slot">
+    <view class="ad-label">— 内容由平台提供 —</view>
+    <view wx:if="{{adVideo}}" hidden="{{videoFailed}}" class="ad-cell">
+      <ad unit-id="{{adVideo}}" ad-type="video" ad-theme="white" binderror="onVideoError" bindload="onVideoLoad"></ad>
+    </view>
+    <view wx:if="{{adBanner && (!adVideo || videoFailed)}}" hidden="{{bannerFailed}}" class="ad-cell">
+      <ad unit-id="{{adBanner}}" ad-type="banner" ad-theme="white" binderror="onBannerError" bindload="onBannerLoad"></ad>
     </view>
   </view>
 
@@ -51,6 +73,8 @@
     <view class="lp-bar"><view class="lp-bar-in" style="width: {{learnDoneN * 10}}%;"></view></view>
     <view class="lp-note">本级进度 {{learnDoneN}} / 10 课<text wx:if="{{learnDoneN >= 10}}"> · 本级已完成</text> · 已获证书 {{learnCertOwned}} / 15</view>
     <view class="lp-note lp-next">{{learnNextDesc}}</view>
+    <!-- Q4：本课课型 + 复习建议（规则来自 utils/plan.js，与门禁同一份） -->
+    <view class="lp-note lp-plan" wx:if="{{lessonKindLabel}}">本课：{{lessonKindLabel}}<text wx:if="{{lessonReviewText}}"> · {{lessonReviewText}}</text></view>
   </view>
 
   <!-- D111 本级证书（一整级 10 课全过才颁发；只升不降） -->
@@ -63,8 +87,8 @@
     <view class="cert-go" bindtap="openLearnCert">查看 ›</view>
   </view>
 
-  <!-- PRD v4：唐卡碎片掉落 + 学习得分入账 -->
-  <view class="reward-row">
+  <!-- PRD v4：唐卡碎片掉落 + 学习得分入账（仅达标展示；失败不发放） -->
+  <view class="reward-row" wx:if="{{won}}">
     <view class="reward-box">
       <view class="rw-v">+{{pointsGained}}</view>
       <view class="rw-k">学习得分入账</view>
@@ -83,10 +107,12 @@
     </view>
     <image class="reveal-art" src="{{reveal.img}}" mode="widthFix" />
     <view class="reveal-tib">
-      <text class="rt-t tibetan">{{reveal.tibetan}}</text>
-      <text class="rt-roman">{{reveal.roman}}</text>
+      <text wx:if="{{reveal.tibetan}}" class="rt-t tibetan">{{reveal.tibetan}}</text>
+      <text wx:if="{{reveal.roman}}" class="rt-roman">{{reveal.roman}}</text>
     </view>
     <view class="reveal-desc">{{reveal.desc}}</view>
+    <!-- 2026-11-05：CC BY / CC BY-SA 的署名义务，必须显示，不能省 -->
+    <view wx:if="{{reveal.credit}}" style="font-size:20rpx;color:#8A8272;margin-top:8rpx;line-height:1.5">图片：{{reveal.credit}}</view>
     <view class="reveal-note">已收入文化护照 · 揭示图鉴 {{revealGot}} / {{revealTotal}}</view>
   </view>
 

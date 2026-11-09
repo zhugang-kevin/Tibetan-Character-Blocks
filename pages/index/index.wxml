@@ -47,6 +47,11 @@
   </view>
 
   <view class="vine-map {{ladderIn ? 'in' : ''}}">
+    <!-- D152 双入口：底部常驻（顶部 6.1% 有第 10 关节点，放顶部会压住；底部只有村落剪影） -->
+    <view class="mode-bar">
+      <view class="mode-chip" bindtap="scrollToLadder">练习模式 · 10 课</view>
+      <view class="mode-chip" data-panel="learn" bindtap="openPanel">学藏文 · 150 课</view>
+    </view>
     <!-- 天堂层：金色佛光 + 祥云 + 布达拉宫金顶剪影 + 坛城光环（纯装饰，不可点） -->
     <view class="ladder-heaven" aria-hidden="true">
       <view class="h-glow"></view>
@@ -134,7 +139,7 @@
        每一课都能直接点进去（锁状态与学习面板走同一口径 learnLocked）。 -->
   <view class="all-levels">
     <view class="al-head">
-      <text class="al-title">全部课程 · 150 课</text>
+      <text class="al-title">学藏文 · 150 课</text>
       <text class="al-prog">已完成 {{learnAll.doneN}} / {{learnAll.total}}</text>
     </view>
     <view class="al-grid">
@@ -145,14 +150,14 @@
     </view>
     <view class="al-note" wx:if="{{learnAll.next}}">下一课：第 {{learnAll.next}} 课 · 点格子即可上课</view>
     <view class="al-note" wx:else>150 课全部完成 —— 你已通读整个藏文拼读体系</view>
-    <view class="al-verify" bindtap="toggleLearnVerify">
+    <view class="al-verify" wx:if="{{verifyVisible}}" bindtap="toggleLearnVerify">
       <text>验收开关：{{learnVerify ? '已打开（150 课全开）' : '关闭（逐级解锁）'}}</text>
     </view>
   </view>
 
   <view class="footer">
     <view class="footer-tagline">每个字母，都是一座西藏</view>
-    <view>学习线 150 课 + 天梯 10 课 · 进度自动保存在本机</view>
+    <view>学藏文 150 课 + 练习 10 课 · 进度自动保存在本机</view>
   </view>
 
   <!-- 左侧悬浮入口 -->
@@ -180,16 +185,11 @@
     <view class="side-btn" data-panel="box" bindtap="openPanel">
       <text class="side-ico">🎁</text><text class="side-txt">非遗盲盒</text>
     </view>
-    <!-- D132 藏香商城：变现主线入口。功能做完必须让玩家**看得见**，
-         否则就是「存在但没人知道」（本项目记过的教训：150 课曾全程无入口） -->
-    <view class="side-btn" data-panel="shop" bindtap="openPanel">
-      <text class="side-ico">🕯</text><text class="side-txt">藏香</text>
-    </view>
   </view>
 
   <!-- 底部大平层 -->
   <view class="dock">
-    <view class="dock-btn" data-panel="learn" bindtap="openPanel"><text class="dock-ico">📖</text><text class="dock-txt">学习体系</text></view>
+    <view class="dock-btn" data-panel="learn" bindtap="openPanel"><text class="dock-ico">📖</text><text class="dock-txt">学藏文</text></view>
     <view class="dock-btn" data-panel="rank" bindtap="openPanel"><text class="dock-ico">🏔</text><text class="dock-txt">我的成绩</text></view>
     <view class="dock-btn" data-panel="tree" bindtap="openPanel"><text class="dock-ico">🌳</text><text class="dock-txt">菩提树</text></view>
     <view class="dock-btn" data-panel="winter" bindtap="openPanel"><text class="dock-ico">❄</text><text class="dock-txt">西藏寺院</text></view>
@@ -240,45 +240,70 @@
         <view class="entry-note">卡片内容只来自本地日签：不设分享奖励、不含任何金额，可自由保存。</view>
       </block>
 
-      <!-- 唐卡拼图（9 片收集 + 合成动作） -->
+      <!-- 唐卡拼图（9 片收集 + 合成动作）· 2026-10-22 藏文化视觉重构 -->
       <block wx:elif="{{panel === 'thangka'}}">
-        <view class="tk-grid {{thangkaDone ? 'done' : ''}}">
-          <view wx:for="{{thangkaCells}}" wx:key="i" class="tk-cell {{item.on ? 'on' : ''}}">
-            <text wx:if="{{item.on}}" class="tk-mark">✦</text>
-            <text wx:else class="tk-mark dim">{{item.i}}</text>
+        <view class="tk-wrap">
+          <view class="tk-mantra">ཨོཾ་མ་ཎི་པདྨེ་ཧཱུྃ༔</view>
+          <view class="tk-corner tl"></view><view class="tk-corner tr"></view>
+          <view class="tk-corner bl"></view><view class="tk-corner br"></view>
+          <view class="tk-grid {{thangkaDone ? 'done' : ''}}">
+            <view wx:for="{{thangkaCells}}" wx:key="i" class="tk-cell {{item.on ? 'on' : ''}}">
+              <text wx:if="{{item.on}}" class="tk-mark">✦</text>
+              <text wx:else class="tk-mark dim">{{item.i}}</text>
+            </view>
           </view>
+          <view wx:if="{{thangkaDone}}" class="tk-reveal">
+            <view class="tk-mandala"></view>
+            <view class="tk-reveal-cap">你亲手拼出的第一幅坛城 · 已收入文化护照</view>
+          </view>
+          <view wx:if="{{thangkaDone}}" class="tk-frame-note">已合成 · 完整图收入文化护照</view>
+          <view wx:elif="{{fragCount >= 9}}" class="entry-btn" bindtap="synthesizeThangka">合成唐卡 · 收入文化护照</view>
+          <view class="entry-note">{{fragCount}}/9 片 · {{thangkaDone ? '已成一幅，可到文化护照查看' : (fragCount >= 9 ? '碎片已集齐，点上方按钮合成' : '还差 ' + (9 - fragCount) + ' 片就能看全图了')}}</view>
         </view>
-        <view wx:if="{{thangkaDone}}" class="tk-frame-note">已合成 · 完整图收入文化护照</view>
-        <view wx:elif="{{fragCount >= 9}}" class="entry-btn" bindtap="synthesizeThangka">合成唐卡 · 收入文化护照</view>
-        <view class="entry-note">{{fragCount}}/9 片 · {{thangkaDone ? '已成一幅，可到文化护照查看' : (fragCount >= 9 ? '碎片已集齐，点上方按钮合成' : '还差 ' + (9 - fragCount) + ' 片就能看全图了')}}</view>
       </block>
 
-      <!-- 非遗盲盒（只抽文化小知识） -->
+      <!-- 非遗盲盒（只抽文化小知识）· 2026-10-22 藏文化视觉重构（复用唐卡/学习同款金框 + 四角 + 藏红题头；不新增 CSS 以免超主包体积） -->
       <block wx:elif="{{panel === 'box'}}">
-        <view class="box-open" bindtap="openBox">🎁 抽取今日非遗小知识</view>
-        <view wx:if="{{boxText}}" class="box-text">{{boxText}}</view>
-        <view class="entry-note">盲盒只装文化小知识：不发放优惠券、不涉及任何金额与交易。</view>
+        <view class="learn-wrap">
+          <view class="learn-mantra"><text class="lm-glyph">༄༅</text> 非遗 · 每日一识</view>
+          <view class="tk-corner tl"></view><view class="tk-corner tr"></view>
+          <view class="tk-corner bl"></view><view class="tk-corner br"></view>
+          <view class="box-open" bindtap="openBox">🎁 抽取今日非遗小知识</view>
+          <view wx:if="{{boxText}}" class="box-text">{{boxText}}</view>
+          <view class="entry-note">盲盒只装文化小知识：不发放优惠券、不涉及任何金额与交易。</view>
+        </view>
       </block>
 
-      <!-- 我的成绩（本地记录） -->
+      <!-- 藏文学习（15 级 × 150 课）· 2026-10-22 藏文化视觉重构 -->
       <block wx:elif="{{panel === 'learn'}}">
-        <!-- D96 学习体系 15 级×10 关（此前无入口）-->
-        <view class="learn-list">
-          <view class="learn-row {{item.locked ? 'locked' : ''}}" wx:for="{{learnLevels}}" wx:key="lv"
-                data-lv="{{item.lv}}" bindtap="onTapLearnLevel">
-            <view class="learn-lv">{{item.lv}}</view>
-            <view class="learn-main">
-              <view class="learn-name">{{item.name}}</view>
-              <view class="learn-goal">{{item.goal}}</view>
-              <!-- D110 四层读音规则：此前只有字形没有读音，玩家不知道这些部件怎么念 -->
-              <view class="learn-rule" wx:if="{{item.rule}}">读音：{{item.rule}}</view>
+        <!-- D96 学习体系 15 级×10 关 = 150 课（此前无入口）-->
+        <view class="learn-wrap">
+          <view class="learn-mantra"><text class="lm-glyph">ཀ</text> སློབ་སྦྱོང་ · 十五级</view>
+          <view class="tk-corner tl"></view><view class="tk-corner tr"></view>
+          <view class="tk-corner bl"></view><view class="tk-corner br"></view>
+          <view class="learn-list">
+            <view class="learn-row {{item.locked ? 'locked' : ''}}" wx:for="{{learnLevels}}" wx:key="lv"
+                  data-lv="{{item.lv}}" data-stage="{{item.next}}" bindtap="onTapLearnLevel">
+              <view class="learn-lv">{{item.lv}}</view>
+              <view class="learn-main">
+                <view class="learn-name">{{item.name}}</view>
+                <view class="learn-goal">{{item.goal}}</view>
+                <!-- D110 四层读音规则：此前只有字形没有读音，玩家不知道这些部件怎么念 -->
+                <view class="learn-rule" wx:if="{{item.rule}}">读音：{{item.rule}}</view>
+              </view>
+              <view class="learn-prog">
+                <text wx:if="{{item.locked}}">🔒</text>
+                <text wx:elif="{{item.done >= item.total}}" class="learn-done">已完成</text>
+                <text wx:else>{{item.done}} / {{item.total}}</text>
+                <text wx:if="{{item.certTier}}" class="learn-cert">{{item.certTier}}</text>
+              </view>
             </view>
-            <view class="learn-prog">
-              <text wx:if="{{item.locked}}">🔒</text>
-              <text wx:elif="{{item.done >= item.total}}" class="learn-done">已完成</text>
-              <text wx:else>{{item.done}} / {{item.total}}</text>
-              <text wx:if="{{item.certTier}}" class="learn-cert">{{item.certTier}}</text>
-            </view>
+          </view>
+          <view class="learn-foot">从 ཀ 起步 · 学完 150 课 · 结业发藏文化证书</view>
+          <!-- Q1：无提示识认测验（D148）。做成入口，避免"做了但玩家看不见"。 -->
+          <view class="learn-quiz" bindtap="openRecognition" aria-label="打开识认测验">
+            <view class="lq-title">识认测验</view>
+            <view class="lq-sub">30 题 · 无提示 · 测「认得」而不是「配对成功」</view>
           </view>
         </view>
       </block>
@@ -352,12 +377,6 @@
         <view class="entry-btn" bindtap="openBenefits">进入藏文权益中心</view>
       </block>
 
-      <!-- D132 藏香商城 -->
-      <block wx:elif="{{panel === 'shop'}}">
-        <view class="entry-note">藏香：家居香品，产自西藏，执行 GB/T 43430-2023《藏香》国家标准。本店向藏香厂采购后销售。</view>
-        <view class="entry-btn" bindtap="openShop">进入藏香商城</view>
-      </block>
-
     </scroll-view>
     <view class="entry-foot">{{panelFoot}}</view>
   </view>
@@ -366,7 +385,9 @@
   <view wx:if="{{lampShow}}" class="lamp-mask">
     <view class="lamp-card">
       <!-- D50：坐着的释迦牟尼底图（色罩已烘进图里）+ 一层夜色罩压艳；两者均为装饰层，不参与交互 -->
-      <image class="lamp-buddha" src="/images/buddha-bg.jpg" mode="aspectFill" aria-hidden="true"></image>
+      <!-- 2026-10-24：这里原来还有一张 .lamp-buddha（mode=aspectFill）作卡片背景，
+           与下面 .lamp-shrine 里的佛像是**同一个文件 buddha-bg.jpg**，
+           两张叠在一起 → 用户看到"图片一个叠一个、重叠"。已删除这一层，只保留佛龛里那张。 -->
       <view class="lamp-veil" aria-hidden="true"></view>
       <view class="lamp-halo"></view>
       <!-- 右上角 ✕：任何时候都可关（此前唯一出口是底部文字链，内容一超高就够不着） -->
@@ -385,8 +406,10 @@
         <!-- 鎏金酥油灯（真实图片）+ 写实火苗：未点亮完全静态，点亮后 .lit 挂多层火焰动画 -->
         <view class="lamp-flame {{lampLit ? 'lit' : ''}}">
           <view class="flame-halo"></view>
-          <image class="flame-img fi-outer" src="/images/flame.webp" mode="widthFix"></image>
-          <image class="flame-img fi-core" src="/images/flame.webp" mode="widthFix"></image>
+          <!-- 2026-10-24：外层光晕 + 内核，同一个 flame.webp 叠两层是**有意**的发光效果
+               （fi-outer 放大+模糊当光晕，fi-core 本体）。加 data-allow-dup 让门禁放行。 -->
+          <image class="flame-img fi-outer" src="/images/flame.webp" mode="widthFix" data-allow-dup="火焰光晕层"></image>
+          <image class="flame-img fi-core" src="/images/flame.webp" mode="widthFix" data-allow-dup="火焰内核层"></image>
           <image class="lamp-img" src="/images/lamp.webp" mode="widthFix"></image>
           <view wx:if="{{lampLit}}" class="sparks">
             <view class="spark"></view><view class="spark"></view><view class="spark"></view>

@@ -76,8 +76,7 @@ var PANEL_TITLES = {
   rank: '我的成绩',
   tree: '菩提树',
   winter: '西藏寺院导览',
-  market: '八廓街集市',
-  shop: '藏香'
+  market: '八廓街集市'
 };
 
 // 藤蔓节点位置：由下往上蜿蜒（第 1 关在底、第 10 关在顶）
@@ -139,6 +138,7 @@ Page({
     // 150 课全景图（首页）：15×10 的格子 + 验收开关状态（见 buildAllCells 注释）
     learnAll: { cells: [], doneN: 0, total: 150, next: 0 },
     learnVerify: false,
+    verifyVisible: false,   // 验收开关只对 ?all=1 / ?verify=1 可见（玩家界面不出现测试工具）
     pot: 0,
     // 万家灯火祈福跳窗（每次进入首页前展示，每天仅一次；纯本地，无任何网络请求）
     scenePhoto: photoAssets.home || '',   // 首页场景照片（清单驱动，空则不渲染）
@@ -193,6 +193,12 @@ Page({
   //   首页没有 onLoad 之前，从分享卡进来的参数会丢 —— 而打赏链路全靠这个参数。
   onLoad: function (query) {
     this._to = String((query || {}).to || '');
+    // 验收开关：只在 ?all=1 / ?verify=1 时出现；参数进入时顺手打开验收模式（与体验版同语义）。
+    var verifyUI = !!(query && (query.all === '1' || query.verify === '1'));
+    if (verifyUI) {
+      try { wx.setStorageSync(LEARN_VERIFY_KEY, 1); } catch (e) { /* 存储失败不影响进入 */ }
+    }
+    this.setData({ verifyVisible: verifyUI, learnVerify: verifyUI ? true : learnVerifyOn() });
   },
   onShow: function () {
     // D101：页面存活标记 —— 定时器回调里 setData 前必须检查
@@ -299,8 +305,8 @@ Page({
       var dn = p.completedLevels[di];
       if (dn >= 1 && dn <= 10) done10++;
     }
-    var stageHeadName = '朝圣天梯 · 第一段';
-    var stageHeadRange = '第 1-10 课 · 山脚到山腰';
+    var stageHeadName = '练习模式 · 第一段';
+    var stageHeadRange = '第 1–10 课 · 山脚到山腰';
     var contLv = 0, contStage = 0;
     if (done10 >= 10 && learnStage) {
       // ⚠️ 老线与学习线是**两条轨道**：老线的 10 关教的正是 L1「辅音三十」的同批辅音。
@@ -312,8 +318,8 @@ Page({
       if (contLv0 === 1 && learnDone === 0) { contLv0 = 2; contSt0 = 1; }
       var gi = (contLv0 - 1) * 10 + contSt0;
       var lvName = (learningData.byLevel(contLv0) || {}).name || '';
-      stageHeadName = '第一段已全通 · 继续学习第 ' + gi + ' / 150 课 →';
-      stageHeadRange = '点这里接着上 L' + contLv0 + ' · ' + lvName + '（学习线共 150 课）';
+      stageHeadName = '练习已全通 · 继续学习第 ' + gi + ' / 150 课 →';
+      stageHeadRange = '点这里接着上 L' + contLv0 + ' · ' + lvName + '（学藏文共 150 课）';
       contLv = contLv0;
       contStage = contSt0;
     }
@@ -595,11 +601,6 @@ Page({
   // ---------- 悬浮入口面板 ----------
   openPanel: function (e) {
     var key = e.currentTarget.dataset.panel;
-    if (key === 'shop') {
-      // D132 藏香商城：独立页面（不是塞进面板），入口只负责跳过去
-      this.setData({ panel: key, panelTitle: PANEL_TITLES[key] || '藏香', panelShow: true });
-      return;
-    }
     if (key === 'market') {
       // 八廓街集市 = 藏文权益中心（已有页面，合规到店权益）
       this.setData({ panel: key, panelTitle: PANEL_TITLES[key], panelShow: true });
@@ -717,6 +718,24 @@ Page({
     }
     if (!lv || !st) return;
     this.gotoLearn(lv, st);
+  },
+
+  // D152 双入口之「练习模式」：滚到**天梯图顶部**（不是页面最顶 —— 上面还有护照/权益区）
+  scrollToLadder: function () {
+    wx.createSelectorQuery()
+      .select('.vine-map').boundingClientRect()
+      .selectViewport().scrollOffset()
+      .exec(function (res) {
+        var rect = res && res[0], scroll = res && res[1];
+        if (!rect || !scroll) {
+          wx.pageScrollTo({ scrollTop: 0, duration: 300 });
+          return;
+        }
+        wx.pageScrollTo({
+          scrollTop: Math.max(0, rect.top + scroll.scrollTop - 10),
+          duration: 300
+        });
+      });
   },
 
   // 验收开关：打开后 150 课全开，供逐级验收（不改任何进度数据，与体验版 ?all=1 同语义）
@@ -925,9 +944,9 @@ Page({
     wx.navigateTo({ url: '/pages/benefits/benefits' });
   },
 
-  // D132 打开藏香商城（变现主线；价格与规格只从 data/shop-goods.js 读）
-  openShop: function () {
-    wx.navigateTo({ url: '/pages/shop/shop' });
+  // Q1：无提示识认测验（30 题；结果进 telemetry，按 D148 口径聚合）
+  openRecognition: function () {
+    wx.navigateTo({ url: '/pages/recognition/recognition' });
   },
 
   // D113：给分享这张卡的朋友送一份祝福（入口只在 ?to= 存在时出现）。

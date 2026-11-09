@@ -45,7 +45,7 @@
       <view class="board-outline">
         <!-- 秘境揭图（D31）：垫在牌层之下，某格被清空过就永久透出，完成后整幅揭晓 -->
         <view class="board-wrap" style="width: {{boardW}}rpx; height: {{boardH}}rpx;">
-          <image wx:if="{{reveal.img}}" class="reveal-img" src="{{reveal.img}}" mode="scaleToFill" aria-hidden="true" />
+          <image wx:if="{{reveal.img}}" class="reveal-img" src="{{reveal.img}}" mode="aspectFill" style="opacity: {{revealOpacity}}" aria-hidden="true" />
           <!-- D33 下落式盘面：方块绝对定位（按 uid 稳定 key），坐标用百分比表达；
                消除后上方方块下落 = 同一个节点换坐标，由 CSS transition 平滑过渡；
                补充牌首帧停在盘外上方且透明（.fresh），下一帧落到位置，于是「从顶上掉下来」。 -->
@@ -53,7 +53,7 @@
             <view
               wx:for="{{pieces}}"
               wx:key="uid"
-              class="tile {{item.state}} {{item.blocked ? 'blocked' : ''}} {{item.fresh ? 'fresh' : ''}}"
+              class="tile {{item.state}} {{item.blocked ? 'blocked' : ''}} {{item.fresh ? 'fresh' : ''}} {{item.hinted ? 'hinted' : ''}}"
               style="width: {{tileW}}rpx; height: {{tileH}}rpx; transform: translate({{item.tx}}%, {{item.ty}}%);"
               data-index="{{item.index}}"
               bindtap="onTapTile"
@@ -85,6 +85,21 @@
       </view>
       <!-- 揭图进度：只报百分比，不剧透名字（名字在通关揭晓时才出现） -->
       <view wx:if="{{reveal.img}}" class="reveal-cap">秘境图 · 已揭开 {{revealPct}}%</view>
+    </view>
+  </view>
+
+  <!-- D156 激励视频入口：只有广告位配好、且广告真的拉取成功时才出现。
+       刻意放在盘面**下方**而不是浮在盘面上 —— 任何浮层都会挡住牌，
+       真点自检的 elementFromPoint 命中判定会直接点空。 -->
+  <view wx:if="{{adHintOn && adHintLeft > 0}}" class="hint-row">
+    <!-- 用 view 而不是 text：按钮要能被 flex 居中、要有 ≥44px 的触摸热区。
+         text 是行内元素，撑不出最小高度，实测只有约 23px（320pt 机型更小）。 -->
+    <view class="hint-btn {{adHintBusy ? 'busy' : ''}}"
+          hover-class="hint-btn-press"
+          hover-stay-time="80"
+          aria-role="button"
+          bindtap="onTapAdHint">
+      <text>{{adHintBusy ? '正在准备…' : '看视频 · 得一次提示'}}</text>
     </view>
   </view>
 
@@ -135,7 +150,7 @@
     <view class="card-progress">
       <view class="card-bar {{cardBarRun ? 'run' : ''}}" style="background: {{cardColor}};"></view>
     </view>
-    <view class="card-hint">游戏不会暂停 · 点「知道了」或继续消除即可收起</view>
+    <view class="card-hint">这一局不会暂停 · 点「知道了」或继续操作即可收起</view>
   </view>
 
   <!-- D62 连击光晕：档位越高越亮，一闪即收；纯 CSS，不遮挡盘面点击 -->

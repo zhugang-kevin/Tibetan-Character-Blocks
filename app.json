@@ -7,7 +7,7 @@
     "pages/passport/passport",
     "pages/benefits/benefits",
     "pages/gift/gift",
-    "pages/shop/shop"
+    "pages/recognition/recognition"
   ],
   "window": {
     "navigationBarTitleText": "藏字方块",
@@ -20,7 +20,33 @@
   "sitemapLocation": "sitemap.json",
   "lazyCodeLoading": "requiredComponents",
   "subpackages": [
-    {"root": "package-praise", "name": "praiseVoice", "pages": ["pages/voice-gallery/voice-gallery"]},
-    {"root": "package-service", "name": "service", "pages": ["pages/service/service"]}
+    {
+      "root": "package-praise",
+      "name": "praiseVoice",
+      "pages": [
+        "pages/voice-gallery/voice-gallery"
+      ]
+    },
+    {
+      "root": "package-service",
+      "name": "service",
+      "pages": [
+        "pages/service/service"
+      ]
+    },
+    {
+      "root": "package-temples-1",
+      "name": "temples1",
+      "pages": [
+        "pages/temple-view/temple-view"
+      ]
+    },
+    {
+      "root": "package-temples-2",
+      "name": "temples2",
+      "pages": [
+        "pages/temple-view/temple-view"
+      ]
+    }
   ]
 }

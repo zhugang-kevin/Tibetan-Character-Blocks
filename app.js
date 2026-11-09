@@ -5,9 +5,37 @@ App({
   globalData: {
     fontLoaded: false
   },
+  // === 自检：全局错误捕获（2026-10-21）===
+  // 之前 app.js 只有 onLaunch —— 线上崩了你根本不知道。
+  // 这两个钩子是小程序唯一能拿到全局异常的入口。
+  // ⚠️ 只上报"哪里崩了"（页面 + 消息 + 栈顶），不采集用户身份。
+  onError: function (msg) {
+    try { require('./utils/telemetry').error(new Error(String(msg)), 'app.onError'); } catch (e) {}
+  },
+  onUnhandledRejection: function (res) {
+    try {
+      var reason = (res && res.reason) || 'unhandled rejection';
+      require('./utils/telemetry').error(reason, 'app.onUnhandledRejection');
+    } catch (e) {}
+  },
+  // 切后台 = 最自然的批量上报时机（用户可能就此离开，不 flush 就永远丢了）
+  onHide: function () {
+    try { require('./utils/telemetry').flush(); } catch (e) {}
+  },
   onLaunch: function () {
     this.recordDailyOpen();
     this.loadTibetanFont();
+    this.preloadTemplePacks();
+  },
+  // 2026-11-05：寺庙揭图在 package-temples-1/2（各约 0.96MB，共 50 座）。
+  // 开局就后台预下载 —— 否则第一关通关时图还没到，揭图层会是空白。
+  // wx.loadSubpackage 重复调用是幂等的（已下载会立即回调 success），所以游戏页也会再调一次。
+  preloadTemplePacks: function () {
+    try {
+      if (!wx.loadSubpackage) return;
+      wx.loadSubpackage({ name: 'temples1' });
+      wx.loadSubpackage({ name: 'temples2' });
+    } catch (e) { /* 分包下载失败不影响主流程，揭图会缺图但游戏可玩 */ }
   },
   // 记录「每天首次打开」：首日 / 打开天数 / 连续天数，只落本地。
   // 用途：内测期与微信「小程序数据助手」的次日、7 日留存曲线对照，

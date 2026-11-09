@@ -9,16 +9,21 @@ var audio = require('../../utils/audio');
 var collect = require('../../utils/collect');
 // 用户隐私保护指引（utils/privacy.js）：保存相册是受保护接口，必须先过授权关卡
 var privacy = require('../../utils/privacy');
+var telemetry = require('../../utils/telemetry');   // D156：广告位加载失败要能被看见
 // 「藏文可以组合」预告的数据源（纯展示；由页面注入 utils/collect.js 的纯判据函数，
 // 这样「哪一关讲解拼合」只写在数据文件里，页面不内联关卡号）
 var comboData = require('../../data/combo');
 // 学习体系（D51/D111）：15 级 × 150 关。结算页据此渲染学习分支。
 var learningData = require('../../data/learning');
 var learning = require('../../utils/learning');
+var plan = require('../../utils/plan');   // Q4：课型 / 复习建议（与门禁同一份规则）
 // 秘境揭图（D31）：通关即整幅揭晓，结算页是揭晓的高光时刻
 var revealsData = require('../../data/reveals');
+var revealTemples = require('../../data/reveal-temples');
 // 藏地密码：完成即解锁一则藏地小知识（解锁状态 = completedLevels，不新增存储字段）
 var secretsData = require('../../data/secrets');
+// 视频广告位（D156）：全空 = 未开通流量主，页面整块不渲染，也不创建任何实例
+var ads = require('../../utils/ads');
 // 祝福卡（750×1050）中段文案的基线位置。
 // ⚠️ 必须留在底部「Logo（y=855）」与「小程序码（y=850）」之**上**：
 //    中文按 1em/字估算，一长行会横跨到两侧的 Logo / 小程序码上（上一版就是这样重叠的）。
@@ -50,6 +55,13 @@ Page({
     nameInput: '',
     generating: false,
     imagePath: '',       // 祝福卡临时图片路径
+    // ---- 视频广告位（D156）：空 = 未开通，wx:if 整块不渲染 ----
+    adVideo: ads.unit('video'),        // <ad ad-type="video"> 视频广告
+    adBanner: ads.unit('banner'),      // 退路：video 没配、或配了但加载失败时才轮到它
+    // 失败态**按位分开记**：原来一个 adFailed 管两位，video 一挂连 banner 退路也一起隐掉，
+    // 退路等于不存在。现在各自独立，且都只隐藏父容器、不移除组件（官方 Bug&Tip 第 4 条）。
+    videoFailed: false,
+    bannerFailed: false,
     // ---- 前 60 秒钩子：结算决策点上的进度锚 ----
     totalLevels: 10,     // 关卡总数
     journeyDay: 1,       // 你是第几天打开它
@@ -91,7 +103,7 @@ Page({
     // ---- 秘境揭图（D31）：本关揭晓的图 + 图鉴进度 ----
     reveal: null,        // { name, tibetan, roman, img, desc }
     revealGot: 0,        // 已揭晓图数（= 已完成关卡数，不新增存储字段）
-    revealTotal: 10,
+    revealTotal: 50,     // 揭图图鉴总数（= 可信寺庙池大小，见 data/reveal-temples.js）
     // ---- 藏地密码：本关解锁的一则小知识 + 图鉴进度 ----
     secret: null,        // { tag, title, text }
     secretGot: 0,
@@ -132,6 +144,25 @@ Page({
     // D111：藏地密码讲解音频在 praiseVoice 分包（286KB 不进主包），进结算页即预热，
     //   玩家点「听讲解」时不必等分包下载。失败静默（不影响结算页本身）。
     try { wx.loadSubpackage && wx.loadSubpackage({ name: 'praiseVoice' }); } catch (e) {}
+    // 2026-11-05：寺庙揭图在 package-temples-1/2。万一玩家是从分享卡/历史直接进结算页
+    // （没经过游戏页），这里补一次预热，否则揭晓卡上的图会是空白。
+    // 分包已下载时该调用立即回调，不额外耗流量。
+    var thatR = this;
+    var refreshCard = function () {
+      if (!thatR._rAlive) return;
+      var cur = thatR.data && thatR.data.reveal && thatR.data.reveal.img;
+      if (!cur) return;
+      thatR.setData({ 'reveal.img': '' }, function () {
+        if (thatR._rAlive) thatR.setData({ 'reveal.img': cur });
+      });
+    };
+    this._rAlive = true;
+    try {
+      if (wx.loadSubpackage) {
+        wx.loadSubpackage({ name: 'temples1', success: refreshCard, fail: function () {} });
+        wx.loadSubpackage({ name: 'temples2', success: refreshCard, fail: function () {} });
+      }
+    } catch (e) {}
     var level = parseInt(query.level, 10) || 1;
     var pairs = parseInt(query.pairs, 10) || 0;
     var score = parseInt(query.score, 10) || 0;
@@ -152,28 +183,41 @@ Page({
       this.renderLearn(query, learnLv, learnStage, pairs, score, combo, att, miss, gift);
       return;
     }
-    // 记录通关 + 解锁下一关
-    storage.completeLevel(level);
-    // 成长阶梯 · 证书：先记录本关成绩，再判断该阶段是否通关并（升级）颁发证书
-    var certRes = certificate.onLevelComplete(level, {
-      matches: pairs,
-      attempts: att > 0 ? att : pairs,   // 兼容缺参：无失败配对视为满正确率
-      misses: miss
-    });
-    if (certRes.isNew || certRes.upgraded) {
-      tracker.track(certRes.isNew ? 'first_certificate' : 'certificate_upgraded');
-    }
-    // 文化护照印记 v0：首次通过第 1 关授予「拉萨印章」（Day1 形成习惯）
+    // G01+R04：达标才发奖励；失败零奖励；同局指纹幂等（防重复开页重发）
+    var won = query.won === undefined ? 1 : (parseInt(query.won, 10) ? 1 : 0);
+    this.data.won = !!won;
+    // resultId 为本局指纹（关卡/胜负/seed/cid/分数/尝试/失败/连击）；复玩 seed/分数通常不同 → 正常再发，同一导航重进 → 跳过
+    var resultId = [level, won, query.seed || '', query.cid || '', score, att, miss, combo].join('|');
+    var credit = !!won && storage.tryCreditResult(resultId);
+    // 默认（失败 / 重复进入已发放）：展示为「无奖励」
+    var certRes = { isNew: false, upgraded: false, cert: null, stage: null, skill: null,
+                    accuracy: att > 0 ? Math.round(pairs / att * 100) : 100 };
     var newStamp = false;
-    if (level === 1 && storage.grantStamp('lhasa')) {
-      newStamp = true;
-      tracker.track('first_stamp');
+    var starRes = { stars: 0, improved: false };
+    var fragRes = { added: false };
+    if (credit) {
+      storage.completeLevel(level);
+      certRes = certificate.onLevelComplete(level, {
+        matches: pairs,
+        attempts: att > 0 ? att : pairs,   // 兼容缺参：无失败配对视为满正确率
+        misses: miss
+      });
+      if (certRes.isNew || certRes.upgraded) {
+        tracker.track(certRes.isNew ? 'first_certificate' : 'certificate_upgraded');
+      }
+      if (level === 1 && storage.grantStamp('lhasa')) {
+        newStamp = true;
+        tracker.track('first_stamp');
+      }
+      var stars = collect.rateStars(att > 0 ? att : pairs, miss, combo);
+      starRes = storage.recordStars(level, stars);
+      storage.addPoints(score);
+      fragRes = storage.addFragment(collect.nextFragment(storage.getFragments()));
+    } else if (won) {
+      // 重复进入：读已落库结果展示，不重发
+      starRes = { stars: storage.getStars(level), improved: false };
+      newStamp = (level === 1) && storage.hasStamp('lhasa');
     }
-    // PRD v4 留存：星级（按正确率与连击，只增不减）+ 积分 + 唐卡碎片掉落
-    var stars = collect.rateStars(att > 0 ? att : pairs, miss, combo);
-    var starRes = storage.recordStars(level, stars);
-    storage.addPoints(score);
-    var fragRes = storage.addFragment(collect.nextFragment(storage.getFragments()));
     var fragList = storage.getFragments();
     if (fragRes.added) tracker.track('first_fragment');
     var ids = (query.cards || '').split(',').filter(Boolean);
@@ -202,6 +246,7 @@ Page({
     });
     this.setData({
       level: level,
+      won: this.data.won,
       pairs: pairs,
       score: score,
       combo: combo,
@@ -235,7 +280,10 @@ Page({
       newStamp: newStamp,
       accuracy: certRes.accuracy,
       clean: miss === 0,
-      stageNo: stageNo,
+      // ⚠️ 2026-10-21 修：这里原来写的是裸变量 stageNo —— 它在整个 onLoad 里**从未定义**，
+      //    只有 data 里有个同名字段。结果是**每次进结算页都抛 ReferenceError**，
+      //    玩家每打完一关结算页就崩。行为测试第一次跑就抓到了它。
+      stageNo: this.data.stageNo || 0,
       stageName: certRes.stage ? certRes.stage.name : '',
       stageTo: certRes.stage ? certRes.stage.to : 0,
       cert: certRes.cert,
@@ -257,21 +305,38 @@ Page({
       stars: starRes.stars,
       starList: [1, 2, 3].map(function (i) { return starRes.stars >= i ? 'on' : 'off'; }),
       starsImproved: starRes.improved,
-      pointsGained: score,
+      pointsGained: won ? score : 0,
       fragmentNew: fragRes.added ? storage.getFragments().slice(-1)[0] + 1 : 0,
       fragmentCount: fragList.length,
       fragmentDone: collect.fragmentComplete(fragList),
-      // 秘境揭图（D31）：completeLevel 已落库，此处揭晓本关的图 + 报图鉴进度
-      reveal: (function () {
+      // 秘境揭图（D31）：仅达标（won）才揭晓；失败不解锁图鉴（R04：失败不发达标奖励）
+      reveal: (won ? (function () {
+        // 2026-11-05：与游戏页同源 —— 寺庙图鉴（可信 50 座循环），没有再回退老 10 张
+        var rt = null;
+        try { rt = revealTemples.revealFor(level); } catch (e) { rt = null; }
+        if (rt) {
+          return {
+            name: rt.name,
+            tibetan: rt.tibetan ? tibText.withTseg(rt.tibetan) : '',
+            roman: '',
+            img: rt.img,
+            desc: rt.sub || rt.desc,
+            credit: rt.credit || ''
+          };
+        }
         var rv = revealsData[level - 1];
-        return rv ? { name: rv.name, tibetan: tibText.withTseg(rv.tibetan), roman: rv.roman, img: rv.img, desc: rv.desc } : null;
-      })(),
-      revealGot: storage.getProgress().completedLevels.filter(function (n) { return n >= 1 && n <= 10; }).length,
-      // 藏地密码：本关解锁一则小知识（completeLevel 已落库，解锁判定与揭示图鉴同源）
-      secret: (function () {
+        return rv ? { name: rv.name, tibetan: tibText.withTseg(rv.tibetan), roman: rv.roman, img: rv.img, desc: rv.desc, credit: '' } : null;
+      })() : null),
+      revealGot: Math.min(
+        storage.getProgress().completedLevels.filter(function (n) { return n >= 1; }).length,
+        revealTemples.poolSize() || 10
+      ),
+      revealTotal: revealTemples.poolSize() || 10,
+      // 藏地密码：本关解锁一则小知识（仅达标才解锁，判定与揭示图鉴同源）
+      secret: (won ? (function () {
         var s = collect.secretOf(secretsData, level);
         return s ? { tag: s.tag, title: s.title, text: s.text } : null;
-      })(),
+      })() : null),
       secretGot: collect.secretProgress(secretsData, storage.getProgress().completedLevels).got,
       secretTotal: secretsData.length,
       // D113 来自朋友的挑战（toUid 为空 = 不是从分享卡进来的 → wxml 不渲染）
@@ -336,13 +401,16 @@ Page({
     // 星级/收藏进度只做**当场展示**（rateStars 纯计算，不落库）：
     //   学习线的星级不进老线 stars 映射（键会是 11..150，污染老线数据）。
     var stars = collect.rateStars(att > 0 ? att : pairs, miss, combo);
-    storage.addPoints(score);
+    // R04：奖励幂等 —— 学习线积分也只发一次（防止重复进入结算页重发）
+    var learnResultId = 'L' + lv + 'S' + stage + '|' + score + '|' + att + '|' + miss;
+    if (storage.tryCreditResult(learnResultId)) storage.addPoints(score);
     var cp = collect.cardProgress(CARD_ORDER, storage.getSeenCards());
     var openLog = storage.getOpenLog();
     this.setData({
       // 学习分支里 level = 全局课序号（1..150），只用于「第 N / 150 课」展示；
       // isFinal 恒 false（祝福卡是老 10 关线的内容，学习线不出现）。
       level: learning.cumulativeIndex(lv, stage),
+      won: true,   // 学习线结算恒为达成（无失败分支），won 恒真，UI 走成功路径
       pairs: pairs,
       score: score,
       combo: combo,
@@ -398,6 +466,9 @@ Page({
         return { id: id, label: el.tibetan || (el.char || ''), name: card ? card.title : '', color: el.color || '#C0392B', isLetter: el.type === 'letter' };
       })
     });
+    // Q4：本课课型 + 复习建议（只展示规则，不改盘面）
+    var planInfo = plan.summary(lv, stage);
+    this.setData({ lessonKindLabel: planInfo.label, lessonReviewText: planInfo.reviewText });
     var that = this;
     this.blessTimer = setTimeout(function () { audio.blessing(); }, 650);
   },
@@ -443,6 +514,7 @@ Page({
   // 离开结算页：撤掉未播放的定时器 + 立刻停掉正在播的祝福语音。
   // 语音通道是全局单声道（utils/audio.js 的 activeVoice），不清理会播到别的页面去。
   onUnload: function () {
+    this._rAlive = false;   // 分包回调到期的 setData 不再执行（页面已销毁）
     if (this.blessTimer) { clearTimeout(this.blessTimer); this.blessTimer = null; }
     audio.stopVoice();
   },
@@ -471,6 +543,28 @@ Page({
   },
   // 阻止冒泡占位（弹窗内容区 catchtap 用）
   noop: function () {},
+
+  // D156 视频广告：官方《ad 组件》Bug&Tip 第 4 条 —— 加载失败只隐藏父容器，
+  // 不移除 <ad> 组件（移除后就收不到后续 bindload，广告永远回不来）。
+  // 失败要能被看见：只记「哪个位挂了」，不记广告 ID、不记用户。
+  // 没有这条，上线后只能看到"广告没收入"，查不出是审核没过、ID 填错、还是库存空。
+  onVideoError: function () {
+    this.setData({ videoFailed: true });
+    telemetry.event('ad_slot_error', { slot: 'video' });
+    telemetry.flush();
+  },
+  onVideoLoad: function () {
+    if (this.data.videoFailed) this.setData({ videoFailed: false });
+  },
+  // banner 退路自己的失败态：它也挂了才真的整块消失
+  onBannerError: function () {
+    this.setData({ bannerFailed: true });
+    telemetry.event('ad_slot_error', { slot: 'banner' });
+    telemetry.flush();
+  },
+  onBannerLoad: function () {
+    if (this.data.bannerFailed) this.setData({ bannerFailed: false });
+  },
   // 下一关（15分钟体验终点：玩家主动点击）
   goNext: function () {
     tracker.track('next_level_click');

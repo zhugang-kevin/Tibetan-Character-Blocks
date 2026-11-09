@@ -108,6 +108,8 @@
   font-weight: 700;
 }
 
+/* R04：失败分支样式见 result.wxml 内联（控制主包体积） */
+
 .result-title {
   margin-top: 24rpx;
   font-size: 44rpx;
@@ -410,6 +412,8 @@
 }
 .lp-bar-in { height: 100%; border-radius: 7rpx; background: #8A6A12; }
 .lp-note { margin-top: 12rpx; font-size: 26rpx; color: #2C3E50; }
+/* Q4：课型 + 复习建议（次要信息，不抢主进度） */
+.lp-plan { color: #6E6759; font-size: 26rpx; }
 .lp-next { color: #8A6A12; font-weight: 600; }
 
 .result-acc.ok {
@@ -581,11 +585,20 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-wrap: wrap;
   gap: 8rpx;
 }
 .rs-star { font-size: 44rpx; color: #DDD3BC; line-height: 1; }
 .rs-star.on { color: #F1C40F; text-shadow: 0 2rpx 6rpx rgba(183, 149, 11, 0.5); }
-.rs-tip { margin-left: 10rpx; font-size: 26rpx; color: #6E6759; }
+.rs-tip {
+  /* 2026-11-06：原来 26rpx 深灰紧贴第三颗星，压在深色背景上几乎看不见。改独占一行 + 浅色。 */
+  flex-basis: 100%;
+  margin: 6rpx 0 0;
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.78);
+  text-align: center;
+  letter-spacing: 1rpx;
+}
 
 .reward-row { display: flex; gap: 16rpx; margin: 18rpx 0 6rpx; }
 .reward-box {
@@ -771,6 +784,30 @@
   line-height: 1.6;
   color: #6E6759;
 }
+
+/* D156 视频广告位：只在配置了广告位 ID 时存在。
+   不设固定高度 —— 官方《ad 组件》「无广告展示时 ad 标签不会占用高度」，
+   写死高度会在没填充时留一块空白，比没有广告更伤版式。 */
+/* 位置：紧跟「成绩区」，不是内容末尾（末尾要下滑 668~1108px，等于没广告）。
+   上边距压小，避免把成绩区推得太散；下边距留足，和后面的挑战卡/揭晓区拉开层次。 */
+.ad-slot {
+  margin: 8rpx 0 28rpx;
+  padding: 0;
+  border-radius: 16rpx;
+  overflow: hidden;
+}
+.ad-label {
+  text-align: center;
+  /* validate.js §54.2：WXSS 字号一律 ≥ 26rpx（320pt 机型 11.1pt 下限）。
+     22rpx 在这里不是「小一点更好看」，是 320pt 上只有 9.4pt，会被门禁判红。 */
+  font-size: 26rpx;
+  letter-spacing: 2rpx;
+  color: #8A8272;
+  margin-bottom: 10rpx;
+}
+/* 每一路广告各自一层：失败时只 hidden 这一层，组件仍留在树上等 bindload 回来 */
+.ad-cell { display: block; width: 100%; }
+.ad-slot ad { display: block; width: 100%; }
 
 /* D66 平板适配：内容封顶居中。手机端 max-width 不生效，版式零变化；
    平板上不再被拉成「放大的手机」。max-width 是保护性的，只封顶不放大。 */

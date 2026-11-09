@@ -35,12 +35,20 @@
         "value": ".gitignore"
       },
       {
+        "type": "file",
+        "value": "data/incense.js"
+      },
+      {
         "type": "suffix",
         "value": ".py"
       },
       {
         "type": "suffix",
         "value": ".md"
+      },
+      {
+        "type": "folder",
+        "value": "images/temples/temples-orig"
       },
       {
         "type": "folder",

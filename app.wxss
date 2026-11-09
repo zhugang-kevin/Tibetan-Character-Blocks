@@ -57,13 +57,41 @@ button::after {
 
 /* ============ 唐卡拼图（全局：首页「唐卡拼图」面板 + 文化护照「唐卡收藏」共用） ============ */
 /* 2026-10-05 从 index.wxss 上移：两个页面都要用，避免两端/两页各写一份样式 */
+/* 2026-10-22 藏文化视觉重构：金框 + 六字真言题头 + 四角曼陀罗饰 + 拼合后的纯 CSS 坛城（无图片依赖） */
+.tk-wrap {
+  position: relative;
+  padding: 24rpx 18rpx 16rpx;
+  border-radius: 24rpx;
+  background: linear-gradient(160deg, #FDF6E3 0%, #F4E6C6 100%);
+  border: 3rpx solid #B7950B;
+  box-shadow: inset 0 0 0 7rpx rgba(110, 43, 34, 0.12), 0 10rpx 26rpx rgba(60, 44, 16, 0.20);
+}
+/* 六字真言题头（藏红底金字，居中） */
+.tk-mantra {
+  text-align: center;
+  font-family: 'Noto Serif Tibetan', Kailasa, 'Noto Sans Tibetan', Jomolhari, 'Microsoft Himalaya', serif;
+  font-size: 28rpx;
+  font-weight: 700;
+  letter-spacing: 3rpx;
+  color: #F3E7CE;
+  background: linear-gradient(90deg, #6E2B22, #8E2A20);
+  border-radius: 999rpx;
+  padding: 8rpx 0;
+  margin-bottom: 14rpx;
+}
+/* 四角曼陀罗饰（金色小菱，四瑞角落意象） */
+.tk-corner { position: absolute; width: 20rpx; height: 20rpx; background: #B7950B; transform: rotate(45deg); opacity: 0.9; }
+.tk-corner.tl { top: 9rpx; left: 9rpx; }
+.tk-corner.tr { top: 9rpx; right: 9rpx; }
+.tk-corner.bl { bottom: 9rpx; left: 9rpx; }
+.tk-corner.br { bottom: 9rpx; right: 9rpx; }
 .tk-grid { display: flex; flex-wrap: wrap; gap: 10rpx; }
 .tk-cell {
   width: calc((100% - 20rpx) / 3);
   height: 150rpx;
   border-radius: 14rpx;
-  background: #F2EDE0;
-  border: 2rpx dashed rgba(183, 149, 11, 0.5);
+  background: #EFE7D4;
+  border: 2rpx dashed rgba(183, 149, 11, 0.55);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -83,4 +111,17 @@ button::after {
   background: linear-gradient(160deg, #FDF6E3, #F5E9CF);
   box-shadow: 0 6rpx 16rpx rgba(96, 78, 44, 0.16);
 }
+/* 拼合后展示你亲手拼出的第一幅坛城（藏式曼陀罗，纯 CSS 绘制，零图片依赖） */
+.tk-reveal { margin-top: 16rpx; text-align: center; }
+.tk-mandala {
+  width: 240rpx; height: 240rpx; border-radius: 50%;
+  margin: 4rpx auto 2rpx;
+  background:
+    radial-gradient(circle at 50% 50%, #F1C40F 0 8%, #6E2B22 8% 12%, transparent 12%),
+    repeating-radial-gradient(circle at 50% 50%, rgba(241, 196, 15, 0.5) 0 4rpx, transparent 4rpx 16rpx),
+    radial-gradient(circle at 50% 50%, transparent 0 40%, rgba(183, 149, 11, 0.38) 40% 42%, transparent 42%),
+    radial-gradient(circle at 50% 50%, #7B2D26 0 64%, #3A1410 64% 100%);
+  box-shadow: 0 0 0 5rpx #B7950B, 0 0 0 10rpx #6E2B22, 0 0 0 12rpx #B7950B, inset 0 0 26rpx rgba(0, 0, 0, 0.45);
+}
+.tk-reveal-cap { font-size: 22rpx; color: #8A6A12; margin-top: 8rpx; letter-spacing: 1rpx; }
 .tk-frame-note { margin-top: 14rpx; text-align: center; font-size: 24rpx; color: #8A6A12; }
