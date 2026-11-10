@@ -144,12 +144,22 @@ function run(gate) {
 
 // 三态里最容易被忽略的一态：**合法配置**。填了 ID 之后门禁必须仍然绿，
 // 否则上线的人会去把门禁改松 —— 那是比红更糟的结果。
+// 🔴 锚点必须「空态/已填态」都能匹配：仓库里真上线填了 ID 后，
+//    `banner: '',` 这种空态锚点会失效，让本用例假红，逼人改松门禁。
+//    所以这里用正则匹配 `banner:` 到行尾逗号，无论当前是空还是已填都能替换。
 function fillWired() {
   patchRaw('config/ads.js', function (s) {
-    const out = s
-      .replace("banner: '',", "banner: 'adunit-aaa111bbb222',")
-      .replace("video: '',", "video: 'adunit-bbb222ccc333',")
-      .replace("rewarded: '',", "rewarded: 'adunit-ccc333ddd444',");
+    const ids = {
+      banner: 'adunit-aaa111bbb222',
+      video: 'adunit-bbb222ccc333',
+      rewarded: 'adunit-ccc333ddd444'
+    };
+    let out = s;
+    Object.keys(ids).forEach(function (t) {
+      const re = new RegExp('(\\b' + t + ":\\s*)'[^']*'");
+      if (!re.test(out)) throw new Error('填 ID 锚点失效（config/ads.js 里找不到 ' + t + ' 行）');
+      out = out.replace(re, '$1\'' + ids[t] + '\'');
+    });
     if (out === s) throw new Error('填 ID 锚点失效（config/ads.js 结构已改）');
     return out;
   });
