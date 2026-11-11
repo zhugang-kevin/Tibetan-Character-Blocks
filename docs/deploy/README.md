@@ -1,5 +1,10 @@
 # 部署与备案落地手册
 
+> 🔴🔴 **本文件已废弃（2026-11-11）**：这套方案用 `zangqu-api` / 端口 **3000** / `/opt/zangqu`，
+> 与权威口径矛盾（正确是 `dorjea` / 端口 **8300** / `/opt/dorjea` / `/etc/dorjea/env`）。
+> **请改看唯一权威版：`docs/部署-dorjea服务端-唯一权威版.md`**，本文件及同目录的
+> `deploy.sh` / `zangqu-api.service` / `env.example` 均不得再照抄。
+
 目标域名：**api.dorjea.cn**（子域名，微信小程序不支持父域名）
 服务器：**阿里云 ECS**，国内地域
 项目路径：`I:\藏趣游戏`
