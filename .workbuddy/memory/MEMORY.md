@@ -6,16 +6,19 @@
 ## 0. 现状速览
 
 - 微信小程序「藏字方块」：老线 10 关（练习）+ 学习线 150 课；通关揭图 50 座寺院（150 课循环）。
-- 主包 **1706KB ≤ 1800KB**（validate §38）；四道门禁：validate **1817/0** · 广告运行 **93/0** · 广告变异 **37/0** · WXML/WXSS **33/0**。
-- 全量 CI **45 通过 / 0 失败 / 1 跳过**（2026-11-09，10m10s）；`pre-commit` **10 道全绿**。
-- 决策最新编号 **D156**（D156 下已到 ⑯）。落号前先读 `DECISIONS.md` 末尾最大号（出过 D119 撞号；`D700` 是色值不是编号）。
+- 主包 **1710KB ≤ 1800KB**（validate §38）；四道门禁：validate **1830/0** · 广告运行 **93/0** · 广告变异 **37/0** · WXML/WXSS **33/0**。
+- 全量 CI **45 通过 / 0 失败 / 1 跳过**（2026-11-11，9m01s，D178 落地后复跑）；`pre-commit` **10 道全绿**。
+- 决策最新编号 **D178**（D178 = 道具图重做 + §67 门禁 + 体积守卫修 bug）。
+  🔴 **落号前必须三处交叉查最大号**（台账 / 提交说明 / 全库引用）：`DECISIONS.md` 只到 D156，
+  但 **D157–D177 已被占用**（D170 定位纠偏 / D171 橱窗三档 / D174 电商合规 / D176 订单 / D177 实物下线）且**台账里没有对应行**（已知缺口）。
+  → 下一个可用号 **D179+**。（`D700` 是色值不是编号。）
 - **发布未就绪**：缺 ICP 备案、APPID/APPKEY_PROD、真机验证、体验版上传。阻塞台账 `docs/上线阻塞与边界-2026-11-09.md`。
 
 ## 1. 硬规则（违反过的，不要再犯）
 
 | 规则 | 说明 |
 |---|---|
-| **决策编号** | 落号前读 `DECISIONS.md` 末尾最大号；新增决策必须写清「未做」项 |
+| **决策编号** | 落号前**跨三处**查最大号：`DECISIONS.md` 末尾 + `git log --all --pretty=%s` 提交说明 + 全库代码/文档引用（**D157–D177 已被占用但台账无对应行**，下一个可用号 ≥ D179）；新增决策必须写清「未做」项 |
 | **任务绑定** | 一段对话 = 一个任务；越界改动先说明再动手 |
 | **只改一半 = 新冲突** | 撤/换体系必须同查：模板 / canvas / `<img alt>` / `.json` 标题 / 分享文案 / 注释 |
 | **关卡不可悄悄改** | `data/level-fingerprint.json` 存总哈希 + 逐关哈希；改关卡须 `--update --reason="…"` + 追加 `docs/关卡改动日志.md` |
@@ -65,11 +68,19 @@
 
 ## 6. 包体 / 分包
 
-- 主包 **1706KB ≤ 1800KB**；分包 `package-praise`(语音) / `package-service` / `package-temples-1|2`（各 25 张 webp）。
+- 主包 **1710KB ≤ 1800KB**；分包 `package-praise`(语音) / `package-service` / `package-temples-1|2`（各 25 张 webp）。
 - 寺庙图 620px / q68 webp；未采用 68 张在 `assets-src/temples-unused/`。
 - 分包图必须 `wx.loadSubpackage` 预下载（app.js + 游戏页 + 结算页），成功回调重设 `reveal.img`。
 - 🔴 **预算再涨先做瘦身审计（top10 + 逐项理由）再谈数字**（1846/1852/1860/1960/1800 口径不同，别混用）。
 - `data/incense.js` 在 `packOptions.ignore`，是门禁专用事实源，运行时不得 require。
+- 🔴 **`packOptions.ignore` 的 folder 型 value 是「相对项目根的路径」**（`images/gift-icons`），不是裸目录名。
+- **D178 道具图（虚拟支付后台「添加道具」上传用）**：`images/gift-icons/{tib_lamp_1,tib_blessing_3,tib_khata_6,tib_name_99}.png`，
+  硬规格 PNG/JPG **200×200 <200KB**；**只上传、不进包**（在 ignore 里）。house style = **深漆地 + 高对比主体**
+  （微信付款弹窗是**白底**，浅底图会直接消失）。构建脚本 `scripts/build-gift-icons.py` 入库，
+  **重跑逐字节相同**（khata `72dd2df3d188…` / name `ebf0d92ae1bb…`）；底图源在 `.workbuddy/tmp/icon-gen/`（不入库）。
+  🔴 **藏文必须用 Chrome + NotoSerifTibetan 渲染**（PIL 无 raqm → 断笔字，勿用 PIL 出藏文）。
+  门禁：`validate §67`（PNG magic / 200×200 / <200KB / 四角 9×9 补丁平均亮度 <140 / 已排除出主包 / 构建脚本存在），变异 5 例全红。
+  **用户上传后台时只上传图片本身**（改名 = productId + `.png`）。
 
 ## 7. 广告（D138 + D156）
 
@@ -144,3 +155,8 @@ python scripts/ci.py                     全量（约 9 分钟）；--fast 跳�
 - 访问 `commons.wikimedia.org` 走代理 **`http://127.0.0.1:10809`**（HTTP 口；SOCKS 是 10808）。
 - 🔴 `scripts/audit_combinations.js` **不能审真实寺院名**：附加字表只覆盖课程音节，`བསམ་ཡས་`（桑耶寺）会误判。
 - 推送不稳定用 `git -c http.version=HTTP/1.1 push origin HEAD`。
+- 🔴 **PIL 无 raqm → 藏文一律走 Chrome**（`features.check('raqm') == False`；PIL 直出是断笔字）。用 `scripts/render-tibetan-text.js` 或 `scripts/make_logo.py` 的路子。
+- 🔴 **门禁里「算体积 / 扫目录」的排除逻辑必须抽成唯一函数给正向检查与反向自测共用**（抄一份 = 自测测自己 → 假绿）。同理：ignore 匹配必须同时认**相对根路径**与裸目录名。
+- 判据阈值要**留余量**：取单像素会被角上花纹顶到临界点 → 将来重跑脚本假红；改取 9×9 补丁平均。
+- 变异测试**不要删文件**：Windows 跨盘 `mv` 会失败、删了又还原不了；用「移走 + 还原」。资产类改动**先让脚本可复现**（入库构建脚本 + 源图在手），被 SIGTERM 打断也能按位还原。
+- 长门禁脚本在 bash 工具下 **120s 会被 SIGTERM**（实测 `validate.js` 单跑 ~30s）→ 一律 `run_in_background`，别前台硬等。
