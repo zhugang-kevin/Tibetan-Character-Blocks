@@ -2648,12 +2648,12 @@ function mockCtx(sink) {
       $('#gf-to').textContent.indexOf('efgh') > -1 && $('#gf-to').textContent.indexOf('abcd1234') === -1,
       $('#gf-to').textContent);
 
-    // 38.2 四份心意 + 价格口径（分 → 元，990 分 = ¥9.9）
+    // 38.2 四份心意 + 价格口径（分 → 元，600 分 = ¥6）
     check('四份心意全部渲染', $$('#gf-grid .gf-card').length === 4,
       '实际 ' + $$('#gf-grid .gf-card').length);
     const prices = $$('#gf-grid .gf-price').map(e => e.textContent);
-    check('价格按「分 → 元」显示（¥1 / ¥3 / ¥6 / ¥9.9）',
-      prices.join(',') === '¥1,¥3,¥6,¥9.9', prices.join(','));
+    check('价格按「分 → 元」显示（¥1 / ¥2 / ¥3 / ¥6）',
+      prices.join(',') === '¥1,¥2,¥3,¥6', prices.join(','));
 
     // 38.3 挑一句藏文：只在选中「送一句藏文祝福」时出现
     check('未选礼物时不显示祝福语', $('#gf-bless-sec').style.display === 'none');
@@ -2675,7 +2675,7 @@ function mockCtx(sink) {
       $('.gf-off').textContent);
     check('下单页可见「不支持退款」提示', $('.gf-notice').textContent.indexOf('不支持退款') > -1,
       $('.gf-notice').textContent);
-    check('送出按钮带价格（送出 · ¥3）', $('#gf-submit').textContent.indexOf('¥3') > -1,
+    check('送出按钮带价格（送出 · ¥2）', $('#gf-submit').textContent.indexOf('¥2') > -1,
       $('#gf-submit').textContent);
 
     // 38.5 离开礼物页不残留（与小程序 onUnload 清定时器同口径）
