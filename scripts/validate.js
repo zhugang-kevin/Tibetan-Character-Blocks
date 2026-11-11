@@ -602,9 +602,12 @@ if (certSrc.indexOf('minAccuracy: 0.95') > -1 && certSrc.indexOf('minAccuracy: 0
 else err('等级门槛不符合设计（应为金 95% / 银 80%）');
 if (certSrc.indexOf('requireClean') > -1) ok('金质证书额外要求「全程无失误」');
 else warn('金质证书缺少零失误条件');
-if (certSrc.indexOf('stageContent') > -1 && certSrc.indexOf('elementsData') > -1)
-  ok('证书成就行按真实关卡数据统计（内容扩充后自动跟随）');
-else warn('证书成就行为硬编码，内容扩充后不会自动更新');
+// 证书内容是否「动态跟随真实关卡数据」—— D119 后旧阶梯体系的 stageContent/elementsData
+//   已整体撤除，判据若仍找这两个旧标识符会永远 warn（死判据）。
+//   现在的动态事实源是 learningData.byLevel(lv) → L.name / L.goal / L.stages。
+if (certSrc.indexOf('learningData.byLevel') > -1 && certSrc.indexOf('L.stages') > -1)
+  ok('证书成就行按真实关卡数据统计（byLevel 动态取 name/goal/stages，内容扩充自动跟随）');
+else err('证书成就行已硬编码 —— 内容扩充后不会自动更新（应走 learningData.byLevel）');
 
 // 14.3 存储层
 var stSrc = read('utils/storage.js');
