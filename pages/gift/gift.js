@@ -47,10 +47,10 @@ Page({
     picked: '',
     pickedName: '',
     pickedPrice: '',
-    // ---- 藏文祝福（¥3 专用）----
+    // ---- 藏文祝福（¥2 专用）----
     blessingList: [],
     blessingId: '',
-    // ---- 藏族名字（¥9.9 专用）----
+    // ---- 藏族名字（¥6 专用）----
     toName: '',          // TA 的名字（中文）
     gender: '',
     genderOptions: [],
@@ -136,15 +136,15 @@ Page({
       state: this.data.state === 'done' ? 'idle' : this.data.state
     });
   },
-  // 选祝福语（¥3）
+  // 选祝福语（¥2）
   pickBlessing: function (e) {
     this.setData({ blessingId: e.currentTarget.dataset.id });
   },
-  // 填 TA 的名字（¥9.9）
+  // 填 TA 的名字（¥6）
   onToNameInput: function (e) {
     this.setData({ toName: e.detail.value, namePicked: null });
   },
-  // 选性别（¥9.9；三档，含「不愿透露」，与 D54 同口径）
+  // 选性别（¥6；三档，含「不愿透露」，与 D54 同口径）
   pickGender: function (e) {
     this.setData({ gender: e.currentTarget.dataset.key, namePicked: null });
   },
@@ -175,7 +175,7 @@ Page({
     if (d.noRecipient || d.isSelf) return;
     if (!d.picked) { wx.showToast({ title: '先选一份心意', icon: 'none' }); return; }
     if (d.state === 'paying' || d.state === 'confirming') return;   // 防连点重复下单
-    // ¥3 必须选一句；¥9.9 必须先生成名字 —— 少了内容，送到对方手上就是空的
+    // ¥2 必须选一句；¥6 必须先生成名字 —— 少了内容，送到对方手上就是空的
     if (d.picked === 'tib_blessing_3' && !d.blessingId) {
       wx.showToast({ title: '挑一句藏文祝福', icon: 'none' });
       return;

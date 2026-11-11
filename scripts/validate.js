@@ -7500,9 +7500,9 @@ section('64. D113 朋友互赞（打赏链路 · 三条红线）');
     if (/require\('\.\.\/data\/goods\.js'\)\.list/.test(payJs))
       ok('utils/payment.js 的 GIFTS 取自 data/goods.js（前端不再自抄价格）');
     else err('utils/payment.js 仍在自己维护价格 —— 与服务端会漂移（-15013）');
-    // 前端不得再出现 100/300/600/990 的价格字面量
+    // 前端不得再出现 100/200/300/600 的价格字面量
     const payBody = stripComments(payJs).replace(/require\([^)]*\)\.list/, '');
-    if (!/price:\s*(100|300|600|990)\b/.test(payBody))
+    if (!/price:\s*(100|200|300|600)\b/.test(payBody))
       ok('utils/payment.js 内无价格字面量残留');
     else err('utils/payment.js 仍残留价格字面量 —— 请改为读取 data/goods.js');
 
@@ -7512,7 +7512,7 @@ section('64. D113 朋友互赞（打赏链路 · 三条红线）');
     else err('server/index.js 仍在自己维护价格 —— 与前端会漂移（-15013）');
     {
       const svBody = stripComments(svIx).replace(/require\([^)]*\)\.list/, '');
-      if (!/price:\s*(100|300|600|990)\b/.test(svBody))
+      if (!/price:\s*(100|200|300|600)\b/.test(svBody))
         ok('server/index.js 内无价格字面量残留');
       else err('server/index.js 仍残留价格字面量 —— 前后端两套价会直接 -15013');
     }
@@ -7523,7 +7523,7 @@ section('64. D113 朋友互赞（打赏链路 · 三条红线）');
     else err('体验版仍自写价格 —— 三处漂移');
     {
       const gvBlock = (/var GIFT_VIEW = \{[\s\S]*?\n\};/.exec(tpl) || [''])[0];
-      if (!/price:\s*(100|300|600|990)\b/.test(gvBlock))
+      if (!/price:\s*(100|200|300|600)\b/.test(gvBlock))
         ok('体验版 GIFT_VIEW 内无价格字面量残留');
       else err('体验版 GIFT_VIEW 仍写死价格 —— 显示价会与实付价不一致');
     }
@@ -7531,9 +7531,9 @@ section('64. D113 朋友互赞（打赏链路 · 三条红线）');
     // 四个道具的价格与 give 必须逐条对上 mp 申报表
     const EXPECT = [
       ['tib_lamp_1', 100, 'lamp'],
-      ['tib_blessing_3', 300, 'blessing'],
-      ['tib_khata_6', 600, 'khata'],
-      ['tib_name_99', 990, 'name']
+      ['tib_blessing_3', 200, 'blessing'],
+      ['tib_khata_6', 300, 'khata'],
+      ['tib_name_99', 600, 'name']
     ];
     let gBad = 0;
     try {

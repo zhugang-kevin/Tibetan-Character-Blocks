@@ -22,8 +22,8 @@ module.exports = {
   // 单位：**分**。与官方 goodsPrice 同口径（否则 -15013）。
   list: [
     { productId: 'tib_lamp_1',     price: 100, give: 'lamp' },
-    { productId: 'tib_blessing_3', price: 300, give: 'blessing' },
-    { productId: 'tib_khata_6',    price: 600, give: 'khata' },
-    { productId: 'tib_name_99',    price: 990, give: 'name' }
+    { productId: 'tib_blessing_3', price: 200, give: 'blessing' },
+    { productId: 'tib_khata_6',    price: 300, give: 'khata' },
+    { productId: 'tib_name_99',    price: 600, give: 'name' }
   ]
 };
