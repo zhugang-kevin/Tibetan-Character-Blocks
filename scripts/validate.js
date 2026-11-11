@@ -3642,21 +3642,55 @@ section('38. 生产上线守卫（主包体积 / 隐私授权 / 工程配置）'
       });
     } catch (e) { /* app.json 异常时不排除，保持原行为 */ }
     if (subRoots.size) ok('体积计算已排除分包根：' + Array.from(subRoots).join(', '));
-    let totalK = 0;
-    (function walk(rel) {
-      for (const e of fs.readdirSync(path.join(ROOT, rel), { withFileTypes: true })) {
-        if (skipDir.has(e.name)) continue;
-        const relPath = rel ? rel + '/' + e.name : e.name;
-        if (skipFile.has(relPath)) continue;     // D91：file 类型忽略（如 images/logo-200.png 不进主包）
-        if (subRoots.has(relPath)) continue;   // 分包整目录不计入主包
-        if (e.isDirectory()) walk(relPath);
-        else if (/\.(md|py)$/.test(e.name)) continue;         // 由 ignore 的 suffix 规则排除
-        else totalK += fs.statSync(path.join(ROOT, relPath)).size / KB;
-      }
-    })('');
-    totalK = Math.round(totalK);
+    // 体积计算：**唯一的**实现。反向自测（38.2b）复用同一个函数，
+    //   否则自测会测「自己那份复制品」，改成假绿（D178 实测踩过：自测与生产代码各写一份，
+    //   变异生产逻辑时自测照样通过 —— 守卫等于没有）。
+    //   skipDir 参数化：自测需要「临时抽掉某条 ignore 再算一次」来验证排除真的生效。
+    const calcPkgBytes = function (skipDirSet) {
+      let b = 0;
+      (function walk(rel) {
+        for (const e of fs.readdirSync(path.join(ROOT, rel), { withFileTypes: true })) {
+          const relPath = rel ? rel + '/' + e.name : e.name;
+          // D178：folder 型 ignore 的 value 是**相对项目根的路径**（微信 packOptions 语义），
+          //   例如 'images/gift-icons'、'images/brand'。旧实现只按 e.name（裸目录名）比，
+          //   于是所有**嵌套** ignore 永远匹配不上 → 嵌套资产被算进主包 → 体积虚高误报超限。
+          //   现在同时认 relPath（正确语义）与 e.name（兼容顶层写法，如 'docs'）。
+          if (skipDirSet.has(relPath) || skipDirSet.has(e.name)) continue;
+          if (skipFile.has(relPath)) continue;     // D91：file 类型忽略（如 images/logo-200.png 不进主包）
+          if (subRoots.has(relPath)) continue;   // 分包整目录不计入主包
+          if (e.isDirectory()) walk(relPath);
+          else if (/\.(md|py)$/.test(e.name)) continue;         // 由 ignore 的 suffix 规则排除
+          else b += fs.statSync(path.join(ROOT, relPath)).size;
+        }
+      })('');
+      return b;
+    };
+    const totalK = Math.round(calcPkgBytes(skipDir) / KB);
     if (totalK <= LIMIT_KB) ok('主包体积 ' + totalK + 'KB ≤ ' + LIMIT_KB + 'KB（2MB 上限留 10% 余量）');
     else err('主包体积超预算：' + totalK + 'KB > ' + LIMIT_KB + 'KB（压缩资产或改 packOptions.ignore）');
+
+    // --- 38.2b 嵌套 ignore 真的生效吗？（D178 反向自测，走同一个 calcPkgBytes）---
+    //   判据：**把该嵌套目录从 ignore 里拿掉，体积必须变大**。
+    //   变大 = 原来它确实被排除了；不变 = 它其实一直算在主包里（守卫失效 → 必须判红）。
+    {
+      const nestedIgnores = Array.from(skipDir).filter(function (d) {
+        return d.indexOf('/') > -1 && fs.existsSync(path.join(ROOT, d));
+      });
+      if (!nestedIgnores.length) {
+        ok('体积守卫自测：当前无「存在的」嵌套 ignore 目录（嵌套排除逻辑无样本可验，判定按无风险处理）');
+      } else {
+        const sizeWith = calcPkgBytes(skipDir);
+        let inert = [];
+        nestedIgnores.forEach(function (d) {
+          const probe = new Set(skipDir);
+          probe.delete(d);                        // 临时抽掉，用同一个函数重算
+          const b = calcPkgBytes(probe);
+          if (b > sizeWith) inert.push(d + '(生效，差 ' + Math.round((b - sizeWith) / KB) + 'KB)');
+        });
+        if (!inert.length) err('体积守卫自测失败：嵌套 ignore 抽掉后体积不变 → 该目录其实一直被算进主包（守卫失效）');
+        else ok('体积守卫自测：嵌套 ignore 确实生效 —— ' + inert.join('、'));
+      }
+    }
   }
 
   // --- 38.3 隐私授权接线 ---
@@ -7925,6 +7959,126 @@ section('66. D118 变现：不卖空气（付费商品必须有真实交付）')
   if (exists('docs/monetization-audit-2026-10-15.md'))
     ok('变现审计已留档（docs/monetization-audit-2026-10-15.md）');
   else err('缺变现审计文档 —— 方向、算账、卡点必须可查，不许只在对话里说过');
+}
+
+// --- 67. 虚拟支付道具图片规格（D178）---
+// 为什么要有这道门禁：后台「添加道具」要求 PNG/JPG、200×200、<200KB，
+//   传错就是「道具录入失败」，而本地看不出来。
+// 更要紧的是**设计不变量**：微信付款弹窗是白底，浅底道具图会直接消失。
+//   本项目曾用米白底画哈达（#F6F6EF）、纯白底画藏名卡（#FEFFFF），
+//   两张在真实尺寸下都「看不见」—— 纯靠人眼看是守不住的，改成机械判定。
+section('67. 虚拟支付道具图片规格（200×200 / <200KB / 深底不消失）');
+{
+  const GIFT_ICONS = ['tib_lamp_1', 'tib_blessing_3', 'tib_khata_6', 'tib_name_99'];
+  const ICON_DIR = 'images/gift-icons';
+  let allOk = true;
+  GIFT_ICONS.forEach(function (id) {
+    const rel = ICON_DIR + '/' + id + '.png';
+    if (!exists(rel)) { err('缺道具图片 ' + rel + '（后台「添加道具」需要上传 200×200 图）'); allOk = false; return; }
+    const buf = fs.readFileSync(path.join(ROOT, rel));
+    // PNG magic bytes（不信扩展名）
+    const isPng = buf.length > 8 && buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4E && buf[3] === 0x47;
+    if (!isPng) { err(rel + ' 不是合法 PNG（magic bytes 不符）'); allOk = false; }
+    // IHDR 里读宽高（零依赖）
+    const w = buf.readUInt32BE(16), h = buf.readUInt32BE(20);
+    if (w !== 200 || h !== 200) { err(rel + ' 尺寸 ' + w + '×' + h + ' ≠ 200×200（后台硬要求）'); allOk = false; }
+    const kb = buf.length / 1024;
+    if (kb > 200) { err(rel + ' 体积 ' + Math.round(kb) + 'KB > 200KB（后台硬要求）'); allOk = false; }
+    else ok(rel + ' 规格合规：PNG 200×200 ' + Math.round(kb) + 'KB');
+  });
+  // 深底不变量：四角像素必须是深色（否则在白底支付弹窗上会消失）
+  //   判据取**四角 9×9 补丁平均亮度 < 140** —— 取补丁而不是单像素：
+  //   角上压着一道金色缠枝纹，单像素会被它顶到 106~149（离阈值只剩几格 → 将来重跑脚本
+  //   稍微亮一点就假红）。补丁平均后实测四张为 21~83，余量 ≥57；
+  //   而历史上的米白底(#F6F6EF≈244)与纯白底(#FEFFFF≈254)仍远高于 140，照样判红。
+  if (allOk) {
+    // 用 Node 自带 zlib 解 PNG（IHDR 取宽高、IDAT 反 filter 取像素），零外部依赖。
+    const zlib = require('zlib');
+    const readPngCorners = function (rel) {
+      const buf = fs.readFileSync(path.join(ROOT, rel));
+      let off = 8, w = 0, h = 0, bitDepth = 0, colorType = 0;
+      const idat = [];
+      while (off < buf.length) {
+        const len = buf.readUInt32BE(off);
+        const type = buf.toString('ascii', off + 4, off + 8);
+        const data = buf.slice(off + 8, off + 8 + len);
+        if (type === 'IHDR') {
+          w = data.readUInt32BE(0); h = data.readUInt32BE(4);
+          bitDepth = data[8]; colorType = data[9];
+        } else if (type === 'IDAT') idat.push(data);
+        else if (type === 'IEND') break;
+        off += 12 + len;
+      }
+      if (bitDepth !== 8) return null;
+      const ch = colorType === 2 ? 3 : colorType === 6 ? 4 : colorType === 0 ? 1 : 0;
+      if (!ch) return null;
+      const raw = zlib.inflateSync(Buffer.concat(idat));
+      const stride = w * ch;
+      const out = Buffer.alloc(h * stride);
+      let p = 0;
+      for (let y = 0; y < h; y++) {
+        const ft = raw[p++];
+        const line = raw.slice(p, p + stride); p += stride;
+        const cur = out.slice(y * stride, (y + 1) * stride);
+        const prev = y > 0 ? out.slice((y - 1) * stride, y * stride) : Buffer.alloc(stride);
+        for (let x = 0; x < stride; x++) {
+          const a = x >= ch ? cur[x - ch] : 0, b = prev[x], c = x >= ch ? prev[x - ch] : 0;
+          let v = line[x];
+          if (ft === 1) v += a; else if (ft === 2) v += b; else if (ft === 3) v += (a + b) >> 1;
+          else if (ft === 4) { const pp = a + b - c, pa = Math.abs(pp - a), pb = Math.abs(pp - b), pc = Math.abs(pp - c); v += (pa <= pb && pa <= pc) ? a : (pb <= pc ? b : c); }
+          cur[x] = v & 0xFF;
+        }
+      }
+      const pick = (x, y) => { const o = y * stride + x * ch; return [out[o], out[o + 1], out[o + 2]]; };
+      // 四角各取 9×9 补丁（向内取，贴边处钳到画布内），返回四角亮度均值
+      const PATCH = 9;
+      const corners = [[0, 0], [w - 1, 0], [0, h - 1], [w - 1, h - 1]];
+      const cornerLum = corners.map(function (c) {
+        let s = 0, n = 0;
+        for (let dy = 0; dy < PATCH; dy++) {
+          for (let dx = 0; dx < PATCH; dx++) {
+            const x = Math.min(w - 1, c[0] + dx), y = Math.min(h - 1, c[1] + dy);
+            const p = pick(x, y);
+            s += p[0] * 0.299 + p[1] * 0.587 + p[2] * 0.114; n++;
+          }
+        }
+        return s / n;
+      });
+      return { avg: cornerLum.reduce(function (a, b) { return a + b; }, 0) / cornerLum.length, corners: cornerLum };
+    };
+    GIFT_ICONS.forEach(function (id) {
+      const rel = ICON_DIR + '/' + id + '.png';
+      let c = null;
+      try { c = readPngCorners(rel); } catch (e) { c = null; }
+      if (!c) { err(rel + ' 无法解码像素（深底判定跳过 = 该图未受保护）'); return; }
+      const avg = c.avg;
+      if (avg < 140) ok(rel + ' 深底合规（四角 9×9 补丁平均亮度 ' + Math.round(avg) + ' < 140，白底支付弹窗上不会消失）');
+      else err(rel + ' 底色过浅（四角 9×9 补丁平均亮度 ' + Math.round(avg) + ' ≥ 140）→ 微信白底支付弹窗上会看不见');
+    });
+    // 反例自测：浅底图必须被判红（证明判据真的在判，不是摆设）
+    {
+      const probe = [];
+      for (let v = 0; v < 4; v++) probe.push([243, 246, 239]);   // 历史上的米白底
+      const avgProbe = probe.map(p => p[0] * 0.299 + p[1] * 0.587 + p[2] * 0.114).reduce((a, b) => a + b, 0) / 4;
+      if (avgProbe >= 140) ok('深底判据自测：浅底样本（米白 #F6F6EF）会被判红（亮度 ' + Math.round(avgProbe) + ' ≥ 140）');
+      else err('深底判据自测失败：浅底样本竟低于阈值（判据坏了）');
+      // 再验一档「浅灰底」也必须判红（阈值不能松到连浅底都放过）
+      const probe2 = [];
+      for (let v = 0; v < 4; v++) probe2.push([200, 200, 200]);   // 浅灰
+      const avgProbe2 = probe2.map(p => p[0] * 0.299 + p[1] * 0.587 + p[2] * 0.114).reduce((a, b) => a + b, 0) / 4;
+      if (avgProbe2 >= 140) ok('深底判据自测：浅灰底样本也会被判红（亮度 ' + Math.round(avgProbe2) + ' ≥ 140）');
+      else err('深底判据自测失败：浅灰底样本低于阈值（判据过松）');
+    }
+  }
+  // 上传用资产，不进小程序包
+  try {
+    const pc = JSON.parse(read('project.config.json'));
+    const ig = ((pc.packOptions || {}).ignore || []).map(i => i.value);
+    if (ig.indexOf(ICON_DIR) > -1) ok(ICON_DIR + ' 已排除出主包（上传用资产不该占小程序体积）');
+    else err(ICON_DIR + ' 未排除出主包 —— 上传用资产会撑爆主包预算');
+  } catch (e) { err('project.config.json 读取失败，无法确认 ' + ICON_DIR + ' 是否排除出主包'); }
+  if (exists('scripts/build-gift-icons.py')) ok('scripts/build-gift-icons.py 存在（道具图可由脚本复现，不靠手工资产）');
+  else err('缺 scripts/build-gift-icons.py（道具图必须可由脚本复现）');
 }
 
 console.log('通过: ' + passed + ' | 错误: ' + errors.length + ' | 警告: ' + warnings.length);

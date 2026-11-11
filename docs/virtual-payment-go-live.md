@@ -139,6 +139,30 @@ orderApi 是否踩了官方五条红线 · env 是否合法 · 道具价格是�
 - 价格单位是**分**，`600` 是 ¥6，不要写成 `6`。
 - 后台发布后约 **10 分钟生效**；刚发布就下单会报 `-15014`。
 
+### 道具图片（后台「添加道具」时上传）
+
+图片在 `images/gift-icons/`，**文件名 = productId + `.png`**，逐字对应上表：
+
+| 道具 ID | 图片文件 | 实际像素 | 体积 |
+|---|---|---|---|
+| `tib_lamp_1` | `images/gift-icons/tib_lamp_1.png` | 200×200 | 41.1KB |
+| `tib_blessing_3` | `images/gift-icons/tib_blessing_3.png` | 200×200 | 78.4KB |
+| `tib_khata_6` | `images/gift-icons/tib_khata_6.png` | 200×200 | 63.7KB |
+| `tib_name_99` | `images/gift-icons/tib_name_99.png` | 200×200 | 88.5KB |
+
+**平台硬要求**：PNG/JPG、**200×200**、**<200KB**（后台「批量添加道具」的图片链接还要带
+`Access-Control-Allow-Origin: https://mp.weixin.qq.com/`）。上表四张已实测全部合规。
+
+**设计口径（为什么是深底 + 金/彩主体，不是浅底）**：
+微信付款弹窗是**白底**，浅底道具图会直接消失在白底里 —— 本项目曾用米白底画哈达、
+纯白底画藏名卡，两张在真实尺寸下都「看不见」。
+故统一为**深饱和漆地 + 高对比主体**（灯火=近黑褐、祝福卡=深绛、哈达=靛蓝、藏名卡=绛红织锦），
+四张放在一格里也认得出是同一套。藏名卡中央是**真藏文**（Chrome + NotoSerifTibetan 渲染，
+PIL 无 raqm 会排成断笔字，勿用 PIL 直接出图）。
+
+> 这四张是**上传用**资产，**不进小程序包**（已在 `project.config.json` 的
+> `packOptions.ignore` 里排除 `images/gift-icons`）。运行时礼物页用矢量/文字，不用位图。
+
 ---
 
 ## 四、服务端环境变量（部署时填）
