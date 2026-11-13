@@ -139,12 +139,6 @@
   color: #E8C86B;
 }
 
-.footer-icp {
-  margin-top: 6rpx;
-  font-size: 26rpx;
-  color: #9A8F78;
-}
-
 /* 品牌规范：文字主色用深灰 #2C3E50，不用纯黑 */
 page,
 .page {

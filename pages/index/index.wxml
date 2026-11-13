@@ -158,7 +158,6 @@
   <view class="footer">
     <view class="footer-tagline">每个字母，都是一座西藏</view>
     <view>学藏文 150 课 + 练习 10 课 · 进度自动保存在本机</view>
-    <view class="footer-icp">赣ICP备2026028137号-2</view>
   </view>
 
   <!-- 左侧悬浮入口 -->
