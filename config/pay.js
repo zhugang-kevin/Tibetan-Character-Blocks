@@ -19,19 +19,17 @@
 
 module.exports = {
   // 形如 '1450001234' 的数字串（以 mp 后台显示为准，别加引号以外的字符）
-  offerId: '',
+  offerId: '1450718449',
 
   // 0 = 正式环境；1 = 沙箱环境（只在开发者工具里调试用，现网版本必须 0）
   env: 0,
 
-  // 🔴 待填（已定死，无需再问域名）：本项目的后端域名就是 api.dorjea.cn（子域名，非根域）。
+  // 🔴 已填（后端域名 api.dorjea.cn，子域名，已 ICP 备案）：
   //   正确值 = 'https://api.dorjea.cn/pay/order'
   //   硬要求（官方《网络》文档）：https、域名必须 ICP 备案、
   //   不能是 IP、不能是 localhost、不能是父域名（用子域名）、TLS ≥ 1.2
-  // ⚠️ 不要单独填 orderApi：offerId/orderApi/goodsPublished 三件必须一起填，
-  //    否则 check-pay-config.js 会判「半配置」红。等拿到 offerId 一起填。
-  orderApi: '',
+  orderApi: 'https://api.dorjea.cn/pay/order',
 
   // 4 个道具在后台全部「已发布」后才置 true（未发布下单会报 -15010 / -15014）
-  goodsPublished: false
+  goodsPublished: true
 };
