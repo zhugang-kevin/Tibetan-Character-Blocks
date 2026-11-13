@@ -1063,7 +1063,7 @@ Page({
     var where = lv ? ('L' + lv + ' · ' + stage + ' 课') : ('第 ' + (d.level || 1) + ' 课');
     var title = steps > 0
       ? ('我用 ' + steps + ' 步走完' + where + '，来一起练习吧')
-      : ('藏字方块 · ' + where + '，认藏文从方块开始');
+      : ('藏趣方块 · ' + where + '，认藏文从方块开始');
     return { title: title, query: parts.join('&') };
   },
   onHide: function () {

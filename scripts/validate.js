@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * scripts/validate.js — 藏字方块 项目自检脚本
+ * scripts/validate.js — 藏趣方块 项目自检脚本
  * 用法: node scripts/validate.js
  * 检查项：JSON语法 / 页面完整性 / 关卡数据 / 文化卡覆盖 / 音效文件 / 禁用API / 事件绑定
  */
@@ -285,11 +285,11 @@ section('7. WXML 事件绑定与 JS 方法对应');
 });
 
 // ---------- 8. 品牌规范 ----------
-section('8. 品牌规范（藏字方块）');
+section('8. 品牌规范（藏趣方块）');
 try {
   const appJsonBrand = JSON.parse(read('app.json'));
-  if (appJsonBrand.window.navigationBarTitleText === '藏字方块') ok('品牌名「藏字方块」已应用于导航栏');
-  else err('导航栏标题应为「藏字方块」');
+  if (appJsonBrand.window.navigationBarTitleText === '藏趣方块') ok('品牌名「藏趣方块」已应用于导航栏');
+  else err('导航栏标题应为「藏趣方块」');
 } catch (e) { err('无法读取 app.json 品牌名'); }
 // 品牌行已从首页移除（2026-10-06 用户拍板：首页视觉重心交给朝圣天梯）。
 // 品牌语的法定载体改为：转发卡（onShareAppMessage）+ 证书绘制 + 祝福签绘制。
@@ -595,7 +595,7 @@ var certSrc = exists('utils/certificate.js') ? read('utils/certificate.js') : ''
   if (stripComments(certSrc).indexOf(f) === -1) ok('certificate.js 已移除旧阶梯 API ' + f + '()');
   else err('certificate.js 仍留着旧阶梯 API ' + f + '() —— 该体系已撤除（D119）');
 });
-if (certSrc.indexOf("'ZWFK'") > -1) ok('证书编号前缀 ZWFK（藏字方块拼音首字母）');
+if (certSrc.indexOf("'ZWFK'") > -1) ok('证书编号前缀 ZWFK（藏趣方块拼音首字母）');
 else err('证书编号前缀缺失');
 if (certSrc.indexOf('minAccuracy: 0.95') > -1 && certSrc.indexOf('minAccuracy: 0.80') > -1)
   ok('等级门槛：金 ≥95% / 银 ≥80% / 普通（完成 10 关）');
@@ -3811,7 +3811,7 @@ section('38. 生产上线守卫（主包体积 / 隐私授权 / 工程配置）'
       ok('结算页祝福语定时器可取消（650ms 内返回不再出声）');
     else err('结算页祝福语定时器未命名，无法取消');
     const gj = read('pages/game/game.js');
-    if (/onUnload:\s*function[\s\S]{0,160}stopVoice\(\)/.test(gj))
+    if (/onUnload:\s*function[\s\S]{0,300}stopVoice\(\)/.test(gj))
       ok('游戏页 onUnload 停语音（元素发音 / 扎西德勒不跨页）');
     else err('游戏页 onUnload 未停语音');
   }

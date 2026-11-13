@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""scripts/make-brand-assets.py — 生成「藏趣」品牌资产（D152）
+"""scripts/make-brand-assets.py — 生成「藏趣方块」品牌资产（D152）
 
 ## 符号选择：牦牛头（不是藏文、不是宗教符号）
   · 哈达 / 经幡 / 转经筒 / 八吉祥 都带**宗教属性** → 国宗发〔2017〕88 号第 2 条

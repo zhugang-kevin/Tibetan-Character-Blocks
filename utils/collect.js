@@ -177,7 +177,7 @@ function shareIdentity(input) {
   var stampTotal = Math.max(stamps, n(o.stampTotal));
   var line1 = letters > 0
     ? ('已认识 ' + letters + ' / ' + letterTotal + ' 个藏文字母')
-    : '在「藏字方块」里学认藏文字母';
+    : '在「藏趣方块」里学认藏文字母';
   var parts = [];
   if (cards > 0) parts.push('文化卡 ' + cards + ' / ' + cardTotal);
   if (stamps > 0) parts.push('护照印章 ' + stamps + ' / ' + stampTotal);

@@ -973,7 +973,7 @@ Page({
   // 转发给微信好友：只带内容不带激励（滥用分享 ▶2 自查通过）
   onShareAppMessage: function () {
     return {
-      title: '藏字方块 · 认藏文，从方块开始',
+      title: '藏趣方块 · 认藏文，从方块开始',
       path: '/pages/index/index'
     };
   },
@@ -982,7 +982,7 @@ Page({
   // 同样只带内容不带激励；imageUrl 用现成的品牌 Logo，不额外占包体。
   onShareTimeline: function () {
     return {
-      title: '藏字方块 · 认藏文，从方块开始',
+      title: '藏趣方块 · 认藏文，从方块开始',
       query: 'from=timeline',
       imageUrl: '/images/logo-144.png'
     };

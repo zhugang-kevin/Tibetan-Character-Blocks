@@ -271,7 +271,7 @@ Page({
   onShareAppMessage: function () {
     var d = this.data;
     return {
-      title: d.pickedName ? ('我给朋友送了「' + d.pickedName + '」') : '藏字方块 · 认藏文，从方块开始',
+      title: d.pickedName ? ('我给朋友送了「' + d.pickedName + '」') : '藏趣方块 · 认藏文，从方块开始',
       path: d.toUid ? ('/pages/gift/gift?to=' + d.toUid) : '/pages/index/index'
     };
   }

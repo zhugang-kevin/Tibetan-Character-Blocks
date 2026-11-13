@@ -56,6 +56,7 @@
 .sv-li { font-size: 26rpx; color: #3A2A1E; line-height: 1.9; }
 
 .sv-foot { margin-top: 16rpx; font-size: 26rpx; color: rgba(246, 220, 160, .62); line-height: 1.7; }
+.sv-icp { margin-top: 4rpx; font-size: 26rpx; color: rgba(246, 220, 160, .45); }
 
 /* 三档分组的标题条（D171） */
 .sv-tier {

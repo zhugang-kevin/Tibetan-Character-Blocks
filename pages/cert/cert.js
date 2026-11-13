@@ -291,7 +291,7 @@ Page({
       // 全站只剩学习线一种证书（D119），不再有 learnMode 分支
       title: cert
         ? ('我拿到了「L' + cert.stage + ' · ' + cert.stageName + '」' + cert.tierLabel + ' · 藏文拼读证书')
-        : '藏字方块，认藏文，从方块开始',
+        : '藏趣方块，认藏文，从方块开始',
       path: '/pages/index/index',
       imageUrl: this.data.imagePath || undefined
     };
@@ -301,7 +301,7 @@ Page({
   //   无登录态、不能跳转、**禁用支付** —— 卡片只负责让人看到，再点「前往小程序」回来。
   onShareTimeline: function () {
     return {
-      title: '藏字方块 · 认藏文，从方块开始',
+      title: '藏趣方块 · 认藏文，从方块开始',
       query: 'from=timeline',
       imageUrl: '/images/logo-144.png'
     };

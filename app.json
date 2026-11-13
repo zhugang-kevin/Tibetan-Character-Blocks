@@ -10,7 +10,7 @@
     "pages/recognition/recognition"
   ],
   "window": {
-    "navigationBarTitleText": "藏字方块",
+    "navigationBarTitleText": "藏趣方块",
     "navigationBarBackgroundColor": "#C0392B",
     "navigationBarTextStyle": "white",
     "backgroundColor": "#FDF6E3",

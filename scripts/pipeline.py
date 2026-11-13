@@ -79,7 +79,7 @@ def main():
     ap.add_argument('--message', default='', help='提交信息（留空则用默认）')
     args = ap.parse_args()
 
-    print('藏字方块 · 交付流水线')
+    print('藏趣方块 · 交付流水线')
     print('规则：检查 → 评估 → 修改 → 测试 → 确认 → 发布（任何一步红就停）')
 
     all_failed = []

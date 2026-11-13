@@ -1699,7 +1699,7 @@ function mockCtx(sink) {
     ev('shareIdentity(' + JSON.stringify(idFull) + ').line2') === '文化卡 5 / 12 · 护照印章 2 / 7');
   check('反向：一个字母都没认时不印 0',
     ev('shareIdentity({"letters":0,"letterTotal":8,"cards":0,"cardTotal":12,"stamps":0,"stampTotal":7}).line1') ===
-      '在「藏字方块」里学认藏文字母');
+      '在「藏趣方块」里学认藏文字母');
   check('反向：没有文化卡与印章时第二行为空（不印 0 / 7）',
     ev('shareIdentity({"letters":2,"letterTotal":8,"cards":0,"cardTotal":12,"stamps":0,"stampTotal":7}).line2') === '');
   check('只有印章时第二行只剩印章',
@@ -1821,8 +1821,8 @@ function mockCtx(sink) {
   })());
   check('画布上画了品牌句「认藏文，从方块开始」',
     (win.__texts || []).slice(textsBefore).some(function (t) { return t.t === '认藏文，从方块开始'; }));
-  check('画布上画了品牌出口「藏字方块」（矢量文字，非二维码占位）',
-    (win.__texts || []).slice(textsBefore).some(function (t) { return t.t === '藏字方块'; }));
+  check('画布上画了品牌出口「藏趣方块」（矢量文字，非二维码占位）',
+    (win.__texts || []).slice(textsBefore).some(function (t) { return t.t === '藏趣方块'; }));
 
   // 合规底线：卡片文案无金额（动态验证；静态红线由 validate §27 兜底）
   check('卡片区块文案无货币符号 / 让利数字', (function () {

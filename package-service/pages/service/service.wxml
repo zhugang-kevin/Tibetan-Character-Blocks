@@ -84,5 +84,6 @@
     </block>
 
     <view class="sv-foot">{{disclaimer}}</view>
+    <view class="sv-foot sv-icp">赣ICP备2026028137号-2</view>
   </view>
 </view>

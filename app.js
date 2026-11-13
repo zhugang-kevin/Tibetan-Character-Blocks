@@ -1,4 +1,4 @@
-// app.js — 藏字方块
+// app.js — 藏趣方块
 var collect = require('./utils/collect');
 var storage = require('./utils/storage');
 App({

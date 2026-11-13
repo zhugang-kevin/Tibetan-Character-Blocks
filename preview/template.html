@@ -7,7 +7,7 @@
      没法靠文本过滤 —— 与其过滤，不如让请求根本不发生。 -->
 <link rel="icon" href="data:,">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>藏字方块 · 本地体验版</title>
+<title>藏趣方块 · 本地体验版</title>
 <style>
   :root {
     --red: #C0392B;
@@ -1888,7 +1888,7 @@
   <!-- ============ 文化护照（总档案） ============ -->
   <section id="screen-passport" class="screen">
     <div class="pp-cover">
-      <img class="pp-logo" id="pp-logo" alt="藏字方块">
+      <img class="pp-logo" id="pp-logo" alt="藏趣方块">
       <div class="pp-title">我的西藏文化护照</div>
       <div class="pp-holder" id="pp-holder"></div>
       <div class="pp-slogan">每一个字母，都是一座西藏</div>
@@ -2082,7 +2082,7 @@
 /*__PLAN__*/    /* Q4 课型/复习规则：构建时由 utils/plan.js 原样注入（与小程序同一份） */
 
 /* ================================================================
-   藏字方块 · 浏览器本地体验版
+   藏趣方块 · 浏览器本地体验版
    数据由 scripts/build-h5.js 从 data/*.js 自动注入，与小程序同源。
    仅用于本地体验验收；正式发布仍以微信小程序为准。
    ================================================================ */
@@ -2443,7 +2443,7 @@ function shareIdentity(input) {
 
   const line1 = letters > 0
     ? ('已认识 ' + letters + ' / ' + letterTotal + ' 个藏文字母')
-    : '在「藏字方块」里学认藏文字母';
+    : '在「藏趣方块」里学认藏文字母';
 
   const parts = [];
   if (cards > 0) parts.push('文化卡 ' + cards + ' / ' + cardTotal);
@@ -3989,7 +3989,7 @@ function openPanel(key) {
       drawBlessingCard(card, function (url) {
         $('bless-out').innerHTML =
           '<div class="cert-preview"><img src="' + url + '" alt="雪域日签祝福卡"></div>' +
-          '<a class="cert-dl" download="藏字方块-雪域日签-' + card.dateText + '.png" href="' + url + '">保存到本地（PNG）</a>' +
+          '<a class="cert-dl" download="藏趣方块-雪域日签-' + card.dateText + '.png" href="' + url + '">保存到本地（PNG）</a>' +
           '<div class="hint">手机上长按图片即可保存到相册；小程序内可点「分享给朋友」直接转发这张卡（官方图片分享面板，无需截屏）。</div>';
       });
     });
@@ -6595,7 +6595,7 @@ function drawCardFooter(ctx, W, H, logo) {
   ctx.textAlign = 'left';
   ctx.fillStyle = '#FFFFFF';
   ctx.font = '700 26px "PingFang SC","Microsoft YaHei",sans-serif';
-  ctx.fillText('藏字方块', 210, H - 118);
+  ctx.fillText('藏趣方块', 210, H - 118);
   ctx.font = '400 20px "PingFang SC","Microsoft YaHei",sans-serif';
   ctx.fillStyle = 'rgba(255,255,255,0.85)';
   ctx.fillText('每个字母，都是一座西藏', 210, H - 86);
@@ -6605,7 +6605,7 @@ function renderBlessOut(cv, name) {
   const url = cv.toDataURL('image/png');
   $('bless-out').innerHTML =
     '<div class="bless-preview"><img src="' + url + '" alt="祝福卡"></div>' +
-    '<a class="dl-btn" download="藏字方块-扎西德勒-' + name + '.png" href="' + url + '">保存到本地（PNG）</a>' +
+    '<a class="dl-btn" download="藏趣方块-扎西德勒-' + name + '.png" href="' + url + '">保存到本地（PNG）</a>' +
     '<div class="hint">手机上长按图片即可保存到相册；小程序版会用 canvasToTempFilePath 导出并支持转发给朋友。</div>';
 }
 
@@ -6862,7 +6862,7 @@ function generateCertImage(cert) {
     const url = cv.toDataURL('image/png');
     $('cert-out').innerHTML =
       '<div class="cert-preview"><img src="' + url + '" alt="藏文拼读证书"></div>' +
-      '<a class="cert-dl" download="藏字方块-成长证书-' + cert.stageName + '-' + cert.no + '.png" href="' + url + '">保存到本地（PNG）</a>' +
+      '<a class="cert-dl" download="藏趣方块-成长证书-' + cert.stageName + '-' + cert.no + '.png" href="' + url + '">保存到本地（PNG）</a>' +
       '<div class="hint">手机上长按图片即可保存到相册；小程序版会用 canvasToTempFilePath 导出并支持转发给朋友。</div>';
   };
   out();
@@ -7193,14 +7193,14 @@ function drawBlessingCard(card, done) {
   ctx.beginPath(); ctx.moveTo(W / 2 - 130, sepY); ctx.lineTo(W / 2 + 130, sepY); ctx.stroke();
 
   // 右下角标识（2026-10-22 撤下：白色空框拉低质感，先删掉）
-  // 原来是 116×116 白框 + 「藏字方块」文字，框里什么都没有。
+  // 原来是 116×116 白框 + 「藏趣方块」文字，框里什么都没有。
   // ctx.fillRect(W - 212, H - 196, 116, 116);
   // 2026-10-22：原来这个白框里只有「小程序码」四个字，没有任何码。
   //   改为画真实存在的品牌 logo —— 没有码就不画码。
   // 同步画出品牌名（不依赖图片异步加载，保证 jsdom 等无图环境下卡片也能完整导出）
   ctx.fillStyle = '#8A8375';
   ctx.font = '18px "PingFang SC","Microsoft YaHei",sans-serif';
-  ctx.fillText('藏字方块', W - 154, H - 132);
+  ctx.fillText('藏趣方块', W - 154, H - 132);
 
   // 品牌标语（始终同步绘制）
   ctx.fillStyle = '#B7950B';
@@ -7208,7 +7208,7 @@ function drawBlessingCard(card, done) {
   ctx.fillText('认藏文，从方块开始', W / 2, H - 150);
 
   // 同步导出：卡片主体（框 / 藏文 / 八宝 / 品牌名）已完成，done 立即触发（浏览器与 jsdom 一致）。
-  // 品牌出口用矢量文字「藏字方块」而非二维码占位：无版权风险、不污染 canvas、不依赖异步图片加载。
+  // 品牌出口用矢量文字「藏趣方块」而非二维码占位：无版权风险、不污染 canvas、不依赖异步图片加载。
   // ⚠️ 必须画**产品名**（与 app.json 标题一致），不能画含「游戏」的厂牌名 —— 去游戏化是类目红线。
   // 内容画完 → 导出
   done(cv.toDataURL('image/png'));
@@ -7230,7 +7230,7 @@ const BENEFIT_MODES = [
   { id: 'tourist', name: '游客专属', desc: '体验打卡 · 纪念感' }
 ];
 const BENEFIT_KINDS = { gift: '赠礼', combo: '专属组合', priority: '优先权', stamp: '联名印章' };
-const BENEFIT_PROVIDER = '由商家自主提供并兑现 · 藏字方块不参与交易、不收取任何款项';
+const BENEFIT_PROVIDER = '由商家自主提供并兑现 · 藏趣方块不参与交易、不收取任何款项';
 const BENEFIT_PAGE_NOTE = '本页只发放「到店权益凭证」，不涉及任何支付与资金结算';
 const BENEFIT_DISCLAIMER = BENEFIT_PAGE_NOTE +
   '。权益由商家自主提供并在店内兑现，平台不承诺金额、不发代金券或预付卡；凭证绑定本人微信，请到店出示核销码。';

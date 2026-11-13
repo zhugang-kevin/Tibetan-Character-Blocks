@@ -120,7 +120,7 @@
 
 一句话：**平台是"凭证发放方"，不是"优惠券发行方"。**
 
-已在代码里**机械保证**：`scripts/validate.js` 第 16.2 节会扫描 `data/merchants.js`，出现 `¥` / `元` 字样或 `price/amount/discount/settle` 字段（**含 `discountRate` / `maxDiscount` 等变体**）**直接判错**；第 25 节把同一把尺子量到**页面层**（见 2.4.1）。每张券卡强制渲染一句 `由商家自主提供并兑现 · 藏字方块不参与交易、不收取任何款项`。
+已在代码里**机械保证**：`scripts/validate.js` 第 16.2 节会扫描 `data/merchants.js`，出现 `¥` / `元` 字样或 `price/amount/discount/settle` 字段（**含 `discountRate` / `maxDiscount` 等变体**）**直接判错**；第 25 节把同一把尺子量到**页面层**（见 2.4.1）。每张券卡强制渲染一句 `由商家自主提供并兑现 · 藏趣方块不参与交易、不收取任何款项`。
 
 #### 2.4.1 折扣一定要用百分比吗？（2026-10-05 · D28）
 

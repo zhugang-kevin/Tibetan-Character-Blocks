@@ -1,4 +1,4 @@
-# 藏字方块（Tibetan Character Blocks）
+# 藏趣方块（Tibetan Character Blocks）
 
 > 认藏文，从方块开始 —— 基于配对消除的藏文启蒙微信小程序
 
@@ -121,7 +121,7 @@ node scripts/build-h5.js        # 重新生成（改了 data/ 或 images/ 之后
 
 ## 发布前待办
 
-- [ ] 在微信公众平台把小程序名改为「藏字方块」，上传 `images/logo-144.png` 作为头像
+- [ ] 在微信公众平台把小程序名改为「藏趣方块」，上传 `images/logo-144.png` 作为头像
 - [ ] 配置 `app.js` 中 `TIBETAN_FONT_URL`（Noto Serif Tibetan 的 HTTPS 地址，未配置时静默跳过）
 - [ ] 录制 34 条元素发音放入 `audio/voice/`（`letter_01.mp3` ~ `letter_30.mp3` + `icon_01.mp3` ~ `icon_04.mp3`，另加 `tashi_delek.mp3` / `blessing_01.mp3` 两条情绪语音；清单见 `audio/voice/README.txt`）
 - [ ] 替换祝福卡 / 证书右下角的小程序码占位框

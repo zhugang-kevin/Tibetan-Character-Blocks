@@ -1,6 +1,6 @@
 # 实景照 sourcing kit（Wikimedia Commons · CC 授权）
 
-> 用途：藏字方块小程序的 4 张实景照（`images/scene/home.jpg · game.jpg · bodhi.jpg · monastery.jpg`）
+> 用途：藏趣方块小程序的 4 张实景照（`images/scene/home.jpg · game.jpg · bodhi.jpg · monastery.jpg`）
 > 当前由 `data/photo-assets.js` 引用，4 个槽位均已启用。
 > 目标：用 **Wikimedia Commons 上 CC-BY / CC-BY-SA** 的真实照片替换现有占位图，
 > **逐张由用户本人核对授权与出处后**才视为可用（AI 不替用户签确，防止假绿）。

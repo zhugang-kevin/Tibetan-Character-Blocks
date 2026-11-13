@@ -34,7 +34,7 @@ module.exports = [
     city: 'lhasa',
     track: 'local',
     category: '藏餐',
-    offer: '藏字方块专属组合（甜茶 + 藏面 + 小菜，店内定制款）',
+    offer: '藏趣方块专属组合（甜茶 + 藏面 + 小菜，店内定制款）',
     kind: 'combo',
     need: 1
   },

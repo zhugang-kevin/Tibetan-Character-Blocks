@@ -1,5 +1,5 @@
 {
-  "_note": "藏字方块 · 场景图**出处台账**（2026-10-17 由 D129 审计重写）。\n旧版按「从素材站下载的图」设计（只要 sourceUrl / author / license），与事实不符 —— 实测这四张**全部是我方 ImageGen 生成**，没有第三方版权，所以许可证字段根本不适用。\n改按 `kind` 分三类判定：ai_generated（看生成证据与生成工具）/ stock（看许可证，禁 NC、ND）/ user_photo（看拍摄者与授权）。\n`verified` 只在**证据写进本文件**之后置 true —— AI 不替用户签确（防假绿）。\n\n⚠️ 两种「绿」要分清：provenanceEstablished = 出处已查证（scripts/test-photo-provenance.js 判定）；verified = 用户本人签确商用权（scripts/validate.js §62 判定，AI 不代签）。",
+  "_note": "藏趣方块 · 场景图**出处台账**（2026-10-17 由 D129 审计重写）。\n旧版按「从素材站下载的图」设计（只要 sourceUrl / author / license），与事实不符 —— 实测这四张**全部是我方 ImageGen 生成**，没有第三方版权，所以许可证字段根本不适用。\n改按 `kind` 分三类判定：ai_generated（看生成证据与生成工具）/ stock（看许可证，禁 NC、ND）/ user_photo（看拍摄者与授权）。\n`verified` 只在**证据写进本文件**之后置 true —— AI 不替用户签确（防假绿）。\n\n⚠️ 两种「绿」要分清：provenanceEstablished = 出处已查证（scripts/test-photo-provenance.js 判定）；verified = 用户本人签确商用权（scripts/validate.js §62 判定，AI 不代签）。",
   "_audit": {
     "date": "2026-10-17",
     "by": "D129 内容/设计/变现 三块复核",

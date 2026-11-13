@@ -420,7 +420,7 @@ Page({
   //   无登录态、不能跳转、**禁用支付** —— 卡片只负责让人看到，再点「前往小程序」回来。
   onShareTimeline: function () {
     return {
-      title: '藏字方块 · 认藏文，从方块开始',
+      title: '藏趣方块 · 认藏文，从方块开始',
       query: 'from=timeline',
       imageUrl: '/images/logo-144.png'
     };

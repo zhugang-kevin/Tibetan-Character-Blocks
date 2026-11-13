@@ -701,7 +701,7 @@ Page({
       ctx.font = '700 34px sans-serif';
       ctx.fillStyle = '#FFF3D6';
       ctx.fillText('认藏文，从方块开始', W / 2, POSTER_SLOGAN_Y);
-      // 底部左侧：藏字方块 Logo
+      // 底部左侧：藏趣方块 Logo
       if (blessImgs.logo) {
         ctx.drawImage(blessImgs.logo, 70, H - 195, 100, 100);
       }
@@ -763,7 +763,7 @@ Page({
   onShareAppMessage: function () {
     var to = storage.ensureUid();
     return {
-      title: '藏字方块，认藏文，从方块开始',
+      title: '藏趣方块，认藏文，从方块开始',
       path: '/pages/index/index?to=' + to,
       imageUrl: this.data.imagePath || undefined
     };
@@ -773,7 +773,7 @@ Page({
   //   无登录态、不能跳转、**禁用支付** —— 卡片只负责让人看到，再点「前往小程序」回来。
   onShareTimeline: function () {
     return {
-      title: '藏字方块 · 认藏文，从方块开始',
+      title: '藏趣方块 · 认藏文，从方块开始',
       query: 'from=timeline',
       imageUrl: '/images/logo-144.png'
     };

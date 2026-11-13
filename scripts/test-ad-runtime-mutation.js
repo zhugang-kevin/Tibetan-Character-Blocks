@@ -113,9 +113,17 @@ function restore() {
 function patch(rel, from, to) {
   const p = path.join(TMP, rel);
   const s = fs.readFileSync(p, 'utf8');
-  if (s.indexOf(from) === -1)
+  // 🔴 换行归一化：工作区文件可能被 git core.autocrlf 或 Python 重写从 LF 变成 CRLF
+  //   （实测：改名脚本用 open('w') 在 Windows 上会把 \n 写成 \r\n），
+  //   而锚点字符串写的是 \n → indexOf 匹配不到 → 假「锚点失效」。
+  //   这里把两边都归一成 \n 再匹配，写回时再还原成原换行，避免污染文件换行。
+  const crlf = s.indexOf('\r\n') >= 0;
+  const norm = crlf ? s.replace(/\r\n/g, '\n') : s;
+  const fromN = from.replace(/\r\n/g, '\n');
+  if (norm.indexOf(fromN) === -1)
     throw new Error('变异锚点失效（代码已改但未同步用例）: ' + rel + ' :: ' + from.slice(0, 70));
-  fs.writeFileSync(p, s.replace(from, to));
+  const outN = norm.replace(fromN, to.replace(/\r\n/g, '\n'));
+  fs.writeFileSync(p, crlf ? outN.replace(/\n/g, '\r\n') : outN);
   touched.add(rel);
 }
 function patchRaw(rel, fn) {

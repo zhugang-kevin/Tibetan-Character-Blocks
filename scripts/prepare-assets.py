@@ -296,7 +296,7 @@ def _default_photo_attribution():
         slots[k] = {'file': f, 'sourceUrl': '', 'author': '', 'license': '',
                     'licenseUrl': '', 'downloaded': False, 'verified': False}
     return {
-        '_note': '藏字方块 · 实景照授权台账。逐项由用户本人核对授权与出处后，才将 verified 改为 true。'
+        '_note': '藏趣方块 · 实景照授权台账。逐项由用户本人核对授权与出处后，才将 verified 改为 true。'
                  'AI 不替用户签确（防假绿）。许可证仅允许 CC-BY / CC-BY-SA / CC0；'
                  '禁用 NC（商业产品含米大师虚拟支付）与 ND（prepare-assets.py --scene 降饱和/压暗/裁剪构成演绎）。',
         'slots': slots,
