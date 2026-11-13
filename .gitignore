@@ -52,3 +52,6 @@ docs/play-150/
 .workbuddy/data/
 .workbuddy/quality/
 
+
+# 部署脚本含明文密钥，只在本地使用，绝不入库
+docs/部署脚本-一键执行-*.sh
